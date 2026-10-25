@@ -2,6 +2,10 @@
 {
   "name": "mrwashburnmusic-site",
   "compatibility_date": "2026-10-01",
+  "routes": [
+    { "pattern": "mrwashburnmusic.com", "custom_domain": true },
+    { "pattern": "www.mrwashburnmusic.com", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./",
     "not_found_handling": "404-page"
