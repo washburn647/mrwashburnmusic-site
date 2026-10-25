@@ -2,6 +2,9 @@
 {
   "name": "mrwashburnmusic-site",
   "compatibility_date": "2026-10-01",
+  // Only serve on the real domain, so Cloudflare Access always guards /studio/.
+  "workers_dev": false,
+  "preview_urls": false,
   "routes": [
     { "pattern": "mrwashburnmusic.com", "custom_domain": true },
     { "pattern": "www.mrwashburnmusic.com", "custom_domain": true }

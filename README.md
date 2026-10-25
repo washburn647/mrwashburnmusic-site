@@ -21,7 +21,7 @@ The site runs on Cloudflare Workers (static assets), set up in `wrangler.jsonc`,
 
 1. Cloudflare dashboard > Zero Trust (free plan, up to 50 users).
 2. Access > Applications > Add > Self-hosted.
-3. Domain `mrwashburnmusic.com`, path `studio`. Add the same app for the `*.workers.dev` preview address, or turn that address off.
+3. Domain `mrwashburnmusic.com`, path `studio`. The `workers.dev` address is turned off in `wrangler.jsonc`, so the real domain is the only way in.
 4. Policy: Allow, Include > Emails > your email. Login method: One-time PIN.
 
 Anyone opening `/studio/` then has to enter a code emailed to you. Nothing in this repo should ever hold passwords or API keys, because the files are public on GitHub and the site.
