@@ -1,5 +1,6 @@
+# connect-src: Song Burner's lyrics search asks lrclib.net and lyrics.ovh directly.
 /*
-  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' https://lrclib.net https://api.lyrics.ovh; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), geolocation=(), microphone=(self)
@@ -8,3 +9,6 @@
 /studio/*
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
+
+/songburner/sw.js
+  Cache-Control: no-cache

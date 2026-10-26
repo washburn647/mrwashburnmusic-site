@@ -4,3 +4,4 @@ tools
 wrangler.jsonc
 .assetsignore
 .gitignore
+songburner/src

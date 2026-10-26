@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your data · Song Burner</title>
+<meta name="theme-color" content="#1F2A24">
+<link rel="stylesheet" href="../fonts.css">
+<link rel="icon" href="../icons/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<style>
+:root {
+  --ink: #1F2A24; --paper: #EFEAE0; --card: #F7F4EC; --gold: #C79A3E;
+  --teal: #2F6E62; --teal-deep: #234F46; --text: #2A2620; --muted: #6C6656;
+  --border: #D8D0BC; --ok: #3C7A4F; --ok-bg: #E3EEE3; --bad: #B34A3C; --bad-bg: #F5E4DF;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--text);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif; line-height: 1.5; }
+header { background: var(--ink); color: var(--paper); padding: 18px 16px 14px; }
+header a { color: var(--gold); text-decoration: none; font-size: 15px; }
+h1 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px;
+  letter-spacing: .02em; margin: 6px 0 0; line-height: 1; }
+main { max-width: 640px; margin: 0 auto; padding: 16px; }
+section { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px; margin: 0 0 16px; }
+h2 { font-size: 17px; margin: 0 0 6px; }
+p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
+p:last-child { margin-bottom: 0; }
+.stats { display: flex; gap: 10px; flex-wrap: wrap; }
+.stat { flex: 1 1 120px; background: #fff; border-radius: 10px; padding: 10px 12px; }
+.stat b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 22px; color: var(--ink); }
+.stat span { font-size: 13px; color: var(--muted); }
+button, .file { font: inherit; font-weight: 600; font-size: 15px; border: 0; border-radius: 999px;
+  padding: 11px 20px; cursor: pointer; background: var(--teal); color: #fff; display: inline-block; }
+button:hover, .file:hover { background: var(--teal-deep); }
+button.danger { background: var(--bad); }
+button.plain { background: transparent; color: var(--teal); padding-left: 8px; padding-right: 8px; }
+.file input { display: none; }
+.msg { margin-top: 12px; padding: 10px 14px; border-radius: 10px; font-size: 15px; display: none; }
+.msg.ok { display: block; background: var(--ok-bg); color: var(--ok); }
+.msg.bad { display: block; background: var(--bad-bg); color: var(--bad); }
+.msg.ask { display: block; background: #EFE4C7; color: var(--text); }
+.msg .row { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+ol { margin: 0 0 12px; padding-left: 20px; color: var(--muted); font-size: 15px; }
+code { font-family: 'IBM Plex Mono', monospace; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="../">&larr; Back to Song Burner</a>
+  <h1>Your data</h1>
+</header>
+<main>
+  <section>
+    <h2>On this device</h2>
+    <p>Your songs, lists and scores are saved in this browser, on this device. Nothing is sent to a server.</p>
+    <div class="stats" id="stats"><div class="stat"><b>…</b><span>songs</span></div></div>
+  </section>
+
+  <section>
+    <h2>Back up</h2>
+    <p>Download everything as one file. Keep it somewhere safe, or use it to move your library to another phone or computer.</p>
+    <button id="download">Download backup</button>
+    <div class="msg" id="downloadMsg"></div>
+  </section>
+
+  <section>
+    <h2>Restore or move in</h2>
+    <p>Choose a Song Burner backup (<code>.json</code>), or a Song Burner Google Sheet downloaded as Excel (<code>.xlsx</code>).</p>
+    <ol>
+      <li>Coming from the Google Sheets version? Open your Song Burner sheet.</li>
+      <li><b>File &rarr; Download &rarr; Microsoft Excel (.xlsx)</b>.</li>
+      <li>Choose that file here.</li>
+    </ol>
+    <label class="file">Choose a file<input type="file" id="file" accept=".json,.xlsx,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+    <div class="msg" id="restoreMsg"></div>
+  </section>
+</main>
+<script src="../host.js"></script>
+<script src="../engine.js"></script>
+<script src="backup.js"></script>
+</body>
+</html>
