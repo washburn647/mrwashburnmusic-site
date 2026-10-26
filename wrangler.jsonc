@@ -5,6 +5,8 @@
   // Only serve on the real domain, so Cloudflare Access always guards /studio/.
   "workers_dev": false,
   "preview_urls": false,
+  // Required by the branch builds Cloudflare runs on pull requests (npx wrangler preview).
+  "previews": {},
   "routes": [
     { "pattern": "mrwashburnmusic.com", "custom_domain": true },
     { "pattern": "www.mrwashburnmusic.com", "custom_domain": true }
