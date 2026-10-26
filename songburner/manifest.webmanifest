@@ -1,0 +1,16 @@
+{
+  "name": "Song Burner",
+  "short_name": "Song Burner",
+  "description": "Learn song lyrics by heart, one burner at a time.",
+  "id": "/songburner/",
+  "start_url": "/songburner/",
+  "scope": "/songburner/",
+  "display": "standalone",
+  "background_color": "#EFEAE0",
+  "theme_color": "#1F2A24",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

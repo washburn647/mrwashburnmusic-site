@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<!-- GENERATED from src/Code.gs by tools/build_songburner.py. Do not edit. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Song Burner</title>
+<meta name="theme-color" content="#1F2A24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Song Burner">
+<link rel="stylesheet" href="fonts.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="description" content="Learn song lyrics by heart, one burner at a time.">
+<style>
+:root {
+  --ink: #1F2A24; --ink-soft: #2B372F;
+  --paper: #EFEAE0; --paper-dim: #E3DDCC; --paper-card: #F7F4EC;
+  --gold: #C79A3E; --gold-soft: #E0BE73;
+  --teal: #2F6E62; --teal-deep: #234F46;
+  --correct: #3C7A4F; --correct-bg: #E3EEE3;
+  --incorrect: #B34A3C; --incorrect-bg: #F5E4DF;
+  --missing-bg: #EFE4C7;
+  --text-ink: #2A2620; --text-muted: #6C6656; --border: #D8D0BC;
+  --shadow: 0 6px 20px rgba(31,42,36,0.12);
+  --radius-s: 8px; --radius-m: 14px; --radius-l: 22px;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; background: var(--paper); color: var(--text-ink);
+  font-family: var(--font-body); -webkit-tap-highlight-color: transparent;
+}
+body { min-height: 100vh; display: flex; flex-direction: column; }
+button { font-family: inherit; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 12px; background: var(--ink); color: var(--paper);
+  position: sticky; top: 0; z-index: 20;
+}
+.brand {
+  font-family: var(--font-display); font-size: 26px; letter-spacing: 0.06em;
+  margin: 0; color: var(--gold-soft); flex: 1; text-align: center;
+}
+.icon-btn {
+  background: none; border: none; color: var(--paper); width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer; font-size: 18px;
+}
+.icon-btn:hover { background: rgba(239,234,224,0.1); }
+.icon-btn[hidden] { visibility: hidden; display: flex; }
+
+.app { flex: 1; max-width: 680px; width: 100%; margin: 0 auto; padding: 18px 16px 110px; }
+
+.tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; display: flex;
+  background: var(--ink); padding: 8px; z-index: 20;
+  border-top: 1px solid rgba(199,154,62,0.25);
+}
+.tab-btn {
+  flex: 1; background: none; border: none; color: rgba(239,234,224,0.55);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 0 2px; font-size: 11px; font-weight: 500; cursor: pointer;
+  border-radius: var(--radius-s);
+}
+.tab-btn.active { color: var(--gold-soft); }
+/* the shelf menu opens on a SECOND tap of Pantry, which nothing on screen
+   could otherwise tell you - so the tab wears a little chevron */
+.tab-pantry { position: relative; }
+.tab-caret {
+  position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+  font-size: 7px; line-height: 1; color: var(--gold-soft); opacity: 0.75;
+}
+
+.section-eyebrow {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px;
+}
+.section-title {
+  font-family: var(--font-display); font-size: 30px; letter-spacing: 0.02em;
+  margin: 0 0 16px; color: var(--ink);
+}
+
+.chip-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; scrollbar-width: none; }
+.chip-row::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0; padding: 8px 16px; border-radius: 999px;
+  border: 1.5px solid var(--border); background: var(--paper-card);
+  color: var(--text-ink); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.chip.active { background: var(--ink); border-color: var(--ink); color: var(--gold-soft); }
+.chip-dashed { border-style: dashed; background: transparent; color: var(--text-muted); font-weight: 500; }
+
+/* Sort used to be a scrolling row of buttons. Eleven of them would not fit,
+   so it is a menu now, with the filter box taking the space that frees up. */
+.filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.sort-select {
+  /* It gave up a little width to the direction button beside it. */
+  flex: 0 0 41%; min-width: 0; padding: 10px 10px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--paper-card);
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  color: var(--text-ink); cursor: pointer; height: 42px;
+}
+/* The direction of the sort. Square and the same height as the menu it belongs
+   to, so it reads as the second half of that control rather than as a third
+   field in the row. Reversed is the state worth seeing at a glance, so that is
+   the one that fills in. */
+.sort-dir {
+  flex: 0 0 42px; width: 42px; height: 42px; padding: 0;
+  border-radius: var(--radius-s); border: 1px solid var(--border);
+  background: var(--paper-card); color: var(--text-muted);
+  font-family: var(--font-body); font-size: 15px; line-height: 1; cursor: pointer;
+}
+.sort-dir:hover { border-color: var(--teal); color: var(--text-ink); }
+.sort-dir.is-up {
+  background: var(--teal); border-color: var(--teal); color: var(--paper-card);
+}
+.filter-input {
+  flex: 1 1 auto; min-width: 0; padding: 10px 12px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--paper-card);
+  font-family: var(--font-body); font-size: 14px; color: var(--text-ink); height: 42px;
+}
+.filter-input::-webkit-search-cancel-button { cursor: pointer; }
+
+.text-link-btn {
+  background: none; border: none; padding: 0; color: var(--teal);
+  font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer;
+}
+.text-link-danger { color: var(--incorrect); }
+.manage-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; min-height: 18px; }
+
+.search-input {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-m);
+  border: 1px solid var(--border); background: var(--paper-card);
+  font-family: var(--font-body); font-size: 15px; color: var(--text-ink); margin-bottom: 16px;
+}
+
+.empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+.empty-state .eyebrow-mark {
+  font-family: var(--font-display); font-size: 22px; color: var(--ink);
+  display: block; margin-bottom: 6px; letter-spacing: 0.04em;
+}
+
+.song-list { display: flex; flex-direction: column; gap: 12px; }
+.tape-card {
+  background: var(--paper-card); border: 1px solid var(--border);
+  border-radius: var(--radius-m); padding: 14px 16px; display: flex;
+  align-items: center; gap: 14px; cursor: pointer; box-shadow: var(--shadow);
+  position: relative; overflow: hidden;
+}
+.tape-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--gold); }
+.tape-card:active { transform: scale(0.99); }
+.reel-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.tape-card-info { flex: 1; min-width: 0; }
+/* Wrap to two lines instead of truncating: on a phone a long title like
+   "The Wreck of the Edmund Fitzgerald" lost more than half of itself. */
+.tape-card-title {
+  font-family: var(--font-display); font-weight: 400; font-size: 23px;
+  letter-spacing: 0.01em; color: var(--text-ink); line-height: 1.1;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tape-card-artist {
+  font-size: 15px; color: var(--text-muted); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* one line, always - it used to wrap and make every row taller */
+.tape-card-meta {
+  font-family: var(--font-mono); font-size: 11px; color: var(--gold); margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.star-btn {
+  flex-shrink: 0; background: none; border: none; font-size: 20px; cursor: pointer;
+  color: var(--border); width: 34px; height: 34px; border-radius: 50%;
+}
+.star-btn.on { color: var(--gold); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 20px; border-radius: var(--radius-m); border: none;
+  font-family: var(--font-body); font-weight: 600; font-size: 15px; cursor: pointer;
+  transition: transform 0.08s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--teal); color: var(--paper); }
+.btn-gold { background: var(--gold); color: var(--ink); }
+.btn-outline { background: transparent; color: var(--ink); border: 1.5px solid var(--border); }
+.btn-danger { background: transparent; color: var(--incorrect); border: 1.5px solid var(--incorrect-bg); }
+.btn-block { width: 100%; }
+.btn-sm { padding: 9px 14px; font-size: 13px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* a running count carried on a button, without competing with its label */
+.btn-count {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 400;
+  padding: 2px 6px; border-radius: 999px; margin-left: 7px;
+  background: rgba(31,42,36,0.09); color: var(--text-muted);
+}
+.detail-actions { display: flex; gap: 10px; margin-bottom: 16px; }
+
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block; font-family: var(--font-mono); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px;
+}
+.form-input, .form-textarea {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--paper-card);
+  font-family: var(--font-body); font-size: 15px; color: var(--text-ink);
+}
+.form-textarea { font-family: var(--font-mono); font-size: 14px; line-height: 1.7; min-height: 130px; resize: vertical; }
+.form-row { display: flex; gap: 10px; }
+.form-row .form-group { flex: 1; }
+.form-hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; margin-bottom: 8px; }
+.checkbox-row input { width: 17px; height: 17px; accent-color: var(--teal); }
+
+/* THE HEADER IS THE LIBRARY ROW, AT FULL SIZE. It used to be a black slab,
+   which made the one screen you spend the most time on the only one where a
+   song did not carry its own temperature. Same paper, same gold spine, same
+   red-for-hot and blue-for-cold wash as the card you tapped to get here. */
+.detail-header {
+  background: var(--paper-card); color: var(--text-ink);
+  border: 1px solid var(--border); border-radius: var(--radius-l);
+  padding: 18px 20px; margin-bottom: 14px;
+  position: relative; overflow: hidden; box-shadow: var(--shadow);
+}
+.detail-header::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  background: var(--gold);
+}
+.detail-header.is-hot  { background-color: #FBEDE5; border-color: rgba(178,55,42,0.30); }
+.detail-header.is-cold { background-color: #E9F0F8; border-color: rgba(52,88,142,0.30); }
+.detail-header.is-hot::before  { background: #C97E34; }
+.detail-header.is-cold::before { background: #6282A5; }
+.detail-header.is-frozen::before { background: #34588E; }
+.detail-title { font-family: var(--font-display); font-size: 30px; letter-spacing: 0.02em; margin: 0; color: var(--text-ink); line-height: 1.05; }
+.detail-artist { font-size: 14px; color: var(--text-muted); margin-top: 3px; }
+.detail-meta { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+.detail-key { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+.detail-key b { color: var(--text-ink); font-weight: 700; }
+.detail-key .key-dot { margin: 0 7px; }
+.key-sound { background: rgba(31,42,36,0.05); font-weight: 700; min-height: 46px; }
+
+/* ---- Set List View: a stage screen. Dark, so it does not light up a dim
+        room, and large, so it reads from a music stand at arm's length. ---- */
+.gig-lock, .gig-lock body { overflow: hidden; }
+.gig {
+  --gig-scale: 1; --gig-bg: #121814; --gig-fg: #F2EDE2; --gig-dim: #8E978F;
+  position: fixed; inset: 0; z-index: 95; background: var(--gig-bg); color: var(--gig-fg);
+  display: flex; flex-direction: column; overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.gig-top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.gig-btn {
+  background: rgba(255,255,255,0.07); color: var(--gig-fg); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 999px; height: 40px; min-width: 40px; padding: 0 14px; font-size: 14px; font-weight: 600;
+  cursor: pointer; flex-shrink: 0;
+}
+.gig-x { padding: 0; font-size: 16px; }
+.gig-where { flex: 1; min-width: 0; text-align: center; }
+.gig-list { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--gig-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gig-pos { font-family: var(--font-display); font-size: 22px; letter-spacing: 0.06em; line-height: 1.1; }
+.gig-stage { flex: 1; overflow-y: auto; padding: 18px 20px 24px; touch-action: pan-y; }
+.gig-in-next { animation: gigNext 0.22s ease-out; }
+.gig-in-prev { animation: gigPrev 0.22s ease-out; }
+@keyframes gigNext { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes gigPrev { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.gig-num { font-family: var(--font-display); color: var(--gold); font-size: calc(var(--gig-scale) * 22px); letter-spacing: 0.08em; }
+.gig-title { font-family: var(--font-display); font-weight: 400; margin: 0; line-height: 1;
+  font-size: calc(var(--gig-scale) * 46px); letter-spacing: 0.02em; }
+.gig-artist { color: var(--gig-dim); font-size: calc(var(--gig-scale) * 16px); margin-top: 4px; }
+.gig-keys { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+.gig-pill { border: 1.5px solid rgba(255,255,255,0.22); border-radius: 999px; padding: 6px 14px;
+  font-size: calc(var(--gig-scale) * 18px); font-weight: 700; }
+.gig-capo { border-color: var(--gold); color: var(--gold-soft); }
+.gig-capo.gig-change { background: var(--gold); color: #1A1408; }
+.gig-sound { color: var(--gig-dim); font-weight: 600; }
+.gig-cues { margin-top: 18px; }
+.gig-cue { display: flex; gap: 14px; align-items: baseline; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.07); }
+.gig-cue-label { flex: 0 0 auto; min-width: calc(var(--gig-scale) * 34px); font-family: var(--font-mono);
+  font-size: calc(var(--gig-scale) * 13px); color: var(--gig-dim); text-transform: uppercase; }
+.gig-cue-line { font-size: calc(var(--gig-scale) * 22px); line-height: 1.3; font-weight: 500; }
+.gig-cue-chorus .gig-cue-line { padding-left: 14px; border-left: 3px solid var(--gold); font-style: italic; }
+.gig-cue-chorus .gig-cue-label { color: var(--gold-soft); }
+.gig-cue-repeat .gig-cue-line { font-size: calc(var(--gig-scale) * 16px); color: var(--gig-dim); }
+.gig-cue-dim { opacity: 0.75; font-style: italic; }
+.gig-wait { color: var(--gig-dim); font-size: 28px; padding: 10px 0; }
+.gig-foot { display: flex; gap: 10px; padding: 10px 12px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+.gig-nav {
+  flex: 1; min-width: 0; min-height: 76px; border-radius: var(--radius-m); cursor: pointer;
+  background: rgba(255,255,255,0.06); color: var(--gig-fg); border: 1px solid rgba(255,255,255,0.12);
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
+  padding: 8px 14px; text-align: left;
+}
+.gig-next { flex: 1.6; background: var(--teal); border-color: var(--teal); align-items: flex-end; text-align: right; }
+.gig-nav:disabled { opacity: 0.35; cursor: default; }
+.gig-nav-dir { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8; }
+.gig-nav-name { font-size: 17px; font-weight: 700; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gig-nav-key { font-size: 13px; color: var(--gold-soft); font-weight: 600; }
+.gig-drawer {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(420px, 100%);
+  background: #1A221D; box-shadow: -10px 0 30px rgba(0,0,0,0.45);
+  display: flex; flex-direction: column; transform: translateX(105%); transition: transform 0.22s ease;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+}
+.gig-drawer.open { transform: none; }
+.gig-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;
+  font-family: var(--font-display); font-size: 24px; letter-spacing: 0.05em; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.gig-rows { flex: 1; overflow-y: auto; padding: 6px 8px 20px; position: relative; }
+.gig-row { display: flex; align-items: center; gap: 10px; padding: 6px 4px 6px 8px; margin: 4px 0;
+  border-radius: var(--radius-s); background: rgba(255,255,255,0.04); position: relative; }
+.gig-row.is-now { background: rgba(47,110,98,0.55); }
+.gig-row.is-done { opacity: 0.5; }
+.gig-row.is-drag { z-index: 2; background: #2B372F; box-shadow: 0 8px 22px rgba(0,0,0,0.5); opacity: 1; }
+.gig-row-n { font-family: var(--font-display); font-size: 20px; color: var(--gold); min-width: 26px; text-align: right; }
+.gig-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; cursor: pointer; padding: 6px 0; }
+.gig-row-title { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gig-row-key { font-size: 12px; color: var(--gig-dim); }
+.gig-handle { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  font-size: 26px; color: var(--gig-dim); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.gig-row.is-drag .gig-handle { cursor: grabbing; color: var(--gig-fg); }
+@media (min-width: 900px) {
+  .gig-stage { padding: 28px 48px; }
+  .gig-cues { columns: 2; column-gap: 48px; }
+  .gig-cue { break-inside: avoid; }
+}
+
+/* ---- the header carries what a library row carries ---- */
+.detail-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.detail-name { flex: 1 1 150px; min-width: 0; }
+/* The block and the buttons were both drawn for pale paper. On the dark bar
+   every muted grey they use disappears, so the palette is restated here rather
+   than the components being taught about backgrounds they cannot see. */
+.detail-card-actions { flex-shrink: 0; }
+.detail-top .heat-col { flex-shrink: 0; }
+
+/* Two things you came for, wide and equal; two you reach for occasionally,
+   narrower and equal. One row on anything wider than a phone. */
+.detail-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.detail-acts .act-wide { flex: 1 1 132px; }
+.detail-acts .act-narrow { flex: 0.62 1 88px; padding-left: 10px; padding-right: 10px; }
+.detail-acts .act-narrow span { white-space: nowrap; }
+.link-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.link-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px;
+  border-radius: 999px; background: var(--paper); color: var(--text-ink);
+  font-size: 13px; text-decoration: none; border: 1px solid var(--gold-soft);
+}
+
+.lyric-sheet {
+  background: var(--paper-card); border: 1px solid var(--border);
+  border-left: 4px solid var(--teal); border-radius: var(--radius-m);
+  padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.lyric-sheet-chorus { border-left-color: var(--gold); background: #FBF4E4; }
+.lyric-sheet-label {
+  font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--teal); margin-bottom: 8px; font-weight: 600;
+}
+.lyric-sheet-chorus .lyric-sheet-label { color: #8a6d1f; }
+.lyric-row { margin-bottom: 2px; }
+.chord-line {
+  font-family: var(--font-mono); font-size: 13px; color: var(--gold);
+  white-space: pre; overflow-x: auto; font-weight: 600; line-height: 1.5;
+}
+.lyric-line { font-family: var(--font-mono); font-size: 15px; line-height: 1.7; color: var(--text-ink); white-space: pre-wrap; }
+.marker-chip {
+  display: inline-block; font-family: var(--font-mono); font-size: 12px;
+  text-transform: uppercase; letter-spacing: 0.08em; color: #8a6d1f;
+  background: var(--missing-bg); border: 1px dashed var(--gold);
+  padding: 8px 14px; border-radius: 999px; margin-bottom: 12px;
+}
+.tag-chorus-banner {
+  background: var(--missing-bg); border: 1px dashed var(--gold);
+  border-radius: var(--radius-m); padding: 12px 14px; margin-bottom: 14px; font-size: 13px;
+}
+.tag-pick-btn {
+  background: var(--paper-card); border: 1px solid var(--gold); color: var(--text-ink);
+  border-radius: var(--radius-s); padding: 6px 10px; font-size: 12px; cursor: pointer; margin-top: 6px;
+}
+
+.quiz-intro { text-align: center; padding: 14px 10px 6px; }
+.quiz-block { margin-bottom: 24px; }
+.quiz-line-label {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 11px; color: var(--gold);
+  margin-bottom: 6px; letter-spacing: 0.06em;
+}
+
+.fillin-lines { display: flex; flex-direction: column; gap: 6px; }
+.fillin-line { position: relative; height: 30px; }
+.fillin-mask, .fillin-input, .fillin-spell {
+  position: absolute; left: 0; top: 0; width: 100%; height: 30px; margin: 0;
+  padding: 0 2px; box-sizing: border-box; font-family: var(--font-mono);
+  font-size: 16px; line-height: 30px; white-space: pre;
+}
+.fillin-mask { color: var(--gold-soft); pointer-events: none; user-select: none; z-index: 0; overflow: hidden; }
+/* THE SPELLCHECK MARKS, as a third layer in the same metrics - 1.61.
+   An input cannot paint one of its own words, so the marks go on a layer
+   underneath it holding the same text in the same monospace at the same size
+   with the same padding, every word but the marked ones invisible. The three
+   layers line up for free because they are all white-space: pre in one font,
+   which is the only reason this is a few lines rather than a text measurer.
+   It sits BELOW the input, so what is painted is a block of colour behind the
+   letters rather than a copy of them over the top. */
+.fillin-spell {
+  color: transparent; pointer-events: none; user-select: none;
+  z-index: 0; overflow: hidden;
+}
+.fillin-input {
+  z-index: 1; background: transparent; border: none; outline: none;
+  -webkit-appearance: none; appearance: none; color: var(--text-ink); caret-color: var(--teal);
+}
+.fillin-line:focus-within .fillin-mask { color: var(--teal); }
+/* The same pink the results screen marks a wrong word with, so the two screens
+   agree about what red-on-pink means - but underlined rather than only filled,
+   because this one has to be findable at a glance down a long song. */
+.spell-bad {
+  background: #F7DCD7; border-radius: 2px;
+  border-bottom: 2px solid #C0392B;
+}
+/* Reads as a bar rather than a button floating over the lyrics: text fades out
+   behind it instead of colliding with it. */
+.quiz-submit-bar {
+  position: sticky; bottom: 76px; z-index: 5;
+  padding: 16px 0 8px;
+  background: linear-gradient(to bottom,
+    rgba(239,234,224,0) 0%, var(--paper) 42%, var(--paper) 100%);
+}
+/* THE GRADE BAR IS TWO BUTTONS - a quarter for Spell check and the rest for
+   Grade my lyrics. A grid rather than flex percentages so the quarter is a
+   quarter of the bar and not a quarter of whatever the longer label left over.
+   Spell check is the smaller half and the outline button because it is a thing
+   you may do on the way to the thing you came for; grading is still the gold
+   button and still the one under your thumb. */
+.grade-bar { display: grid; grid-template-columns: 1fr 3fr; gap: 8px; align-items: stretch; }
+/* A quarter of a narrow phone is not wide enough for two words at the default
+   size, and it wrapped the button to two lines. */
+.grade-spell {
+  font-size: 12.5px; padding-left: 4px; padding-right: 4px; white-space: nowrap;
+}
+
+/* room to scroll the last lines up clear of the bar */
+.quiz-block:last-of-type { margin-bottom: 40px; }
+
+.random-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.random-row .btn:first-child { flex: 2; }
+.random-row .btn:last-child { flex: 1; }
+/* The device override is four equal buttons rather than the 2:1 pair this row
+   was built for, so it opts out of the ratio and shares the width evenly. */
+.seg-even .btn:first-child, .seg-even .btn:last-child, .seg-even .btn { flex: 1 1 0; }
+/* one third of 375px is not wide enough for "Random Quiz" at the default
+   size, and it wrapped to two lines */
+.random-row .btn { font-size: 13.5px; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+/* an <a> styled as a btn still needs to sit like one */
+a.btn-icon { text-decoration: none; }
+
+.diff-line { font-family: var(--font-mono); font-size: 15px; line-height: 2.1; padding: 4px 0; }
+.results-section {
+  border: 1px solid var(--border); border-left: 4px solid var(--teal);
+  border-radius: var(--radius-m); padding: 14px 16px; margin-bottom: 14px; background: var(--paper-card);
+}
+.results-section-chorus { border-left-color: var(--gold); background: #FBF4E4; }
+.results-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--teal); font-weight: 600; margin-bottom: 8px;
+}
+.results-section-chorus .results-section-header { color: #8a6d1f; }
+.diff-word-container { display: inline-block; vertical-align: top; }
+.diff-word { padding: 1px 3px; border-radius: 4px; margin-right: 2px; display: inline-block; }
+.diff-word.correct { background: var(--correct-bg); color: var(--correct); }
+.diff-word.incorrect { background: var(--incorrect-bg); color: var(--incorrect); text-decoration: line-through; }
+.diff-word.missing { background: var(--missing-bg); color: var(--text-muted); border: 1px dashed var(--gold); }
+.diff-correction { display: block; font-size: 11px; color: var(--correct); margin-top: -2px; }
+
+.meter-wrap { display: flex; flex-direction: column; align-items: center; padding: 10px 0 18px; }
+.meter-score { font-family: var(--font-display); font-size: 52px; color: var(--ink); margin-top: -8px; }
+.meter-caption { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+/* Two RANKS, not two columns. This was a flex row, so the two .act-row divs
+   sat side by side and every button ended up on one line. */
+.results-actions { display: flex; flex-direction: column; gap: 0; margin-top: 18px; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
+.stat-card { background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius-m); padding: 14px 16px; }
+.stat-value { font-family: var(--font-display); font-size: 30px; color: var(--teal-deep); line-height: 1; }
+.stat-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+.card-block { background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius-l); padding: 18px; margin-bottom: 18px; }
+.card-title { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+.insight-song-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+.insight-song-row:last-child { border-bottom: none; }
+.insight-song-name { font-weight: 600; font-size: 14px; }
+.insight-song-sub { font-size: 12px; color: var(--text-muted); }
+.trend-badge { font-family: var(--font-mono); font-size: 12px; padding: 4px 8px; border-radius: 6px; flex-shrink: 0; }
+.trend-badge.good { background: var(--correct-bg); color: var(--correct); }
+.trend-badge.bad { background: var(--incorrect-bg); color: var(--incorrect); }
+.trend-badge.mid { background: var(--missing-bg); color: #8a6d1f; }
+
+.toast {
+  position: fixed; top: 14px; left: 50%;
+  transform: translateX(-50%) translateY(-160%);
+  background: var(--ink); color: var(--paper); padding: 10px 18px;
+  border-radius: 999px; font-size: 13px; z-index: 100;
+  transition: transform 0.25s ease; border: 1px solid var(--gold); pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.loading { text-align: center; padding: 60px 20px; color: var(--text-muted); font-family: var(--font-mono); font-size: 13px; }
+.footer-build { text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); padding: 20px 0 6px; letter-spacing: 0.08em; }
+.mt-0 { margin-top: 0; }
+.mt-12 { margin-top: 12px; }
+
+/* The four medal multipliers, one row each, drawn beside the disc they belong
+   to so the column reads as the ladder rather than as four numbers - 1.63.
+   Two columns on anything but the narrowest phone: four full-width rows for
+   four one-digit numbers is a lot of screen for very little. */
+.medal-dial-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px;
+  margin: 4px 0 12px;
+}
+.medal-dial {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  background: var(--paper-card); padding: 6px 9px;
+}
+.medal-dial-disc { line-height: 0; flex-shrink: 0; }
+.medal-dial-name {
+  flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text-ink);
+}
+.medal-dial .num-input { width: 56px; flex: 0 0 56px; }
+@media (max-width: 400px) { .medal-dial-grid { grid-template-columns: 1fr; } }
+.text-muted { color: var(--text-muted); }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+@media (min-width: 680px) { .tabbar { max-width: 680px; margin: 0 auto; border-radius: var(--radius-l) var(--radius-l) 0 0; } }
+
+/* ============ Score plate, heat chip + row actions ============ */
+/* One column, two storeys: what the song is worth, and whether it is
+   resting or bleeding. */
+.heat-col { flex-shrink: 0; width: 50px; display: flex; flex-direction: column; gap: 3px; }
+.score-plate {
+  height: 30px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 19px; letter-spacing: 0.02em;
+  color: #FFF; text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  border: 1px solid rgba(0,0,0,0.12);
+}
+.heat-chip {
+  height: 18px; display: flex; align-items: center; justify-content: center; gap: 3px;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600; line-height: 1;
+}
+.heat-chip svg { display: block; flex-shrink: 0; }
+.heat-none {
+  height: 18px; line-height: 18px; text-align: center;
+  font-family: var(--font-mono); font-size: 12px; color: var(--border);
+}
+/* the detail sheet shows the same pair, bigger */
+.heat-col-lg { width: 66px; gap: 5px; }
+.heat-col-lg .score-plate { height: 42px; font-size: 26px; border-radius: 11px; }
+.heat-col-lg .heat-chip { height: 22px; font-size: 14px; gap: 4px; }
+/* a stat card you can tap to change what it counts */
+.stat-card-btn {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  font-family: inherit; color: inherit;
+}
+.stat-caret { color: var(--text-muted); font-size: 10px; }
+.mode-card.on { border-color: var(--teal); background: var(--paper-dim); }
+.score-pill {
+  flex-shrink: 0; min-width: 42px; text-align: center; padding: 5px 9px;
+  border-radius: 999px; color: #FFF; font-family: var(--font-mono);
+  font-size: 12px; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.card-actions { display: flex; gap: 3px; flex-shrink: 0; align-items: center; }
+/* stacked, so the pair costs one column instead of two */
+.burner-stack { display: flex; flex-direction: column; gap: 3px; }
+.burner-stack .act-btn { width: 30px; height: 27px; border-radius: 7px; padding: 2px; }
+.burner-stack .act-count { transform: scale(0.85); transform-origin: top right; }
+.act-btn {
+  background: none; border: 1px solid transparent; cursor: pointer; padding: 4px;
+  width: 36px; height: 36px; border-radius: 9px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  color: #C4BBA4;                      /* desaturated = not on that list */
+}
+/* icon-only buttons on the song sheet */
+.detail-actions-icons { gap: 8px; flex-wrap: nowrap; }
+.btn-icon {
+  padding: 9px 12px; min-width: 46px; border: 1.5px solid var(--border);
+  background: transparent; color: var(--text-ink); font-size: 14px;
+  position: relative; flex: 1;
+}
+.btn-icon.act-front.on { color: #B34A3C; background: rgba(179,74,60,0.14); border-color: rgba(179,74,60,0.45); }
+.btn-icon.act-back.on  { color: #8a6d1f; background: rgba(199,154,62,0.18); border-color: rgba(199,154,62,0.5); }
+.btn-icon.act-lists.on { color: var(--teal); border-color: rgba(47,110,98,0.4); }
+.act-btn:hover { background: rgba(47,110,98,0.10); color: var(--teal); }
+/* "on" carries a tinted plate as well as a colour, so the state does not
+   rest on hue alone at a glance */
+.act-front.on { color: #B34A3C; background: rgba(179,74,60,0.14); border-color: rgba(179,74,60,0.35); }
+.act-back.on  { color: #8a6d1f; background: rgba(199,154,62,0.18); border-color: rgba(199,154,62,0.45); }
+.act-lists.on { color: var(--teal); }
+.act-count {
+  position: absolute; top: 0; right: 0; background: var(--teal); color: var(--paper);
+  font-family: var(--font-mono); font-size: 9px; line-height: 1;
+  padding: 2px 4px; border-radius: 999px; min-width: 13px; text-align: center;
+}
+.chip-role {
+  font-family: var(--font-mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.06em; opacity: 0.75; margin-left: 3px;
+}
+
+/* ============ Info tooltip ============
+   Hover on a desktop, tap on a phone - hover alone would be unreachable. */
+.info-wrap { position: relative; display: inline-flex; }
+.info-dot {
+  width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+  border: 1px solid var(--border); background: var(--paper);
+  color: var(--text-muted); font-family: var(--font-mono); font-size: 11px;
+  line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.info-dot:hover { border-color: var(--teal); color: var(--teal); }
+.info-tip {
+  position: absolute; right: 0; top: 24px; z-index: 40; width: 250px;
+  background: var(--ink); color: var(--paper); font-size: 12px; line-height: 1.5;
+  padding: 10px 12px; border-radius: var(--radius-s); border: 1px solid var(--gold);
+  box-shadow: var(--shadow); opacity: 0; visibility: hidden;
+  transition: opacity 0.15s ease; pointer-events: none;
+}
+.info-wrap:hover .info-tip, .info-wrap.open .info-tip { opacity: 1; visibility: visible; }
+
+/* ============ Insights ============ */
+.chart-box { margin: 4px 0 10px; }
+.bar-row {
+  display: flex; align-items: center; gap: 10px; padding: 5px 0; cursor: pointer;
+}
+.bar-label {
+  width: 38%; font-size: 12px; color: var(--text-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bar-track { flex: 1; height: 12px; background: var(--paper-dim); border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; }
+.bar-val {
+  width: 34px; text-align: right; font-family: var(--font-mono);
+  font-size: 12px; color: var(--text-muted);
+}
+.decay-slider {
+  width: 100%; margin: 6px 0 10px; accent-color: var(--teal); height: 24px;
+}
+.level-mix {
+  display: flex; height: 14px; border-radius: 999px; overflow: hidden;
+  border: 1px solid var(--border); margin-bottom: 8px;
+}
+.mix-seg { height: 100%; }
+/* one step per rung, palest at the bottom of the ladder */
+/* The legend dots use background; the pie slices are strokes on one circle.
+   Same class, both properties, so a mode can never be one colour in the key and
+   another in the chart. */
+.mix-verseSort, .mix-verseOrder, .mix-lineSort, .mix-lineOrder, .mix-wordScramble,
+.mix-lineScramble, .mix-wordImpostor, .mix-lineImpostor, .mix-firstLine,
+.mix-firstLines, .mix-easy, .mix-medium, .mix-hard, .mix-blind { stroke: currentColor; }
+.mix-verseSort { background: #E8DCC2; color: #E8DCC2; }
+.mix-verseOrder { background: #E2D4B6; color: #E2D4B6; }
+.mix-lineSort { background: #DDCEAB; color: #DDCEAB; }
+.mix-lineOrder { background: #D6C69F; color: #D6C69F; }
+.mix-wordScramble { background: #DCC891; color: #DCC891; }
+.mix-lineScramble { background: #D6BE84; color: #D6BE84; }
+.mix-wordImpostor { background: #D2BC80; color: #D2BC80; }
+.mix-lineImpostor { background: #C9B172; color: #C9B172; }
+.mix-firstLine { background: var(--gold-soft); color: var(--gold-soft); }
+.mix-firstLines { background: #D9A94F; color: #D9A94F; }
+.mix-easy { background: var(--gold); color: var(--gold); }
+.mix-medium { background: #A98A46; color: #A98A46; }
+.mix-hard { background: #4F8A78; color: #4F8A78; }
+.mix-blind { background: var(--teal-deep); color: var(--teal-deep); }
+.pie-mid {
+  font-family: var(--font-display); font-size: 22px; fill: var(--ink);
+}
+.pie-sub {
+  font-family: var(--font-mono); font-size: 7.5px; fill: var(--text-muted);
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.pie-mid { font-size: 26px; }
+
+/* ============ Bottom sheet ============ */
+.sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(31,42,36,0.45); z-index: 60;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.sheet {
+  background: var(--paper-card); border-radius: var(--radius-l) var(--radius-l) 0 0;
+  padding: 18px 18px 26px; width: 100%; max-width: 680px;
+  max-height: 74vh; overflow-y: auto; box-shadow: var(--shadow);
+}
+@media (min-width: 680px) {
+  .sheet-backdrop { align-items: center; }
+  .sheet { border-radius: var(--radius-l); max-height: 80vh; }
+}
+
+/* ============ Quiz outcome + pace ============ */
+.outcome-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.outcome-was { color: var(--text-muted); font-size: 13px; }
+.outcome-arrow { color: var(--gold); font-size: 15px; }
+.outcome-now { color: var(--text-ink); font-size: 14px; font-weight: 600; }
+.pace-row { display: flex; align-items: center; gap: 14px; }
+.pace-big {
+  font-family: var(--font-display); font-size: 38px; line-height: 1;
+  color: var(--teal-deep); min-width: 78px;
+}
+.pace-good { color: var(--correct); font-size: 13px; font-weight: 600; }
+.pace-bad  { color: var(--incorrect); font-size: 13px; font-weight: 600; }
+.pace-flat { color: var(--text-muted); font-size: 13px; }
+.pace-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pace-table th {
+  text-align: right; font-family: var(--font-mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted);
+  padding: 4px 0 6px; font-weight: 500;
+}
+.pace-table th:first-child { text-align: left; }
+.pace-table td { padding: 6px 0; border-top: 1px solid var(--border); text-align: right; }
+.pace-table td:first-child { text-align: left; font-weight: 600; }
+.pace-none { color: var(--border); }
+.pace-n { color: var(--text-muted); font-size: 11px; font-family: var(--font-mono); }
+
+/* three across on the burner: song, game, quiz */
+.random-row-3 .btn { flex: 1 1 0 !important; min-width: 0; font-size: 12.5px; }
+
+.seg-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.seg-btn {
+  flex: 1; padding: 9px 10px; border-radius: var(--radius-s);
+  border: 1.5px solid var(--border); background: var(--paper-card);
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  color: var(--text-muted); cursor: pointer;
+}
+.seg-btn.on { background: var(--teal); border-color: var(--teal); color: var(--paper); }
+
+.input-with-btn { display: flex; gap: 6px; }
+.input-with-btn .form-input { flex: 1 1 auto; min-width: 0; }
+.find-btn {
+  flex: 0 0 auto; padding: 0 12px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--paper-dim);
+  font-family: var(--font-body); font-size: 12px; font-weight: 600;
+  color: var(--teal); cursor: pointer;
+}
+
+/* ============ Games ============ */
+/* ---- is the run in the book yet ---- */
+.out-save.save-state { display: flex; padding: 8px 11px; }
+.save-state {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.02em;
+  border-radius: var(--radius-s); padding: 8px 11px; margin: 0 0 12px;
+  border: 1px dashed var(--border); color: var(--text-muted);
+}
+.save-state.is-saved  { border-color: var(--correct); color: var(--correct);
+                        border-style: solid; background: var(--correct-bg); }
+.save-state.is-failed { border-color: var(--incorrect); color: var(--incorrect);
+                        border-style: solid; background: var(--incorrect-bg); }
+.save-tick { font-weight: 700; }
+.save-spinner {
+  width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--border); border-top-color: var(--teal);
+  animation: save-spin 0.7s linear infinite;
+}
+@keyframes save-spin { to { transform: rotate(360deg); } }
+
+/* ---- Build: the song as you have told it, growing above the question ---- */
+.built-wrap { margin-bottom: 14px; }
+.built-list {
+  max-height: 168px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  background: var(--paper-dim); padding: 8px 10px;
+}
+.built-item {
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5;
+  color: var(--text-ink); white-space: pre-wrap;
+  padding: 3px 0; border-left: 3px solid var(--gold-soft); padding-left: 8px;
+  margin-bottom: 4px;
+}
+/* NEUTRAL, AS OF 1.62. Every line in here used to be edged green or red, which
+   was the marking the board itself no longer does - reading the answer off the
+   transcript is the same free answer, one element further down the page. Gold
+   for every line, and the only thing this block says now is what you have said.
+   The line you are standing on is picked out, because walking back through the
+   questions is new and a transcript with no cursor in it is a list. */
+.built-item.built-at { border-left-color: var(--teal); background: var(--paper-card); }
+.built-item.built-gap { border-left-color: var(--border); color: var(--text-muted); }
+
+.quiz-prompt {
+  font-size: 16px; line-height: 1.45; color: var(--text-ink);
+  background: var(--paper-card); border: 1px solid var(--border);
+  border-left: 4px solid var(--gold); border-radius: var(--radius-s);
+  padding: 12px 14px; margin-bottom: 14px;
+}
+.choice-list { display: flex; flex-direction: column; gap: 8px; }
+.choice-btn {
+  text-align: left; padding: 13px 14px; border-radius: var(--radius-s);
+  border: 1.5px solid var(--border); background: var(--paper-card);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.35;
+  color: var(--text-ink); cursor: pointer; min-height: 46px;
+}
+/* WHAT YOU PICKED, AND NOTHING ABOUT WHETHER IT WAS RIGHT - 1.62. is-right and
+   is-wrong are gone from this game; the only state a choice has now is chosen,
+   and it is drawn in the app's neutral accent rather than in either of the two
+   colours that mean a verdict anywhere else. */
+.choice-btn.is-picked {
+  border-color: var(--teal); background: var(--paper-card);
+  color: var(--text-ink); font-weight: 600;
+}
+
+.reorder-bin { color: var(--incorrect); }
+.bin-tray { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.bin-chip {
+  padding: 7px 11px; border-radius: 999px; border: 1px dashed var(--border);
+  background: transparent; color: var(--text-muted); font-size: 12px;
+  font-family: var(--font-body); cursor: pointer; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.scramble-lines { margin-bottom: 12px; }
+.scramble-line { line-height: 2.1; }
+.sc-word { font-size: 15px; color: var(--text-ink); margin-right: 5px; }
+.sc-slot {
+  display: inline-block; min-width: 46px; margin: 0 4px 0 0; padding: 2px 8px;
+  border: none; border-bottom: 2px solid var(--gold); background: transparent;
+  font-family: var(--font-body); font-size: 15px; color: var(--text-muted); cursor: pointer;
+}
+.sc-slot.filled { color: var(--teal); font-weight: 600; border-bottom-color: var(--teal); }
+/* The comma the missing word was sitting in front of. It belongs to the line,
+   so it stays on the line - tight against the blank, with no space opened up
+   on the side the word would have been. */
+.sc-punct { font-size: 15px; color: var(--text-ink); }
+.sc-lead  { margin: 0 0 0 3px; }
+.sc-trail { margin: 0 4px 0 -3px; }
+
+.imp-line { line-height: 2.2; }
+.imp-chip {
+  display: inline-block; margin: 0 3px 3px 0; padding: 3px 8px; border-radius: 6px;
+  border: 1px solid transparent; background: transparent;
+  font-family: var(--font-body); font-size: 15px; color: var(--text-ink); cursor: pointer;
+}
+.imp-chip.flagged {
+  background: var(--incorrect-bg); border-color: var(--incorrect);
+  color: var(--incorrect); text-decoration: line-through;
+}
+.imp-words { margin-bottom: 8px; }
+/* Somewhere you have been. It says nothing about whether you were right - only
+   that this one is not as the board first showed it, which on a two-hundred
+   word screen is the thing you cannot hold in your head. */
+.imp-chip.touched {
+  border-color: var(--teal); background: rgba(47,110,98,0.08);
+}
+.imp-row.touched { border-color: var(--teal); background: rgba(47,110,98,0.07); }
+.imp-lines { display: flex; flex-direction: column; gap: 6px; }
+.imp-row {
+  display: block; width: 100%; text-align: left; padding: 10px 12px;
+  border-radius: var(--radius-s); border: 1.5px solid var(--border);
+  background: var(--paper-card); font-family: var(--font-body); font-size: 15px;
+  color: var(--text-ink); cursor: pointer;
+}
+.imp-row.flagged {
+  background: var(--incorrect-bg); border-color: var(--incorrect);
+  color: var(--incorrect); text-decoration: line-through;
+}
+.heat-frozen { color: rgb(52,88,142); }
+
+/* ============ Mode picker record ============ */
+.mode-record {
+  font-family: var(--font-mono); font-size: 11px; color: var(--teal);
+  margin-top: 5px; line-height: 1.5;
+}
+.mode-record-n { color: var(--text-muted); }
+
+/* ============ Repeated sections in the editor ============ */
+.sec-repeat {
+  background: var(--paper-dim); border: 1px dashed var(--gold);
+  border-radius: var(--radius-s); padding: 10px 12px;
+}
+.sec-repeat .sec-head { margin-bottom: 4px; }
+.repeat-of {
+  font-family: var(--font-mono); font-size: 12px; color: var(--gold);
+  display: flex; align-items: center; gap: 6px;
+}
+.repeat-peek {
+  font-size: 12px; color: var(--text-muted); margin-top: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.repeat-orphan { color: var(--incorrect); }
+
+/* ============ Verse Sort comparison ============ */
+.sort-compare { display: flex; gap: 10px; margin-bottom: 16px; }
+.sort-col { flex: 1 1 0; min-width: 0; }
+.sort-col-head {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px;
+}
+.sort-cell {
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  padding: 7px 9px; margin-bottom: 6px; background: var(--paper-card);
+  min-height: 54px;
+}
+.sort-cell-ok { background: var(--correct-bg); border-color: var(--correct); }
+.sort-cell-no { background: var(--incorrect-bg); border-color: var(--incorrect); }
+.sort-cell-kind {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em;
+  color: var(--text-muted); display: flex; justify-content: space-between; gap: 4px;
+}
+.sort-cell-ok .sort-cell-kind { color: var(--correct); }
+.sort-cell-no .sort-cell-kind { color: var(--incorrect); }
+.sort-cell-text {
+  font-size: 12px; line-height: 1.35; color: var(--text-ink); margin-top: 2px;
+  /* Three, not two - these hold one lyric line now rather than a whole verse,
+     and a long line wraps to two on a phone before the clamp has any work to
+     do. Two was cutting the mistake off the bottom of the card. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ============ Lyric lookup preview ============ */
+.lyric-preview {
+  max-height: 44vh; overflow-y: auto; margin: 10px 0 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-m);
+  padding: 12px; background: var(--paper);
+}
+.preview-block { margin-bottom: 14px; }
+.preview-block:last-child { margin-bottom: 0; }
+.preview-label {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 3px;
+}
+.preview-chorus { padding-left: 14px; border-left: 3px solid var(--gold); }
+.preview-chorus .preview-label { color: var(--gold); }
+.preview-lines { font-size: 14px; line-height: 1.45; color: var(--text-ink); }
+
+/* ============ Mastery ============ */
+.mastery-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.mastery-num {
+  font-family: var(--font-display); font-size: 46px; line-height: 1;
+  color: var(--teal-deep); min-width: 62px;
+}
+.mastery-word {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-ink);
+}
+.mastery-bar {
+  height: 8px; border-radius: 999px; background: var(--paper-dim);
+  overflow: hidden; margin-bottom: 10px; border: 1px solid var(--border);
+}
+.mastery-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold), var(--teal));
+}
+.level-tag {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; background: var(--paper-dim); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px;
+}
+.meter-sub { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+/* ============ Quiz mode picker ============ */
+.mode-card {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  background: var(--paper-card); border: 1.5px solid var(--border);
+  border-radius: var(--radius-m); padding: 13px 15px; margin-bottom: 10px;
+  cursor: pointer; box-shadow: var(--shadow); font-family: var(--font-body);
+}
+.mode-card:hover:not(.disabled) { border-color: var(--teal); }
+.mode-card.disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.mode-pts {
+  flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%;
+  background: var(--ink); color: var(--gold-soft);
+  font-family: var(--font-display); font-size: 19px;
+  display: flex; align-items: center; justify-content: center;
+}
+.mode-body { flex: 1; min-width: 0; }
+.mode-name { font-weight: 600; font-size: 16px; color: var(--text-ink); }
+.mode-blurb { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+
+/* ============ Verse Sort ============ */
+.sort-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.sort-card {
+  display: flex; align-items: center; gap: 12px; background: var(--paper-card);
+  border: 1px solid var(--border); border-radius: var(--radius-m); padding: 10px 12px;
+}
+.sort-pos {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--paper-dim); color: var(--text-muted);
+  font-family: var(--font-mono); font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.sort-body { flex: 1; min-width: 0; }
+.sort-kind {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--gold);
+}
+.sort-preview {
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-ink);
+  white-space: pre-wrap; line-height: 1.55;
+}
+.sort-card { align-items: flex-start; }
+.sort-pos, .sort-card .reorder-btns { margin-top: 2px; }
+
+/* ============ Word Scramble ============ */
+.scramble-wrap { margin-bottom: 14px; }
+.scramble-answer {
+  min-height: 40px; border-bottom: 1.5px solid var(--teal);
+  padding: 4px 2px 6px; margin-bottom: 7px;
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+}
+.scramble-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.scramble-bank { display: flex; flex-wrap: wrap; gap: 5px; }
+.word-chip {
+  font-family: var(--font-mono); font-size: 14px; cursor: pointer;
+  background: var(--paper-dim); color: var(--text-ink);
+  border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px;
+}
+.word-chip:hover { border-color: var(--teal); }
+/* A POSITION THE DECK CAN NO LONGER FILL - 1.63. Drawn as a hole rather than
+   closed up, because closing it would slide every chip after it along one, and
+   a tray that reflows under your finger is the thing the capped tray exists to
+   stop. Holes at the END are trimmed instead, since nothing follows them. */
+.word-chip.word-gap {
+  border-style: dashed; opacity: 0.35; pointer-events: none;
+  min-width: 34px; min-height: 20px;
+}
+.word-chip.placed { background: var(--paper-card); border-color: var(--teal); color: var(--teal-deep); }
+
+/* the lines handed to you in First Lines */
+.given-line {
+  font-family: var(--font-mono); font-size: 15px; line-height: 1.8;
+  color: var(--text-muted);
+}
+
+/* ============ Legends ============ */
+.legend-row { display: flex; align-items: center; gap: 9px; padding: 4px 0; font-size: 13px; }
+.legend-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+.legend-name { flex: 1; color: var(--text-ink); }
+.legend-val { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.bucket-hot { background: #C25A3E; }
+.bucket-warm { background: #6282A5; }
+.bucket-spent { background: #34588E; }
+.bucket-new { background: #C4BBA4; }
+/* Steaming is hot, further along - so it is the same hue pushed hotter rather
+   than a new colour, or the bar would read as five unrelated things instead of
+   one axis with a bright end. */
+.bucket-steam { background: #E0703F; }
+.card-subtitle {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin: 14px 0 2px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+
+/* ============ Medals ============
+   The disc rides IN a line of text, so it must not change that line's height:
+   vertical-align on the span, line-height 0 on the svg, and no padding on
+   either. Anything else and a card with a medal sits a pixel or two taller
+   than one without, which is visible the moment two cards are stacked. */
+.medal-badge {
+  display: inline-block; line-height: 0; vertical-align: -0.14em;
+  margin-right: 6px; flex-shrink: 0;
+}
+.medal-svg { display: block; }
+.detail-title .medal-badge { vertical-align: -0.10em; margin-right: 8px; }
+
+.medal-block .medal-row {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 0; border-bottom: 1px solid var(--border);
+}
+.medal-block .medal-row:last-of-type { border-bottom: none; }
+/* An unearned tier is drawn in grey rather than left out - the four of them
+   are a route through the song, and a route with its later stages hidden is
+   not a route. */
+.medal-row:not(.is-earned) .medal-svg { filter: grayscale(1); opacity: 0.4; }
+.medal-row-disc { line-height: 0; flex-shrink: 0; }
+.medal-row-name {
+  flex: 1; min-width: 0; font-weight: 600; font-size: 14px; color: var(--text-ink);
+}
+.medal-row:not(.is-earned) .medal-row-name { color: var(--text-muted); font-weight: 500; }
+.medal-row-mult {
+  display: block; font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.05em; color: var(--text-muted); text-transform: uppercase;
+}
+.medal-row-when {
+  font-family: var(--font-mono); font-size: 11px; color: var(--teal-deep);
+  text-align: right; flex: 0 1 46%; line-height: 1.35;
+}
+.medal-row-todo { color: var(--text-muted); }
+
+/* The checklist under an unearned tier. Indented under its medal rather than
+   aligned with it, so the four blocks read as four groups and not as one long
+   list of twelve things. */
+.medal-checks { margin: 0 0 10px 37px; }
+.medal-check {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 12.5px; color: var(--text-muted); line-height: 1.5;
+}
+.medal-check.is-done { color: var(--text-ink); }
+.medal-tick {
+  flex: 0 0 13px; text-align: center; color: var(--teal);
+  font-size: 12px; line-height: 1.5;
+}
+/* An empty box rather than nothing, so an unmet line still has a place for the
+   tick to land and the labels stay on one left edge. */
+.medal-check:not(.is-done) .medal-tick {
+  border: 1px solid var(--border); border-radius: 3px; height: 11px;
+  align-self: center;
+}
+.medal-check-say { flex: 1; min-width: 0; }
+.medal-check-n {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+
+/* ============ Section editor ============ */
+.sec-block {
+  border: 1px solid var(--border); border-left: 4px solid var(--teal);
+  border-radius: var(--radius-m); padding: 10px 12px; background: var(--paper-card);
+}
+.sec-chorus { border-left-color: var(--gold); background: #FBF4E4; }
+.sec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.sec-tools { display: flex; align-items: center; gap: 8px; }
+.sec-block .form-textarea { min-height: 96px; }
+
+/* ============ Import progress ============ */
+.progress-track {
+  height: 6px; border-radius: 999px; background: var(--paper-dim);
+  overflow: hidden; margin: 10px 0 6px; border: 1px solid var(--border);
+}
+/* indeterminate on purpose: a single server call has no percentage to report */
+.progress-worm {
+  width: 38%; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold), var(--teal));
+  animation: worm 1.3s ease-in-out infinite;
+}
+@keyframes worm {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+.import-done {
+  background: var(--correct-bg); border: 1px solid rgba(60,122,79,0.35);
+  border-radius: var(--radius-m); padding: 12px 14px; margin-top: 10px;
+}
+.import-done-head {
+  font-family: var(--font-mono); font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--correct); font-weight: 600; margin-bottom: 4px;
+}
+
+/* ============ Points editor ============ */
+.points-row {
+  display: flex; align-items: center; gap: 10px; padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.points-row:last-child { border-bottom: none; }
+.points-name { flex: 1; font-size: 14px; color: var(--text-ink); }
+.points-input {
+  width: 74px; padding: 7px 9px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--paper);
+  font-family: var(--font-mono); font-size: 14px; color: var(--text-ink); text-align: right;
+}
+
+/* ============ Manual reordering ============ */
+.reorder-btns { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.reorder-btn {
+  width: 30px; height: 22px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--paper); color: var(--text-muted); font-size: 9px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.reorder-btn:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
+.reorder-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ============ Build 1.1a ============ */
+
+/* A song card says hot or cold twice now: the flame or flake in the badge, and
+   the paper it is printed on. Kept very pale on purpose - it has to read at a
+   glance while scrolling without fighting the score plate for attention. */
+.tape-card.is-hot  { background-color: #FBEDE5; border-color: rgba(178,55,42,0.30); }
+.tape-card.is-cold { background-color: #E9F0F8; border-color: rgba(52,88,142,0.30); }
+.tape-card.is-hot::before  { background: #C97E34; }
+.tape-card.is-cold::before { background: #6282A5; }
+.tape-card.is-frozen::before { background: #34588E; }
+
+/* ---- picking a game: three levels on the card itself ---- */
+.mode-levels { display: flex; gap: 6px; flex-shrink: 0; }
+.lvl-btn {
+  min-width: 44px; padding: 6px 4px 5px; border-radius: 9px; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--paper);
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted); text-align: center;
+}
+.lvl-btn:hover { border-color: var(--teal); color: var(--teal); }
+.lvl-pts {
+  display: block; font-family: var(--font-display); font-size: 17px;
+  line-height: 1.05; color: var(--ink);
+}
+.mode-card-open { display: block; }
+.mode-card-open .mode-top { display: flex; align-items: center; gap: 14px; }
+.mode-card-open .mode-levels { margin-top: 10px; justify-content: stretch; }
+.mode-card-open .lvl-btn { flex: 1; }
+
+/* ---- the timer opt-in, on the right of every quiz ---- */
+.mode-timer {
+  flex-shrink: 0; min-width: 72px; padding-left: 11px; margin-left: 2px;
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.mode-timer.locked { opacity: 0.38; }
+.mode-timer input { width: 17px; height: 17px; accent-color: var(--teal); }
+.mode-timer-avg {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);
+  text-align: center; line-height: 1.25;
+}
+
+/* ---- dragging cards in the sorting games ---- */
+.sort-grip {
+  flex-shrink: 0; width: 40px; align-self: stretch; cursor: grab;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); touch-action: none; background: none; border: none;
+  padding: 0; min-height: 44px;
+}
+.sort-grip:hover { color: var(--teal); }
+/* The only two controls left on a sorting card, so both get a target you can
+   hit with a thumb without looking. 44px is the size a finger actually is. */
+.sort-bin {
+  flex-shrink: 0; width: 44px; min-height: 44px; align-self: stretch;
+  border-radius: var(--radius-s); border: 1px solid var(--border);
+  background: var(--paper); color: var(--incorrect); font-size: 19px;
+  line-height: 1; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.sort-bin:hover { border-color: var(--incorrect); background: var(--incorrect-bg); }
+.sort-card.dragging {
+  opacity: 0.95; border-color: var(--teal); z-index: 5; position: relative;
+  box-shadow: 0 12px 26px rgba(31,42,36,0.26); cursor: grabbing;
+}
+.sort-list.is-dragging { user-select: none; touch-action: none; }
+.twin-note {
+  font-family: var(--font-mono); font-size: 11px; color: var(--teal);
+  background: var(--paper-dim); border: 1px dashed var(--teal);
+  border-radius: var(--radius-s); padding: 6px 10px; margin: 0 0 10px;
+}
+.drag-hint {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+/* ---- First Lines, the quiz: the section is showing, the opening is not ---- */
+.fillin-shown {
+  font-family: var(--font-mono); font-size: 13.5px; color: var(--text-muted);
+  line-height: 1.7; padding-left: 2px;
+}
+
+/* ---- the settings screen, one subject at a time ---- */
+.set-select {
+  width: 100%; padding: 10px 11px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--paper-card);
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  color: var(--text-ink); cursor: pointer; margin-bottom: 12px;
+}
+.lvl-card {
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  background: var(--paper); padding: 9px 11px; margin-bottom: 9px;
+}
+/* The two halves of a game, or the two Beginner quizzes: one switch, and the
+   tuning for whichever side is down is what is drawn underneath. */
+.side-toggle {
+  display: flex; margin-bottom: 11px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-s); overflow: hidden;
+}
+.side-btn {
+  flex: 1 1 0; min-width: 0; padding: 8px 6px; border: 0; cursor: pointer;
+  background: var(--paper); color: var(--text-muted);
+  font-family: var(--font-display); font-size: 19px; letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+.side-btn + .side-btn { border-left: 1.5px solid var(--border); }
+.side-btn:hover { color: var(--teal-deep); }
+.side-btn.on { background: var(--teal); color: var(--paper-card); }
+/* Three difficulties abreast: the dial is named once across the full width,
+   its three boxes sit under the three headings. Three columns of prose saying
+   the same thing three times was most of the screen. Boxes alone are narrow
+   enough that this holds up on a phone without collapsing. */
+.dial-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px 8px; align-items: start;
+}
+.dg-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--gold);
+  border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+.dg-head span:last-child {
+  color: var(--text-muted); letter-spacing: 0; text-transform: none;
+}
+.dg-name {
+  grid-column: 1 / -1; margin-top: 7px;
+  font-size: 13px; color: var(--text-ink);
+}
+.dg-cell { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.dg-cell .num-input { flex: 1 1 0; width: auto; min-width: 0; }
+.dg-note {
+  flex: 1 1 100%; text-align: right; line-height: 1.3;
+  font-family: var(--font-mono); font-size: 9.5px; color: var(--text-muted);
+}
+.lvl-card-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 4px;
+}
+.lvl-card-head span:last-child { color: var(--text-muted); letter-spacing: 0; text-transform: none; }
+.dial-row {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+}
+.dial-name { flex: 1; min-width: 0; font-size: 13px; color: var(--text-ink); }
+.dial-sub { display: block; font-size: 11px; color: var(--text-muted); line-height: 1.35; }
+/* The heatmap sits UNDER the words. Rounded so a tinted word reads as a
+   highlight rather than as a block, and the line and verse washes are laid on
+   the containers so the three stack without any of them being redrawn. */
+.sheet-head-btns { display: flex; gap: 14px; align-items: baseline; }
+.heat-note { margin-top: -2px; }
+.heat-word { border-radius: 3px; padding: 0 1px; margin: 0 -1px; }
+.lyric-sheet, .lyric-row { border-radius: var(--radius-s); }
+.lyric-row { transition: background 120ms ease; }
+.btn.is-busy, .btn.is-busy:hover {
+  opacity: 0.55; cursor: default; border-style: dashed;
+}
+.num-input {
+  width: 58px; flex-shrink: 0; padding: 6px 7px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--paper-card);
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-ink); text-align: right;
+}
+.dial-to { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+/* Sticky, because the dial you just changed can be a screen and a half above
+   the foot of this page and a save button you have to go looking for is a save
+   button you forget to press. */
+.settings-save {
+  position: sticky; bottom: 84px; z-index: 6;
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 12px; margin: 4px 0 18px;
+  border: 1.5px solid var(--gold); border-radius: var(--radius-m);
+  background: var(--paper-card); box-shadow: var(--shadow);
+}
+.settings-save-word {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted);
+}
+.settings-save .btn { flex: 0 0 auto; padding: 8px 14px; font-size: 13px; }
+.set-group-title {
+  font-family: var(--font-display); font-size: 19px; letter-spacing: 0.03em;
+  color: var(--ink); margin: 18px 0 2px;
+}
+
+/* ============ Build 1.2a ============ */
+
+/* ---- the game picker: four families, two columns each ---- */
+.pick-random { margin-bottom: 14px; }
+.fam-card {
+  background: var(--paper-card); border: 1.5px solid var(--border);
+  border-radius: var(--radius-l); padding: 12px; margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.fam-head {
+  border: 1px solid var(--border); border-radius: var(--radius-m);
+  background: var(--paper); padding: 9px 12px; margin-bottom: 11px; text-align: center;
+}
+.fam-name {
+  font-family: var(--font-display); font-size: 24px; letter-spacing: 0.07em;
+  color: var(--ink); line-height: 1.1;
+}
+.fam-blurb { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.fam-cols { display: flex; gap: 9px; }
+/* ONE COLUMN OF EIGHT ON A PHONE, NOT FOUR ROWS OF TWO - 1.62.
+   Two variants side by side is the right shape everywhere there is room for
+   it, and on a phone there is not: each half of a family card is about 150px
+   wide and has to hold a name, a lock or spent tag, and three level buttons
+   each carrying a label, a points line and a stat panel. It was legible only
+   because everything in it had already been shrunk twice.
+   A tablet is NOT a phone here - that is the whole reason the detection
+   learned a third answer this build. It has a PC amount of room and keeps the
+   PC layout; only the genuinely narrow screen stacks. Driven off the body
+   class rather than a width query, because the thing that is short of room is
+   the DEVICE and a narrow window on a desktop is not the same problem - you
+   can widen a window. */
+body.is-phone .fam-cols { flex-direction: column; gap: 7px; }
+.fam-col {
+  flex: 1 1 0; min-width: 0;
+  border: 1px solid var(--border); border-radius: var(--radius-m);
+  background: var(--paper); padding: 8px 7px;
+}
+/* there is still a scoring run on the table here today */
+.fam-col-open {
+  border-color: var(--teal); background: rgba(47,110,98,0.05);
+  box-shadow: 0 0 0 1px rgba(47,110,98,0.18);
+}
+.fam-col-head {
+  font-family: var(--font-display); font-size: 18px; letter-spacing: 0.05em;
+  color: var(--teal-deep); text-align: center; margin-bottom: 7px; line-height: 1.1;
+}
+.fam-col-spent { color: var(--text-muted); }
+.fam-spent-tag {
+  display: block; font-family: var(--font-mono); font-size: 8.5px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold);
+}
+.fam-blocked {
+  font-size: 11px; color: var(--text-muted); text-align: center;
+  margin: 10px 4px; line-height: 1.4;
+}
+
+/* The button and its panel are one row of equal halves, and BOTH stretch to
+   whatever the taller of them needs - so three rows in a column line up
+   whether or not there is any history behind them. */
+.fam-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 7px; }
+.fam-row:last-child { margin-bottom: 0; }
+.fam-lvl {
+  flex: 1 1 0; min-width: 0; cursor: pointer;
+  border: 1.5px solid var(--border); border-radius: var(--radius-s);
+  background: var(--paper-card); color: var(--text-ink);
+  padding: 6px 4px; line-height: 1.05;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+}
+.fam-lvl:hover:not(.is-locked) { border-color: var(--teal); color: var(--teal-deep); }
+.fam-lvl-name {
+  font-family: var(--font-display); font-size: 26px; letter-spacing: 0.04em;
+  line-height: 1;
+}
+.fam-pts {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.03em;
+  color: var(--text-muted); text-align: center; line-height: 1.2;
+}
+.fam-lvl.is-locked {
+  background: var(--paper-dim); border-style: dashed; color: var(--text-muted);
+  cursor: not-allowed;
+}
+.fam-lvl.is-locked .fam-lvl-name { opacity: 0.55; }
+.fam-lock { color: var(--text-muted); display: block; line-height: 0; }
+.fam-lvl.is-spent { border-color: var(--gold-soft); }
+.fam-lvl.is-spent .fam-pts { color: var(--gold); }
+/* CLEARED AT 100%. A hairline of gold around the button and a star beside the
+   level name - two encodings of one fact, the same way the pips carry height
+   and colour, so it survives being read in a hurry or in grey. */
+.fam-lvl.is-clean { border-color: var(--gold); background: #FDF8EC; }
+.fam-lvl.is-clean .fam-lvl-name { color: #9C7A2C; }
+.lvl-clean {
+  font-size: 0.44em; color: var(--gold); vertical-align: 0.55em;
+  margin: 0 0.1em; letter-spacing: 0;
+}
+.mode-name .lvl-clean { font-size: 12px; vertical-align: 0.1em; margin: 0 4px; }
+.mode-card.is-clean { border-color: var(--gold-soft); }
+
+/* A game not yet reached along the chain. The whole column goes quiet - the
+   three rungs under it all carry the same reason, so the reason is printed
+   once at the top and the rungs simply look shut. */
+.fam-col-shut { opacity: 0.72; }
+.fam-shut-tag {
+  display: block; font-family: var(--font-mono); font-size: 8.5px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);
+}
+.fam-shut-tag svg { vertical-align: -0.15em; margin-right: 3px; }
+
+/* The games shelf under the results buttons. It is a second screen's worth of
+   content on the end of the first, so it gets a rule and some air above it
+   rather than running straight on from the three buttons. */
+.results-games {
+  margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border);
+}
+.results-games .games-menu { margin-top: 4px; }
+
+/* The one tile the Games and quizzes panel exists for. Green where the clock
+   is comfortable, gold where it is starting to bite, red where it is deciding
+   the run rather than pressing it. */
+.stat-card.tl-loose .stat-value { color: #3C7A4F; }
+.stat-card.tl-fair .stat-value { color: #B78D22; }
+.stat-card.tl-tight .stat-value { color: #B34A3C; }
+.quiz-gate { line-height: 1.45; }
+
+/* ============ A near miss ============
+   Amber, between the green of a word you had and the red of one you did not.
+   The share it was worth is printed beside the correction, because "wrong, but
+   it only cost you a fifth of a word" is the entire point of the partial credit
+   and is otherwise invisible. */
+.diff-word.typo {
+  background: #FBF0D8; color: #8A6A1E; border-bottom: 2px solid var(--gold);
+}
+.diff-part {
+  font-family: var(--font-mono); font-size: 9.5px; color: var(--gold);
+  margin-left: 3px;
+}
+
+/* ============ Walking a game section by section ============ */
+.step-bar { display: flex; gap: 8px; align-items: stretch; }
+/* Back is the way out of a slip, not a mode of play, so it takes the width it
+   needs and Check it keeps the rest - and it stays in the layout when hidden,
+   so the button beside it never moves under your thumb between sections. */
+.step-back { flex: 0 0 96px; }
+.step-next { flex: 1 1 auto; }
+
+/* ============ A verse, marked up ============ */
+.verse-diff-line { line-height: 1.5; }
+.verse-diff-bad {
+  background: #F7DCD7; color: #8E3529; border-radius: 3px;
+  padding: 0 3px; font-weight: 600;
+}
+.sort-cell-ok .verse-diff-bad { background: #DCEEDF; color: #2F6B41; }
+
+/* ============ The Easy rung's letter dials ============ */
+.dial-select { width: 100%; max-width: 200px; }
+.dial-row-choice { align-items: center; }
+/* The count that the current scope does not use. Greyed, not hidden - see the
+   note in dialCard - and still editable, because setting it before switching
+   scope is a perfectly reasonable order to do things in. */
+.dial-row.is-idle { opacity: 0.45; }
+.letter-demo {
+  margin-top: 12px; padding: 11px 12px;
+  border: 1px dashed var(--border); border-radius: var(--radius-m);
+  background: var(--paper-dim);
+}
+.letter-demo-say { font-size: 12.5px; color: var(--text-ink); line-height: 1.45; }
+.letter-demo-line {
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.06em;
+  color: var(--teal-deep); margin-top: 8px; word-break: break-word;
+}
+.letter-demo-src {
+  font-size: 11px; color: var(--text-muted); margin-top: 4px; font-style: italic;
+}
+
+/* ============ Just unlocked ============
+   Teal, not gold. Gold already means "cleared at 100%" on these very buttons
+   and "there is credit on the table" on the boxes around them; a third gold
+   thing in the same block would be a colour that means "look here" and nothing
+   more precise. Teal is the app's colour for something newly available. */
+.unlock-banner {
+  display: flex; align-items: flex-start; gap: 9px;
+  margin: 0 0 14px; padding: 11px 13px;
+  border: 1px solid var(--teal); border-radius: var(--radius-m);
+  background: #ECF5F3; font-size: 13px; line-height: 1.45; color: var(--text-ink);
+}
+.unlock-spark { color: var(--teal); font-size: 15px; line-height: 1.3; flex-shrink: 0; }
+.fam-lvl.is-new {
+  border-color: var(--teal); border-width: 2px; background: #ECF5F3;
+}
+.fam-pts-new {
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--teal-deep); text-align: center;
+  line-height: 1.2;
+}
+.fam-col-new .fam-col-head { color: var(--teal-deep); }
+.fam-new-tag {
+  display: block; font-family: var(--font-mono); font-size: 8.5px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal);
+}
+
+/* The medal a run just finished. Full width under the tiles, because it is
+   the only thing on the screen that is not about this run's numbers. */
+.medal-won {
+  display: flex; align-items: center; gap: 13px;
+  margin-top: 12px; padding: 12px 14px;
+  border: 1px solid var(--gold-soft); border-radius: var(--radius-m);
+  background: #FDF8EC;
+}
+.medal-won svg { flex-shrink: 0; }
+.medal-won-head {
+  font-family: var(--font-display); font-size: 21px; letter-spacing: 0.02em;
+  color: var(--text-ink); line-height: 1.1;
+}
+.medal-won-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+.medal-won-silver { border-color: #A9B6C3; background: #F4F7FA; }
+/* Platinum shared this line with silver, which meant the last screen of the
+   hardest thing in the app was painted the same as the middle of the ladder.
+   The ring outside the border is the card saying it out loud - 1.61. */
+.medal-won-platinum {
+  border-color: #5E8CB8; background: #EFF8FD;
+  box-shadow: 0 0 0 3px rgba(94,140,184,0.16);
+}
+
+/* four quadrants, evenly split, no wasted middle */
+.q-panel {
+  flex: 1 1 0; min-width: 0;
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  background: var(--paper-card);
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+}
+.q-cell {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4px 3px;
+  font-family: var(--font-mono); font-size: 9px; line-height: 1.3;
+}
+.q-tl { color: var(--teal); border-right: 1px solid var(--border);
+        border-bottom: 1px solid var(--border); flex-direction: row; gap: 3px; }
+.q-tr { border-bottom: 1px solid var(--border); }
+.q-bl { border-right: 1px solid var(--border); }
+.q-lim { font-size: 10px; font-weight: 600; }
+/* key and value on ONE line, so a cell is two lines tall rather than four */
+.q-line { display: flex; align-items: baseline; gap: 3px; white-space: nowrap; }
+.q-k { color: var(--text-muted); font-size: 7.5px; letter-spacing: 0.07em;
+       text-transform: uppercase; }
+.q-v { color: var(--text-ink); font-size: 10.5px; font-weight: 600; }
+.q-big { color: var(--text-ink); font-size: 15px; font-weight: 600; line-height: 1.1; }
+.q-ago { color: var(--text-muted); font-size: 8px; }
+
+@media (max-width: 420px) {
+  .fam-cols { gap: 6px; }
+  .fam-col { padding: 7px 4px; }
+  .fam-lvl-name { font-size: 21px; }
+  .q-cell { font-size: 8px; padding: 3px 2px; }
+  .q-v { font-size: 9.5px; }
+  .q-big { font-size: 13px; }
+  .q-lim { font-size: 9px; }
+}
+
+/* ---- the two Beginner quizzes are alternatives, so they sit level ---- */
+/* The two Beginner quizzes sit side by side, and inside each one the points
+   plate and the stopwatch sit on ONE line with the body underneath. Stacking
+   all three left the checkbox floating on its own under a tall block of text,
+   which looked like a mistake. */
+.quiz-pair { display: flex; gap: 10px; align-items: stretch; }
+.quiz-pair .mode-card {
+  flex: 1 1 0; min-width: 0; flex-direction: column; align-items: stretch;
+  margin-bottom: 10px; gap: 0;
+}
+.quiz-pair .mode-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px;
+}
+.quiz-pair .mode-pts { margin: 0; }
+.quiz-pair .mode-timer {
+  border-left: none; padding-left: 0; min-width: 0; flex-direction: row;
+  gap: 5px; align-items: center;
+}
+.quiz-pair .mode-timer-avg { text-align: right; max-width: 62px; }
+.quiz-pair .mode-body { flex: 1 1 auto; }
+.mode-card.is-locked {
+  background: var(--paper-dim); border-style: dashed; cursor: not-allowed; opacity: 0.75;
+}
+.mode-card.is-locked .mode-pts { background: var(--border); color: var(--text-muted); }
+.day-spent {
+  font-family: var(--font-mono); font-size: 11px; color: var(--gold);
+  background: var(--paper-dim); border: 1px dashed var(--gold);
+  border-radius: var(--radius-s); padding: 7px 11px; margin: 0 0 12px; text-align: center;
+}
+
+/* ---- what you have earned, on every song card ---- */
+/* One row per family - its initial, its two pips, and the quiz rung that sits
+   at the same height. Beside the title where there is room for it.
+   Every cell is a fixed width, so the three columns line up down the stack
+   without a grid to hold them. */
+.prog-grid {
+  flex-shrink: 0; margin-left: auto;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.prog-row { display: flex; align-items: center; gap: 5px; }
+.prog-fam { display: flex; align-items: flex-end; gap: 2px; height: 16px; }
+/* WIDTH IS THE THIRD THING A PIP SAYS - 1.62.
+   Height is how far up the ladder you have got and fill is whether today is
+   still there; neither of them could say the one remaining fact about a game,
+   which is whether the rung you are standing on was cleared WITHOUT DROPPING A
+   MARK. So a pip is narrow until that level has been taken at 100% and steps
+   out to nearly double when it has.
+   Narrow is the default and narrower than the old single width, so the strip
+   reads quieter than it did until there is something to say - and a finished
+   game is a fat bar in a row of thin ones, which is findable at a glance down
+   a list of forty songs. */
+/* A PIP IS A STACK OF SEGMENTS, ONE PER LEVEL - 1.62b.
+ *
+ * 1.62 hung the 100% mark on the width of the whole pip, which could only ever
+ * describe ONE level - the top one you have unlocked - and so threw away the
+ * two underneath it. A game sitting at Hard has three separate answers to "was
+ * this cleared without dropping a mark", and there was room for all three the
+ * moment the pip stopped being a single bar.
+ *
+ * So: one segment per level you have unlocked, Easy at the bottom, and each
+ * segment carries its OWN width. A pip clean all the way up is a fat bar; one
+ * clean only at Easy is a foot with a thin shaft above it. The shape is the
+ * reading - you do not have to count anything.
+ *
+ * THE HEIGHTS ARE EXACTLY WHAT THEY WERE. Segments are 6px with a 1px overlap,
+ * so one is 6, two are 11, three are 16 - the three heights this strip has
+ * always drawn. A game with nothing at 100% therefore looks precisely as it did
+ * before this build: the segments are the same colour and the same width, so
+ * they merge into the one solid bar they used to be, and the new encoding shows
+ * up only when there is something for it to say.
+ *
+ * The overlap is what collapses the borders too. Spent pips are drawn hollow,
+ * and without it every seam would be a two-pixel double line. */
+.prog-pip {
+  display: flex; flex-direction: column; align-items: center;
+  width: 9px;                    /* the slot, always - see 1.62a below */
+}
+/* ONLY THE ENDS OF THE STACK ARE ROUNDED. Giving every segment its own radius
+   was the obvious way to write this and it was wrong the moment there were
+   three of them: the corners meet at the seams and pinch the bar into a string
+   of beads, so a pip with nothing at 100% - which is meant to look exactly like
+   the single bar it replaced - came out looking like a caterpillar. The seams
+   are square and only the top and bottom of the whole stack are rounded, so
+   same-width segments fuse into one shape and the only edge you can see is one
+   the DATA put there. */
+.prog-seg {
+  display: block; width: 5px; height: 6px; border-radius: 0;
+  background: var(--text-muted); border: 1px solid transparent;
+  margin-bottom: -1px;
+}
+.prog-seg:first-child { border-top-left-radius: 2px; border-top-right-radius: 2px; }
+.prog-seg:last-child {
+  margin-bottom: 0;
+  border-bottom-left-radius: 2px; border-bottom-right-radius: 2px;
+}
+.prog-seg.seg-clean { width: 9px; }
+/* A NARROW SEGMENT KEEPS A WIDE ONE'S SLOT - 1.62a, and the reason outlived the
+   shape it was written for. Width alone made the whole block wobble: the grid
+   is right-aligned, so a row holding narrow pips is four pixels shorter than a
+   row holding wide ones and starts four pixels further in. Four rows of that is
+   a ragged left edge on every song card, and the eye reads the raggedness long
+   before it reads the widths - which is the one thing the width is there to
+   say. The pip is a fixed nine-pixel column now and the segments centre inside
+   it, so nothing downstream of a width can move. */
+/* Blue, yellow, red - cool to hot as the ladder climbs, the same direction
+   every other colour in the app runs. Height says it a second time, for the
+   sake of anyone reading this in grey.
+   ONE COLOUR FOR THE WHOLE PIP, taken from the top level unlocked. The segments
+   are levels, not a second colour key: giving each one its own colour would
+   paint a blue-gold-red flag on every game in the library and drown the one
+   thing the strip is scanned for, which is how high the bar goes. */
+.prog-easy   { background: #5E86B8; }
+.prog-medium { background: var(--gold); }
+.prog-hard   { background: #B34A3C; }
+/* Not reached yet: the shortest segment there is, and the palest - it has to
+   read as "below Easy" rather than as a fourth level, so it sits under the Easy
+   height rather than beside it. There is only ever one of these. */
+.prog-seg.prog-shut { height: 3px; background: var(--border); border-radius: 2px; }
+/* hollow means the day is spent on it */
+.prog-pip.prog-used .prog-seg { background: transparent; border-color: var(--border); }
+
+/* One block per rung, coloured when earned. Hover names it. */
+.prog-rung {
+  display: block; width: 12px; height: 13px; border-radius: 3px;
+  background: var(--border);
+}
+/* The same run of colour the score plate and the game pips already use, so the
+   whole card is read with one key. THE RUNG IS COLOURED BY WHICH RUNG IT IS,
+   not by how many are lit or by where it sits, so Beginner is blue and Hard is
+   red on every card and the eye can compare two of them without counting.
+   That is what let the stack be turned upside down in 1.52a without touching a
+   single colour: the ladder now descends Beginner to Hard to match the menus,
+   so the cool end is at the top, and the key is unchanged because it was never
+   about position. */
+.prog-rung.on.rung-0 { background: #5E86B8; }
+.prog-rung.on.rung-1 { background: #C79A3E; }
+.prog-rung.on.rung-2 { background: #C2712F; }
+.prog-rung.on.rung-3 { background: #B34A3C; }
+/* Today spent: the colour goes, because there is nothing on offer - but the
+   HEIGHT you have earned still has to read, so the lit rungs go to a deliberate
+   dark grey against the pale unlit ones. They used to both be var(--border),
+   which threw the one fact the ladder is for. */
+.prog-grid.prog-used .prog-rung.on,
+.prog-grid.prog-used .prog-rung.on.rung-0,
+.prog-grid.prog-used .prog-rung.on.rung-1,
+.prog-grid.prog-used .prog-rung.on.rung-2,
+.prog-grid.prog-used .prog-rung.on.rung-3 { background: #7C766A; }
+.prog-grid.prog-used .prog-rung { opacity: 0.85; }
+.prog-new {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+/* THE PHONE GETS THE SAME ROW, JUST TIGHTER. 1.43 wrapped the block onto its
+   own line below this width, because four columns sharing 311px left the song
+   name about 105px. Two things bought that back without breaking the row: the
+   lists button moved into the burner stack, so the buttons cost one column
+   instead of two, and the gaps and the title come down a size. The card reads
+   the same on a phone as on a desk, which is the point of it. */
+@media (max-width: 560px) {
+  .tape-card { gap: 9px; padding: 12px 13px; }
+  .tape-card-info { min-width: 0; }
+  .prog-grid { gap: 2px; }
+  .prog-row { gap: 4px; }
+  .tape-card-title { font-size: 19px; }
+  .tape-card-artist { font-size: 13px; }
+  .detail-top { gap: 10px; }
+}
+
+/* ---- what the run did: one row of tiles, not a column of sentences ---- */
+.out-row {
+  display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center;
+  gap: 8px; margin: 14px 0 18px;
+}
+.out-tiles { display: contents; }
+.out-tile {
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 2px; padding: 8px 11px; min-width: 0;
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  background: var(--paper-card);
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--text-ink);
+  line-height: 1.35;
+}
+.out-when { align-items: center; }
+.out-big { font-family: var(--font-display); font-size: 26px; line-height: 1; }
+.out-sub { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+/* THE MOVE THE SONG MADE IS THE HEADLINE, so it is drawn like one. The other
+   tiles are context for this number; at the same size as them it read as one
+   more footnote. */
+.out-move {
+  flex-direction: row; align-items: center; gap: 10px;
+  padding: 10px 14px; border-width: 1.5px;
+}
+.out-score {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  min-width: 48px; padding: 7px 9px; border-radius: var(--radius-s);
+  background: var(--paper-dim); border: 1px solid var(--border);
+  font-family: var(--font-display); font-size: 27px; font-weight: 400;
+  line-height: 1;
+}
+.out-score.is-now {
+  background: var(--gold-soft); border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(199,154,62,0.22);
+}
+.out-dot {
+  font-family: var(--font-mono); font-style: normal; font-size: 9.5px;
+  font-weight: 400; opacity: 0.8; margin-top: 2px;
+}
+.out-dot.is-hot::before { content: "●  "; color: var(--gold); }
+.out-dot.is-cold::before { content: "○  "; color: #5E86B8; }
+.out-arrow {
+  display: flex; flex-direction: column; align-items: center;
+  color: var(--text-muted); font-size: 17px; line-height: 1.1;
+}
+.out-arrow i {
+  font-style: normal; font-family: var(--font-mono); font-size: 11px;
+  font-weight: 700; color: var(--teal-deep);
+}
+/* what was left on the game clock, under the level it was played at */
+.out-left { font-size: 12.5px; color: var(--text-ink); }
+.out-left span { color: var(--text-muted); font-size: 10px; }
+.out-note { flex-basis: 100%; text-align: center; margin: 0; }
+/* the receipt, now a tile among the others rather than a banner over them */
+.out-save { align-items: center; text-align: center; }
+
+/* ---- the countdown that presses you through a game ---- */
+.gclock {
+  position: sticky; top: 62px; z-index: 15;
+  background: var(--paper-card); border: 1px solid var(--border);
+  border-radius: var(--radius-s); padding: 6px 10px 8px; margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.gclock-num {
+  font-family: var(--font-mono); font-size: 15px; font-weight: 600;
+  color: var(--teal-deep); text-align: center; margin-bottom: 5px;
+}
+.gclock-bar {
+  height: 5px; border-radius: 3px; background: var(--paper-dim); overflow: hidden;
+}
+.gclock-fill {
+  height: 100%; background: var(--teal); border-radius: 3px;
+  transition: width 0.25s linear;
+}
+.gclock-low .gclock-num { color: var(--incorrect); }
+.gclock-low .gclock-fill { background: var(--incorrect); }
+.practice-note {
+  font-family: var(--font-mono); font-size: 11px; color: var(--teal);
+  background: var(--paper-dim); border: 1px dashed var(--teal);
+  border-radius: var(--radius-s); padding: 6px 10px; margin: 0 0 12px;
+  text-align: center;
+}
+
+/* ---- Scramble Lines: the whole song, with gaps ---- */
+.ls-song { margin-bottom: 14px; }
+.ls-label {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.09em; color: var(--gold); margin: 12px 0 3px;
+}
+.ls-line {
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-ink);
+  line-height: 1.65; padding: 1px 2px;
+}
+.ls-slot {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.5;
+  border: none; border-bottom: 1.5px dashed var(--teal);
+  background: rgba(47,110,98,0.06); color: var(--text-muted);
+  padding: 2px 4px; margin: 1px 0; border-radius: 3px 3px 0 0; min-height: 22px;
+}
+.ls-slot.filled { color: var(--teal-deep); font-weight: 600; border-bottom-style: solid; }
+.line-chip {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.4;
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  background: var(--paper-card); color: var(--text-ink);
+  padding: 7px 9px; margin-bottom: 6px;
+}
+/* Tighter inside the bank, where a dozen of them are stacked in a third of the
+   screen and every pixel is one the song does not get. */
+.ls-bank .line-chip {
+  font-size: 12px; padding: 5px 8px; margin-bottom: 4px;
+  background: var(--paper);
+}
+.line-chip:hover { border-color: var(--teal); }
+/* The same hole as .word-gap, at line height - see there. */
+.line-chip.line-gap {
+  border-style: dashed; opacity: 0.3; pointer-events: none; min-height: 18px;
+}
+/* Picked up and waiting for a gap - the same look on both halves, so it reads
+   as one gesture rather than two controls that happen to highlight. */
+.line-chip.picked, .ls-slot.picked {
+  border-color: var(--teal); background: rgba(47,110,98,0.14);
+  box-shadow: 0 0 0 2px rgba(47,110,98,0.22);
+}
+.ls-slot.picked { border-bottom-style: solid; }
+/* THE BANK STAYS PUT WHILE THE SONG SCROLLS PAST IT. The whole song is on the
+   board now, so a bank at the bottom of the document would be a scroll away
+   from most of the gaps it is meant to fill. Capped so it can never eat the
+   board on a long song; it scrolls inside itself instead. */
+.ls-bank {
+  position: sticky; bottom: 132px; z-index: 4;
+  margin-top: 14px; padding: 9px 10px;
+  max-height: 30vh; overflow-y: auto;
+  border: 1.5px solid var(--border); border-radius: var(--radius-m);
+  background: var(--paper-card); box-shadow: var(--shadow);
+}
+.ls-bank-head {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.09em; color: var(--text-muted); margin: 0 0 7px;
+}
+/* the gaps are what you are aiming at, so they get a target worth hitting */
+.ls-slot { min-height: 30px; }
+
+/* ---- the attempt log ---- */
+.log-filters { display: flex; gap: 8px; }
+.log-filters .set-select { flex: 1 1 0; min-width: 0; }
+.log-filters .set-select:last-child { flex: 0 0 34%; }
+.log-row {
+  display: flex; align-items: baseline; gap: 8px; padding: 6px 0;
+  border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.log-row:last-child { border-bottom: none; }
+.log-date {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+  flex: 0 0 52px;
+}
+.log-mode { flex: 1 1 auto; min-width: 0; color: var(--text-ink); }
+.log-lvl {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--gold);
+}
+.log-time {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+  flex: 0 0 auto;
+}
+/* What the run banked, between the clock and the percentage. The debt it
+   settled rides along underneath in smaller type - it is a footnote to the
+   number above it, not a column of its own. */
+.log-pts {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  flex: 0 0 54px; text-align: right; color: var(--teal);
+  display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15;
+}
+.log-pts-none { color: var(--text-muted); font-weight: 400; }
+.log-owed { font-size: 10px; font-weight: 400; font-style: normal; color: var(--text-muted); }
+.log-pct {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  flex: 0 0 46px; text-align: right;
+}
+.log-good { color: var(--correct); }
+.log-mid  { color: var(--gold); }
+.log-bad  { color: var(--incorrect); }
+
+/* ---- the pantry's smart lists ---- */
+.list-bar {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--paper-card); border: 1.5px solid var(--border);
+  border-radius: var(--radius-m); padding: 9px 13px; margin-bottom: 10px;
+  cursor: pointer; font-family: var(--font-body); text-align: left;
+}
+.list-bar:hover { border-color: var(--teal); }
+.list-bar-name {
+  flex: 1 1 auto; font-weight: 600; font-size: 15px; color: var(--text-ink);
+}
+.list-bar-n { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.list-bar-caret { color: var(--text-muted); font-size: 11px; }
+.smart-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  background: var(--paper-card); padding: 10px 12px; margin-bottom: 7px;
+  cursor: pointer; text-align: left; font-family: var(--font-body);
+}
+.smart-row.on { border-color: var(--teal); background: var(--paper-dim); }
+.smart-dot {
+  flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border);
+}
+.smart-plate   { background: #B23729; }
+.smart-counter { background: #C97E34; }
+.smart-fridge  { background: #6282A5; }
+.smart-freezer { background: #34588E; }
+.smart-body { flex: 1 1 auto; min-width: 0; }
+.smart-name { font-weight: 600; font-size: 14px; color: var(--text-ink); }
+.smart-sub { font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
+.smart-n { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.all-clear {
+  border: 1px solid var(--correct); background: var(--correct-bg);
+  color: var(--correct); border-radius: var(--radius-m);
+  padding: 14px 16px; text-align: center; font-weight: 600; margin-bottom: 14px;
+}
+.results-actions .act-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.results-actions .act-row .btn { flex: 1 1 0; min-width: 0; margin: 0; }
+.sheet-group {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text-muted); margin: 14px 0 6px;
+}
+
+/* ---- Insights: the pie ---- */
+.pie-wrap { display: flex; align-items: center; gap: 14px; flex-wrap: wrap-reverse; }
+.pie-legend { flex: 1 1 130px; min-width: 0; }
+.pie-legend .legend-row { padding: 3px 0; border-bottom: none; }
+.pie-box { flex: 0 0 auto; margin-left: auto; }
+.pie-svg { display: block; max-width: 100%; height: auto; }
+.pie-slice { cursor: default; transition: opacity 0.12s; }
+.pie-slice:hover { opacity: 0.82; }
+
+/* ============ Quiz levels ============ */
+/* Hard mode: a line to write on, with no length given away. It has to be
+   clearly visible - with the mask gone it is the only thing marking the line. */
+.fillin-blind { border-bottom: 1.5px solid rgba(47,110,98,0.45); }
+.fillin-blind:focus-within { border-bottom-color: var(--teal); }
+.fillin-blind .fillin-mask { color: transparent; }
+
+/* ============ Paper ============
+   Textures are generated, not fetched: a tiny inline SVG for grain plus
+   layered gradients. Nothing loads from outside the page. */
+body {
+  background-color: var(--paper);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.055'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, rgba(120,100,70,0.020) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at 50% 0%, rgba(255,252,244,0.85), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* laid-paper grain on the cards, a shade warmer than the page */
+.tape-card, .card-block, .lyric-sheet, .results-section, .stat-card, .section-block {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23c)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* Ruled notebook lines. The rule pitch and the text line-height are both 28px,
+   so every lyric and chord line sits on a rule instead of drifting off it. */
+.lyric-sheet {
+  background-image:
+    repeating-linear-gradient(to bottom,
+      transparent 0 27px, rgba(47,110,98,0.16) 27px 28px);
+  background-position: 0 14px;
+  background-attachment: local;
+  position: relative;
+}
+.lyric-sheet .lyric-sheet-label { position: relative; z-index: 1; }
+.lyric-line, .chord-line { line-height: 28px; }
+.lyric-row { margin-bottom: 0; }
+/* the margin rule down the left, like a legal pad */
+.lyric-sheet::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 12px;
+  width: 1px; background: rgba(179,74,60,0.18);
+}
+.lyric-sheet-chorus::before { background: rgba(179,74,60,0.24); }
+
+/* five faint staff lines behind the song title block */
+/* (the spine and the heat wash are declared with the rest of the header) */
+.detail-header::after {
+  content: ""; position: absolute; right: -40px; top: 18px;
+  width: 220px; height: 44px; pointer-events: none; opacity: 0.16;
+  background: repeating-linear-gradient(to bottom,
+    var(--gold-soft) 0 1px, transparent 1px 11px);
+  transform: rotate(-4deg);
+}
+.detail-title, .detail-artist, .detail-meta, .detail-key, .link-row { position: relative; z-index: 1; }
+
+/* a hairline of gold under the header, like a ruled page edge */
+.topbar { box-shadow: inset 0 -1px 0 rgba(199,154,62,0.35); }
+
+/* torn/aged edge on cards */
+.tape-card { border-color: rgba(184,170,140,0.85); }
+.card-block { box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, var(--shadow); }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast" aria-live="polite"></div>
+
+<header class="topbar">
+  <button class="icon-btn" id="backBtn" aria-label="Back" hidden>&#8592;</button>
+  <h1 class="brand" id="pageTitle">Song Burner</h1>
+  <button class="icon-btn" id="settingsBtn" aria-label="Settings">&#9881;</button>
+</header>
+
+<main id="app" class="app"><div class="loading">Loading your songbook...</div></main>
+
+<nav class="tabbar" id="tabbar" style="display:none">
+  <button class="tab-btn" data-view="front">
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><ellipse cx="7.4" cy="17.2" rx="3.05" ry="2.3" transform="rotate(-18 7.4 17.2)"/><ellipse cx="16.5" cy="17.2" rx="3.05" ry="2.3" transform="rotate(-18 16.5 17.2)"/><rect x="9.7" y="6.2" width="1.5" height="11.3" rx="0.3"/><rect x="18.8" y="6.2" width="1.5" height="11.3" rx="0.3"/><rect x="9.7" y="4.9" width="10.6" height="2.5" rx="0.6"/></svg>
+    <span>Front</span>
+  </button>
+  <button class="tab-btn" data-view="back">
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><g transform="rotate(180 12 12)"><ellipse cx="7.4" cy="17.2" rx="3.05" ry="2.3" transform="rotate(-18 7.4 17.2)"/><ellipse cx="16.5" cy="17.2" rx="3.05" ry="2.3" transform="rotate(-18 16.5 17.2)"/><rect x="9.7" y="6.2" width="1.5" height="11.3" rx="0.3"/><rect x="18.8" y="6.2" width="1.5" height="11.3" rx="0.3"/><rect x="9.7" y="4.9" width="10.6" height="2.5" rx="0.6"/></g></svg>
+    <span>Back</span>
+  </button>
+  <button class="tab-btn tab-pantry" data-view="library" title="Tap again for the shelves">
+    <span class="tab-caret">&#9650;</span>
+    <svg viewBox="0 0 24 24" width="19" height="19"><rect x="3" y="4" width="18" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="10" width="18" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="16" width="18" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    <span>Pantry</span>
+  </button>
+  <button class="tab-btn" data-view="add">
+    <svg viewBox="0 0 24 24" width="19" height="19"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    <span>Add</span>
+  </button>
+  <button class="tab-btn" data-view="insights">
+    <svg viewBox="0 0 24 24" width="19" height="19"><path d="M4 19V11M9.5 19V5M15 19v-6M20.5 19V8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    <span>Insights</span>
+  </button>
+</nav>
+
+<script src="host.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
