@@ -5,6 +5,7 @@ import { convertPptx } from './pptx.js';
 import { renderSlide } from './render.js';
 import { present } from './present.js';
 import * as store from './store.js';
+import { missingIcons } from './marks.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -105,8 +106,15 @@ async function showDeck(id, startPresenting) {
       location.hash = '#/';
     } }, 'Remove'));
 
-  const warn = rec.deck.warnings && rec.deck.warnings.length
-    ? el('div', { class: 'warn' }, rec.deck.warnings.join(' ')) : null;
+  const notes = [...(rec.deck.warnings || [])];
+  const noIcon = missingIcons(rec.deck);
+  if (noIcon.length) {
+    notes.push(noIcon.length + (noIcon.length === 1 ? ' song slide has' : ' song slides have') +
+      ' no 1-inch song icon: ' + noIcon.map(({ s, i }) => (s.title || 'untitled') + ' (' + (i + 1) + ')').join(', ') + '.');
+  }
+  const songs = rec.deck.slides.filter((s) => s.song && s.song.kind === 'song').length;
+  const summary = songs ? el('p', { class: 'deck-sum' }, songs + ' song slides, each with an x/y counter and a timer.') : null;
+  const warn = notes.length ? el('div', { class: 'warn' }, notes.join(' ')) : null;
 
   const grid = el('div', { class: 'slides' });
   rec.deck.slides.forEach((s, i) => {
@@ -115,9 +123,11 @@ async function showDeck(id, startPresenting) {
       title: s.hidden ? 'Hidden slide (skipped when you click through)' : 'Present from here',
       onclick: () => run(i)
     }, thumb(s, rec.deck, media),
-    el('div', { class: 'cap' }, el('b', {}, String(i + 1)), s.title || '')));
+    el('div', { class: 'cap' }, el('b', {}, String(i + 1)),
+      s.song && s.song.icon ? el('img', { class: 'song-icon', src: media(s.song.icon), alt: '' }) : null,
+      s.title || '')));
   });
-  main.replaceChildren(head, warn || '', grid);
+  main.replaceChildren(head, summary || '', warn || '', grid);
   if (startPresenting) run(0);
 }
 
@@ -126,7 +136,8 @@ async function findGoogle(gdoc, gslide) {
   const rec = (await store.listDecks()).find((d) => d.deck.googleId === gdoc);
   if (!rec) return null;
   const i = gslide ? rec.deck.slides.findIndex((s) => s.gid === gslide) : 0;
-  return { deck: rec.deck, media: await loadMedia(rec.deck), index: Math.max(i, 0) };
+  return { deck: rec.deck, media: await loadMedia(rec.deck), index: Math.max(i, 0),
+           deckId: rec.id, deckName: rec.name };
 }
 
 // ---- import ----------------------------------------------------------------

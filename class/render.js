@@ -22,6 +22,7 @@ export function fontStack(name) {
 /**
  * opts.media(hash) -> URL for a picture
  * opts.onLink(link, event) -> called when a linked element is clicked
+ * opts.timer() -> text for a song slide's timer box (default 0:00)
  */
 export function renderSlide(slide, deck, opts = {}) {
   const stage = document.createElement('div');
@@ -119,8 +120,30 @@ function drawShape(el, opts) {
   d.classList.add('sp');
   const hasPaint = (el.fill && el.fill.type !== 'none') || el.line;
   if (hasPaint) d.appendChild(shapeSvg(el, opts));
-  if (el.text) d.appendChild(drawText(el, opts));
+  if (el.role === 'timer') {
+    d.appendChild(drawText(timerShape(el, opts.timer ? opts.timer() : '0:00'), opts));
+    const val = d.querySelector('.txt span:not(.bu)');
+    if (val) val.classList.add('timer-val');
+  } else if (el.text) {
+    d.appendChild(drawText(el, opts));
+  }
+  if (el.role) d.dataset.role = el.role;
   return d;
+}
+
+// The <<0:00+>> box on a song slide shows the live time, in the box's own type.
+function timerShape(el, value) {
+  const para = el.text.paras.find((p) => p.runs.some((r) => r.t)) || el.text.paras[0];
+  const run = para.runs.find((r) => r.t) || {};
+  const text = Object.assign({}, el.text, {
+    paras: [{ algn: 'ctr', sz: run.sz, runs: [Object.assign({}, run, { t: value })] }]
+  });
+  if (!el.box) return Object.assign({}, el, { text });
+  // Centred in the box the frame lies over, measured from the frame's corner.
+  text.anchor = 'ctr';
+  text.wrap = false;
+  text.ins = [el.box.x - el.x, el.box.y - el.y, el.x + el.w - el.box.x - el.box.w, el.y + el.h - el.box.y - el.box.h];
+  return Object.assign({}, el, { text });
 }
 
 function shapeSvg(el, opts) {

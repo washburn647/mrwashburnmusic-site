@@ -10,6 +10,7 @@
    elsewhere (the tests do this under Node). */
 
 import { openZip } from './zip.js';
+import { markDeck } from './marks.js';
 
 const STAGE_W = 960;
 const PX_PER_PT = 960 / 720;               // a 10 in slide is 720 pt wide
@@ -712,7 +713,7 @@ export async function convertPptx(buffer, opts = {}) {
 
   const googleId = resolveGoogleLinks(slides);
   return {
-    deck: { w: STAGE_W, h: stageH, slides, googleId, warnings: [...new Set(warnings)] },
+    deck: markDeck({ w: STAGE_W, h: stageH, slides, googleId, warnings: [...new Set(warnings)] }),
     media
   };
 }
