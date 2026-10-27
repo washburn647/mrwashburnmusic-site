@@ -1,4 +1,5 @@
-"""Mr. Washburn Music logo, round 2: MWM monograms in earthy greens.
+"""Mr. Washburn Music logo: MWM monograms (round 2) and a W of three upside
+down eighth notes (round 3), in earthy greens.
 
 Monograms are drawn as round-capped strokes (y-down, cap height H). The
 wordmark under them is Fredoka SemiBold (OFL) converted to outlines, so the
@@ -70,6 +71,58 @@ def staff_badge():
     return s, 2 * R
 
 
+NOTE_RX, NOTE_RY, STEM = 96, 68, 46
+
+
+def note(cx, cy, tip, color):
+    """One eighth note hanging upside down: head on top, stem down to tip.
+    As in engraving, a downward stem leaves from the head's left side."""
+    sx = stem_x(cx)
+    return (f'<line x1="{sx:.0f}" y1="{cy + 10:.0f}" x2="{tip[0]:.0f}" y2="{tip[1]:.0f}" '
+            f'stroke="{color}" stroke-width="{STEM}"/>'
+            f'<ellipse cx="{cx:.0f}" cy="{cy:.0f}" rx="{NOTE_RX}" ry="{NOTE_RY}" fill="{color}" '
+            f'transform="rotate(-22 {cx:.0f} {cy:.0f})"/>')
+
+
+def stem_x(cx):
+    return cx - NOTE_RX + STEM / 2 + 6
+
+
+def beam(tips, color, bw=88):
+    """The beam's lower edge runs tip to tip; its ends are cut upright, flush
+    with the outer stems' outer edges."""
+    pts = [list(p) for p in tips]
+    pts[0][0] -= STEM / 2
+    pts[-1][0] += STEM / 2
+    top = " L".join(f"{x:.0f} {y - bw:.0f}" for x, y in pts)
+    bot = " L".join(f"{x:.0f} {y:.0f}" for x, y in reversed(pts))
+    return f'<path d="M{top} L{bot} Z" fill="{color}"/>'
+
+
+def note_w(slant=0, peak=0.42, color=FOREST):
+    """Three beamed eighth notes turned upside down, heads on top, so the
+    stems and the bent beam draw a W. slant > 0 leans the outer stems in.
+    Returns the mark, its width and its height."""
+    head_y, gap, base = 70, 330, H + 60
+    xs = [NOTE_RX + i * gap for i in range(3)]
+    # Outer stems reach the baseline; the middle one stops at the W's peak.
+    tips = [(stem_x(xs[0]) + slant, base), (stem_x(xs[1]), H * peak + 60),
+            (stem_x(xs[2]) - slant, base)]
+    s = beam(tips, color) + "".join(note(cx, head_y, t, color) for cx, t in zip(xs, tips))
+    return s, xs[2] + NOTE_RX, base
+
+
+def note_badge():
+    """The note W in cream on the round forest badge of option C."""
+    R = 560
+    mark, mw, mh = note_w(color=CREAM)
+    sc = 620 / mw
+    s = f'<circle cx="{R}" cy="{R}" r="{R}" fill="{FOREST}"/>'
+    s += f'<circle cx="{R}" cy="{R}" r="{R - 34}" fill="none" stroke="{WHEAT}" stroke-width="14"/>'
+    s += f'<g transform="translate({R - mw * sc / 2:.0f} {R - mh * sc / 2:.0f}) scale({sc:.3f})">{mark}</g>'
+    return s, 2 * R
+
+
 def text_path(text, color, tracking=8):
     out, x = [], 0
     for ch in text:
@@ -122,4 +175,11 @@ if __name__ == "__main__":
     badge, bw = staff_badge()
     lockup(badge, bw, bw, "option-c-badge")
     icon(badge, bw, bw, "option-c-icon", bg="none")
+    for name, kw in (("option-d-notes", {}), ("option-e-notes-slant", {"slant": 70, "peak": 0.38})):
+        notes, nw, nh = note_w(**kw)
+        lockup(notes, nw, nh, name)
+        icon(notes, nw, nh, name + "-icon")
+    nb, nbw = note_badge()
+    lockup(nb, nbw, nbw, "option-f-notes-badge")
+    icon(nb, nbw, nbw, "option-f-notes-badge-icon", bg="none")
     print("ok")
