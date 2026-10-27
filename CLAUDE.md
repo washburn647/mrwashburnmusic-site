@@ -25,3 +25,14 @@ A lyric memorization app, served at `/songburner/`. Read `songburner/README.md` 
 - The old copy in Kyle's `Claude Files\songburner-app` folder is retired. This repo is the source.
 - Test in a browser before opening a PR: Playwright and Chromium are preinstalled in cloud
   sessions. Serve the repo root with a static server and open `/songburner/`.
+
+## Class (`class/`)
+
+Kyle's classroom slides app, served at `/class/`. Read `class/README.md` first.
+
+- Kyle's decks and pictures (school material, pictures from the web) must never be committed
+  here. Test with copies outside the repo.
+- Every picture carries a `rights` tag. Anything tagged `classroom` stays in the private app and
+  sub view; never publish it on the public site.
+- `render.js` is shared by Present mode and thumbnails: check both after changing it.
+- Bump `CACHE` in `class/sw.js` when the app's file list changes.

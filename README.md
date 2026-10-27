@@ -6,13 +6,14 @@ Static site for Mr. Washburn Music. No build step: every file here is served as 
 
 - `index.html`: the public coming soon page
 - `songburner/`: Song Burner, the lyric memorization app (see `songburner/README.md`)
+- `class/`: the classroom slides app, for presenting lessons on the classroom TV (see `class/README.md`)
 - `studio/`: private behind-the-scenes tools (locked with Cloudflare Access, see below)
 - `assets/logo/`: logo files (`logo-stacked.svg`, `option-a-ligature.svg`, `icon.svg`)
 - `assets/fonts/`: Fredoka (SIL Open Font License), self-hosted so no visitor data goes to Google
 - `_headers`: security headers
 - `tools/make_logo.py`: regenerates the logo SVGs (`pip install fonttools`, then `python tools/make_logo.py Fredoka-SemiBold.ttf assets/logo`)
 
-Later apps each get their own folder (`/pitch-by-pitch/`, `/play/`, `/class/`) so each PWA installs and caches on its own.
+Later apps each get their own folder (`/pitch-by-pitch/`, `/play/`) so each PWA installs and caches on its own.
 
 ## Deploy
 

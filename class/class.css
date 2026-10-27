@@ -1,0 +1,97 @@
+@font-face { font-family: "Comic Neue"; src: url("fonts/comic-neue-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+@font-face { font-family: "Comic Neue"; src: url("fonts/comic-neue-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: block; }
+@font-face { font-family: "Comic Neue"; src: url("fonts/comic-neue-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: block; }
+@font-face { font-family: "Comic Neue"; src: url("fonts/comic-neue-latin-700-italic.woff2") format("woff2"); font-weight: 700; font-style: italic; font-display: block; }
+@font-face { font-family: "Fredoka"; src: url("/assets/fonts/fredoka-latin.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+
+:root {
+  --cream: #F6F1E4; --forest: #2F4A3A; --moss: #5E7D4F; --sage: #9DB58C;
+  --wheat: #D9B26F; --muted: #5B6B5F; --card: #FFFDF7; --line: #E4DCC8;
+  --danger: #A8432F;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--cream); color: var(--forest);
+  font-family: "Fredoka", ui-rounded, "Segoe UI", system-ui, sans-serif;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+
+/* ---- slide stage (shared by Present, thumbnails, and later the editor) ---- */
+.slide-stage { position: relative; overflow: hidden; transform-origin: 0 0; user-select: none;
+  font-family: Arial, sans-serif; color: #000; }
+.slide-stage .el { position: absolute; }
+.slide-stage .paint { position: absolute; overflow: visible; pointer-events: none; }
+.slide-stage .pic { overflow: hidden; }
+.slide-stage .pic img { position: absolute; max-width: none; display: block; }
+.slide-stage .txt { position: absolute; inset: 0; display: flex; flex-direction: column;
+  white-space: pre-wrap; overflow-wrap: break-word; }
+.slide-stage .txt.nowrap { white-space: pre; }
+.slide-stage .p { margin: 0; }
+.slide-stage .bu { display: inline-block; text-indent: 0; }
+.slide-stage .link { cursor: pointer; }
+
+/* ---- library ---- */
+.top { display: flex; align-items: center; gap: 14px; padding: 12px 20px;
+  border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 2; }
+.top img { height: 40px; }
+.top h1 { font-size: 22px; font-weight: 600; margin: 0; }
+.top .spacer { flex: 1; }
+.btn { border: 0; border-radius: 999px; padding: 9px 18px; background: var(--moss); color: var(--cream);
+  font-weight: 600; font-size: 15px; }
+.btn:hover { background: var(--forest); }
+.btn.quiet { background: transparent; color: var(--forest); border: 1px solid var(--line); }
+.btn.quiet:hover { background: #EFE8D6; }
+.btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--line); }
+main.lib { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
+.empty { text-align: center; padding: 64px 16px; color: var(--muted); line-height: 1.5; }
+.empty h2 { color: var(--forest); font-weight: 600; }
+.decks { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+.deck-card { background: var(--card); border-radius: 16px; overflow: hidden; border: 1px solid var(--line);
+  text-align: left; padding: 0; display: block; width: 100%; }
+.deck-card:hover { box-shadow: 0 4px 0 var(--wheat); }
+.deck-card .meta { padding: 10px 14px 12px; }
+.deck-card .name { font-weight: 600; font-size: 17px; }
+.deck-card .count { color: var(--muted); font-size: 14px; }
+.thumb { position: relative; overflow: hidden; background: #fff; aspect-ratio: 16 / 9; width: 100%; }
+.thumb > .slide-stage { position: absolute; left: 0; top: 0; pointer-events: none; }
+
+.deck-head { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; flex-wrap: wrap; }
+.deck-head h2 { margin: 0; font-weight: 600; font-size: 26px; flex: 1; min-width: 200px; }
+.slides { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.slide-card { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  background: var(--card); text-align: left; }
+.slide-card:hover { outline: 3px solid var(--wheat); }
+.slide-card .cap { display: flex; gap: 6px; font-size: 13px; color: var(--muted); padding: 5px 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slide-card .cap b { color: var(--forest); }
+.slide-card.hidden-slide .thumb { opacity: .45; }
+.warn { background: #FBEFD3; border-radius: 12px; padding: 10px 14px; margin: 0 0 16px; color: #6B4E12; }
+
+.progress { position: fixed; inset: 0; background: rgba(47, 74, 58, .55); display: grid; place-items: center; z-index: 10; }
+.progress .box { background: var(--card); border-radius: 18px; padding: 24px 28px; min-width: 300px; max-width: 90vw; }
+.progress .bar { height: 10px; background: #EAE2CF; border-radius: 99px; overflow: hidden; margin-top: 12px; }
+.progress .bar i { display: block; height: 100%; background: var(--moss); width: 0; transition: width .2s; }
+
+/* ---- present ---- */
+.present { position: fixed; inset: 0; background: #000; z-index: 20; overflow: hidden; cursor: none; }
+.present.show-ui { cursor: default; }
+.present .frame { position: absolute; }
+.present .bar { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; background: rgba(20, 24, 20, .82); color: #fff;
+  padding: 6px 8px; border-radius: 999px; font-size: 16px; opacity: 0; transition: opacity .25s; }
+.present.show-ui .bar { opacity: 1; }
+.present .bar button { background: transparent; border: 0; color: #fff; padding: 8px 12px; border-radius: 999px;
+  font-size: 18px; min-width: 44px; }
+.present .bar button:hover { background: rgba(255, 255, 255, .15); }
+.present .bar .num { padding: 0 8px; font-variant-numeric: tabular-nums; }
+.present .notes { position: absolute; left: 16px; top: 16px; max-width: 40vw; max-height: 60vh; overflow: auto;
+  background: rgba(255, 253, 247, .95); color: #222; border-radius: 12px; padding: 12px 14px;
+  font-size: 16px; line-height: 1.4; white-space: pre-wrap; }
+
+@media (max-width: 600px) {
+  .top { padding: 10px 16px; gap: 10px; }
+  .top h1 { font-size: 18px; }
+  main.lib { padding: 16px 16px 48px; }
+}
