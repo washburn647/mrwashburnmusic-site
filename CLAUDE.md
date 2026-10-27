@@ -36,3 +36,13 @@ Kyle's classroom slides app, served at `/class/`. Read `class/README.md` first.
   sub view; never publish it on the public site.
 - `render.js` is shared by Present mode and thumbnails: check both after changing it.
 - Bump `CACHE` in `class/sw.js` when the app's file list changes.
+
+## Musician Maker (`musician-maker/`)
+
+Music literacy games (Feierabend Conversational Solfège units, ages 9+). Read
+`musician-maker/README.md` first.
+
+- Offline test build: not deployed or linked until Kyle asks. It must keep working when opened
+  from `file://` (classic scripts, no modules, no fetch).
+- Don't copy pattern sets or text from the Conversational Solfège books: patterns are generated.
+- Remove Test mode before it goes on the public site.

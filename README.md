@@ -6,6 +6,7 @@ Static site for Mr. Washburn Music. No build step: every file here is served as 
 
 - `index.html`: the public coming soon page
 - `songburner/`: Song Burner, the lyric memorization app (see `songburner/README.md`)
+- `musician-maker/`: music literacy games, offline test build, not deployed yet (see `musician-maker/README.md`)
 - `class/`: the classroom slides app, for presenting lessons on the classroom TV (see `class/README.md`)
 - `studio/`: private behind-the-scenes tools (locked with Cloudflare Access, see below)
 - `assets/logo/`: logo options; the site uses `option-f-notes-badge.svg` and its icon as `favicon.svg`
