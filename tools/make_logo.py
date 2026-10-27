@@ -71,51 +71,63 @@ def staff_badge():
     return s, 2 * R
 
 
-NOTE_RX, NOTE_RY, STEM = 96, 68, 46
-
-
-def note(cx, cy, tip, color):
-    """One eighth note hanging upside down: head on top, stem down to tip.
-    As in engraving, a downward stem leaves from the head's left side."""
-    sx = stem_x(cx)
-    return (f'<line x1="{sx:.0f}" y1="{cy + 10:.0f}" x2="{tip[0]:.0f}" y2="{tip[1]:.0f}" '
-            f'stroke="{color}" stroke-width="{STEM}"/>'
-            f'<ellipse cx="{cx:.0f}" cy="{cy:.0f}" rx="{NOTE_RX}" ry="{NOTE_RY}" fill="{color}" '
-            f'transform="rotate(-22 {cx:.0f} {cy:.0f})"/>')
+NOTE_RX, NOTE_RY, STEM, BEAM = 100, 70, 60, 104
 
 
 def stem_x(cx):
+    """A downward stem leaves from the head's left side, as in engraving."""
     return cx - NOTE_RX + STEM / 2 + 6
 
 
-def beam(tips, color, bw=88):
-    """The beam's lower edge runs tip to tip; its ends are cut upright, flush
-    with the outer stems' outer edges."""
-    pts = [list(p) for p in tips]
-    pts[0][0] -= STEM / 2
-    pts[-1][0] += STEM / 2
-    top = " L".join(f"{x:.0f} {y - bw:.0f}" for x, y in pts)
-    bot = " L".join(f"{x:.0f} {y:.0f}" for x, y in reversed(pts))
-    return f'<path d="M{top} L{bot} Z" fill="{color}"/>'
+def head(cx, cy, color):
+    return (f'<ellipse cx="{cx:.0f}" cy="{cy:.0f}" rx="{NOTE_RX}" ry="{NOTE_RY}" fill="{color}" '
+            f'transform="rotate(-22 {cx:.0f} {cy:.0f})"/>')
+
+
+def meet(p, d, q, e):
+    """Where the line through p along d crosses the line through q along e."""
+    t = ((q[0] - p[0]) * e[1] - (q[1] - p[1]) * e[0]) / (d[0] * e[1] - d[1] * e[0])
+    return p[0] + t * d[0], p[1] + t * d[1]
 
 
 def note_w(slant=0, peak=0.42, color=FOREST):
     """Three beamed eighth notes turned upside down, heads on top, so the
     stems and the bent beam draw a W. slant > 0 leans the outer stems in.
-    Returns the mark, its width and its height."""
+    The outer stems and the beam are one outline, so the stems end flush with
+    the beam's lower edge. Returns the mark, its width and its height."""
     head_y, gap, base = 70, 330, H + 60
     xs = [NOTE_RX + i * gap for i in range(3)]
-    # Outer stems reach the baseline; the middle one stops at the W's peak.
-    tips = [(stem_x(xs[0]) + slant, base), (stem_x(xs[1]), H * peak + 60),
-            (stem_x(xs[2]) - slant, base)]
-    s = beam(tips, color) + "".join(note(cx, head_y, t, color) for cx, t in zip(xs, tips))
+    top_y = head_y + 10
+    mid = (stem_x(xs[1]), H * peak + 60)
+    out = []
+    for side, cx in ((-1, xs[0]), (1, xs[2])):
+        top = (stem_x(cx), top_y)
+        tip = (top[0] - side * slant, base)
+        d = (tip[0] - top[0], tip[1] - top[1])
+        n = (d[1], -d[0])
+        k = side * STEM / 2 / (n[0] ** 2 + n[1] ** 2) ** 0.5
+        outer = (top[0] + k * n[0], top[1] + k * n[1])
+        inner = (top[0] - k * n[0], top[1] - k * n[1])
+        e = (mid[0] - tip[0], mid[1] - tip[1])
+        lo = meet(outer, d, tip, e)
+        # The inner stem edge stops at the beam's upper edge.
+        hi_in = meet(inner, d, (tip[0], tip[1] - BEAM), e)
+        out.append((outer, inner, lo, hi_in))
+    (lo_o, lo_i, lo_b, lo_h), (ro_o, ro_i, ro_b, ro_h) = out
+    pts = [lo_i, lo_o, lo_b, mid, ro_b, ro_o, ro_i, ro_h,
+           (mid[0], mid[1] - BEAM), lo_h]
+    d = "M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in pts) + " Z"
+    s = f'<path d="{d}" fill="{color}"/>'
+    s += (f'<line x1="{mid[0]:.0f}" y1="{top_y}" x2="{mid[0]:.0f}" y2="{mid[1] - BEAM / 2:.0f}" '
+          f'stroke="{color}" stroke-width="{STEM}"/>')
+    s += "".join(head(cx, head_y, color) for cx in xs)
     return s, xs[2] + NOTE_RX, base
 
 
-def note_badge():
+def note_badge(**kw):
     """The note W in cream on the round forest badge of option C."""
     R = 560
-    mark, mw, mh = note_w(color=CREAM)
+    mark, mw, mh = note_w(color=CREAM, **kw)
     sc = 620 / mw
     s = f'<circle cx="{R}" cy="{R}" r="{R}" fill="{FOREST}"/>'
     s += f'<circle cx="{R}" cy="{R}" r="{R - 34}" fill="none" stroke="{WHEAT}" stroke-width="14"/>'
@@ -175,11 +187,12 @@ if __name__ == "__main__":
     badge, bw = staff_badge()
     lockup(badge, bw, bw, "option-c-badge")
     icon(badge, bw, bw, "option-c-icon", bg="none")
-    for name, kw in (("option-d-notes", {}), ("option-e-notes-slant", {"slant": 70, "peak": 0.38})):
+    slanted = {"slant": 70, "peak": 0.58}
+    for name, kw in (("option-d-notes", {}), ("option-e-notes-slant", slanted)):
         notes, nw, nh = note_w(**kw)
         lockup(notes, nw, nh, name)
         icon(notes, nw, nh, name + "-icon")
-    nb, nbw = note_badge()
+    nb, nbw = note_badge(**slanted)
     lockup(nb, nbw, nbw, "option-f-notes-badge")
     icon(nb, nbw, nbw, "option-f-notes-badge-icon", bg="none")
     print("ok")
