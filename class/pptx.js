@@ -755,7 +755,7 @@ function resolveGoogleLinks(slides) {
   return own;
 }
 
-function guessTitle(slide) {
+export function guessTitle(slide) {
   // The biggest text on the slide reads as its title.
   let best = null;
   for (const el of slide.els) {
