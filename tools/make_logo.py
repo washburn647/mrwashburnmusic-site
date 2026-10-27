@@ -121,14 +121,16 @@ def note_w(slant=0, peak=0.42, color=FOREST):
     s += (f'<line x1="{mid[0]:.0f}" y1="{top_y}" x2="{mid[0]:.0f}" y2="{mid[1] - BEAM / 2:.0f}" '
           f'stroke="{color}" stroke-width="{STEM}"/>')
     s += "".join(head(cx, head_y, color) for cx in xs)
-    return s, xs[2] + NOTE_RX, base
+    # Stems sit left of their heads, so centre on the middle stem, not the box.
+    half = xs[2] + NOTE_RX - mid[0]
+    return f'<g transform="translate({half - mid[0]:.0f} 0)">{s}</g>', 2 * half, base
 
 
 def note_badge(**kw):
     """The note W in cream on the round forest badge of option C."""
     R = 560
     mark, mw, mh = note_w(color=CREAM, **kw)
-    sc = 620 / mw
+    sc = 720 / mw
     s = f'<circle cx="{R}" cy="{R}" r="{R}" fill="{FOREST}"/>'
     s += f'<circle cx="{R}" cy="{R}" r="{R - 34}" fill="none" stroke="{WHEAT}" stroke-width="14"/>'
     s += f'<g transform="translate({R - mw * sc / 2:.0f} {R - mh * sc / 2:.0f}) scale({sc:.3f})">{mark}</g>'
