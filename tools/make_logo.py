@@ -1,4 +1,5 @@
-"""Mr. Washburn Music logo, round 2: MWM monograms in earthy greens.
+"""Mr. Washburn Music logo: MWM monograms (round 2) and a W of three upside
+down eighth notes (round 3), in earthy greens.
 
 Monograms are drawn as round-capped strokes (y-down, cap height H). The
 wordmark under them is Fredoka SemiBold (OFL) converted to outlines, so the
@@ -70,6 +71,72 @@ def staff_badge():
     return s, 2 * R
 
 
+NOTE_RX, NOTE_RY, STEM, BEAM = 100, 70, 60, 104
+
+
+def stem_x(cx):
+    """A downward stem leaves from the head's left side, as in engraving."""
+    return cx - NOTE_RX + STEM / 2 + 6
+
+
+def head(cx, cy, color):
+    return (f'<ellipse cx="{cx:.0f}" cy="{cy:.0f}" rx="{NOTE_RX}" ry="{NOTE_RY}" fill="{color}" '
+            f'transform="rotate(-22 {cx:.0f} {cy:.0f})"/>')
+
+
+def meet(p, d, q, e):
+    """Where the line through p along d crosses the line through q along e."""
+    t = ((q[0] - p[0]) * e[1] - (q[1] - p[1]) * e[0]) / (d[0] * e[1] - d[1] * e[0])
+    return p[0] + t * d[0], p[1] + t * d[1]
+
+
+def note_w(slant=0, peak=0.42, color=FOREST):
+    """Three beamed eighth notes turned upside down, heads on top, so the
+    stems and the bent beam draw a W. slant > 0 leans the outer stems in.
+    The outer stems and the beam are one outline, so the stems end flush with
+    the beam's lower edge. Returns the mark, its width and its height."""
+    head_y, gap, base = 70, 330, H + 60
+    xs = [NOTE_RX + i * gap for i in range(3)]
+    top_y = head_y + 10
+    mid = (stem_x(xs[1]), H * peak + 60)
+    out = []
+    for side, cx in ((-1, xs[0]), (1, xs[2])):
+        top = (stem_x(cx), top_y)
+        tip = (top[0] - side * slant, base)
+        d = (tip[0] - top[0], tip[1] - top[1])
+        n = (d[1], -d[0])
+        k = side * STEM / 2 / (n[0] ** 2 + n[1] ** 2) ** 0.5
+        outer = (top[0] + k * n[0], top[1] + k * n[1])
+        inner = (top[0] - k * n[0], top[1] - k * n[1])
+        e = (mid[0] - tip[0], mid[1] - tip[1])
+        lo = meet(outer, d, tip, e)
+        # The inner stem edge stops at the beam's upper edge.
+        hi_in = meet(inner, d, (tip[0], tip[1] - BEAM), e)
+        out.append((outer, inner, lo, hi_in))
+    (lo_o, lo_i, lo_b, lo_h), (ro_o, ro_i, ro_b, ro_h) = out
+    pts = [lo_i, lo_o, lo_b, mid, ro_b, ro_o, ro_i, ro_h,
+           (mid[0], mid[1] - BEAM), lo_h]
+    d = "M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in pts) + " Z"
+    s = f'<path d="{d}" fill="{color}"/>'
+    s += (f'<line x1="{mid[0]:.0f}" y1="{top_y}" x2="{mid[0]:.0f}" y2="{mid[1] - BEAM / 2:.0f}" '
+          f'stroke="{color}" stroke-width="{STEM}"/>')
+    s += "".join(head(cx, head_y, color) for cx in xs)
+    # Stems sit left of their heads, so centre on the middle stem, not the box.
+    half = xs[2] + NOTE_RX - mid[0]
+    return f'<g transform="translate({half - mid[0]:.0f} 0)">{s}</g>', 2 * half, base
+
+
+def note_badge(**kw):
+    """The note W in cream on the round forest badge of option C."""
+    R = 560
+    mark, mw, mh = note_w(color=CREAM, **kw)
+    sc = 720 / mw
+    s = f'<circle cx="{R}" cy="{R}" r="{R}" fill="{FOREST}"/>'
+    s += f'<circle cx="{R}" cy="{R}" r="{R - 34}" fill="none" stroke="{WHEAT}" stroke-width="14"/>'
+    s += f'<g transform="translate({R - mw * sc / 2:.0f} {R - mh * sc / 2:.0f}) scale({sc:.3f})">{mark}</g>'
+    return s, 2 * R
+
+
 def text_path(text, color, tracking=8):
     out, x = [], 0
     for ch in text:
@@ -122,4 +189,12 @@ if __name__ == "__main__":
     badge, bw = staff_badge()
     lockup(badge, bw, bw, "option-c-badge")
     icon(badge, bw, bw, "option-c-icon", bg="none")
+    slanted = {"slant": 70, "peak": 0.58}
+    for name, kw in (("option-d-notes", {}), ("option-e-notes-slant", slanted)):
+        notes, nw, nh = note_w(**kw)
+        lockup(notes, nw, nh, name)
+        icon(notes, nw, nh, name + "-icon")
+    nb, nbw = note_badge(**slanted)
+    lockup(nb, nbw, nbw, "option-f-notes-badge")
+    icon(nb, nbw, nbw, "option-f-notes-badge-icon", bg="none")
     print("ok")
