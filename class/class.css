@@ -63,9 +63,11 @@ main.lib { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
 .slide-card { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
   background: var(--card); text-align: left; }
 .slide-card:hover { outline: 3px solid var(--wheat); }
-.slide-card .cap { display: flex; gap: 6px; font-size: 13px; color: var(--muted); padding: 5px 8px;
+.slide-card .cap { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); padding: 5px 8px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slide-card .cap b { color: var(--forest); }
+.slide-card .cap .song-icon { width: 18px; height: 18px; object-fit: contain; flex: none; }
+.deck-sum { color: var(--muted); margin: -8px 0 14px; }
 .slide-card.hidden-slide .thumb { opacity: .45; }
 .warn { background: #FBEFD3; border-radius: 12px; padding: 10px 14px; margin: 0 0 16px; color: #6B4E12; }
 

@@ -2,8 +2,10 @@
    Phase 1 keeps everything on the device it was imported on. Syncing
    between home and school comes later, on top of the same records. */
 
+import { markDeck } from './marks.js';
+
 const DB_NAME = 'mwm-class';
-const VERSION = 1;
+const VERSION = 2;
 let dbPromise = null;
 
 function db() {
@@ -16,6 +18,9 @@ function db() {
         if (!d.objectStoreNames.contains('decks')) d.createObjectStore('decks', { keyPath: 'id' });
         // media: { hash, type, blob, name, rights }
         if (!d.objectStoreNames.contains('media')) d.createObjectStore('media', { keyPath: 'hash' });
+        // timings: one row each time a slide is on screen, for how long songs take.
+        // { deck, deckName, slide, gid, song, ms, at }
+        if (!d.objectStoreNames.contains('timings')) d.createObjectStore('timings', { autoIncrement: true });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -43,11 +48,26 @@ const wrap = (req) => new Promise((resolve, reject) => {
 
 export function listDecks() {
   return tx('decks', 'readonly', (s) => wrap(s.getAll()))
-    .then((all) => all.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
+    .then((all) => all.map(marked).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
 }
 
 export function getDeck(id) {
-  return tx('decks', 'readonly', (s) => wrap(s.get(id)));
+  return tx('decks', 'readonly', (s) => wrap(s.get(id))).then(marked);
+}
+
+// Decks imported before a marking rule existed get it on the way out.
+function marked(rec) {
+  if (rec) markDeck(rec.deck);
+  return rec;
+}
+
+/** Record how long a slide was on screen. */
+export function logTiming(row) {
+  return tx('timings', 'readwrite', (s) => wrap(s.add(row)));
+}
+
+export function listTimings() {
+  return tx('timings', 'readonly', (s) => wrap(s.getAll()));
 }
 
 export function putDeck(record) {

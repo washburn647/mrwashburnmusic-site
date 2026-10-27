@@ -3,12 +3,20 @@
    Keys: Right, Down, Space, Page Down, Enter = next (clickers send Page Down)
          Left, Up, Page Up, Backspace = previous
          Home / End = first / last   F = full screen   N = notes   Esc = leave
-   Clicking a linked shape follows its link; clicking anywhere else goes on. */
+   Swipe left or right on a touch screen. Clicking a linked shape follows its
+   link; clicking anywhere else only shows the controls, because slides hold
+   things to play with.
+
+   Each slide's timer box counts up only while that slide is on screen, and
+   every stretch on screen is saved, so songs can be timed on average later. */
 
 import { renderSlide } from './render.js';
+import { logTiming } from './store.js';
 
 export function present(record, startAt, media, onClose, findGoogle) {
   let deck = record.deck;
+  let deckId = record.id;
+  let deckName = record.name;
   const root = document.createElement('div');
   root.className = 'present';
   root.tabIndex = -1;
@@ -47,12 +55,46 @@ export function present(record, startAt, media, onClose, findGoogle) {
   const trail = [];                       // { deck, media, index } a link jumped away from
   let hideTimer = null;
 
+  // Time on screen, per deck and slide, for this sitting.
+  const onScreen = new Map();               // deckId:index -> ms before the current stretch
+  let since = null;                         // when the current stretch began
+  const slideKey = () => deckId + ':' + index;
+  const elapsed = () => (onScreen.get(slideKey()) || 0) + (since == null ? 0 : performance.now() - since);
+
+  function pause() {
+    if (since == null) return;
+    const ms = performance.now() - since;
+    since = null;
+    onScreen.set(slideKey(), (onScreen.get(slideKey()) || 0) + ms);
+    if (ms < 2000) return;                  // flicking past a slide isn't teaching it
+    const slide = deck.slides[index];
+    logTiming({ deck: deckId, deckName, slide: index, gid: slide.gid || null,
+                song: slide.song ? slide.song.name : null, title: slide.title || '',
+                ms: Math.round(ms), at: Date.now() }).catch(() => {});
+  }
+
+  function resume() {
+    if (since == null && !document.hidden) since = performance.now();
+  }
+
+  function paintTimers() {
+    const t = clock(elapsed());
+    for (const v of frame.querySelectorAll('.timer-val')) if (v.textContent !== t) v.textContent = t;
+  }
+  const ticker = setInterval(paintTimers, 250);
+
+  function onVisibility() {
+    if (document.hidden) pause(); else resume();
+  }
+
   function clamp(i) { return Math.max(0, Math.min(deck.slides.length - 1, i)); }
 
   function show(i) {
+    pause();
     index = clamp(i);
+    resume();
     const slide = deck.slides[index];
-    const stage = renderSlide(slide, deck, { media, onLink: follow });
+    const stage = renderSlide(slide, deck, { media, onLink: follow, timer: () => clock(elapsed()) });
     frame.replaceChildren(stage);
     fit();
     num.textContent = (index + 1) + ' / ' + deck.slides.length;
@@ -80,14 +122,14 @@ export function present(record, startAt, media, onClose, findGoogle) {
   }
 
   async function follow(link) {
-    if (link.slide != null) { trail.push({ deck, media, index }); show(link.slide); return; }
+    if (link.slide != null) { trail.push({ deck, media, index, deckId, deckName }); show(link.slide); return; }
     if (link.gdoc && findGoogle) {
       // A link into another Google deck: open our copy of it if we have one.
       const hit = await findGoogle(link.gdoc, link.gslide);
       if (hit) {
-        trail.push({ deck, media, index });
-        deck = hit.deck;
-        media = hit.media;
+        trail.push({ deck, media, index, deckId, deckName });
+        pause();
+        ({ deck, media, deckId, deckName } = hit);
         show(hit.index);
         return;
       }
@@ -102,8 +144,8 @@ export function present(record, startAt, media, onClose, findGoogle) {
   function back() {
     if (!trail.length) return;
     const t = trail.pop();
-    deck = t.deck;
-    media = t.media;
+    pause();
+    ({ deck, media, deckId, deckName } = t);
     show(t.index);
   }
 
@@ -136,6 +178,9 @@ export function present(record, startAt, media, onClose, findGoogle) {
   }
 
   function close() {
+    pause();
+    clearInterval(ticker);
+    document.removeEventListener('visibilitychange', onVisibility);
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('resize', fit);
     clearTimeout(hideTimer);
@@ -154,11 +199,9 @@ export function present(record, startAt, media, onClose, findGoogle) {
     if (Math.abs(dx) > 60) { step(dx < 0 ? 1 : -1); e.preventDefault(); }
   });
 
-  root.addEventListener('click', (e) => {
-    if (bar.contains(e.target) || notes.contains(e.target)) return;
-    step(1);
-  });
+  root.addEventListener('click', wake);
   root.addEventListener('mousemove', wake);
+  document.addEventListener('visibilitychange', onVisibility);
   document.addEventListener('keydown', onKey);
   window.addEventListener('resize', fit);
 
@@ -168,4 +211,12 @@ export function present(record, startAt, media, onClose, findGoogle) {
   show(index);
   wake();
   return { show, close };
+}
+
+/** 75 seconds -> "1:15"; an hour or more -> "1:02:03". */
+function clock(ms) {
+  const t = Math.floor(ms / 1000);
+  const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, sec = t % 60;
+  const ss = String(sec).padStart(2, '0');
+  return h ? h + ':' + String(m).padStart(2, '0') + ':' + ss : m + ':' + ss;
 }
