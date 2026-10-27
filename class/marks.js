@@ -45,7 +45,44 @@ const inside = (el, ring) => {
     el.w <= ring.w && el.h <= ring.h;
 };
 
+export const GRADES = ['PK', 'K', '1'];
+
 export function markDeck(deck) {
+  markSlides(deck);
+  // A menu: a slide of song icons that each jump to their song.
+  deck.slides.forEach((slide) => {
+    const jumps = slide.els.filter((el) => el.link && el.link.slide != null &&
+      deck.slides[el.link.slide] && deck.slides[el.link.slide].song);
+    if (jumps.length >= 4) slide.menu = true; else delete slide.menu;
+  });
+  if (!deck.gradesSet) guessGrades(deck);
+  return deck;
+}
+
+/* The decks run in sections: a big "PK" slide, then the songs that start in
+   PK, then "K", then "1", then "EXTRA". Until grades are set by hand, a song
+   is for the grade its section starts in and the grades after it, the way the
+   old K menus open PK songs too. */
+function guessGrades(deck) {
+  let section = null;
+  for (const slide of deck.slides) {
+    const t = (slide.title || '').trim().toUpperCase();
+    if (!slide.song && !slide.menu && slide.els.length <= 3 && (GRADES.includes(t) || t === 'EXTRA')) {
+      section = t === 'EXTRA' ? null : t;
+      if (section) slide.grades = [section]; else delete slide.grades;
+      continue;
+    }
+    if (slide.song && slide.song.kind === 'song' && section) slide.grades = GRADES.slice(GRADES.indexOf(section));
+    else delete slide.grades;
+  }
+}
+
+/** True when a slide belongs in a grade's run of slides. Slides with no grade go everywhere. */
+export function forGrade(slide, grade) {
+  return !grade || !slide.grades || !slide.grades.length || slide.grades.includes(grade);
+}
+
+function markSlides(deck) {
   deck.slides.forEach((slide, i) => {
     const els = slide.els;
     for (const el of els) delete el.role;
@@ -83,6 +120,7 @@ export function markDeck(deck) {
     for (const el of els) if (el.role === 'timer') el.box = timerBox(el, els);
 
     delete slide.song;
+    delete slide.spinner;
     if (!els.some((el) => el.role === 'counter')) {
       const spin = els.find((el) => el.role === 'spinner');
       if (spin) slide.spinner = spin.link && spin.link.url;
@@ -101,7 +139,6 @@ export function markDeck(deck) {
     const spin = els.find((el) => el.role === 'spinner');
     if (spin && spin.link) song.spinner = spin.link.url;
   });
-  return deck;
 }
 
 /* The timer's words sit on a wider text frame ("<<0:00+>>") laid over a

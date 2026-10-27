@@ -68,6 +68,11 @@ main.lib { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
 .slide-card .cap b { color: var(--forest); }
 .slide-card .cap .song-icon { width: 18px; height: 18px; object-fit: contain; flex: none; }
 .deck-sum { color: var(--muted); margin: -8px 0 14px; }
+.grades { display: inline-flex; gap: 4px; background: #EFE8D6; border-radius: 999px; padding: 3px; }
+.chip { border: 0; background: transparent; border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 15px; }
+.chip.on { background: var(--moss); color: var(--cream); }
+.slide-card .cap .cap-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.slide-card .cap .cap-g { flex: none; font-size: 11px; font-weight: 600; color: var(--moss); }
 .slide-card.hidden-slide .thumb { opacity: .45; }
 .warn { background: #FBEFD3; border-radius: 12px; padding: 10px 14px; margin: 0 0 16px; color: #6B4E12; }
 
@@ -132,6 +137,10 @@ body.editing-deck { overflow: hidden; }
 .ed-slide.drop-before { border-top-color: var(--moss); }
 .ed-slide.drop-after { border-bottom-color: var(--moss); }
 .ed-strip-tools { display: flex; justify-content: space-around; padding: 6px; border-top: 1px solid var(--line); }
+.ed-grade { font-size: 14px; font-weight: 600; border: 1px solid var(--line); min-width: 44px; }
+.ed-slide .n { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.ed-slide .g { font-size: 10px; line-height: 1.2; color: var(--moss); font-weight: 600; text-align: right; }
+.ed-slide.picked .thumb { border-color: var(--moss); }
 
 .ed-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .ed-stagebox { flex: 1; min-height: 0; position: relative; overflow: hidden; touch-action: none; }

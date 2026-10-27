@@ -2,15 +2,17 @@
    Routes live in the hash: #/ is the library, #/deck/<id> is one deck. */
 
 import { convertPptx } from './pptx.js';
-import { present } from './present.js';
+import { present, MENU } from './present.js';
+import { buildMenu } from './menus.js';
 import { openEditor } from './editor.js';
 import { el, thumb, loadMedia } from './ui.js';
 import * as store from './store.js';
-import { missingIcons } from './marks.js';
+import { missingIcons, forGrade, GRADES } from './marks.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
 const picker = $('#picker');
+let gradePick = null;                     // the grade the deck pages show, or null for all
 
 // ---- library ---------------------------------------------------------------
 
@@ -49,14 +51,24 @@ async function showDeck(id, startPresenting, editAt) {
     openEditor(rec, editAt, { media, findGoogle, onExit: () => { location.hash = '#/deck/' + rec.id; } });
     return;
   }
-  const run = (i) => present(rec, i, media, (at) => {
-    const card = main.querySelectorAll('.slide-card')[at];
+  const grade = gradePick;
+  const run = (i, menu) => present(rec, menu ? MENU : i, media, (at) => {
+    const card = main.querySelector('.slide-card[data-n="' + at + '"]');
     if (card) card.scrollIntoView({ block: 'center' });
-  }, findGoogle);
+  }, findGoogle, { grade, menu: grade ? buildMenu(rec.deck, grade, rec.name) : null });
+  const first = () => Math.max(0, rec.deck.slides.findIndex((s) => !s.hidden && forGrade(s, grade) && !(grade && s.menu)));
+
+  const chips = el('span', { class: 'grades' },
+    [null, ...GRADES].map((g) => el('button', {
+      class: 'chip' + (g === grade ? ' on' : ''),
+      onclick: () => { gradePick = g; showDeck(id); }
+    }, g || 'All')));
 
   const head = el('div', { class: 'deck-head' },
     el('h2', {}, rec.name),
-    el('button', { class: 'btn', onclick: () => run(0) }, '▶ Present'),
+    chips,
+    grade ? el('button', { class: 'btn quiet', onclick: () => run(0, true) }, '▦ Menu') : null,
+    el('button', { class: 'btn', onclick: () => run(first()) }, '▶ Present'),
     el('button', { class: 'btn quiet', onclick: () => { location.hash = '#/deck/' + rec.id + '/edit'; } }, 'Edit'),
     el('button', { class: 'btn danger', onclick: async () => {
       if (!window.confirm('Remove "' + rec.name + '" from this device?')) return;
@@ -70,23 +82,25 @@ async function showDeck(id, startPresenting, editAt) {
   if (noIcon.length) {
     notes.push('No song icon: ' + noIcon.map(({ s, i }) => (s.title || 'untitled') + ' (' + (i + 1) + ')').join(', ') + '.');
   }
-  const songs = rec.deck.slides.filter((s) => s.song && s.song.kind === 'song').length;
+  const songs = rec.deck.slides.filter((s) => s.song && s.song.kind === 'song' && forGrade(s, grade)).length;
   const summary = songs ? el('p', { class: 'deck-sum' }, songs + ' song slides') : null;
   const warn = notes.length ? el('div', { class: 'warn' }, notes.join(' ')) : null;
 
   const grid = el('div', { class: 'slides' });
   rec.deck.slides.forEach((s, i) => {
+    if (!forGrade(s, grade) || (grade && s.menu)) return;
     grid.append(el('button', {
-      class: 'slide-card' + (s.hidden ? ' hidden-slide' : ''),
+      class: 'slide-card' + (s.hidden ? ' hidden-slide' : ''), 'data-n': i,
       title: s.hidden ? 'Hidden slide (skipped when you click through)' : 'Present from here',
       onclick: () => run(i)
     }, thumb(s, rec.deck, media),
     el('div', { class: 'cap' }, el('b', {}, String(i + 1)),
       s.song && s.song.icon ? el('img', { class: 'song-icon', src: media(s.song.icon), alt: '' }) : null,
-      s.title || '')));
+      el('span', { class: 'cap-t' }, s.title || ''),
+      s.grades && s.grades.length ? el('span', { class: 'cap-g' }, s.grades.join(' ')) : null)));
   });
   main.replaceChildren(head, summary || '', warn || '', grid);
-  if (startPresenting) run(0);
+  if (startPresenting) run(first());
 }
 
 /** The imported copy of a Google deck (and slide), for links between decks. */
