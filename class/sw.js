@@ -2,9 +2,9 @@
    Network first, so a new version shows up the next time the app opens with
    a connection; the last copy that loaded is kept for when there is none.
    Decks and pictures are not in here - they live in IndexedDB (see store.js). */
-var CACHE = 'class-shell-v3';
+var CACHE = 'class-shell-v4';
 var SHELL = ['./', 'index.html', 'class.css', 'app.js', 'pptx.js', 'zip.js', 'render.js',
-             'present.js', 'store.js', 'marks.js', 'editor.js', 'ui.js', 'manifest.webmanifest',
+             'present.js', 'store.js', 'marks.js', 'editor.js', 'ui.js', 'menus.js', 'manifest.webmanifest',
              'fonts/comic-neue-latin-400-normal.woff2', 'fonts/comic-neue-latin-400-italic.woff2',
              'fonts/comic-neue-latin-700-normal.woff2', 'fonts/comic-neue-latin-700-italic.woff2',
              'icons/icon-192.png', 'icons/icon-180.png',

@@ -12,8 +12,13 @@
 
 import { renderSlide } from './render.js';
 import { logTiming } from './store.js';
+import { forGrade } from './marks.js';
 
-export function present(record, startAt, media, onClose, findGoogle) {
+export const MENU = -1;                    // the index Present gives a grade's built menu
+
+/** opts.grade: show only that grade's slides. opts.menu: a built menu slide (see menus.js). */
+export function present(record, startAt, media, onClose, findGoogle, opts = {}) {
+  const { grade, menu } = opts;
   let deck = record.deck;
   let deckId = record.id;
   let deckName = record.name;
@@ -46,12 +51,13 @@ export function present(record, startAt, media, onClose, findGoogle) {
   num.className = 'num';
   bar.appendChild(num);
   btn('›', 'Next slide', () => step(1));
+  if (menu) btn('▦', 'Menu (M)', () => show(MENU));
   btn('☰', 'Speaker notes (N)', () => toggleNotes());
   btn('⛶', 'Full screen (F)', () => toggleFull());
   btn('✕', 'Leave (Esc)', () => close());
   root.appendChild(bar);
 
-  let index = clamp(startAt || 0);
+  let index = startAt === MENU && menu ? MENU : clamp(startAt || 0);
   const trail = [];                       // { deck, media, index } a link jumped away from
   let hideTimer = null;
 
@@ -65,6 +71,7 @@ export function present(record, startAt, media, onClose, findGoogle) {
     if (since == null) return;
     const ms = performance.now() - since;
     since = null;
+    if (index === MENU) return;
     onScreen.set(slideKey(), (onScreen.get(slideKey()) || 0) + ms);
     if (ms < 2000) return;                  // flicking past a slide isn't teaching it
     const slide = deck.slides[index];
@@ -91,13 +98,13 @@ export function present(record, startAt, media, onClose, findGoogle) {
 
   function show(i) {
     pause();
-    index = clamp(i);
+    index = i === MENU && menu && deck === record.deck ? MENU : clamp(i);
     resume();
-    const slide = deck.slides[index];
+    const slide = index === MENU ? menu : deck.slides[index];
     const stage = renderSlide(slide, deck, { media, onLink: follow, timer: () => clock(elapsed()) });
     frame.replaceChildren(stage);
     fit();
-    num.textContent = (index + 1) + ' / ' + deck.slides.length;
+    num.textContent = index === MENU ? '▦' : (index + 1) + ' / ' + deck.slides.length;
     notes.textContent = slide.notes || 'No notes on this slide.';
     backBtn.hidden = !trail.length;
   }
@@ -113,10 +120,13 @@ export function present(record, startAt, media, onClose, findGoogle) {
     frame.style.transform = 'scale(' + s + ')';
   }
 
-  // Sequential moves skip hidden slides, as in Google Slides.
+  // Sequential moves skip hidden slides, as in Google Slides, and slides for
+  // other grades (and the old menu slides) when showing one grade.
+  const skip = (s) => s.hidden || !forGrade(s, grade) || (grade && s.menu);
   function step(dir) {
+    if (index === MENU && dir < 0) return;
     let i = index + dir;
-    while (i >= 0 && i < deck.slides.length && deck.slides[i].hidden) i += dir;
+    while (i >= 0 && i < deck.slides.length && skip(deck.slides[i])) i += dir;
     if (i < 0 || i >= deck.slides.length) return;
     show(i);
   }
@@ -172,6 +182,7 @@ export function present(record, startAt, media, onClose, findGoogle) {
     else if (k === 'f' || k === 'F') toggleFull();
     else if (k === 'n' || k === 'N') toggleNotes();
     else if (k === 'b' || k === 'B') back();
+    else if ((k === 'm' || k === 'M') && menu) show(MENU);
     else if (k === 'Escape') { if (!document.fullscreenElement) close(); return; }
     else return;
     e.preventDefault();

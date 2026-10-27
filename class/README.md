@@ -15,6 +15,13 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only
   the slides it touches. Slide links follow their slide when slides move. Saves as it goes.
 - `ui.js`: helpers the pages share (thumbnails, picture URLs).
+- `menus.js`: builds a grade's menu on demand: the icon of every song for that grade, each one
+  jumping to its song, in the look of the deck's own menu slides. The deck page's grade chips
+  (All, PK, K, 1) filter the slides, Present skips other grades, and Menu opens the built menu.
+- Pictures from the web: the editor's search button opens Google Images (SafeSearch on) in its
+  own tab; a copied picture pastes in with Ctrl+V, and "Use as background" turns a picture into
+  the slide background. In-app search would need an API key on a server, which this site
+  doesn't have yet.
 - `pptx.js` (with `zip.js`): converts a .pptx into the deck format below, right in the browser.
   Nothing is uploaded anywhere.
 - `render.js`: draws one slide on a 960 x 540 stage. Present mode, thumbnails and
@@ -29,7 +36,10 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   Script planner's own rule), the position figure in the ring (stand, sit or lie, by picture),
   the minutes number under the counter, and the return arrow (notched arrow: next week; four-way
   arrow: later). On any slide, a shape linking to a name spinner. A mark set in the editor
-  (`el.mark`) wins over the rules. Runs on import and on every load.
+  (`el.mark`) wins over the rules. Also marks menu slides (`slide.menu`), and until grades are
+  set by hand (`deck.gradesSet`, set when the editor opens) guesses each slide's grades from the
+  deck's PK / K / 1 / EXTRA sections: a song is for its section's grade and the ones after it.
+  Runs on import and on every load.
 - `store.js`: IndexedDB. Decks and pictures live on the device they were imported on.
   `timings` gets a row each time a slide is on screen for 2 seconds or more
   (deck, slide, song, milliseconds), for average song lengths later.
@@ -40,8 +50,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 ## Deck format
 
 ```
-deck = { w: 960, h: 540, googleId, warnings: [], slides: [slide] }
-slide = { bg: fill, els: [element], notes, title, gid, hidden, spinner,
+deck = { w: 960, h: 540, googleId, gradesSet, warnings: [], slides: [slide] }
+slide = { bg: fill, els: [element], notes, title, gid, hidden, spinner, menu, grades: ['PK', 'K', '1'],
           song: { kind: 'song' | 'kidsChoice', name, icon, minutes, position, returns, spinner } }
 element = { t: 'sp' | 'pic', x, y, w, h, rot, flipH, flipV, geom, adj,
             fill, line, text, link, media, crop, alpha,

@@ -7,7 +7,7 @@
    are moved, added or deleted. */
 
 import { renderSlide, drawElement, geometry } from './render.js';
-import { markDeck, ROLES } from './marks.js';
+import { markDeck, ROLES, GRADES } from './marks.js';
 import { guessTitle } from './pptx.js';
 import { present } from './present.js';
 import * as store from './store.js';
@@ -25,6 +25,9 @@ const MIN_SIZE = 4;
 
 export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   const deck = rec.deck;
+  // Grades guessed from the deck's sections stay put once editing starts,
+  // so taking out the big PK, K and 1 slides doesn't lose them.
+  deck.gradesSet = true;
   let index = Math.max(0, Math.min(deck.slides.length - 1, startAt || 0));
   let sel = [];                            // element indexes on this slide
   let editing = null;                      // { i, txt } while typing in a box
@@ -36,6 +39,7 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   let stage = null;
   let saveTimer = null;
   let dragFrom = null;
+  let picked = new Set();                  // more slides picked in the strip (Shift or Ctrl click)
 
   // ---- layout ---------------------------------------------------------------
 
@@ -55,6 +59,31 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   const picker = el('input', { type: 'file', accept: 'image/*', hidden: true, multiple: true });
   const replacer = el('input', { type: 'file', accept: 'image/*', hidden: true });
+  const bgPicker = el('input', { type: 'file', accept: 'image/*', hidden: true });
+
+  // Google Images opens in its own tab, with SafeSearch on. Copy a picture
+  // there and paste it here (Ctrl+V); "Use as background" makes it the background.
+  const searchBox = el('div', { class: 'ed-menu ed-link', hidden: true });
+  const searchInput = el('input', { type: 'text', class: 'ed-input', placeholder: 'Search Google Images',
+    'aria-label': 'Search Google Images' });
+  const searchGo = () => {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    window.open('https://www.google.com/search?tbm=isch&safe=active&q=' + encodeURIComponent(q), 'mwm-images');
+    searchBox.hidden = true;
+  };
+  searchBox.append(searchInput, tool('🔍', 'Search', searchGo));
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); searchGo(); }
+    if (e.key === 'Escape') { e.preventDefault(); searchBox.hidden = true; }
+  });
+  const searchBtn = tool('🔍', 'Find pictures on Google Images, then copy one and paste it here', () => {
+    searchBox.hidden = !searchBox.hidden;
+    if (searchBox.hidden) return;
+    if (!searchInput.value) searchInput.value = cur().title || '';
+    searchInput.focus();
+    searchInput.select();
+  });
 
   const undoBtn = tool('↶', 'Undo (Ctrl+Z)', () => doUndo());
   const redoBtn = tool('↷', 'Redo (Ctrl+Y)', () => doRedo());
@@ -77,11 +106,11 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   const lineColor = color('Line color', (v) => setLine({ color: v }));
   const lineWidth = el('select', { class: 'ed-select', title: 'Line width', 'aria-label': 'Line width' },
     LINE_WIDTHS.map((w) => el('option', { value: w }, w ? w + ' px' : 'No line')));
-  lineWidth.addEventListener('change', () => setLine({ width: Number(lineWidth.value) }));
+  lineWidth.addEventListener('change', () => { setLine({ width: Number(lineWidth.value) }); lineWidth.blur(); });
 
   const fontSel = el('select', { class: 'ed-select', title: 'Font', 'aria-label': 'Font' },
     FONTS.map((f) => el('option', { value: f }, f)));
-  fontSel.addEventListener('change', () => setRuns({ font: fontSel.value }));
+  fontSel.addEventListener('change', () => { setRuns({ font: fontSel.value }); fontSel.blur(); });
   const sizeOut = el('span', { class: 'ed-size' }, '');
   const smaller = tool('A−', 'Smaller text', () => resizeText(-1));
   const bigger = tool('A+', 'Bigger text', () => resizeText(1));
@@ -105,9 +134,10 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   const markSel = el('select', { class: 'ed-select', title: 'Mark as', 'aria-label': 'Mark as' },
     el('option', { value: '' }, 'Not marked'),
     Object.entries(ROLES).map(([k, v]) => el('option', { value: k }, v)));
-  markSel.addEventListener('change', () => setMark(markSel.value));
+  markSel.addEventListener('change', () => { setMark(markSel.value); markSel.blur(); });
 
   const replaceBtn = tool('🖼', 'Replace picture', () => replacer.click());
+  const toBgBtn = tool('▣', 'Use as background', () => pictureToBackground());
   const frontBtn = tool('⤒', 'Bring to front', () => restack(1));
   const backBtn = tool('⤓', 'Send to back', () => restack(-1));
   const dupBtn = tool('⧉', 'Duplicate (Ctrl+D)', () => duplicate());
@@ -115,22 +145,25 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   const shapeTools = group(fillColor, noFill, lineColor, lineWidth);
   const textTools = group(fontSel, smaller, sizeOut, bigger, boldBtn, italicBtn, underBtn, textColor, ...alignBtns);
-  const objTools = group(linkBtn, markSel, replaceBtn, frontBtn, backBtn, dupBtn, delBtn);
-  const slideTools = group(el('label', { class: 'ed-label' }, 'Background', bgColor));
+  const objTools = group(linkBtn, markSel, replaceBtn, toBgBtn, frontBtn, backBtn, dupBtn, delBtn);
+  const slideTools = group(el('label', { class: 'ed-label' }, 'Background', bgColor),
+    tool('🖼', 'Background picture', () => bgPicker.click()));
 
   const top = el('header', { class: 'ed-top' },
     tool('‹', 'Back to the deck', () => close(), 'ed-back'),
     el('h1', {}, rec.name),
     group(undoBtn, redoBtn),
     group(tool('T', 'Text box', () => addText()), el('span', { class: 'ed-anchor' }, shapeBtn, shapeMenu),
-      tool('🖼', 'Picture', () => picker.click())),
+      tool('🖼', 'Picture', () => picker.click()), el('span', { class: 'ed-anchor' }, searchBtn, searchBox)),
     slideTools, shapeTools, textTools, el('span', { class: 'ed-anchor' }, objTools, linkBox),
     el('span', { class: 'spacer' }),
     el('button', { class: 'btn', onclick: () => run() }, '▶ Present'),
-    picker, replacer);
+    picker, replacer, bgPicker);
 
   const list = el('div', { class: 'ed-list' });
+  const gradeBtns = GRADES.map((g) => tool(g, 'For ' + g, () => toggleGrade(g), 'ed-grade'));
   const strip = el('aside', { class: 'ed-strip' }, list,
+    el('div', { class: 'ed-strip-tools' }, ...gradeBtns),
     el('div', { class: 'ed-strip-tools' },
       tool('＋', 'New slide (Ctrl+M)', () => addSlide()),
       tool('⧉', 'Duplicate slide', () => duplicateSlide()),
@@ -217,7 +250,7 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     enable(shapeTools, els.some((e) => e.t === 'sp'));
     enable(textTools, els.some((e) => e.text && e.role !== 'timer') || !!editing);
     enable(objTools, els.length > 0);
-    replaceBtn.disabled = !(one && one.t === 'pic');
+    replaceBtn.disabled = toBgBtn.disabled = !(one && one.t === 'pic');
     linkBtn.disabled = markSel.disabled = !one;
     bgColor.value = solid(cur().bg) || '#ffffff';
     const shape = els.find((e) => e.t === 'sp');
@@ -251,8 +284,19 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   function stripItem(s, i) {
     const item = el('div', { class: 'ed-slide' + (s.hidden ? ' hidden-slide' : ''), draggable: 'true', 'data-n': i },
-      el('span', { class: 'n' }, String(i + 1)), thumb(s, deck, media));
-    item.addEventListener('click', () => go(i));
+      el('span', { class: 'n' }, String(i + 1), s.grades && s.grades.length ? el('span', { class: 'g' }, s.grades.join(' ')) : null),
+      thumb(s, deck, media));
+    item.addEventListener('click', (e) => {
+      if (e.shiftKey) {
+        const [a, b] = [Math.min(index, i), Math.max(index, i)];
+        picked = new Set(Array.from({ length: b - a + 1 }, (_, k) => a + k));
+        go(i, true);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (!picked.size) picked.add(index);
+        if (picked.has(i) && picked.size > 1) picked.delete(i); else picked.add(i);
+        go(i, true);
+      } else go(i);
+    });
     item.addEventListener('dragstart', (e) => { dragFrom = i; e.dataTransfer.effectAllowed = 'move'; });
     item.addEventListener('dragover', (e) => {
       if (dragFrom == null) return;
@@ -284,12 +328,23 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
 
   function markStrip() {
-    [...list.children].forEach((c, i) => c.classList.toggle('on', i === index));
+    [...list.children].forEach((c, i) => {
+      c.classList.toggle('on', i === index);
+      c.classList.toggle('picked', picked.has(i));
+    });
     const on = list.children[index];
     if (on) on.scrollIntoView({ block: 'nearest' });
+    const slides = pickedSlides().map((i) => deck.slides[i]);
+    gradeBtns.forEach((b, k) => b.classList.toggle('on', slides.every((x) => x.grades && x.grades.includes(GRADES[k]))));
   }
 
-  function go(i) {
+  // The slides the strip tools work on: the picked ones, or the current one.
+  function pickedSlides() {
+    return picked.size ? [...picked].filter((i) => i < deck.slides.length).sort((a, b) => a - b) : [index];
+  }
+
+  function go(i, keepPicked) {
+    if (!keepPicked) picked = new Set();
     commitText();
     index = Math.max(0, Math.min(deck.slides.length - 1, i));
     sel = [];
@@ -904,10 +959,12 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   function deleteSlide() {
     commitText();
-    if (deck.slides.length < 2) return;
-    const next = deck.slides.slice();
-    next.splice(index, 1);
-    restructure(next, Math.min(index, next.length - 1));
+    const gone = new Set(pickedSlides());
+    if (deck.slides.length - gone.size < 1) return;
+    const next = deck.slides.filter((_, i) => !gone.has(i));
+    const first = Math.min(...gone);
+    picked = new Set();
+    restructure(next, Math.min(first, next.length - 1));
   }
 
   function moveSlide(from, to) {
@@ -919,27 +976,70 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
 
   function toggleHidden() {
+    const list = pickedSlides();
+    const hide = !list.every((i) => deck.slides[i].hidden);
     begin();
-    const s = ws();
-    if (s.hidden) delete s.hidden; else s.hidden = true;
+    for (const i of list) {
+      const s = ws(i);
+      if (hide) s.hidden = true; else delete s.hidden;
+    }
     commit();
+  }
+
+  function toggleGrade(g) {
+    const list = pickedSlides();
+    const add = !list.every((i) => (deck.slides[i].grades || []).includes(g));
+    begin();
+    for (const i of list) {
+      const s = ws(i);
+      const set = new Set(s.grades || []);
+      if (add) set.add(g); else set.delete(g);
+      s.grades = GRADES.filter((x) => set.has(x));
+      if (!s.grades.length) delete s.grades;
+    }
+    deck.gradesSet = true;               // from now on grades are Kyle's, not guessed
+    commit();
+  }
+
+  function pictureToBackground() {
+    const i = sel[0];
+    const e = cur().els[i];
+    if (!e || e.t !== 'pic') return;
+    change(() => {
+      const s = ws();
+      s.bg = { type: 'image', media: e.media };
+      s.els.splice(i, 1);
+    });
+    sel = [];
+    paintSel();
+    tools();
+  }
+
+  async function backgroundFromFile(file) {
+    const pic = await readPicture(file);
+    if (pic) change(() => { ws().bg = { type: 'image', media: pic.hash }; });
   }
 
   // ---- keys, paste and drop -------------------------------------------------------
 
   function onKey(e) {
     const t = e.target;
-    const typing = editing || (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT'));
+    const field = t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && t.type === 'text'));
+    const typing = editing || field || (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT'));
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key;
+    const is = (letter) => k.toLowerCase() === letter || e.code === 'Key' + letter.toUpperCase();
     if (editing && k === 'Escape') { e.preventDefault(); commitText(); return; }
-    if (mod && !e.altKey && (k === 'z' || k === 'Z') && !(typing && !editing)) {
-      if (editing) return;             // the browser undoes typing inside the box
+    // Undo and redo work everywhere except where words are being typed,
+    // which undo their own typing first.
+    if (mod && !e.altKey && (is('z') || is('y')) && !field) {
+      const redoing = is('y') || e.shiftKey;
+      if (editing && document.queryCommandEnabled(redoing ? 'redo' : 'undo')) return;
       e.preventDefault();
-      if (e.shiftKey) doRedo(); else doUndo();
+      if (redoing) doRedo(); else doUndo();
+      if (t && t.blur && t !== document.body) t.blur();
       return;
     }
-    if (mod && (k === 'y' || k === 'Y') && !typing) { e.preventDefault(); doRedo(); return; }
     if (editing && mod && ['b', 'i', 'u'].includes(k.toLowerCase())) {
       e.preventDefault();
       document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[k.toLowerCase()]);
@@ -999,6 +1099,7 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   picker.addEventListener('change', () => { addPictures([...picker.files]); picker.value = ''; });
   replacer.addEventListener('change', () => { if (replacer.files[0]) replacePicture(replacer.files[0]); replacer.value = ''; });
+  bgPicker.addEventListener('change', () => { if (bgPicker.files[0]) backgroundFromFile(bgPicker.files[0]); bgPicker.value = ''; });
 
   notes.addEventListener('input', () => {
     begin('notes:' + index);
@@ -1023,7 +1124,9 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
 
   function closeMenus(e) {
-    if (!shapeMenu.hidden && !e.target.closest('.ed-anchor')) shapeMenu.hidden = true;
+    if (e.target.closest('.ed-anchor')) return;
+    shapeMenu.hidden = true;
+    searchBox.hidden = true;
   }
 
   async function close() {
