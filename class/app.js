@@ -2,61 +2,15 @@
    Routes live in the hash: #/ is the library, #/deck/<id> is one deck. */
 
 import { convertPptx } from './pptx.js';
-import { renderSlide } from './render.js';
 import { present } from './present.js';
+import { openEditor } from './editor.js';
+import { el, thumb, loadMedia } from './ui.js';
 import * as store from './store.js';
 import { missingIcons } from './marks.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
 const picker = $('#picker');
-const urls = new Map();                   // media hash -> object URL, for this session
-
-function el(tag, attrs = {}, ...children) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'class') e.className = v;
-    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
-    else if (v !== false && v != null) e.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of children.flat()) if (c != null) e.append(c);
-  return e;
-}
-
-async function loadMedia(deck) {
-  const need = store.mediaOf(deck).filter((h) => !urls.has(h));
-  if (need.length) {
-    const recs = await store.getMedia(need);
-    recs.forEach((r, i) => { if (r) urls.set(need[i], URL.createObjectURL(r.blob)); });
-  }
-  return (hash) => urls.get(hash) || '';
-}
-
-// A slide drawn small. The stage is scaled to whatever width the card has.
-const sizer = new ResizeObserver((entries) => {
-  for (const e of entries) {
-    const stage = e.target.firstChild;
-    if (stage) stage.style.transform = 'scale(' + e.contentRect.width / stage.offsetWidth + ')';
-  }
-});
-
-const lazy = new IntersectionObserver((entries) => {
-  for (const e of entries) {
-    if (!e.isIntersecting) continue;
-    lazy.unobserve(e.target);
-    e.target._draw();
-  }
-}, { rootMargin: '400px' });
-
-function thumb(slide, deck, media) {
-  const t = el('div', { class: 'thumb' });
-  t._draw = () => {
-    t.replaceChildren(renderSlide(slide, deck, { media }));
-    sizer.observe(t);
-  };
-  lazy.observe(t);
-  return t;
-}
 
 // ---- library ---------------------------------------------------------------
 
@@ -86,11 +40,15 @@ async function showLibrary() {
 
 // ---- one deck --------------------------------------------------------------
 
-async function showDeck(id, startPresenting) {
+async function showDeck(id, startPresenting, editAt) {
   const rec = await store.getDeck(id);
   if (!rec) { location.hash = '#/'; return; }
   document.title = rec.name + ' · Class';
   const media = await loadMedia(rec.deck);
+  if (editAt != null) {
+    openEditor(rec, editAt, { media, findGoogle, onExit: () => { location.hash = '#/deck/' + rec.id; } });
+    return;
+  }
   const run = (i) => present(rec, i, media, (at) => {
     const card = main.querySelectorAll('.slide-card')[at];
     if (card) card.scrollIntoView({ block: 'center' });
@@ -99,6 +57,7 @@ async function showDeck(id, startPresenting) {
   const head = el('div', { class: 'deck-head' },
     el('h2', {}, rec.name),
     el('button', { class: 'btn', onclick: () => run(0) }, '▶ Present'),
+    el('button', { class: 'btn quiet', onclick: () => { location.hash = '#/deck/' + rec.id + '/edit'; } }, 'Edit'),
     el('button', { class: 'btn danger', onclick: async () => {
       if (!window.confirm('Remove "' + rec.name + '" from this device?')) return;
       await store.deleteDeck(rec.id);
@@ -109,11 +68,10 @@ async function showDeck(id, startPresenting) {
   const notes = [...(rec.deck.warnings || [])];
   const noIcon = missingIcons(rec.deck);
   if (noIcon.length) {
-    notes.push(noIcon.length + (noIcon.length === 1 ? ' song slide has' : ' song slides have') +
-      ' no 1-inch song icon: ' + noIcon.map(({ s, i }) => (s.title || 'untitled') + ' (' + (i + 1) + ')').join(', ') + '.');
+    notes.push('No song icon: ' + noIcon.map(({ s, i }) => (s.title || 'untitled') + ' (' + (i + 1) + ')').join(', ') + '.');
   }
   const songs = rec.deck.slides.filter((s) => s.song && s.song.kind === 'song').length;
-  const summary = songs ? el('p', { class: 'deck-sum' }, songs + ' song slides, each with an x/y counter and a timer.') : null;
+  const summary = songs ? el('p', { class: 'deck-sum' }, songs + ' song slides') : null;
   const warn = notes.length ? el('div', { class: 'warn' }, notes.join(' ')) : null;
 
   const grid = el('div', { class: 'slides' });
@@ -196,8 +154,8 @@ function newId() {
 // ---- wiring ----------------------------------------------------------------
 
 function route() {
-  const m = location.hash.match(/^#\/deck\/([\w-]+)(\/present)?/);
-  if (m) showDeck(m[1], !!m[2]);
+  const m = location.hash.match(/^#\/deck\/([\w-]+)(?:\/(present|edit)(?:\/(\d+))?)?/);
+  if (m) showDeck(m[1], m[2] === 'present', m[2] === 'edit' ? Math.max(0, (Number(m[3]) || 1) - 1) : null);
   else showLibrary();
 }
 

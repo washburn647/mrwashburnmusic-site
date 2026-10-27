@@ -30,13 +30,22 @@ export function renderSlide(slide, deck, opts = {}) {
   stage.style.width = deck.w + 'px';
   stage.style.height = deck.h + 'px';
   paintBackground(stage, slide.bg, opts);
-  for (const el of slide.els) {
-    const node = el.t === 'pic' ? drawPicture(el, opts) : drawShape(el, opts);
-    if (!node) continue;
-    if (el.link) makeLink(node, el.link, opts);
+  slide.els.forEach((el, i) => {
+    const node = drawElement(el, opts);
+    if (!node) return;
+    node.dataset.i = i;
     stage.appendChild(node);
-  }
+  });
   return stage;
+}
+
+/** One element on its own, for the editor to redraw while it is dragged. */
+export function drawElement(el, opts = {}) {
+  const node = el.t === 'pic' ? drawPicture(el, opts) : drawShape(el, opts);
+  if (!node) return node;
+  if (el.link) makeLink(node, el.link, opts);
+  if (el.role) node.dataset.role = el.role;
+  return node;
 }
 
 function paintBackground(stage, bg, opts) {
@@ -127,7 +136,6 @@ function drawShape(el, opts) {
   } else if (el.text) {
     d.appendChild(drawText(el, opts));
   }
-  if (el.role) d.dataset.role = el.role;
   return d;
 }
 
@@ -447,20 +455,22 @@ function drawText(el, opts) {
   d.style.padding = tp + 'px ' + rt + 'px ' + b + 'px ' + l + 'px';
   d.style.justifyContent = t.anchor === 'ctr' ? 'center' : t.anchor === 'b' ? 'flex-end' : 'flex-start';
   if (!t.wrap) d.classList.add('nowrap');
-  for (const p of t.paras) {
+  t.paras.forEach((p, pi) => {
     const pd = document.createElement('div');
     pd.className = 'p';
+    pd.dataset.p = pi;
     if (p.algn) pd.style.textAlign = { ctr: 'center', r: 'right', just: 'justify', dist: 'justify' }[p.algn] || 'left';
     if (p.marL) pd.style.paddingLeft = p.marL + 'px';
     const lineK = 1.2 * (p.lnPct || 1);
     pd.style.lineHeight = p.lnPx ? p.lnPx + 'px' : String(lineK);
     if (p.before) pd.style.marginTop = p.before + 'px';
     if (p.after) pd.style.marginBottom = p.after + 'px';
-    const size = (p.runs.find((x) => x.t) || p).sz || 18;
+    const size = (p.runs.find((x) => x.t) || p.runs.find((x) => x.sz) || p).sz || 18;
     pd.style.fontSize = size * PX_PER_PT + 'px';
     if (p.bullet) {
       const bu = document.createElement('span');
       bu.className = 'bu';
+      bu.contentEditable = 'false';
       bu.textContent = p.bullet.char;
       bu.style.color = p.bullet.color;
       bu.style.fontSize = p.bullet.sz * PX_PER_PT + 'px';
@@ -473,11 +483,12 @@ function drawText(el, opts) {
       pd.style.textIndent = p.indent + 'px';
     }
     let any = false;
-    for (const run of p.runs) {
-      if (run.br) { pd.appendChild(document.createElement('br')); continue; }
-      if (!run.t) continue;
+    p.runs.forEach((run, ri) => {
+      if (run.br) { pd.appendChild(document.createElement('br')); return; }
+      if (!run.t) return;
       any = true;
       const s = document.createElement('span');
+      s.dataset.r = ri;
       s.textContent = run.caps ? run.t.toUpperCase() : run.t;
       s.style.fontFamily = fontStack(run.font);
       s.style.fontSize = run.sz * PX_PER_PT + 'px';
@@ -495,12 +506,14 @@ function drawText(el, opts) {
       }
       if (run.link) makeLink(s, run.link, opts);
       pd.appendChild(s);
-    }
+    });
     if (!any) {
-      pd.style.fontFamily = fontStack(p.font);
+      const first = p.runs.find((x) => !x.br) || {};
+      pd.style.fontFamily = fontStack(first.font || p.font);
+      if (first.color) pd.style.color = first.color;
       pd.appendChild(document.createTextNode('​'));
     }
     d.appendChild(pd);
-  }
+  });
   return d;
 }
