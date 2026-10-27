@@ -22,6 +22,19 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   own tab; a copied picture pastes in with Ctrl+V, and "Use as background" turns a picture into
   the slide background. In-app search would need an API key on a server, which this site
   doesn't have yet.
+- `planner.js`, `plans.js`, `xlsx.js`: the planner (`#/plan`), ported from the Apps Script
+  planner. Import DATABASE.xlsx once per year (read in the browser, kept in IndexedDB `plans`).
+  Grade tabs, years ("New year" keeps the catalog, empties plans, zeroes Max), catalog with Max,
+  drag to place or swap, Shift-click to hold a song another class, Max raised when a song is
+  placed past it, undo (Ctrl+Z), class totals. A song's Max per grade also sets which grades
+  its slides are for, until grades are set by hand in the editor. Timed minutes from Present
+  show on the catalog chips' tooltips.
+- `builder.js`: Build on a planner row makes that class's deck in the library, as the Apps
+  Script builder did: title and exit slides from a class deck in the library (named like
+  "1 29"), song slides copied from the category decks (matched by a line of text equal to the
+  catalog name) with x/y stamped, the icon rail with checks, the song list, next class's icons.
+  Links on a copied slide into its category deck open that deck; a link to a menu opens the
+  grade's built menu with songs the plan hasn't reached yet locked.
 - `pptx.js` (with `zip.js`): converts a .pptx into the deck format below, right in the browser.
   Nothing is uploaded anywhere.
 - `render.js`: draws one slide on a 960 x 540 stage. Present mode, thumbnails and

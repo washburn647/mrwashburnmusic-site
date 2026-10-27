@@ -47,7 +47,8 @@ const inside = (el, ring) => {
 
 export const GRADES = ['PK', 'K', '1'];
 
-export function markDeck(deck) {
+/** hint: normName(song) -> grades, from the year plan's Max columns (see plans.js). */
+export function markDeck(deck, hint) {
   markSlides(deck);
   // A menu: a slide of song icons that each jump to their song.
   deck.slides.forEach((slide) => {
@@ -55,15 +56,16 @@ export function markDeck(deck) {
       deck.slides[el.link.slide] && deck.slides[el.link.slide].song);
     if (jumps.length >= 4) slide.menu = true; else delete slide.menu;
   });
-  if (!deck.gradesSet) guessGrades(deck);
+  if (!deck.gradesSet) guessGrades(deck, hint);
   return deck;
 }
 
 /* The decks run in sections: a big "PK" slide, then the songs that start in
    PK, then "K", then "1", then "EXTRA". Until grades are set by hand, a song
    is for the grade its section starts in and the grades after it, the way the
-   old K menus open PK songs too. */
-function guessGrades(deck) {
+   old K menus open PK songs too. A song the year plan gives a Max in some
+   grades is for those grades instead. */
+function guessGrades(deck, hint) {
   let section = null;
   for (const slide of deck.slides) {
     const t = (slide.title || '').trim().toUpperCase();
@@ -72,10 +74,28 @@ function guessGrades(deck) {
       if (section) slide.grades = [section]; else delete slide.grades;
       continue;
     }
-    if (slide.song && slide.song.kind === 'song' && section) slide.grades = GRADES.slice(GRADES.indexOf(section));
+    const planned = slide.song && slide.song.kind === 'song' && hint && planGrades(slide, hint);
+    if (planned) slide.grades = planned;
+    else if (slide.song && slide.song.kind === 'song' && section) slide.grades = GRADES.slice(GRADES.indexOf(section));
     else delete slide.grades;
   }
 }
+
+function planGrades(slide, hint) {
+  for (const el of slide.els) {
+    if (!el.text) continue;
+    for (const p of el.text.paras) {
+      const g = hint.get(norm(p.runs.map((r) => r.t || '').join('')));
+      const ours = g && g.filter((k) => GRADES.includes(k));
+      if (ours && ours.length) return ours;
+    }
+  }
+  return null;
+}
+
+// The same as normName in plans.js.
+const norm = (s) => String(s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+  .replace(/[^a-z0-9']+/g, ' ').trim();
 
 /** True when a slide belongs in a grade's run of slides. Slides with no grade go everywhere. */
 export function forGrade(slide, grade) {

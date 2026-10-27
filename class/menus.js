@@ -1,13 +1,16 @@
 /* A grade's menu, built when it is asked for: every song in the deck that is
    for that grade, as its icon, each one jumping to its song. It takes the
-   look (background and title box) of the deck's own menu slides. */
+   look (background and title box) of the deck's own menu slides.
+
+   opts.locked: slide indexes of songs not unlocked yet. They show under a
+   lock (opts.lock, the decks' lock picture, or a grey veil) and don't jump. */
 
 import { forGrade, textOf } from './marks.js';
 
 const GAP = 14;
 const MAX_ICON = 124;
 
-export function buildMenu(deck, grade, name) {
+export function buildMenu(deck, grade, name, opts = {}) {
   const songs = deck.slides
     .map((s, i) => ({ s, i }))
     .filter(({ s }) => s.song && s.song.kind === 'song' && s.song.icon && !s.hidden && forGrade(s, grade));
@@ -49,8 +52,13 @@ export function buildMenu(deck, grade, name) {
     const row = Math.floor(k / cols), col = k % cols;
     const inRow = Math.min(cols, n - row * cols);
     const x0 = GAP + (W - (inRow * size + (inRow - 1) * GAP)) / 2;
-    els.push({ t: 'pic', x: x0 + col * (size + GAP), y: y0 + row * (size + GAP), w: size, h: size,
-      geom: 'rect', media: s.song.icon, alt: s.song.name, link: { slide: i } });
+    const x = x0 + col * (size + GAP), y = y0 + row * (size + GAP);
+    const locked = opts.locked && opts.locked.has(i);
+    els.push({ t: 'pic', x, y, w: size, h: size, geom: 'rect', media: s.song.icon, alt: s.song.name,
+      link: locked ? undefined : { slide: i } });
+    if (locked && opts.lock) els.push({ t: 'pic', x: x - size * 0.02, y: y - size * 0.02, w: size * 1.04, h: size * 1.04, geom: 'rect', media: opts.lock });
+    else if (locked) els.push({ t: 'sp', x, y, w: size, h: size, geom: 'roundRect', adj: {},
+      fill: { type: 'solid', color: '#55555599' } });
   });
   return { els, bg: template ? template.bg : null, title, generated: true };
 }

@@ -16,12 +16,16 @@ import { forGrade } from './marks.js';
 
 export const MENU = -1;                    // the index Present gives a grade's built menu
 
-/** opts.grade: show only that grade's slides. opts.menu: a built menu slide (see menus.js). */
+/** opts.grade: show only that grade's slides. opts.menu: a built menu slide (see menus.js).
+    opts.openDeck(link): another library deck for a { deck } link, as { deck, media, deckId,
+    deckName, index } or with menu (a built menu) to open on. */
 export function present(record, startAt, media, onClose, findGoogle, opts = {}) {
-  const { grade, menu } = opts;
+  const { grade, menu, openDeck } = opts;
   let deck = record.deck;
   let deckId = record.id;
   let deckName = record.name;
+  const menus = new Map(menu ? [[record.id, menu]] : []);   // deck id -> its built menu
+  const curMenu = () => menus.get(deckId);
   const root = document.createElement('div');
   root.className = 'present';
   root.tabIndex = -1;
@@ -51,7 +55,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   num.className = 'num';
   bar.appendChild(num);
   btn('›', 'Next slide', () => step(1));
-  if (menu) btn('▦', 'Menu (M)', () => show(MENU));
+  const menuBtn = btn('▦', 'Menu (M)', () => show(MENU));
   btn('☰', 'Speaker notes (N)', () => toggleNotes());
   btn('⛶', 'Full screen (F)', () => toggleFull());
   btn('✕', 'Leave (Esc)', () => close());
@@ -75,8 +79,9 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     onScreen.set(slideKey(), (onScreen.get(slideKey()) || 0) + ms);
     if (ms < 2000) return;                  // flicking past a slide isn't teaching it
     const slide = deck.slides[index];
+    const song = slide.plan ? slide.plan.song : slide.song ? slide.song.name : null;
     logTiming({ deck: deckId, deckName, slide: index, gid: slide.gid || null,
-                song: slide.song ? slide.song.name : null, title: slide.title || '',
+                song, category: slide.plan ? slide.plan.category : null, title: slide.title || '',
                 ms: Math.round(ms), at: Date.now() }).catch(() => {});
   }
 
@@ -98,15 +103,16 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
 
   function show(i) {
     pause();
-    index = i === MENU && menu && deck === record.deck ? MENU : clamp(i);
+    index = i === MENU && curMenu() ? MENU : clamp(i);
     resume();
-    const slide = index === MENU ? menu : deck.slides[index];
+    const slide = index === MENU ? curMenu() : deck.slides[index];
     const stage = renderSlide(slide, deck, { media, onLink: follow, timer: () => clock(elapsed()) });
     frame.replaceChildren(stage);
     fit();
     num.textContent = index === MENU ? '▦' : (index + 1) + ' / ' + deck.slides.length;
     notes.textContent = slide.notes || 'No notes on this slide.';
     backBtn.hidden = !trail.length;
+    menuBtn.hidden = !curMenu();
   }
 
   function fit() {
@@ -132,6 +138,17 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   }
 
   async function follow(link) {
+    if (link.deck && openDeck) {
+      const hit = await openDeck(link);
+      if (hit) {
+        trail.push({ deck, media, index, deckId, deckName });
+        pause();
+        ({ deck, media, deckId, deckName } = hit);
+        if (hit.menu) menus.set(deckId, hit.menu);
+        show(hit.menu ? MENU : hit.index);
+        return;
+      }
+    }
     if (link.slide != null) { trail.push({ deck, media, index, deckId, deckName }); show(link.slide); return; }
     if (link.gdoc && findGoogle) {
       // A link into another Google deck: open our copy of it if we have one.
@@ -182,7 +199,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     else if (k === 'f' || k === 'F') toggleFull();
     else if (k === 'n' || k === 'N') toggleNotes();
     else if (k === 'b' || k === 'B') back();
-    else if ((k === 'm' || k === 'M') && menu) show(MENU);
+    else if ((k === 'm' || k === 'M') && curMenu()) show(MENU);
     else if (k === 'Escape') { if (!document.fullscreenElement) close(); return; }
     else return;
     e.preventDefault();

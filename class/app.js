@@ -1,5 +1,6 @@
 /* Class app shell: the library of decks, a deck's slides, and importing.
-   Routes live in the hash: #/ is the library, #/deck/<id> is one deck. */
+   Routes live in the hash: #/ is the library, #/deck/<id> is one deck,
+   #/plan is the planner. */
 
 import { convertPptx } from './pptx.js';
 import { present, MENU } from './present.js';
@@ -8,6 +9,10 @@ import { openEditor } from './editor.js';
 import { el, thumb, loadMedia } from './ui.js';
 import * as store from './store.js';
 import { missingIcons, forGrade, GRADES } from './marks.js';
+import { showPlanner } from './planner.js';
+import { gradeHint, indexSongs, playCount, normName } from './plans.js';
+
+const LOCK = 'e8a2199e2a0d291cde34b6ad10564b06';     // the lock picture the decks' menus use
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -52,10 +57,12 @@ async function showDeck(id, startPresenting, editAt) {
     return;
   }
   const grade = gradePick;
+  const built = rec.deck.built;
   const run = (i, menu) => present(rec, menu ? MENU : i, media, (at) => {
     const card = main.querySelector('.slide-card[data-n="' + at + '"]');
     if (card) card.scrollIntoView({ block: 'center' });
-  }, findGoogle, { grade, menu: grade ? buildMenu(rec.deck, grade, rec.name) : null });
+  }, findGoogle, { grade: grade || (built && built.grade), menu: grade ? buildMenu(rec.deck, grade, rec.name) : null,
+                   openDeck: (link) => openDeck(link, built, grade) });
   const first = () => Math.max(0, rec.deck.slides.findIndex((s) => !s.hidden && forGrade(s, grade) && !(grade && s.menu)));
 
   const chips = el('span', { class: 'grades' },
@@ -101,6 +108,32 @@ async function showDeck(id, startPresenting, editAt) {
   });
   main.replaceChildren(head, summary || '', warn || '', grid);
   if (startPresenting) run(first());
+}
+
+/** A category deck a built class deck links into: a slide, or its menu for the
+    class's grade, with songs the plan hasn't reached yet locked. */
+async function openDeck(link, built, pick) {
+  const rec = await store.getDeck(link.deck);
+  if (!rec) return null;
+  const media = await loadMedia(rec.deck);
+  const hit = { deck: rec.deck, media, deckId: rec.id, deckName: rec.name, index: link.slide || 0 };
+  if (!link.menu) return hit;
+  const grade = (built && built.grade) || pick;
+  if (!grade) return hit;
+  const locked = new Set();
+  const plan = built && await store.getPlan(built.year);
+  const category = plan && plan.categories.find((c) => normName(c) === normName(rec.name));
+  if (category) {
+    const names = plan.catalog[category].map((s) => s.name);
+    const index = indexSongs(rec.deck, names);
+    for (const name of names) {
+      if (playCount(plan, grade, category, name, built.no) > 0) continue;
+      for (const i of index.get(normName(name)) || []) locked.add(i);
+    }
+  }
+  const lock = media(LOCK) ? LOCK : null;
+  hit.menu = buildMenu(rec.deck, grade, rec.name, { locked, lock });
+  return hit;
 }
 
 /** The imported copy of a Google deck (and slide), for links between decks. */
@@ -168,6 +201,8 @@ function newId() {
 // ---- wiring ----------------------------------------------------------------
 
 function route() {
+  main.classList.toggle('wide', location.hash.startsWith('#/plan'));
+  if (location.hash.startsWith('#/plan')) { showPlanner(main); return; }
   const m = location.hash.match(/^#\/deck\/([\w-]+)(?:\/(present|edit)(?:\/(\d+))?)?/);
   if (m) showDeck(m[1], m[2] === 'present', m[2] === 'edit' ? Math.max(0, (Number(m[3]) || 1) - 1) : null);
   else showLibrary();
@@ -190,4 +225,10 @@ document.addEventListener('drop', (e) => {
 });
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-route();
+
+// Song slides take their grades from the plan's Max columns, so load it first.
+store.listPlans().then((years) => {
+  let want = null;
+  try { want = localStorage.getItem('class.year'); } catch (e) { /* private window */ }
+  store.setGradeHint(gradeHint(years.find((y) => y.year === want) || years[years.length - 1]));
+}).catch(() => {}).finally(route);
