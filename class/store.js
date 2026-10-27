@@ -5,7 +5,7 @@
 import { markDeck } from './marks.js';
 
 const DB_NAME = 'mwm-class';
-const VERSION = 2;
+const VERSION = 3;
 let dbPromise = null;
 
 function db() {
@@ -21,6 +21,8 @@ function db() {
         // timings: one row each time a slide is on screen, for how long songs take.
         // { deck, deckName, slide, gid, song, ms, at }
         if (!d.objectStoreNames.contains('timings')) d.createObjectStore('timings', { autoIncrement: true });
+        // plans: one record per school year (see plans.js).
+        if (!d.objectStoreNames.contains('plans')) d.createObjectStore('plans', { keyPath: 'year' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -56,9 +58,25 @@ export function getDeck(id) {
 }
 
 // Decks imported before a marking rule existed get it on the way out.
+let hint = null;                          // song -> grades, from the year plan
 function marked(rec) {
-  if (rec) markDeck(rec.deck);
+  if (rec) markDeck(rec.deck, hint);
   return rec;
+}
+
+export function setGradeHint(map) { hint = map; }
+
+export function listPlans() {
+  return tx('plans', 'readonly', (s) => wrap(s.getAll()))
+    .then((all) => all.sort((a, b) => a.year.localeCompare(b.year)));
+}
+
+export function getPlan(year) {
+  return tx('plans', 'readonly', (s) => wrap(s.get(year)));
+}
+
+export function putPlan(rec) {
+  return tx('plans', 'readwrite', (s) => wrap(s.put(rec)));
 }
 
 /** Record how long a slide was on screen. */
