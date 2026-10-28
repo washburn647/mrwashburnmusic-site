@@ -1,0 +1,103 @@
+/* The piece player (player.js), shared by the student page and the studio. */
+body.playing-piece { overflow: hidden; }
+.player { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: #F6F1E4; color: #2F4A3A; font-family: "Fredoka", system-ui, sans-serif; }
+.player button { font: inherit; color: inherit; border: 0; border-radius: 12px; background: #fff; cursor: pointer; min-width: 44px; min-height: 44px; padding: 6px 12px; font-size: 20px; box-shadow: 0 2px 0 rgba(47,74,58,.1); }
+.player button:focus-visible { outline: 3px solid #E0A458; outline-offset: 1px; }
+.player button.primary { background: #2F4A3A; color: #F6F1E4; font-size: 16px; }
+.ptop { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.ptop h2 { flex: 1; margin: 0; font-size: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptop .close { background: transparent; box-shadow: none; }
+.pscore { flex: 1; overflow: auto; background: #fff; border-radius: 18px 18px 0 0; margin: 0 8px; -webkit-overflow-scrolling: touch; }
+.pstage { position: relative; min-height: 100%; cursor: pointer; }
+.psheet { padding: 4px 0 40px; }
+.psheet svg { display: block; margin: 0 auto; }
+.perr { font-size: 48px; text-align: center; }
+.player-layer { position: absolute; inset: 0; pointer-events: none; }
+.loopbox { position: absolute; background: rgba(224,164,88,.18); border-top: 3px solid #E0A458; border-bottom: 3px solid #E0A458; box-sizing: border-box; }
+.loopbox.picking { background: rgba(224,164,88,.32); }
+.nname { position: absolute; transform: translateX(-50%); white-space: pre; line-height: 1.05; text-align: center; font-weight: 600; color: #2F4A3A; background: rgba(246,241,228,.9); border-radius: 6px; padding: 0 3px; }
+.ball { position: absolute; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #E5243B; box-shadow: 0 2px 0 rgba(0,0,0,.15); transition: left .12s ease-out, top .2s ease-out; }
+.ball.hop { animation: hop .28s ease-out; }
+@keyframes hop { 0% { transform: translateY(0); } 40% { transform: translateY(-12px); } 100% { transform: translateY(0); } }
+.pbar { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 8px calc(10px + env(safe-area-inset-bottom)); flex-wrap: wrap; background: #F6F1E4; }
+.pbar .play { min-width: 72px; min-height: 56px; font-size: 26px; background: #2F4A3A; color: #F6F1E4; border-radius: 999px; }
+.pbar .loop.on { background: #E0A458; color: #fff; }
+.pbar .loop.arming { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px #E0A458; } }
+.speedbox { display: flex; align-items: center; gap: 4px; background: #fff; border-radius: 999px; padding: 2px 6px; }
+.speedbox .small { min-width: 36px; min-height: 36px; padding: 0; background: transparent; box-shadow: none; }
+.speedbox input { width: 110px; accent-color: #2F4A3A; }
+.speed { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 500; line-height: 1; }
+.speed::after { content: attr(data-pct); display: block; font-size: 11px; color: #8A968C; font-weight: 400; }
+.pmore { position: absolute; right: 8px; bottom: 76px; z-index: 2; width: min(360px, calc(100% - 16px)); max-height: 60vh; overflow: auto; background: #fff; border-radius: 18px; padding: 10px 12px; box-shadow: 0 8px 30px rgba(47,74,58,.25); box-sizing: border-box; }
+.prow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 17px; }
+.prow > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg { display: flex; align-items: center; gap: 4px; }
+.seg button { font-size: 15px; min-height: 38px; min-width: 40px; background: #F6F1E4; box-shadow: none; }
+.seg button[aria-pressed="true"] { background: #2F4A3A; color: #F6F1E4; }
+.seg output { min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+.parts { border-top: 2px solid #F6F1E4; margin-top: 6px; padding-top: 6px; }
+@media (max-width: 520px) {
+  .speedbox input { display: none; }
+  .pbar { gap: 6px; flex-wrap: nowrap; }
+  .pbar button { min-width: 42px; padding: 6px 8px; }
+  .pbar .play { min-width: 60px; }
+}
+@media print {
+  .ptop, .pbar, .pmore, .player-layer { display: none !important; }
+  .player { position: static; }
+  .pscore { overflow: visible; }
+}
+
+/* Flash card games (games.js) */
+.game { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: #F6F1E4; color: #2F4A3A; font-family: "Fredoka", system-ui, sans-serif; }
+.game button { font: inherit; color: inherit; border: 0; border-radius: 16px; background: #fff; cursor: pointer; min-width: 48px; min-height: 48px; font-size: 22px; box-shadow: 0 3px 0 rgba(47,74,58,.12); }
+.game button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(47,74,58,.12); }
+.game button:focus-visible { outline: 3px solid #E0A458; }
+.game .ptop .close { background: transparent; box-shadow: none; }
+.gstatus { display: flex; gap: 12px; font-variant-numeric: tabular-nums; font-size: 18px; }
+.gstreak { color: #F47B20; font-weight: 600; }
+.gbody { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); overflow: auto; }
+.gstart { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.gstart .gmode { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 200px; padding: 18px 24px; font-size: 22px; font-weight: 500; }
+.gicon { font-size: 44px; line-height: 1; }
+.best { font-size: 15px; color: #5B6B5F; font-weight: 400; }
+.gtempo { display: flex; align-items: center; gap: 10px; }
+.gtempo output { min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
+.game .gcard { position: relative; width: min(560px, 100%); min-height: 200px; border-radius: 24px; background: #fff; box-shadow: 0 6px 0 rgba(47,74,58,.1); padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+.game .gcard:active { transform: none; }
+.gstaff { width: 100%; overflow: hidden; }
+.gstaff svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.gface, .gback { width: 100%; }
+.gback { display: flex; justify-content: center; }
+.gcard.flipped .gface { animation: flipin .35s ease-out; }
+@keyframes flipin { from { transform: rotateY(90deg); } to { transform: rotateY(0); } }
+.gname { display: block; font-size: 56px; font-weight: 600; color: #7F4FA3; animation: pop .3s ease-out; }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.gsyl { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; font-size: 26px; font-weight: 500; }
+.gsyl span { padding: 2px 6px; border-radius: 8px; transition: background .1s; }
+.gsyl span.now { background: #F5C400; }
+.gbtns { display: flex; gap: 14px; }
+.gbtns button { min-width: 88px; min-height: 64px; font-size: 32px; }
+.gbtns .got { background: #E7F4DA; }
+.gbtns .again { background: #FCE7E3; }
+.ganswers { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 560px; }
+.ganswers button { min-width: 64px; min-height: 64px; font-size: 26px; font-weight: 600; }
+.ganswers button.right { background: #7DC242; color: #fff; animation: pop .25s ease-out; }
+.ganswers button.wrong { background: #E5243B; color: #fff; }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.gpad { width: min(320px, 80vw); height: 120px; border-radius: 28px !important; font-size: 56px !important; background: #F47B20 !important; color: #fff; touch-action: manipulation; }
+.gpad:disabled { opacity: .45; }
+.gpad.hit { animation: thump .12s ease-out; }
+@keyframes thump { 50% { transform: scale(.94); } }
+.gdots { display: flex; gap: 6px; font-size: 26px; min-height: 30px; }
+.gdots .ok { color: #7DC242; }
+.gdots .miss { color: #E5243B; }
+.gend { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.stars { display: flex; gap: 8px; font-size: 64px; color: #D8D0BC; }
+.stars span { animation: pop .4s ease-out both; }
+.stars .on { color: #F5B800; text-shadow: 0 3px 0 #D99A00; }
+.gscore { font-size: 28px; margin: 0; font-variant-numeric: tabular-nums; }
+.newbest { font-size: 40px; margin: 0; animation: wiggle 1.2s ease-in-out infinite; }
+@keyframes wiggle { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }

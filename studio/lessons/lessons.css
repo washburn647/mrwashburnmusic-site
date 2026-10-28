@@ -17,3 +17,50 @@ main { max-width: 760px; }
 .notebox { background: #fff; border-radius: 14px; padding: 12px; min-height: 64px; }
 .notebox:focus { background: #fff; box-shadow: 0 0 0 2px #2F4A3A; }
 .actions { margin-top: 16px; }
+a.button { text-decoration: none; color: inherit; background: #fff; border-radius: 12px; padding: 8px 14px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+a.button:hover, a.button:focus-visible { box-shadow: 0 0 0 2px #2F4A3A; outline: none; }
+main h2 { font-weight: 500; font-size: 14px; color: #5B6B5F; text-transform: uppercase; letter-spacing: .06em; margin: 22px 0 8px; }
+.day h2 { margin-top: 18px; }
+.sheets .time { font-weight: 500; color: #5B6B5F; margin-right: 10px; font-variant-numeric: tabular-nums; }
+select, .who .time { font: inherit; font-size: 16px; border: 0; border-radius: 10px; padding: 6px 8px; background: #fff; color: inherit; }
+.goals { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
+.goals li { display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 12px; padding: 2px 6px; }
+.goals input { flex: 1; font: inherit; border: 0; background: transparent; padding: 6px; border-radius: 8px; }
+.goals input:focus { background: #F6F1E4; outline: none; }
+.goals .status { font-size: 20px; }
+.attach { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 4px; }
+.attach .add { padding: 4px 10px; background: #F6F1E4; box-shadow: none; font-size: 18px; }
+.attach .chip { display: inline-flex; align-items: center; gap: 4px; background: #F6F1E4; border-radius: 999px; padding: 2px 4px 2px 12px; font-size: 15px; }
+.attach .chip small { color: #5B6B5F; }
+.attach .tempo, .minutes { display: inline-flex; align-items: center; color: #5B6B5F; font-size: 15px; }
+.attach .tempo input, .minutes input { width: 64px; font: inherit; border: 0; border-radius: 8px; padding: 4px 6px; background: #F6F1E4; }
+.minutes input { background: #fff; }
+.starpick { display: flex; }
+.starpick button { background: transparent; box-shadow: none; font-size: 26px; padding: 0 4px; color: #D8D0BC; }
+.starpick button.on { color: #F5B800; }
+button.sticker { font-size: 24px; min-width: 48px; padding: 2px 8px; }
+.notebox.private { margin-top: 10px; background: #EFE8D6; }
+dialog { border: 0; border-radius: 20px; padding: 16px; max-width: min(560px, calc(100vw - 32px)); box-shadow: 0 10px 40px rgba(47,74,58,.3); color: #2F4A3A; font-family: "Fredoka", system-ui, sans-serif; }
+dialog::backdrop { background: rgba(47,74,58,.35); }
+dialog form { display: grid; gap: 12px; margin: 0; }
+dialog .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+dialog .seg { display: flex; gap: 4px; flex-wrap: wrap; }
+dialog .seg button { background: #F6F1E4; box-shadow: none; }
+dialog .seg button[aria-pressed="true"] { background: #2F4A3A; color: #F6F1E4; }
+.notepick { display: flex; flex-wrap: wrap; gap: 6px; }
+.notepick button { min-width: 48px; background: #F6F1E4; box-shadow: none; font-weight: 500; }
+.notepick button sub { font-size: 11px; font-weight: 400; margin-left: 1px; }
+.notepick button[aria-pressed="true"] { background: #7F4FA3; color: #fff; }
+dialog .tempo { width: 64px; font: inherit; border: 0; border-radius: 8px; padding: 6px; background: #F6F1E4; }
+.pickdlg { width: 520px; }
+.pickdlg .sheets { max-height: 60vh; overflow: auto; margin-top: 12px; }
+.pickdlg .sheets a { background: #F6F1E4; box-shadow: none; }
+.search { font: inherit; border: 0; border-radius: 10px; padding: 8px 10px; background: #F6F1E4; flex: 1; }
+.stickers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.stickers button { font-size: 28px; padding: 6px; background: #F6F1E4; box-shadow: none; }
+.stickers button[aria-pressed="true"] { box-shadow: 0 0 0 3px #2F4A3A; }
+.lib .libitem { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 16px; padding: 8px 12px; flex-wrap: wrap; }
+.lib .libitem .item-title { flex: 1 1 200px; font: inherit; font-size: 17px; font-weight: 500; border: 0; background: transparent; padding: 6px; border-radius: 8px; }
+.lib .libitem .item-title:focus { background: #F6F1E4; outline: none; }
+.lib .libitem small { color: #8A968C; font-size: 14px; flex: 1 1 200px; }
+.game, .player { z-index: 60; }

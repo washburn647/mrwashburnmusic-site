@@ -2,7 +2,7 @@
    Nothing leaves the device except as a backup file Kyle saves. */
 
 const DB_NAME = 'mwm-studio';
-const VERSION = 2;
+const VERSION = 3;
 let dbPromise = null;
 
 function db() {
@@ -13,8 +13,14 @@ function db() {
         const d = req.result;
         // cues: { id, title, created, updated, rows: [{ id, dur, say, screen, notes }] }
         if (!d.objectStoreNames.contains('cues')) d.createObjectStore('cues', { keyPath: 'id' });
-        // students: { id, name, instrument, created, updated, lessons: [{ id, date, items: [{ id, title, detail, link }], note }] }
+        // students: { id, name, instrument, day, time, created, updated, goals: [{ id, text, status }],
+        //   lessons: [{ id, date, note, private, stars, sticker, minutes,
+        //     items: [{ id, title, detail, link, tempo, piece, setup, deck }] }] }
         if (!d.objectStoreNames.contains('students')) d.createObjectStore('students', { keyPath: 'id' });
+        // pieces: { id, name, title, xml (slimmed MusicXML), parts, measures, created }
+        if (!d.objectStoreNames.contains('pieces')) d.createObjectStore('pieces', { keyPath: 'id' });
+        // library: { id, created, item: { title, detail, link, tempo, piece, setup, deck } }
+        if (!d.objectStoreNames.contains('library')) d.createObjectStore('library', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
