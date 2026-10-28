@@ -1,0 +1,25 @@
+@font-face { font-family: "Fredoka"; src: url("/assets/fonts/fredoka-latin.woff2") format("woff2"); font-weight: 400 600; }
+body { margin: 0; min-height: 100vh; background: #F6F1E4; color: #2F4A3A; font-family: "Fredoka", system-ui, sans-serif; font-size: 18px; }
+main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+header img { width: 56px; height: 56px; }
+h1 { font-weight: 600; margin: 0; font-size: 32px; }
+header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
+.days { display: flex; gap: 8px; margin: 0 0 20px; flex-wrap: wrap; }
+.days label { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; cursor: pointer; font-weight: 500; box-shadow: 0 2px 0 rgba(47,74,58,.08); user-select: none; }
+.days input { position: absolute; opacity: 0; pointer-events: none; }
+.days label:has(input:checked) { background: #2F4A3A; color: #F6F1E4; }
+.days label:has(input:focus-visible) { box-shadow: 0 0 0 3px #E0A458; }
+ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+li { background: #fff; border-radius: 16px; padding: 14px 16px; display: grid; grid-template-columns: 28px 1fr; gap: 4px 12px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+li input { width: 24px; height: 24px; margin: 2px 0 0; accent-color: #2F4A3A; }
+li strong { font-weight: 500; }
+li:has(input:checked) strong { text-decoration: line-through; color: #8A968C; }
+li p { grid-column: 2; margin: 0; color: #5B6B5F; white-space: pre-wrap; line-height: 1.4; }
+li a { grid-column: 2; justify-self: start; color: #2F4A3A; font-weight: 500; overflow-wrap: anywhere; }
+.note { margin-top: 20px; white-space: pre-wrap; line-height: 1.45; }
+@media print {
+  body { background: #fff; }
+  li, .days label { box-shadow: none; border: 1px solid #ccc; }
+  .days label:has(input:checked) { background: #fff; color: inherit; }
+}
