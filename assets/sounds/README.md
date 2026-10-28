@@ -24,6 +24,20 @@ The try-out page is `/studio/sounds/`.
   tambourine, sleigh-bells, shaker, cabasa, guiro, snare, bass-drum, conga, bongo-high,
   bongo-low, cymbal
 
+## Recorded voice
+
+Kyle records spoken and sung patterns at `/studio/record/` (several takes each). Its
+"Download for site" zip goes in with `python tools/add_takes.py voice-kyle-....zip`. Then:
+
+```js
+const kyle = await samples.takes('kyle');
+await kyle.prepare(['du de du de', 'du da di du']);   // load ahead
+kyle.say('du-de du-de', t, { bpm: 84 });             // a different take each time
+```
+
+Patterns match whatever the case, spacing or hyphens. `bpm` stretches a take from the tempo
+it was recorded at (its pitch moves too, so stay close).
+
 ## Rebuild
 
 `tools/build_sounds.py` makes the instruments from the source libraries, checking every

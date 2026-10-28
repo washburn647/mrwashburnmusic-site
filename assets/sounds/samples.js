@@ -122,3 +122,38 @@ export async function instrument(name, { lo = 0, hi = 127 } = {}) {
     },
   };
 }
+
+/* Patterns match whatever the spacing, case or hyphens: "Du-de du-de" is "du de du de". */
+export const patternKey = (text) => String(text).toLowerCase().replace(/[^a-z0-9']+/g, ' ').trim();
+
+/* A recorded voice: several takes of each spoken or sung pattern, from /studio/record/.
+   say() plays one take, never the same one twice running. bpm stretches it to another
+   tempo (pitch moves with it, so keep it near the tempo it was recorded at). */
+export async function takes(name) {
+  const spec = (await list()).voices?.[name];
+  if (!spec) throw new Error(`No voice "${name}"`);
+  const patterns = Object.fromEntries(Object.entries(spec.patterns).map(([text, list]) => [patternKey(text), list]));
+  const last = new Map();
+  const pick = (key) => {
+    const options = patterns[key] || [];
+    if (options.length < 2) return options[0];
+    const others = options.filter((o) => o !== last.get(key));
+    const take = others[Math.floor(Math.random() * others.length)];
+    last.set(key, take);
+    return take;
+  };
+  return {
+    name,
+    label: spec.label,
+    patterns: Object.keys(patterns),
+    has: (text) => patternKey(text) in patterns,
+    // Load the takes a page will use, ahead of time.
+    prepare: (texts) => Promise.all(texts.flatMap((t) => (patterns[patternKey(t)] || []).map((o) => load(o.file)))),
+    async say(text, t, { bpm = null, vol = 1, dest } = {}) {
+      const take = pick(patternKey(text));
+      if (!take) return () => {};
+      const s = await load(take.file);
+      return play(s, Math.max(t, context().currentTime), { vol, dest, rate: bpm && take.bpm ? bpm / take.bpm : 1 });
+    },
+  };
+}
