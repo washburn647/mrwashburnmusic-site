@@ -12,6 +12,7 @@ Static site for Mr. Washburn Music. No build step: every file here is served as 
   - `studio/lessons/`: private lesson pages. One page per lesson for each student, first names only. Copy link gives a `/lesson/#...` link with the whole page packed after the `#` (`lesson/codec.js`), so the page is never sent to or stored on the server. A new lesson starts from the last one's list.
 - `lesson/`: the page a lesson student opens from that link. Practice-day and item checkmarks stay in the student's browser.
 - `assets/logo/`: logo options; the site uses `option-f-notes-badge.svg` and its icon as `favicon.svg`
+- `assets/sounds/`: shared recorded instruments and percussion, loaded on demand by `samples.js` (see `assets/sounds/README.md`); try them at `/studio/sounds/`
 - `assets/fonts/`: Fredoka (SIL Open Font License), self-hosted so no visitor data goes to Google
 - `_headers`: security headers
 - `tools/make_logo.py`: regenerates the logo SVGs (`pip install fonttools brotli`, then `python -m fontTools.varLib.instancer assets/fonts/fredoka-latin.woff2 wght=600 -o Fredoka-SemiBold.ttf` and `python tools/make_logo.py Fredoka-SemiBold.ttf assets/logo`)

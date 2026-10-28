@@ -1,0 +1,1377 @@
+{
+ "instruments": {
+  "piano": {
+   "label": "Piano",
+   "kind": "pitched",
+   "release": 0.25,
+   "zones": [
+    {
+     "midi": 21,
+     "file": "piano/21.mp3"
+    },
+    {
+     "midi": 24,
+     "file": "piano/24.mp3"
+    },
+    {
+     "midi": 27,
+     "file": "piano/27.mp3"
+    },
+    {
+     "midi": 30,
+     "file": "piano/30.mp3"
+    },
+    {
+     "midi": 33,
+     "file": "piano/33.mp3"
+    },
+    {
+     "midi": 36,
+     "file": "piano/36.mp3"
+    },
+    {
+     "midi": 39,
+     "file": "piano/39.mp3"
+    },
+    {
+     "midi": 42,
+     "file": "piano/42.mp3"
+    },
+    {
+     "midi": 45,
+     "file": "piano/45.mp3"
+    },
+    {
+     "midi": 48,
+     "file": "piano/48.mp3"
+    },
+    {
+     "midi": 51,
+     "file": "piano/51.mp3"
+    },
+    {
+     "midi": 54,
+     "file": "piano/54.mp3"
+    },
+    {
+     "midi": 57,
+     "file": "piano/57.mp3"
+    },
+    {
+     "midi": 60,
+     "file": "piano/60.mp3"
+    },
+    {
+     "midi": 63,
+     "file": "piano/63.mp3"
+    },
+    {
+     "midi": 66,
+     "file": "piano/66.mp3"
+    },
+    {
+     "midi": 69,
+     "file": "piano/69.mp3"
+    },
+    {
+     "midi": 72,
+     "file": "piano/72.mp3"
+    },
+    {
+     "midi": 75,
+     "file": "piano/75.mp3"
+    },
+    {
+     "midi": 78,
+     "file": "piano/78.mp3"
+    },
+    {
+     "midi": 81,
+     "file": "piano/81.mp3"
+    },
+    {
+     "midi": 84,
+     "file": "piano/84.mp3"
+    },
+    {
+     "midi": 87,
+     "file": "piano/87.mp3"
+    },
+    {
+     "midi": 90,
+     "file": "piano/90.mp3"
+    },
+    {
+     "midi": 93,
+     "file": "piano/93.mp3"
+    },
+    {
+     "midi": 96,
+     "file": "piano/96.mp3"
+    },
+    {
+     "midi": 99,
+     "file": "piano/99.mp3"
+    },
+    {
+     "midi": 102,
+     "file": "piano/102.mp3"
+    },
+    {
+     "midi": 105,
+     "file": "piano/105.mp3"
+    },
+    {
+     "midi": 108,
+     "file": "piano/108.mp3"
+    }
+   ],
+   "credit": "salamander"
+  },
+  "violins": {
+   "label": "Violins",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 55,
+     "file": "violins/55.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 57,
+     "file": "violins/57.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 59,
+     "file": "violins/59.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 62,
+     "file": "violins/62.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 66,
+     "file": "violins/66.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 69,
+     "file": "violins/69.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 72,
+     "file": "violins/72.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 76,
+     "file": "violins/76.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 79,
+     "file": "violins/79.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 83,
+     "file": "violins/83.mp3",
+     "tune": 6
+    },
+    {
+     "midi": 86,
+     "file": "violins/86.mp3",
+     "tune": -1
+    }
+   ],
+   "credit": "vsco"
+  },
+  "violas": {
+   "label": "Violas",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 48,
+     "file": "violas/48.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 50,
+     "file": "violas/50.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 52,
+     "file": "violas/52.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 55,
+     "file": "violas/55.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 59,
+     "file": "violas/59.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 62,
+     "file": "violas/62.mp3",
+     "tune": -19
+    },
+    {
+     "midi": 65,
+     "file": "violas/65.mp3",
+     "tune": -4
+    },
+    {
+     "midi": 69,
+     "file": "violas/69.mp3",
+     "tune": 7
+    },
+    {
+     "midi": 72,
+     "file": "violas/72.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 76,
+     "file": "violas/76.mp3",
+     "tune": 8
+    },
+    {
+     "midi": 79,
+     "file": "violas/79.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 83,
+     "file": "violas/83.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 86,
+     "file": "violas/86.mp3",
+     "tune": -2
+    }
+   ],
+   "credit": "vsco"
+  },
+  "cellos": {
+   "label": "Cellos",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 36,
+     "file": "cellos/36.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 40,
+     "file": "cellos/40.mp3",
+     "tune": 7
+    },
+    {
+     "midi": 43,
+     "file": "cellos/43.mp3",
+     "tune": -4
+    },
+    {
+     "midi": 47,
+     "file": "cellos/47.mp3"
+    },
+    {
+     "midi": 50,
+     "file": "cellos/50.mp3",
+     "tune": -4
+    },
+    {
+     "midi": 53,
+     "file": "cellos/53.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 57,
+     "file": "cellos/57.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 60,
+     "file": "cellos/60.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 64,
+     "file": "cellos/64.mp3",
+     "tune": 18
+    },
+    {
+     "midi": 67,
+     "file": "cellos/67.mp3"
+    },
+    {
+     "midi": 71,
+     "file": "cellos/71.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 74,
+     "file": "cellos/74.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 77,
+     "file": "cellos/77.mp3",
+     "tune": 3
+    }
+   ],
+   "credit": "vsco"
+  },
+  "bass": {
+   "label": "Double bass",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 30,
+     "file": "bass/30.mp3"
+    },
+    {
+     "midi": 31,
+     "file": "bass/31.mp3"
+    },
+    {
+     "midi": 34,
+     "file": "bass/34.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 36,
+     "file": "bass/36.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 38,
+     "file": "bass/38.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 40,
+     "file": "bass/40.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 42,
+     "file": "bass/42.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 44,
+     "file": "bass/44.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 45,
+     "file": "bass/45.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 49,
+     "file": "bass/49.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 52,
+     "file": "bass/52.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 56,
+     "file": "bass/56.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 59,
+     "file": "bass/59.mp3"
+    }
+   ],
+   "credit": "vsco"
+  },
+  "pizzicato": {
+   "label": "Pizzicato strings",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 55,
+     "file": "pizzicato/55.mp3"
+    },
+    {
+     "midi": 57,
+     "file": "pizzicato/57.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 59,
+     "file": "pizzicato/59.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 62,
+     "file": "pizzicato/62.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 66,
+     "file": "pizzicato/66.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 69,
+     "file": "pizzicato/69.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 72,
+     "file": "pizzicato/72.mp3",
+     "tune": 11
+    },
+    {
+     "midi": 76,
+     "file": "pizzicato/76.mp3"
+    },
+    {
+     "midi": 79,
+     "file": "pizzicato/79.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 83,
+     "file": "pizzicato/83.mp3"
+    },
+    {
+     "midi": 86,
+     "file": "pizzicato/86.mp3",
+     "tune": 13
+    }
+   ],
+   "credit": "vsco"
+  },
+  "cello-pizz": {
+   "label": "Cello pizzicato",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 36,
+     "file": "cello-pizz/36.mp3"
+    },
+    {
+     "midi": 40,
+     "file": "cello-pizz/40.mp3",
+     "tune": -22
+    },
+    {
+     "midi": 43,
+     "file": "cello-pizz/43.mp3"
+    },
+    {
+     "midi": 47,
+     "file": "cello-pizz/47.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 50,
+     "file": "cello-pizz/50.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 53,
+     "file": "cello-pizz/53.mp3",
+     "tune": 17
+    },
+    {
+     "midi": 57,
+     "file": "cello-pizz/57.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 60,
+     "file": "cello-pizz/60.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 64,
+     "file": "cello-pizz/64.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 67,
+     "file": "cello-pizz/67.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 71,
+     "file": "cello-pizz/71.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 74,
+     "file": "cello-pizz/74.mp3"
+    },
+    {
+     "midi": 77,
+     "file": "cello-pizz/77.mp3"
+    }
+   ],
+   "credit": "vsco"
+  },
+  "harp": {
+   "label": "Harp",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 28,
+     "file": "harp/28.mp3",
+     "tune": -19
+    },
+    {
+     "midi": 31,
+     "file": "harp/31.mp3",
+     "tune": -22
+    },
+    {
+     "midi": 35,
+     "file": "harp/35.mp3",
+     "tune": -21
+    },
+    {
+     "midi": 38,
+     "file": "harp/38.mp3",
+     "tune": -10
+    },
+    {
+     "midi": 41,
+     "file": "harp/41.mp3",
+     "tune": -9
+    },
+    {
+     "midi": 45,
+     "file": "harp/45.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 48,
+     "file": "harp/48.mp3"
+    },
+    {
+     "midi": 52,
+     "file": "harp/52.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 55,
+     "file": "harp/55.mp3",
+     "tune": -10
+    },
+    {
+     "midi": 59,
+     "file": "harp/59.mp3",
+     "tune": -14
+    },
+    {
+     "midi": 62,
+     "file": "harp/62.mp3",
+     "tune": -13
+    },
+    {
+     "midi": 65,
+     "file": "harp/65.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 69,
+     "file": "harp/69.mp3",
+     "tune": -9
+    },
+    {
+     "midi": 72,
+     "file": "harp/72.mp3",
+     "tune": -11
+    },
+    {
+     "midi": 76,
+     "file": "harp/76.mp3",
+     "tune": -12
+    },
+    {
+     "midi": 79,
+     "file": "harp/79.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 83,
+     "file": "harp/83.mp3",
+     "tune": -8
+    },
+    {
+     "midi": 86,
+     "file": "harp/86.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 89,
+     "file": "harp/89.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 93,
+     "file": "harp/93.mp3",
+     "tune": -19
+    },
+    {
+     "midi": 95,
+     "file": "harp/95.mp3",
+     "tune": -10
+    },
+    {
+     "midi": 98,
+     "file": "harp/98.mp3",
+     "tune": -8
+    },
+    {
+     "midi": 101,
+     "file": "harp/101.mp3",
+     "tune": -30
+    }
+   ],
+   "credit": "vsco"
+  },
+  "flute": {
+   "label": "Flute",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 60,
+     "file": "flute/60.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 64,
+     "file": "flute/64.mp3"
+    },
+    {
+     "midi": 69,
+     "file": "flute/69.mp3"
+    },
+    {
+     "midi": 72,
+     "file": "flute/72.mp3"
+    },
+    {
+     "midi": 76,
+     "file": "flute/76.mp3"
+    },
+    {
+     "midi": 81,
+     "file": "flute/81.mp3"
+    },
+    {
+     "midi": 84,
+     "file": "flute/84.mp3"
+    },
+    {
+     "midi": 88,
+     "file": "flute/88.mp3"
+    },
+    {
+     "midi": 93,
+     "file": "flute/93.mp3"
+    },
+    {
+     "midi": 96,
+     "file": "flute/96.mp3"
+    }
+   ],
+   "credit": "vsco"
+  },
+  "oboe": {
+   "label": "Oboe",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 58,
+     "file": "oboe/58.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 62,
+     "file": "oboe/62.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 65,
+     "file": "oboe/65.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 70,
+     "file": "oboe/70.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 74,
+     "file": "oboe/74.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 77,
+     "file": "oboe/77.mp3"
+    },
+    {
+     "midi": 82,
+     "file": "oboe/82.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 86,
+     "file": "oboe/86.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 89,
+     "file": "oboe/89.mp3",
+     "tune": -1
+    }
+   ],
+   "credit": "vsco"
+  },
+  "clarinet": {
+   "label": "Clarinet",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 50,
+     "file": "clarinet/50.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 53,
+     "file": "clarinet/53.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 58,
+     "file": "clarinet/58.mp3"
+    },
+    {
+     "midi": 62,
+     "file": "clarinet/62.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 65,
+     "file": "clarinet/65.mp3",
+     "tune": 6
+    },
+    {
+     "midi": 70,
+     "file": "clarinet/70.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 74,
+     "file": "clarinet/74.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 77,
+     "file": "clarinet/77.mp3",
+     "tune": 6
+    },
+    {
+     "midi": 82,
+     "file": "clarinet/82.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 86,
+     "file": "clarinet/86.mp3",
+     "tune": 6
+    },
+    {
+     "midi": 89,
+     "file": "clarinet/89.mp3",
+     "tune": 2
+    }
+   ],
+   "credit": "vsco"
+  },
+  "bassoon": {
+   "label": "Bassoon",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 34,
+     "file": "bassoon/34.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 37,
+     "file": "bassoon/37.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 41,
+     "file": "bassoon/41.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 45,
+     "file": "bassoon/45.mp3"
+    },
+    {
+     "midi": 46,
+     "file": "bassoon/46.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 48,
+     "file": "bassoon/48.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 55,
+     "file": "bassoon/55.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 60,
+     "file": "bassoon/60.mp3"
+    },
+    {
+     "midi": 63,
+     "file": "bassoon/63.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 68,
+     "file": "bassoon/68.mp3"
+    },
+    {
+     "midi": 69,
+     "file": "bassoon/69.mp3"
+    },
+    {
+     "midi": 72,
+     "file": "bassoon/72.mp3"
+    },
+    {
+     "midi": 75,
+     "file": "bassoon/75.mp3"
+    }
+   ],
+   "credit": "vsco"
+  },
+  "trumpet": {
+   "label": "Trumpet",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 53,
+     "file": "trumpet/53.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 57,
+     "file": "trumpet/57.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 60,
+     "file": "trumpet/60.mp3"
+    },
+    {
+     "midi": 63,
+     "file": "trumpet/63.mp3"
+    },
+    {
+     "midi": 67,
+     "file": "trumpet/67.mp3",
+     "tune": 6
+    },
+    {
+     "midi": 70,
+     "file": "trumpet/70.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 74,
+     "file": "trumpet/74.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 77,
+     "file": "trumpet/77.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 81,
+     "file": "trumpet/81.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 84,
+     "file": "trumpet/84.mp3",
+     "tune": -4
+    }
+   ],
+   "credit": "vsco"
+  },
+  "horn": {
+   "label": "French horn",
+   "kind": "pitched",
+   "release": 0.2,
+   "zones": [
+    {
+     "midi": 33,
+     "file": "horn/33.mp3",
+     "tune": -16
+    },
+    {
+     "midi": 36,
+     "file": "horn/36.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 39,
+     "file": "horn/39.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 43,
+     "file": "horn/43.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 46,
+     "file": "horn/46.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 50,
+     "file": "horn/50.mp3",
+     "tune": -8
+    },
+    {
+     "midi": 53,
+     "file": "horn/53.mp3",
+     "tune": -11
+    },
+    {
+     "midi": 57,
+     "file": "horn/57.mp3"
+    },
+    {
+     "midi": 60,
+     "file": "horn/60.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 74,
+     "file": "horn/74.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 77,
+     "file": "horn/77.mp3",
+     "tune": 1
+    }
+   ],
+   "credit": "vsco"
+  },
+  "trombone": {
+   "label": "Trombone",
+   "kind": "pitched",
+   "release": 0.2,
+   "zones": [
+    {
+     "midi": 34,
+     "file": "trombone/34.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 37,
+     "file": "trombone/37.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 39,
+     "file": "trombone/39.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 41,
+     "file": "trombone/41.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 46,
+     "file": "trombone/46.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 50,
+     "file": "trombone/50.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 53,
+     "file": "trombone/53.mp3"
+    },
+    {
+     "midi": 60,
+     "file": "trombone/60.mp3"
+    },
+    {
+     "midi": 61,
+     "file": "trombone/61.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 63,
+     "file": "trombone/63.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 65,
+     "file": "trombone/65.mp3"
+    }
+   ],
+   "credit": "vsco"
+  },
+  "tuba": {
+   "label": "Tuba",
+   "kind": "pitched",
+   "release": 0.2,
+   "zones": [
+    {
+     "midi": 29,
+     "file": "tuba/29.mp3",
+     "tune": -26
+    },
+    {
+     "midi": 34,
+     "file": "tuba/34.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 39,
+     "file": "tuba/39.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 41,
+     "file": "tuba/41.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 46,
+     "file": "tuba/46.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 50,
+     "file": "tuba/50.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 53,
+     "file": "tuba/53.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 58,
+     "file": "tuba/58.mp3",
+     "tune": 9
+    },
+    {
+     "midi": 62,
+     "file": "tuba/62.mp3",
+     "tune": -2
+    }
+   ],
+   "credit": "vsco"
+  },
+  "glockenspiel": {
+   "label": "Glockenspiel",
+   "kind": "pitched",
+   "release": 0.4,
+   "zones": [
+    {
+     "midi": 79,
+     "file": "glockenspiel/79.mp3",
+     "tune": 8
+    },
+    {
+     "midi": 84,
+     "file": "glockenspiel/84.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 91,
+     "file": "glockenspiel/91.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 96,
+     "file": "glockenspiel/96.mp3",
+     "tune": 15
+    },
+    {
+     "midi": 103,
+     "file": "glockenspiel/103.mp3",
+     "tune": 16
+    },
+    {
+     "midi": 108,
+     "file": "glockenspiel/108.mp3",
+     "tune": 24
+    }
+   ],
+   "credit": "vsco"
+  },
+  "xylophone": {
+   "label": "Xylophone",
+   "kind": "pitched",
+   "release": 0.2,
+   "zones": [
+    {
+     "midi": 67,
+     "file": "xylophone/67.mp3",
+     "tune": 13
+    },
+    {
+     "midi": 72,
+     "file": "xylophone/72.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 79,
+     "file": "xylophone/79.mp3",
+     "tune": 14
+    },
+    {
+     "midi": 84,
+     "file": "xylophone/84.mp3",
+     "tune": 15
+    },
+    {
+     "midi": 91,
+     "file": "xylophone/91.mp3",
+     "tune": 16
+    },
+    {
+     "midi": 96,
+     "file": "xylophone/96.mp3",
+     "tune": 17
+    },
+    {
+     "midi": 103,
+     "file": "xylophone/103.mp3",
+     "tune": 20
+    },
+    {
+     "midi": 108,
+     "file": "xylophone/108.mp3",
+     "tune": 15
+    }
+   ],
+   "credit": "vsco"
+  },
+  "marimba": {
+   "label": "Marimba",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 41,
+     "file": "marimba/41.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 48,
+     "file": "marimba/48.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 55,
+     "file": "marimba/55.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 59,
+     "file": "marimba/59.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 65,
+     "file": "marimba/65.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 72,
+     "file": "marimba/72.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 79,
+     "file": "marimba/79.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 83,
+     "file": "marimba/83.mp3"
+    },
+    {
+     "midi": 89,
+     "file": "marimba/89.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 96,
+     "file": "marimba/96.mp3",
+     "tune": 1
+    }
+   ],
+   "credit": "vsco"
+  },
+  "claves": {
+   "label": "Claves",
+   "kind": "hit",
+   "file": "hits/claves.mp3",
+   "credit": "vsco"
+  },
+  "log-drum-high": {
+   "label": "Log drum (high)",
+   "kind": "hit",
+   "file": "hits/log-drum-high.mp3",
+   "credit": "vsco"
+  },
+  "log-drum-low": {
+   "label": "Log drum (low)",
+   "kind": "hit",
+   "file": "hits/log-drum-low.mp3",
+   "credit": "vsco"
+  },
+  "cowbell": {
+   "label": "Cowbell",
+   "kind": "hit",
+   "file": "hits/cowbell.mp3",
+   "credit": "vsco"
+  },
+  "agogo": {
+   "label": "Agogo bell",
+   "kind": "hit",
+   "file": "hits/agogo.mp3",
+   "credit": "vsco"
+  },
+  "triangle": {
+   "label": "Triangle",
+   "kind": "hit",
+   "file": "hits/triangle.mp3",
+   "credit": "vsco"
+  },
+  "finger-cymbals": {
+   "label": "Finger cymbals",
+   "kind": "hit",
+   "file": "hits/finger-cymbals.mp3",
+   "credit": "vsco"
+  },
+  "tambourine": {
+   "label": "Tambourine",
+   "kind": "hit",
+   "file": "hits/tambourine.mp3",
+   "credit": "vsco"
+  },
+  "sleigh-bells": {
+   "label": "Sleigh bells",
+   "kind": "hit",
+   "file": "hits/sleigh-bells.mp3",
+   "credit": "vsco"
+  },
+  "shaker": {
+   "label": "Shaker",
+   "kind": "hit",
+   "file": "hits/shaker.mp3",
+   "credit": "vsco"
+  },
+  "cabasa": {
+   "label": "Cabasa",
+   "kind": "hit",
+   "file": "hits/cabasa.mp3",
+   "credit": "vsco"
+  },
+  "guiro": {
+   "label": "Guiro",
+   "kind": "hit",
+   "file": "hits/guiro.mp3",
+   "credit": "vsco"
+  },
+  "snare": {
+   "label": "Snare drum",
+   "kind": "hit",
+   "file": "hits/snare.mp3",
+   "credit": "vsco"
+  },
+  "bass-drum": {
+   "label": "Bass drum",
+   "kind": "hit",
+   "file": "hits/bass-drum.mp3",
+   "credit": "vsco"
+  },
+  "conga": {
+   "label": "Conga",
+   "kind": "hit",
+   "file": "hits/conga.mp3",
+   "credit": "vsco"
+  },
+  "bongo-high": {
+   "label": "Bongo (high)",
+   "kind": "hit",
+   "file": "hits/bongo-high.mp3",
+   "credit": "vsco"
+  },
+  "bongo-low": {
+   "label": "Bongo (low)",
+   "kind": "hit",
+   "file": "hits/bongo-low.mp3",
+   "credit": "vsco"
+  },
+  "cymbal": {
+   "label": "Crash cymbal",
+   "kind": "hit",
+   "file": "hits/cymbal.mp3",
+   "credit": "vsco"
+  }
+ },
+ "voices": {},
+ "credits": {
+  "salamander": "Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0",
+  "vsco": "VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0"
+ }
+}
