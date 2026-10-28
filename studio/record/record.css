@@ -1,0 +1,27 @@
+select, input { font: inherit; color: inherit; }
+select, input[type=number] { border: 0; border-radius: 12px; padding: 8px 10px; background: #fff; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+input[type=number] { width: 4.5em; }
+label { display: inline-flex; align-items: center; gap: 8px; color: #5B6B5F; }
+textarea.list { box-sizing: border-box; width: 100%; min-height: 260px; border: 0; border-radius: 16px; padding: 14px 16px; background: #fff; font: inherit; font-size: 18px; line-height: 1.5; }
+textarea.list:focus { outline: 2px solid #2F4A3A; }
+.lines { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.lines li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border-radius: 16px; padding: 10px 14px; cursor: pointer; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.lines li.on { box-shadow: 0 0 0 3px #2F4A3A; }
+.lines li.done .text { color: #5B6B5F; }
+.lines .text { flex: 1; min-width: 160px; font-size: 20px; }
+.lines .count { color: #8A968C; font-variant-numeric: tabular-nums; }
+.take { display: inline-flex; align-items: center; border-radius: 10px; background: #F6F1E4; }
+.take button { background: transparent; box-shadow: none; padding: 4px 8px; }
+.take button:hover, .take button:focus-visible { box-shadow: none; background: #EFE8D6; }
+.take .x { color: #8A968C; }
+.stage { position: sticky; bottom: 0; margin-top: 20px; padding: 14px 0; background: #F6F1E4; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.stage .now { flex: 1; min-width: 200px; font-size: 26px; font-weight: 600; }
+.rec { min-width: 120px; min-height: 52px; font-size: 18px; }
+.rec.live { background: #A33B2B; color: #fff; }
+.beats { display: flex; gap: 8px; }
+.beats span { width: 16px; height: 16px; border-radius: 50%; background: #E4DCC8; }
+.beats span.lit { background: #E9B44C; }
+.beats.go span.lit { background: #A33B2B; }
+.meter { width: 120px; height: 8px; border-radius: 4px; background: #E4DCC8; overflow: hidden; }
+.meter div { height: 100%; width: 0; background: #2F4A3A; }
+.note { color: #A33B2B; }

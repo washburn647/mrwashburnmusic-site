@@ -9,6 +9,7 @@ Static site for Mr. Washburn Music. No build step: every file here is served as 
 - `class/`: the classroom slides app, for presenting lessons on the classroom TV (see `class/README.md`)
 - `studio/`: private behind-the-scenes tools (locked with Cloudflare Access, see below). The hub links to Class, the planner, Song Burner and the tools. Tools keep their data on the device (IndexedDB `mwm-studio`, `studio/db.js`) and move between devices as a backup file.
   - `studio/cues/`: video cue sheets (shots with length, running time, what to say, on-screen text, notes; prints)
+  - `studio/record/`: voice recorder. Kyle's list of spoken and sung patterns, a few takes of each, trimmed and saved as small mp3s on the device (IndexedDB `mwm-voice`); "Download for site" makes a zip for `tools/add_takes.py`
   - `studio/lessons/`: private lesson pages. One page per lesson for each student, first names only. Copy link gives a `/lesson/#...` link with the whole page packed after the `#` (`lesson/codec.js`), so the page is never sent to or stored on the server. A new lesson starts from the last one's list.
 - `lesson/`: the page a lesson student opens from that link. Practice-day and item checkmarks stay in the student's browser.
 - `assets/logo/`: logo options; the site uses `option-f-notes-badge.svg` and its icon as `favicon.svg`
