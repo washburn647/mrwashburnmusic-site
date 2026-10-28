@@ -235,7 +235,6 @@ def main():
     index['credits'] = {
         'salamander': 'Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0',
         'vsco': 'VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0',
-        'kokoro': 'Kokoro text-to-speech by hexgrad, Apache 2.0',
     }
     with open(index_path, 'w') as f:
         json.dump(index, f, indent=1)

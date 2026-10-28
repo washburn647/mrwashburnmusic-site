@@ -1,12 +1,11 @@
-/* Recorded instrument samples and spoken syllables, loaded only when asked for.
-   The list of sounds is index.json; tools/build_sounds.py and tools/build_voices.py make it.
+/* Recorded instrument samples, loaded only when asked for.
+   The list of sounds is index.json; tools/build_sounds.py makes it.
 
    import * as samples from '/assets/sounds/samples.js';
    samples.setup(snd.ac(), snd.bus());            // optional: share another engine's context
    const piano = await samples.instrument('piano', { lo: 48, hi: 84 });
    piano.note(60, t, 0.5, { vol: 0.8 });          // same call as sound.js note(), returns stop()
    (await samples.instrument('claves')).hit(t);
-   (await samples.voice('af_heart')).say('du', t, { midi: 67 });
 
    Times are on the audio clock (context.currentTime). */
 
@@ -120,29 +119,6 @@ export async function instrument(name, { lo = 0, hi = 127 } = {}) {
       const rate = 2 ** ((midi - z.midi - (z.tune || 0) / 100) / 12);
       // Same loudness scale as sound.js, where 0.25 is a normal note.
       return play(loaded.get(z), t, { vol: vol * 3, dest, rate, dur, release: spec.release });
-    },
-  };
-}
-
-/* A voice speaking single syllables. midi shifts the syllable to that pitch (and changes
-   its length with it); rate does the same by a ratio. */
-export async function voice(name) {
-  const spec = (await list()).voices[name];
-  if (!spec) throw new Error(`No voice "${name}"`);
-  const clips = {};
-  await Promise.all(Object.entries(spec.syllables).map(async ([syl, z]) => {
-    clips[syl] = { ...z, ...(await load(z.file)) };
-  }));
-  return {
-    name,
-    label: spec.label,
-    syllables: Object.keys(clips),
-    length: (syl) => clips[syl].buffer.duration - clips[syl].start,
-    say(syl, t, { midi = null, rate = 1, vol = 1, dest, dur = null } = {}) {
-      const c = clips[syl];
-      if (!c) return () => {};
-      const r = midi == null ? rate : rate * 2 ** ((midi - c.midi) / 12);
-      return play(c, t, { vol, dest, rate: r, dur, release: 0.03 });
     },
   };
 }
