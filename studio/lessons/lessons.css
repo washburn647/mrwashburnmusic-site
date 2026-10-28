@@ -1,0 +1,19 @@
+main { max-width: 760px; }
+.who { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.who .title { flex: 1 1 200px; }
+.who .instrument { font-size: 18px; border: 0; background: transparent; padding: 6px; border-radius: 8px; color: #5B6B5F; flex: 1 1 140px; }
+.who .instrument:focus { background: #fff; outline: none; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chips a { text-decoration: none; color: inherit; background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 15px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.chips a[aria-current] { background: #2F4A3A; color: #F6F1E4; }
+.date { font-size: 17px; border: 0; border-radius: 10px; padding: 6px 10px; background: #fff; }
+.items { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.items li { background: #fff; border-radius: 14px; padding: 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+.items .fields { display: grid; gap: 2px; }
+.items input, .items textarea, .notebox { box-sizing: border-box; width: 100%; border: 0; background: transparent; padding: 6px; border-radius: 8px; resize: none; overflow: hidden; line-height: 1.35; }
+.items input:focus, .items textarea:focus, .notebox:focus { background: #F6F1E4; outline: none; }
+.items .item-title { font-weight: 500; font-size: 18px; }
+.items .item-link { color: #5B6B5F; font-size: 15px; }
+.notebox { background: #fff; border-radius: 14px; padding: 12px; min-height: 64px; }
+.notebox:focus { background: #fff; box-shadow: 0 0 0 2px #2F4A3A; }
+.actions { margin-top: 16px; }

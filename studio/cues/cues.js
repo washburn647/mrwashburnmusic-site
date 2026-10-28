@@ -1,41 +1,15 @@
 /* Video cue sheets: plan a video shot by shot.
-   Sheets live on this device only (IndexedDB 'mwm-studio'), and move between
+   Sheets live on this device only (see ../db.js), and move between
    devices as a backup file. #/ is the list, #/<id> is one sheet. */
 
-const DB_NAME = 'mwm-studio';
-const VERSION = 1;
-let dbPromise = null;
+import { store, newId, downloadJSON } from '../db.js';
+import { h, grow, confirmButton } from '../dom.js';
 
-function db() {
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, VERSION);
-      req.onupgradeneeded = () => {
-        // cues: { id, title, created, updated, rows: [{ id, dur, say, screen, notes }] }
-        req.result.createObjectStore('cues', { keyPath: 'id' });
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-  return dbPromise;
-}
-
-function tx(mode, fn) {
-  return db().then((d) => new Promise((resolve, reject) => {
-    const t = d.transaction('cues', mode);
-    const req = fn(t.objectStore('cues'));
-    t.oncomplete = () => resolve(req && req.result);
-    t.onerror = () => reject(t.error);
-  }));
-}
-
-const allSheets = () => tx('readonly', (s) => s.getAll());
-const getSheet = (id) => tx('readonly', (s) => s.get(id));
-const putSheet = (sheet) => tx('readwrite', (s) => s.put(sheet));
-const deleteSheet = (id) => tx('readwrite', (s) => s.delete(id));
-
-const newId = () => crypto.randomUUID();
+const cues = store('cues');
+const allSheets = cues.all;
+const getSheet = cues.get;
+const putSheet = cues.put;
+const deleteSheet = cues.delete;
 const newRow = () => ({ id: newId(), dur: 0, say: '', screen: '', notes: '' });
 
 /* "1:30" -> 90, "45" -> 45, "1:02:03" -> 3723. */
@@ -53,20 +27,6 @@ function formatTime(sec) {
 }
 
 const totalTime = (sheet) => sheet.rows.reduce((sum, r) => sum + (r.dur || 0), 0);
-
-/* Small DOM builder. Text always goes in as text, never as HTML. */
-function h(tag, props = {}, ...kids) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(props)) {
-    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else if (k === 'class') el.className = v;
-    else if (k === 'dataset') Object.assign(el.dataset, v);
-    else if (k in el) el[k] = v;
-    else el.setAttribute(k, v);
-  }
-  for (const kid of kids.flat()) if (kid != null) el.append(kid);
-  return el;
-}
 
 const app = document.getElementById('app');
 
@@ -104,10 +64,7 @@ async function createSheet() {
 }
 
 function downloadBackup(sheets) {
-  const blob = new Blob([JSON.stringify({ kind: 'mwm-cue-sheets', version: 1, sheets }, null, 2)], { type: 'application/json' });
-  const a = h('a', { href: URL.createObjectURL(blob), download: `cue-sheets-${new Date().toISOString().slice(0, 10)}.json` });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  downloadJSON({ kind: 'mwm-cue-sheets', version: 1, sheets }, `cue-sheets-${new Date().toISOString().slice(0, 10)}.json`);
 }
 
 /* Restore adds sheets from the file; a sheet already here is replaced only by a newer copy. */
@@ -154,11 +111,6 @@ function flush() {
   return Promise.resolve();
 }
 
-function grow(el) {
-  el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
-}
-
 async function showSheet(id) {
   sheet = await getSheet(id);
   if (!sheet) { location.hash = '#/'; return; }
@@ -166,18 +118,10 @@ async function showSheet(id) {
 
   const total = h('span', { class: 'total' });
   const tbody = h('tbody');
-  let confirmTimer = null;
-  const del = h('button', { class: 'danger', onclick: async () => {
-    if (del.dataset.armed) {
-      await deleteSheet(sheet.id);
-      location.hash = '#/';
-      return;
-    }
-    del.dataset.armed = '1';
-    del.textContent = 'Delete for good?';
-    clearTimeout(confirmTimer);
-    confirmTimer = setTimeout(() => { delete del.dataset.armed; del.textContent = 'Delete'; }, 3000);
-  } }, 'Delete');
+  const del = confirmButton('Delete', 'Delete for good?', async () => {
+    await deleteSheet(sheet.id);
+    location.hash = '#/';
+  });
 
   function refreshTimes() {
     let at = 0;
