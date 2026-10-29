@@ -29,12 +29,29 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   placed past it, undo (Ctrl+Z), class totals. A song's Max per grade also sets which grades
   its slides are for, until grades are set by hand in the editor. Timed minutes from Present
   show on the catalog chips' tooltips.
+- `calendar.js` (`#/plan/calendar`): the workbook's Calendar sheet a month at a time: each school
+  day's rotation code (A12 = group A, class 12, for K and 1) or what it is instead, PK's week
+  number per week. Picking a day lists each grade's class that day with Build/Open. Changing a
+  day can move the later classes with it (a lost class day pushes them back one class day).
+- `lists.js` (`#/plan/lists`): a category's songs as on its sheet: details, per-grade Plan / Max
+  / Left (the planner's Max), the sheet's extra columns (Key, Lessons, Notes...). Add, rename
+  (renames in the plans too), shelve, remove (only when no class uses it).
+- The library groups decks: the category decks, then classes (built ones, the Class template,
+  imported class decks), then everything else. The Class template deck is made once from an
+  imported class deck like "1 29" (its title and exit slides); builds use it, so that deck can go.
 - `builder.js`: Build on a planner row makes that class's deck in the library, as the Apps
   Script builder did: title and exit slides from a class deck in the library (named like
   "1 29"), song slides copied from the category decks (matched by a line of text equal to the
   catalog name) with x/y stamped, the icon rail with checks, the song list, next class's icons.
   Links on a copied slide into its category deck open that deck; a link to a menu opens the
   grade's built menu with songs the plan hasn't reached yet locked.
+- `widgets.js`: slide elements that work in Present (`{ t: 'wg', kind }`): timer (counts down
+  and chimes, or up), spinner, video (YouTube, through the no-cookie player, or a video file),
+  sound file, Spotify. Added from the editor's 🧩 menu; double-click one to change it. Elsewhere
+  they draw as labels. The spinner's class lists live only in this browser's localStorage
+  (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
+  an online name spinner opens this spinner instead. Present also has a pen (D) that draws over
+  the slide for the sitting; nothing is saved.
 - `pptx.js` (with `zip.js`): converts a .pptx into the deck format below, right in the browser.
   Nothing is uploaded anywhere.
 - `render.js`: draws one slide on a 960 x 540 stage. Present mode, thumbnails and

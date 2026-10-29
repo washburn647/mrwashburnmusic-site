@@ -118,11 +118,32 @@ export function buildClass(plan, grade, no, decks) {
 const norm = (s) => String(s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
   .replace(/[^a-z0-9']+/g, ' ').trim();
 
-/** The newest class deck brought in by hand, else the newest one built here. */
+/** The Class template deck, else the newest class deck brought in by hand, else one built here. */
 function pickTemplate(decks) {
+  const own = decks.find((d) => d.deck.template && d.deck.slides.length >= 2);
+  if (own) return own;
   const classDecks = decks.filter((d) => CLASS_DECK.test(d.name.trim()) && d.deck.slides.length >= 2)
     .sort((a, b) => (b.updated || 0) - (a.updated || 0));
   return classDecks.find((d) => !d.deck.built) || classDecks[0] || null;
+}
+
+/** A "Class template" deck (title and exit slides) made from an imported class
+    deck such as "1 29", so that deck can go. Null when there is one already or
+    nothing to make it from. Its own song icons are cleared; builds draw them. */
+export function makeTemplate(decks) {
+  if (decks.some((d) => d.deck.template)) return null;
+  const src = decks.filter((d) => CLASS_DECK.test(d.name.trim()) && !d.deck.built && d.deck.slides.length >= 2)
+    .sort((a, b) => (b.updated || 0) - (a.updated || 0))[0];
+  if (!src) return null;
+  const title = copySlide(src.deck.slides[0]);
+  const exit = copySlide(src.deck.slides[src.deck.slides.length - 1]);
+  // Keep one rail check on the exit slide: it is where builds find the check picture.
+  const check = findCheck(src.deck);
+  clearGenerated(title);
+  clearGenerated(exit);
+  if (check) exit.els.push(pic(check, RAIL.x, RAIL.top, RAIL.size));
+  for (const s of [title, exit]) for (const e of s.els) if (e.text && /^\d+$/.test(textOf(e)) && e.x <= 120 && e.y <= 80) e.text.paras[0].runs.forEach((r) => { if (r.t) r.t = '#'; });
+  return { w: src.deck.w, h: src.deck.h, slides: [title, exit], gradesSet: true, template: true };
 }
 
 /** The rail's check: the picture repeated down the exit slide's rail. */
@@ -133,7 +154,7 @@ function findCheck(deck) {
     if (e.t === 'pic' && Math.abs(e.x - RAIL.x) <= NEAR) count.set(e.media, (count.get(e.media) || 0) + 1);
   }
   const best = [...count].sort((a, b) => b[1] - a[1])[0];
-  return best && best[1] > 1 ? best[0] : null;
+  return best && (best[1] > 1 || deck.template) ? best[0] : null;
 }
 
 function copySlide(slide) {
