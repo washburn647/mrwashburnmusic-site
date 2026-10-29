@@ -1,0 +1,10 @@
+Sounds in this folder
+
+Piano: Salamander Grand Piano V3 by Alexander Holm.
+  Licence: Creative Commons Attribution 3.0, https://creativecommons.org/licenses/by/3.0/
+  Source: https://archive.org/details/SalamanderGrandPianoV3 (MP3 set by Jan Forst,
+  npm @audio-samples/piano-mp3-velocity10). Trimmed and converted to mono.
+
+Orchestra, harp, mallets and percussion: VSCO 2: Community Edition by Versilian Studios
+  (Sam Gossner) and Ivy Audio (Simon Dalzell), https://vis.versilstudios.net/vsco-community.html
+  Licence: CC0 1.0 (public domain). Trimmed, retuned where measured off, converted to mono.
