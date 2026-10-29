@@ -110,7 +110,7 @@ async function importWorkbook(main, years) {
     if (!f) return;
     const label = (window.prompt('Which school year is this?', schoolYear()) || '').trim();
     if (!label) return;
-    if (years.some((y) => y.year === label) && !window.confirm('Replace the ' + label + ' plan on this device with this workbook?')) return;
+    if (years.some((y) => y.year === label) && !window.confirm('Replace the ' + label + ' plan with this workbook?')) return;
     try {
       const rec = fromWorkbook(await readWorkbook(await f.arrayBuffer()), label);
       await store.putPlan(rec);

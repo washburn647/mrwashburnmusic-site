@@ -38,6 +38,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .top img { height: 40px; }
 .top h1 { font-size: 22px; font-weight: 600; margin: 0; }
 .top .spacer { flex: 1; }
+.sync:not(.btn) { font-size: 22px; line-height: 1; cursor: pointer; user-select: none; color: #2E7D5B; }
+.sync.syncing { animation: sync-pulse 1s ease-in-out infinite alternate; }
+.sync.offline { color: #9a9a9a; }
+.sync.error { color: #C0392B; }
+@keyframes sync-pulse { from { opacity: 1; } to { opacity: .35; } }
 .btn { border: 0; border-radius: 999px; padding: 9px 18px; background: var(--moss); color: var(--cream);
   font-weight: 600; font-size: 15px; }
 .btn:hover { background: var(--forest); }

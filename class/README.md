@@ -52,8 +52,21 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
   an online name spinner opens this spinner instead. Present also has a pen (D) that draws over
   the slide for the sitting; nothing is saved.
+- `sync.js`: keeps decks, pictures, plans and timings in step with the website's copy
+  (`/api/class/`, `worker/index.js`), so home and school share one library. Signing in goes
+  through Cloudflare Access (Kyle's login). Sync runs when the app opens, comes online or back
+  into view, and a moment after each change; the cloud in the header shows how it went.
+  - Each deck and plan has `updated` (its version) and `synced` (the version the website last
+    had). Changed only here: it goes up. Changed only there: it comes down. Changed in both: a
+    plan or built deck keeps the newer; another deck keeps both, this device's as "(copy)".
+  - A removal is remembered (localStorage `class.sync`) until the website has it, then removes
+    the deck everywhere.
+  - A device's first sync matches its decks to the website's by name: the website's copy wins,
+    this device's stays as a copy if it differs, and links between decks follow.
+  - The deck open in the editor is never swapped out under it. Pulled changes redraw the
+    library, a deck's page and the planner, but never Present.
+  - Spinner names are not synced. The service worker never caches `/api/`.
 - `pptx.js` (with `zip.js`): converts a .pptx into the deck format below, right in the browser.
-  Nothing is uploaded anywhere.
 - `render.js`: draws one slide on a 960 x 540 stage. Present mode, thumbnails and
   (later) the editor all use it.
 - `present.js`: full-screen Present mode. Clicker, arrow keys and swipes (a plain tap
@@ -99,4 +112,5 @@ be published on the public site.
 ## Private material
 
 Kyle's decks hold school material and pictures from the web. They are never
-committed here (this repo is public), and the app never sends them anywhere.
+committed here (this repo is public). Sync keeps them in a private R2 bucket that
+only Kyle's Access login reaches; nothing there is ever served on the public site.

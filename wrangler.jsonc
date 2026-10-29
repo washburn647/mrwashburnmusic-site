@@ -1,6 +1,8 @@
-// Lets Cloudflare Workers serve this folder as a static site.
+// Lets Cloudflare Workers serve this folder as a static site. The Worker in
+// worker/ only answers /api/ (the Class app's files, see worker/index.js).
 {
   "name": "mrwashburnmusic-site",
+  "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
   // Only serve on the real domain, so Cloudflare Access always guards /studio/.
   "workers_dev": false,
@@ -13,6 +15,14 @@
   ],
   "assets": {
     "directory": "./",
-    "not_found_handling": "404-page"
-  }
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+  // The Class app's decks, pictures and plans. Private: no public access, only through the Worker.
+  "r2_buckets": [
+    { "binding": "CLASS_FILES", "bucket_name": "mwm-class-files" }
+  ],
+  // ACCESS_TEAM and ACCESS_AUD are set in the dashboard; keep them across deploys.
+  "keep_vars": true
 }
