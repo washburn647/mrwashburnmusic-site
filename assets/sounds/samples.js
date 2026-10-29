@@ -123,37 +123,50 @@ export async function instrument(name, { lo = 0, hi = 127 } = {}) {
   };
 }
 
-/* Patterns match whatever the spacing, case or hyphens: "Du-de du-de" is "du de du de". */
-export const patternKey = (text) => String(text).toLowerCase().replace(/[^a-z0-9']+/g, ' ').trim();
-
-/* A recorded voice: several takes of each spoken or sung pattern, from /studio/record/.
-   say() plays one take, never the same one twice running. bpm stretches it to another
-   tempo (pitch moves with it, so keep it near the tempo it was recorded at). */
+/* A recorded voice: Kyle's takes of the patterns in /assets/patterns/patterns.js, recorded
+   at /studio/record/ at three speeds (and, for tonal patterns, in a key).
+     const kyle = await samples.takes('kyle');
+     await kyle.prepare(['rhythm/2-4/q-ee']);
+     kyle.say('rhythm/2-4/q-ee', t, { bpm: 84 });
+   say() picks the takes recorded nearest that tempo (or { speed: 'slow' }), never the same
+   take twice running, and stretches it to bpm. { key } moves a tonal take to another key
+   (sounding midi of do, or la in minor). Stretching moves pitch and tempo together, so a
+   take sounds best near the tempo and key it was recorded in. */
 export async function takes(name) {
   const spec = (await list()).voices?.[name];
   if (!spec) throw new Error(`No voice "${name}"`);
-  const patterns = Object.fromEntries(Object.entries(spec.patterns).map(([text, list]) => [patternKey(text), list]));
+  const patterns = spec.patterns;
   const last = new Map();
-  const pick = (key) => {
-    const options = patterns[key] || [];
+  const choose = (id, { speed, bpm, key }) => {
+    let options = patterns[id] || [];
+    if (speed) options = options.filter((o) => o.speed === speed);
+    else if (bpm) {
+      const gap = (o) => Math.abs(Math.log(o.bpm / bpm));
+      const best = Math.min(...options.map(gap));
+      options = options.filter((o) => gap(o) - best < 0.05);
+    }
+    if (key != null && options.some((o) => o.key === key)) options = options.filter((o) => o.key === key);
     if (options.length < 2) return options[0];
-    const others = options.filter((o) => o !== last.get(key));
+    const others = options.filter((o) => o !== last.get(id));
     const take = others[Math.floor(Math.random() * others.length)];
-    last.set(key, take);
+    last.set(id, take);
     return take;
   };
   return {
     name,
     label: spec.label,
     patterns: Object.keys(patterns),
-    has: (text) => patternKey(text) in patterns,
+    has: (id) => id in patterns,
+    speeds: (id) => [...new Set((patterns[id] || []).map((o) => o.speed))],
     // Load the takes a page will use, ahead of time.
-    prepare: (texts) => Promise.all(texts.flatMap((t) => (patterns[patternKey(t)] || []).map((o) => load(o.file)))),
-    async say(text, t, { bpm = null, vol = 1, dest } = {}) {
-      const take = pick(patternKey(text));
+    prepare: (ids) => Promise.all(ids.flatMap((id) => (patterns[id] || []).map((o) => load(o.file)))),
+    async say(id, t, { speed = null, bpm = null, key = null, vol = 1, dest } = {}) {
+      const take = choose(id, { speed, bpm, key });
       if (!take) return () => {};
       const s = await load(take.file);
-      return play(s, Math.max(t, context().currentTime), { vol, dest, rate: bpm && take.bpm ? bpm / take.bpm : 1 });
+      let rate = bpm && take.bpm ? bpm / take.bpm : 1;
+      if (key != null && take.key != null) rate *= 2 ** ((key - take.key) / 12);
+      return play(s, Math.max(t, context().currentTime), { vol, dest, rate });
     },
   };
 }
