@@ -12,6 +12,7 @@ import { guessTitle } from './pptx.js';
 import { present } from './present.js';
 import * as store from './store.js';
 import { el, thumb, addMediaUrl } from './ui.js';
+import { KINDS, youtubeId, spotifyPath } from './widgets.js';
 
 const SHAPES = [
   ['rect', 'Rectangle'], ['roundRect', 'Rounded rectangle'], ['ellipse', 'Circle'],
@@ -100,6 +101,11 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
   const shapeBtn = tool('◆', 'Shape', () => { shapeMenu.hidden = !shapeMenu.hidden; });
 
+  const mediaPicker = el('input', { type: 'file', hidden: true });
+  const widgetMenu = el('div', { class: 'ed-menu ed-wmenu', hidden: true },
+    Object.entries(KINDS).map(([k, name]) => tool(name, name, () => { widgetMenu.hidden = true; addWidget(k); }, 'ed-wide')));
+  const widgetBtn = tool('🧩', 'Widget', () => { widgetMenu.hidden = !widgetMenu.hidden; });
+
   const bgColor = color('Background color', (v) => setBackground(v));
   const fillColor = color('Fill color', (v) => setFill(v));
   const noFill = tool('∅', 'No fill', () => setFill(null));
@@ -154,11 +160,12 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     el('h1', {}, rec.name),
     group(undoBtn, redoBtn),
     group(tool('T', 'Text box', () => addText()), el('span', { class: 'ed-anchor' }, shapeBtn, shapeMenu),
-      tool('🖼', 'Picture', () => picker.click()), el('span', { class: 'ed-anchor' }, searchBtn, searchBox)),
+      tool('🖼', 'Picture', () => picker.click()), el('span', { class: 'ed-anchor' }, searchBtn, searchBox),
+      el('span', { class: 'ed-anchor' }, widgetBtn, widgetMenu)),
     slideTools, shapeTools, textTools, el('span', { class: 'ed-anchor' }, objTools, linkBox),
     el('span', { class: 'spacer' }),
     el('button', { class: 'btn', onclick: () => run() }, '▶ Present'),
-    picker, replacer, bgPicker);
+    picker, replacer, bgPicker, mediaPicker);
 
   const list = el('div', { class: 'ed-list' });
   const gradeBtns = GRADES.map((g) => tool(g, 'For ' + g, () => toggleGrade(g), 'ed-grade'));
@@ -474,6 +481,65 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
       fill: { type: 'solid', color: '#9DB58C' }, line: { color: '#2F4A3A', width: 2 } }]);
   }
 
+  const WIDGET_SIZE = { timer: [240, 120], spinner: [300, 300], video: [480, 270], sound: [160, 160], spotify: [400, 152] };
+
+  async function addWidget(kind) {
+    commitText();
+    const [w, h] = WIDGET_SIZE[kind];
+    const e = { t: 'wg', kind, x: (deck.w - w) / 2, y: (deck.h - h) / 2, w, h };
+    if (!(await configure(e))) return;
+    addElements([e]);
+  }
+
+  // What a widget needs to work. Returns false when the teacher backs out.
+  async function configure(e) {
+    if (e.kind === 'timer') {
+      const v = window.prompt('Count down from (minutes:seconds), or 0 to count up', e.secs ? Math.floor(e.secs / 60) + ':' + String(e.secs % 60).padStart(2, '0') : '1:00');
+      if (v == null) return false;
+      const m = v.trim().match(/^(\d+)(?::(\d{1,2}))?$/);
+      e.secs = m ? Number(m[1]) * 60 + Number(m[2] || 0) : 0;
+      return true;
+    }
+    if (e.kind === 'video' || e.kind === 'spotify') {
+      const what = e.kind === 'video' ? 'YouTube link (leave empty to choose a video file)' : 'Spotify link';
+      const v = window.prompt(what, e.url || '');
+      if (v == null) return false;
+      if (v.trim()) {
+        const ok = e.kind === 'video' ? youtubeId(v) : spotifyPath(v);
+        if (!ok) { window.alert('That link does not look like a ' + (e.kind === 'video' ? 'YouTube' : 'Spotify') + ' link.'); return false; }
+        e.url = v.trim();
+        delete e.media;
+        return true;
+      }
+      if (e.kind === 'spotify') return false;
+    }
+    if (e.kind === 'video' || e.kind === 'sound') {
+      const file = await chooseFile(e.kind === 'video' ? 'video/*' : 'audio/*');
+      if (!file) return false;
+      e.media = await keepFile(file);
+      e.name = file.name.replace(/\.[^.]+$/, '');
+      delete e.url;
+      return true;
+    }
+    return true;
+  }
+
+  function chooseFile(accept) {
+    return new Promise((resolve) => {
+      mediaPicker.accept = accept;
+      mediaPicker.value = '';
+      mediaPicker.onchange = () => resolve(mediaPicker.files[0] || null);
+      mediaPicker.click();
+    });
+  }
+
+  async function setUpWidget(i) {
+    const e = structuredClone(cur().els[i]);
+    if (e.kind === 'spinner') return;
+    if (!(await configure(e))) return;
+    change(() => { ws().els[i] = e; });
+  }
+
   async function addPictures(files, at) {
     const added = [];
     for (const f of files) {
@@ -520,6 +586,7 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     if (e.button !== 0) return;
     if (editing && editing.txt.contains(e.target)) return;
     shapeMenu.hidden = true;
+    widgetMenu.hidden = true;
     linkBox.hidden = true;
     commitText();
     const handle = e.target.closest('.ed-h');
@@ -539,7 +606,9 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   canvas.addEventListener('dblclick', (e) => {
     const node = e.target.closest('.slide-stage > .el');
     if (!node || editing) return;
-    editText(Number(node.dataset.i), e);
+    const i = Number(node.dataset.i);
+    if (cur().els[i] && cur().els[i].t === 'wg') { setUpWidget(i); return; }
+    editText(i, e);
   });
 
   function track(e, move, up) {
@@ -1126,6 +1195,7 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   function closeMenus(e) {
     if (e.target.closest('.ed-anchor')) return;
     shapeMenu.hidden = true;
+    widgetMenu.hidden = true;
     searchBox.hidden = true;
   }
 
@@ -1285,6 +1355,16 @@ export function readText(txt, old) {
     delete p._pi;
   }
   return Object.assign({}, old, { paras });
+}
+
+/** A sound or video file, kept with the deck's pictures. Returns its hash. */
+async function keepFile(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const d = await crypto.subtle.digest('SHA-256', bytes);
+  const hash = Array.from(new Uint8Array(d).slice(0, 16), (b) => b.toString(16).padStart(2, '0')).join('');
+  await store.putMedia(new Map([[hash, { bytes, type: file.type, name: file.name }]]));
+  addMediaUrl(hash, new Blob([bytes], { type: file.type }));
+  return hash;
 }
 
 async function readPicture(file) {

@@ -1,7 +1,8 @@
 # connect-src: Song Burner's lyrics search asks lrclib.net and lyrics.ovh directly.
-# img-src blob: the class app shows pictures it keeps on the device (IndexedDB).
+# img-src blob: the class app shows pictures it keeps on the device (IndexedDB); media-src blob: its sound and video files.
+# frame-src: the class app's video and Spotify widgets (YouTube's no-cookie player, Spotify's embed).
 /*
-  Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' https://lrclib.net https://api.lyrics.ovh; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' https://lrclib.net https://api.lyrics.ovh; media-src 'self' blob:; frame-src https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), geolocation=(), microphone=(self)

@@ -35,6 +35,13 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   catalog name) with x/y stamped, the icon rail with checks, the song list, next class's icons.
   Links on a copied slide into its category deck open that deck; a link to a menu opens the
   grade's built menu with songs the plan hasn't reached yet locked.
+- `widgets.js`: slide elements that work in Present (`{ t: 'wg', kind }`): timer (counts down
+  and chimes, or up), spinner, video (YouTube, through the no-cookie player, or a video file),
+  sound file, Spotify. Added from the editor's 🧩 menu; double-click one to change it. Elsewhere
+  they draw as labels. The spinner's class lists live only in this browser's localStorage
+  (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
+  an online name spinner opens this spinner instead. Present also has a pen (D) that draws over
+  the slide for the sitting; nothing is saved.
 - `pptx.js` (with `zip.js`): converts a .pptx into the deck format below, right in the browser.
   Nothing is uploaded anywhere.
 - `render.js`: draws one slide on a 960 x 540 stage. Present mode, thumbnails and
