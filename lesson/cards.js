@@ -1,139 +1,33 @@
-/* Flash card decks: notes on the staff, and rhythm patterns.
-   A deck is a small recipe Kyle picks in the studio (which notes, which
-   rhythm cells) that travels in the lesson link; cards are drawn with
-   OpenSheetMusicDisplay from MusicXML made here.
-   Notes: { k: 'n', f: clef g/f/c/gf, r: ['C4', 'F#4'...], y: key (fifths), a: 0 letters / 1 solfege }
-   Rhythm: { k: 'r', m: '4/4', l: [cell ids], n: bars, q: tempo } */
+/* Flash card decks. Kyle picks one in the studio; it travels with the lesson page.
+   Notes:  { k: 'n', f: clef g/f/c/gf, r: ['C4', 'F#4'...], y: key (fifths), o, w, g }
+   Tonal:  { k: 't', u: unit name, p: [pattern ids], y: tonic (sounding midi), o, w, g, q: tempo }
+   Rhythm: { k: 'r', u: unit name, p: [pattern ids], o, w, g, q: tempo }
+   o: which ways of answering the student may pick (bits, see MODES), w: say or sing it
+   before playing it, g: how many cards make the goal (0: none).
+   Tonal and rhythm cards are the patterns in /assets/patterns (the units Kyle records). */
 
-import { loadOSMD, parseXML, letterName, solfege } from './score.js';
+import { patternById, toneMidi, toneLabel, METERS, TONALITIES, KEYS } from '/assets/patterns/patterns.js';
+import { notation } from '/assets/patterns/notation.js';
+import * as samples from '/assets/sounds/samples.js';
+import { loadScript, letterName, solfege } from './score.js';
+import { VEXFLOW_SRC } from './paths.js';
 import * as snd from './sound.js';
 
-/* ---------- Rhythm cells (Feierabend syllables) ---------- */
-// d: length in whole notes, r: rest. 'duple' cells fill quarter-note beats, 'triple' dotted-quarter beats.
-export const CELLS = {
-  q: { kind: 'duple', beats: 1, ev: [{ d: 1 / 4, s: 'du' }] },
-  ee: { kind: 'duple', beats: 1, ev: [{ d: 1 / 8, s: 'du' }, { d: 1 / 8, s: 'de' }] },
-  qr: { kind: 'duple', beats: 1, ev: [{ d: 1 / 4, r: 1 }] },
-  h: { kind: 'duple', beats: 2, ev: [{ d: 1 / 2, s: 'du-u' }] },
-  dqe: { kind: 'duple', beats: 2, ev: [{ d: 3 / 8, s: 'du-u' }, { d: 1 / 8, s: 'de' }] },
-  w: { kind: 'duple', beats: 4, ev: [{ d: 1, s: 'du-u-u-u' }] },
-  ssss: { kind: 'duple', beats: 1, ev: [{ d: 1 / 16, s: 'du' }, { d: 1 / 16, s: 'ta' }, { d: 1 / 16, s: 'de' }, { d: 1 / 16, s: 'ta' }] },
-  ess: { kind: 'duple', beats: 1, ev: [{ d: 1 / 8, s: 'du' }, { d: 1 / 16, s: 'de' }, { d: 1 / 16, s: 'ta' }] },
-  sse: { kind: 'duple', beats: 1, ev: [{ d: 1 / 16, s: 'du' }, { d: 1 / 16, s: 'ta' }, { d: 1 / 8, s: 'de' }] },
-  dq: { kind: 'triple', beats: 1, ev: [{ d: 3 / 8, s: 'du' }] },
-  eee: { kind: 'triple', beats: 1, ev: [{ d: 1 / 8, s: 'du' }, { d: 1 / 8, s: 'da' }, { d: 1 / 8, s: 'di' }] },
-  qe: { kind: 'triple', beats: 1, ev: [{ d: 1 / 4, s: 'du' }, { d: 1 / 8, s: 'di' }] },
-  dqr: { kind: 'triple', beats: 1, ev: [{ d: 3 / 8, r: 1 }] },
-  dh: { kind: 'triple', beats: 2, ev: [{ d: 3 / 4, s: 'du-u' }] },
+/* Ways to answer, by deck kind: [bit, id, icon, label]. */
+export const MODES = {
+  n: [[1, 'letters', '🔤', 'Letters'], [2, 'keys', '🎹', 'Keyboard'], [4, 'solfa', '🎵', 'Solfège']],
+  t: [[1, 'sing', '🎤', 'Sing'], [2, 'keys', '🎹', 'Keyboard'], [4, 'solfa', '🎵', 'Solfège']],
+  r: [[1, 'say', '🗣', 'Say'], [2, 'tap', '👏', 'Tap']],
 };
-export const DUPLE = ['q', 'ee', 'qr', 'h', 'dqe', 'w', 'ssss', 'ess', 'sse'];
-export const TRIPLE = ['dq', 'eee', 'qe', 'dqr', 'dh'];
+export const KINDS = { n: 'Notes', t: 'Tonal patterns', r: 'Rhythm patterns' };
+export const modesOf = (deck) => MODES[deck.k].filter(([bit]) => deck.o & bit);
+/* Modes played on an instrument, where "say it first" applies. */
+export const PLAYED = new Set(['keys', 'tap']);
 
-const meterOf = (m) => {
-  const [num, den] = m.split('/').map(Number);
-  return den === 8 ? { num, den, beats: num / 3, kind: 'triple' } : { num, den, beats: num, kind: 'duple' };
-};
+/* The cards in a deck: pitches for notes, pattern ids for the others. */
+export const cardsOf = (deck) => (deck.k === 'n' ? deck.r : deck.p);
 
-const pick = (a) => a[Math.floor(Math.random() * a.length)];
-export function shuffle(a) {
-  const b = a.slice();
-  for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
-  return b;
-}
-
-const isRest = (c) => CELLS[c].ev.every((e) => e.r);
-
-/* One random pattern: a list of bars, each a list of cell ids. */
-export function rhythmPattern(deck) {
-  const me = meterOf(deck.m);
-  const cells = deck.l.filter((c) => CELLS[c] && CELLS[c].kind === me.kind);
-  if (!cells.length) return [];
-  for (let tries = 0; tries < 30; tries++) {
-    const bars = [];
-    for (let b = 0; b < deck.n; b++) {
-      const bar = [];
-      let at = 0;
-      while (at < me.beats) {
-        // Longer cells start on a strong beat and stay inside the bar.
-        const prev = bar[bar.length - 1];
-        const fit = cells.filter((c) => CELLS[c].beats <= me.beats - at && (CELLS[c].beats === 1 || at % CELLS[c].beats === 0)
-          && !(isRest(c) && prev && isRest(prev)));
-        // Rests come up half as often as sounds.
-        const pool = fit.flatMap((c) => (isRest(c) ? [c] : [c, c]));
-        const c = pool.length ? pick(pool) : null;
-        if (!c) break;
-        bar.push(c);
-        at += CELLS[c].beats;
-      }
-      if (at !== me.beats) { bars.length = 0; break; }
-      bars.push(bar);
-    }
-    if (bars.length && bars.flat().some((c) => !isRest(c))) return bars;
-  }
-  return [];
-}
-
-/* Onsets (in beats) and syllables of a pattern. */
-export function rhythmEvents(deck, bars) {
-  const me = meterOf(deck.m);
-  const beatLen = me.kind === 'triple' ? 3 / 8 : 1 / 4;
-  const out = [];
-  let t = 0;
-  for (const bar of bars) {
-    for (const c of bar) {
-      for (const e of CELLS[c].ev) {
-        if (!e.r) out.push({ beat: t / beatLen, s: e.s });
-        t += e.d;
-      }
-    }
-  }
-  return { events: out, beats: t / beatLen, beatLen };
-}
-
-/* ---------- MusicXML for one card ---------- */
-
-const DIV = 48;
-const TYPES = [[1, 'whole', 0], [3 / 4, 'half', 1], [1 / 2, 'half', 0], [3 / 8, 'quarter', 1], [1 / 4, 'quarter', 0], [1 / 8, 'eighth', 0], [1 / 16, '16th', 0]];
-const typeOf = (d) => TYPES.find(([len]) => Math.abs(len - d) < 1e-9) || TYPES[4];
-
-function beamsFor(evs) {
-  // Beam a cell's eighths and sixteenths together (16ths get a second beam).
-  const flags = evs.map((e) => (e.r ? 0 : e.d <= 1 / 16 + 1e-9 ? 2 : e.d <= 1 / 8 + 1e-9 ? 1 : 0));
-  const out = evs.map(() => []);
-  const run = (lvl) => {
-    let i = 0;
-    while (i < flags.length) {
-      if (flags[i] < lvl) { i++; continue; }
-      let j = i;
-      while (j + 1 < flags.length && flags[j + 1] >= lvl) j++;
-      if (j > i) for (let k = i; k <= j; k++) out[k].push(`<beam number="${lvl}">${k === i ? 'begin' : k === j ? 'end' : 'continue'}</beam>`);
-      else if (lvl === 2 && flags[i] === 2) out[i].push(`<beam number="2">${i > 0 && flags[i - 1] >= 1 ? 'backward hook' : 'forward hook'}</beam>`);
-      i = j + 1;
-    }
-  };
-  if (flags.filter((f) => f >= 1).length > 1) { run(1); run(2); }
-  return out;
-}
-
-export function rhythmXML(deck, bars) {
-  const me = meterOf(deck.m);
-  const measures = bars.map((bar, bi) => {
-    const notes = bar.map((c) => {
-      const evs = CELLS[c].ev;
-      const beams = beamsFor(evs);
-      return evs.map((e, i) => {
-        const [, type, dot] = typeOf(e.d);
-        const body = e.r ? '<rest/>' : '<unpitched><display-step>B</display-step><display-octave>4</display-octave></unpitched>';
-        return `<note>${body}<duration>${Math.round(e.d * 4 * DIV)}</duration><type>${type}</type>${dot ? '<dot/>' : ''}${e.r ? '' : '<stem>up</stem>'}${beams[i].join('')}</note>`;
-      }).join('');
-    }).join('');
-    const attrs = bi === 0 ? `<attributes><divisions>${DIV}</divisions><key><fifths>0</fifths></key><time><beats>${me.num}</beats><beat-type>${me.den}</beat-type></time><staff-details><staff-lines>1</staff-lines></staff-details><clef><sign>percussion</sign></clef></attributes>` : '';
-    return `<measure number="${bi + 1}">${attrs}${notes}</measure>`;
-  }).join('');
-  return wrap(measures);
-}
-
-const wrap = (measures) => `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="3.1"><part-list><score-part id="P1"><part-name print-object="no"></part-name></score-part></part-list><part id="P1">${measures}</part></score-partwise>`;
+/* ---------- Notes ---------- */
 
 export function parsePitch(p) {
   const m = /^([A-G])(#|b)?(\d)$/.exec(p);
@@ -153,21 +47,11 @@ export function keyAlter(letter, fifths) {
   return 0;
 }
 
-const CLEFS = { g: ['G', 2], f: ['F', 4], c: ['C', 3] };
-
-export function noteXML(deck, pitch) {
+/* With a key signature, a picked letter means the note the key gives it. */
+export function inKey(pitch, fifths) {
   const p = parsePitch(pitch);
-  const grand = deck.f === 'gf';
-  const staff = grand ? (p.midi >= 60 ? 1 : 2) : 1;
-  const clefs = grand ? '<staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef>' : `<clef><sign>${CLEFS[deck.f][0]}</sign><line>${CLEFS[deck.f][1]}</line></clef>`;
-  const note = `<note><pitch><step>${'CDEFGAB'[p.letter]}</step>${p.alter ? `<alter>${p.alter}</alter>` : ''}<octave>${p.octave}</octave></pitch><duration>${4 * DIV}</duration><type>whole</type>${grand ? `<staff>${staff}</staff>` : ''}</note>`;
-  const other = grand ? `<backup><duration>${4 * DIV}</duration></backup><note print-object="no"><rest measure="yes"/><duration>${4 * DIV}</duration><staff>${3 - staff}</staff></note>` : '';
-  return wrap(`<measure number="1"><attributes><divisions>${DIV}</divisions><key><fifths>${deck.y}</fifths></key><time print-object="no"><beats>4</beats><beat-type>4</beat-type></time>${clefs}</attributes>${note}${other}</measure>`);
-}
-
-export function noteAnswer(deck, pitch) {
-  const p = parsePitch(pitch);
-  return deck.a === 1 ? solfege(p.letter, p.alter, deck.y) : letterName(p.letter, p.alter);
+  const a = keyAlter(p.letter, fifths);
+  return `${'CDEFGAB'[p.letter]}${a > 0 ? '#' : a < 0 ? 'b' : ''}${p.octave}`;
 }
 
 /* Every note a clef offers in the studio's note picker, low to high. */
@@ -184,58 +68,202 @@ export function clefRange(f) {
   return out;
 }
 
-/* With a key signature, a picked letter means the note the key gives it. */
-export function inKey(pitch, fifths) {
+export const KEY_NAMES = ['Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F', 'C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#'];
+const keyName = (fifths) => KEY_NAMES[fifths + 7];
+const pretty = (name) => name.replace('#', '♯').replace(/b$/, '♭');
+
+/* The letter (with the key's sharp or flat) that names each of the seven letters. */
+export const letterButtons = (fifths) => [0, 1, 2, 3, 4, 5, 6].map((l) => letterName(l, keyAlter(l, fifths)));
+export const SOLFA = ['do', 're', 'mi', 'fa', 'so', 'la', 'ti'];
+export const doName = (fifths) => pretty(keyName(fifths));
+
+export function noteAnswer(deck, pitch, mode) {
   const p = parsePitch(pitch);
-  const a = keyAlter(p.letter, fifths);
-  return `${'CDEFGAB'[p.letter]}${a > 0 ? '#' : a < 0 ? 'b' : ''}${p.octave}`;
+  return mode === 'solfa' ? solfege(p.letter, p.alter, deck.y) : letterName(p.letter, p.alter);
 }
 
-/* ---------- Drawing ---------- */
+/* ---------- Drawing (VexFlow) ---------- */
 
-export async function cardDrawer(container) {
-  const O = await loadOSMD();
-  const osmd = new O.OpenSheetMusicDisplay(container, {
-    autoResize: false, backend: 'svg', drawTitle: false, drawSubtitle: false, drawComposer: false, drawLyricist: false,
-    drawCredits: false, drawPartNames: false, drawMeasureNumbers: false, autoBeam: false, disableCursor: true,
-    drawingParameters: 'compacttight', pageBackgroundColor: '#FFFFFF',
-  });
-  return async (xml, zoom = 1.6) => {
-    await osmd.load(parseXML(xml));
-    osmd.zoom = zoom;
-    osmd.render();
-    // Crop to the music so the card is centred.
-    const svg = container.querySelector('svg');
-    const bb = svg?.getBBox();
-    if (bb && bb.width) {
-      const pad = 12;
-      svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${bb.width + 2 * pad} ${bb.height + 2 * pad}`);
-      svg.setAttribute('width', bb.width + 2 * pad);
-      svg.setAttribute('height', bb.height + 2 * pad);
+const INK = '#2F4A3A';
+let vex = null;
+export const loadVex = () => (vex ||= loadScript(VEXFLOW_SRC).then(() => window.Vex));
+
+function svgFor(width, height, draw) {
+  const VF = window.Vex.Flow;
+  const div = document.createElement('div');
+  const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+  renderer.resize(width, height);
+  const ctx = renderer.getContext();
+  ctx.setFillStyle(INK);
+  ctx.setStrokeStyle(INK);
+  draw(VF, ctx);
+  const svg = div.querySelector('svg');
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
+  return svg.outerHTML;
+}
+
+const CLEF = { g: 'treble', f: 'bass', c: 'alto' };
+
+function noteSVG(deck, pitch) {
+  const p = parsePitch(pitch);
+  const key = keyName(deck.y);
+  const vfKey = `${pitch[0].toLowerCase()}${pitch.slice(1, -1)}/${p.octave}`;
+  const width = 170 + Math.abs(deck.y) * 10;
+  const grand = deck.f === 'gf';
+  return svgFor(width, grand ? 220 : 140, (VF, ctx) => {
+    const staves = grand
+      ? [new VF.Stave(14, 0, width - 16).addClef('treble'), new VF.Stave(14, 90, width - 16).addClef('bass')]
+      : [new VF.Stave(2, 20, width - 4).addClef(CLEF[deck.f])];
+    staves.forEach((s) => s.addKeySignature(key).setContext(ctx).draw());
+    if (grand) {
+      new VF.StaveConnector(staves[0], staves[1]).setType('brace').setContext(ctx).draw();
+      new VF.StaveConnector(staves[0], staves[1]).setType('singleLeft').setContext(ctx).draw();
     }
-  };
+    const on = grand && p.midi < 60 ? 1 : 0;
+    const clef = grand ? (on ? 'bass' : 'treble') : CLEF[deck.f];
+    const note = new VF.StaveNote({ keys: [vfKey], duration: 'w', clef });
+    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
+    VF.Accidental.applyAccidentals([voice], key);
+    new VF.Formatter().joinVoices([voice]).format([voice], 40);
+    // Centre the note in the space after the key signature.
+    const stave = staves[on];
+    const room = stave.getX() + stave.getWidth() - stave.getNoteStartX();
+    note.setXShift(room / 2 - 30);
+    voice.draw(ctx, stave);
+  });
+}
+
+/* SVG markup for a card. Loads VexFlow first. */
+export async function cardSVG(deck, card) {
+  await loadVex();
+  if (deck.k === 'n') return noteSVG(deck, card);
+  return notation(patternById(card), deck.y);
+}
+
+/* What the card says, for summaries and answers: a note name, or the pattern's syllables. */
+export function cardLabel(deck, card) {
+  if (deck.k === 'n') { const p = parsePitch(card); return letterName(p.letter, p.alter) + p.octave; }
+  return patternById(card)?.syllables || card;
+}
+
+/* ---------- Tonal patterns ---------- */
+
+/* Written pitches (an octave above how the voice sounds), and syllables, of a tonal pattern. */
+export function tonalNotes(deck, card) {
+  const pat = patternById(card);
+  return pat.tones.map((t) => ({ midi: toneMidi(pat.tonality, deck.y, t) + 12, syl: toneLabel(t), base: t.length === 3 ? t.slice(1) : t }));
+}
+export const tonalityOf = (deck) => (deck.p[0] || '').split('/')[1] || 'major';
+/* Written midi of do (major) or la (minor). */
+export const homeMidi = (deck) => deck.y + 12;
+export function keyLabel(deck) {
+  const t = tonalityOf(deck);
+  const k = KEYS[t].find((x) => x.midi === deck.y) || KEYS[t][0];
+  return { name: pretty(k.name) + (t === 'minor' ? 'm' : ''), do: pretty(k.do) };
+}
+/* Syllable buttons for a deck: every tone its patterns use, low to high. */
+export function deckSyllables(deck) {
+  const t = tonalityOf(deck);
+  const used = new Set(deck.p.flatMap((id) => patternById(id).tones.map((x) => (x.length === 3 ? x.slice(1) : x))));
+  return TONALITIES[t].tones.filter((x) => x.length === 2 && used.has(x));
+}
+
+/* ---------- Rhythm patterns ---------- */
+
+const EIGHTHS = { q: 2, 8: 1, qd: 3 };
+/* Onsets in beats, with syllables, and the pattern's length in beats. */
+export function rhythmEvents(card) {
+  const pat = patternById(card);
+  const m = METERS[pat.meter];
+  const beat = pat.meter === '6/8' ? 3 : 2;
+  let at = 0;
+  const events = [];
+  for (const c of pat.cells) {
+    m.cells[c].notes.forEach((n, i) => {
+      events.push({ beat: at / beat, s: m.cells[c].syllables[i] });
+      at += EIGHTHS[n];
+    });
+  }
+  return { events, beats: at / beat, perBar: m.beatsPerBar };
 }
 
 /* ---------- Sounds ---------- */
 
-export function playRhythm(deck, bars, { tempo = deck.q, countIn = false, sound = true, beat = false, onSyllable } = {}) {
-  const { events, beats, beatLen } = rhythmEvents(deck, bars);
-  const me = meterOf(deck.m);
-  const beatSec = 60 / tempo;
-  let t0 = snd.now() + 0.1;
-  if (countIn) {
-    for (let k = 0; k < me.beats; k++) snd.click(t0 + k * beatSec, k === 0);
-    t0 += me.beats * beatSec;
-  }
-  if (beat) for (let k = 0; k < beats; k++) snd.click(t0 + k * beatSec, k % me.beats === 0, 0.2);
-  const timers = events.map((e, i) => {
-    if (sound) snd.block(t0 + e.beat * beatSec);
-    return onSyllable ? setTimeout(() => onSyllable(i), (t0 + e.beat * beatSec - snd.now()) * 1000) : 0;
-  });
-  return { start: t0, beatSec, events, beatLen, end: t0 + beats * beatSec, cancel: () => timers.forEach(clearTimeout) };
+let voice = null;
+const kyle = () => (voice ||= samples.takes('kyle').catch(() => null));
+let claves = null;
+const clave = () => (claves ||= snd.instrument('claves'));
+const piano = () => snd.instrument('piano', { lo: 36, hi: 96 });
+
+/* Load what a deck will play, so the first card isn't late. */
+export async function prepare(deck) {
+  if (deck.k === 'r') await clave();
+  else await piano();
+  if (deck.k !== 'n') { const v = await kyle(); if (v) v.prepare(deck.p.filter(v.has)).catch(() => {}); }
 }
 
-export const playNote = (pitch) => {
-  const p = parsePitch(pitch);
-  if (p) snd.note(p.midi, snd.now() + 0.02, 1.2, { vol: 0.3 });
-};
+export async function playNote(midi, t = snd.now() + 0.03, dur = 1) {
+  const p = await piano();
+  if (p) p.note(midi, t, dur, { vol: 0.3 }); else snd.note(midi, t, dur, { vol: 0.3 });
+}
+
+/* do-mi-so-mi-do (la-do-mi-do-la in minor), to hear the key before singing. */
+export async function playTonic(deck) {
+  const home = homeMidi(deck);
+  const steps = tonalityOf(deck) === 'minor' ? [0, 3, 7, 3, 0] : [0, 4, 7, 4, 0];
+  const t = snd.now() + 0.05;
+  for (let i = 0; i < steps.length; i++) await playNote(home + steps[i], t + i * 0.32, i === steps.length - 1 ? 1 : 0.3);
+  return (steps.length * 0.32 + 0.5) * 1000;
+}
+
+/* The model: Kyle's take when there is one, otherwise the piano or claves.
+   Resolves with how long it lasts (ms). onEvent(i) fires as each note sounds. */
+export async function playModel(deck, card, { onEvent } = {}) {
+  const v = await kyle();
+  const bpm = deck.q || 80;
+  if (v?.has(card)) {
+    await v.say(card, snd.now() + 0.05, { bpm, key: deck.k === 't' ? deck.y : null });
+    return 1800;
+  }
+  const t0 = snd.now() + 0.08;
+  const beat = 60 / bpm;
+  const times = [];
+  if (deck.k === 't') {
+    const notes = tonalNotes(deck, card);
+    for (let i = 0; i < notes.length; i++) { times.push(t0 + i * beat); await playNote(notes[i].midi, t0 + i * beat, beat * 0.95); }
+  } else {
+    const { events } = rhythmEvents(card);
+    const c = await clave();
+    for (const e of events) { const t = t0 + e.beat * beat; times.push(t); if (c) c.hit(t, { vol: 0.8 }); else snd.block(t); }
+  }
+  if (onEvent) times.forEach((t, i) => setTimeout(() => onEvent(i), (t - snd.now()) * 1000));
+  return (times[times.length - 1] - snd.now() + beat) * 1000;
+}
+
+/* A count-in of one bar, then the beat under the student's taps. */
+export function tapRun(deck, card) {
+  const { events, beats, perBar } = rhythmEvents(card);
+  const beat = 60 / (deck.q || 80);
+  const start = snd.now() + 0.15 + perBar * beat;
+  for (let k = -perBar; k < beats; k++) snd.click(start + k * beat, (k + perBar) % perBar === 0, k < 0 ? 0.35 : 0.18);
+  return { start, beat, events, end: start + beats * beat };
+}
+
+/* Which notes a student's taps hit. Taps before the first note can't count against them. */
+export function scoreTaps(run, taps) {
+  const latency = (snd.ac().outputLatency || 0) + (snd.ac().baseLatency || 0);
+  const tol = Math.min(0.16, run.beat * 0.3);
+  const mine = taps.filter((t) => t >= run.start + latency - tol);
+  const used = new Set();
+  const hits = run.events.map((e) => {
+    const want = run.start + e.beat * run.beat + latency;
+    let best = -1;
+    let gap = Infinity;
+    mine.forEach((t, j) => { const d = Math.abs(t - want); if (!used.has(j) && d < gap) { gap = d; best = j; } });
+    if (best >= 0 && gap <= tol) { used.add(best); return true; }
+    return false;
+  });
+  return { hits, extra: mine.length - used.size };
+}

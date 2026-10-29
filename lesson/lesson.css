@@ -8,9 +8,7 @@ h1 { font-weight: 600; margin: 0; font-size: 32px; }
 header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
 
 .reward { display: flex; align-items: center; justify-content: center; gap: 14px; background: #fff; border-radius: 22px; padding: 12px 18px; margin-bottom: 16px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
-.sticker { font-size: 56px; line-height: 1; animation: wiggle 2.4s ease-in-out infinite; display: inline-block; }
 .rstars { font-size: 38px; color: #F5B800; letter-spacing: 4px; text-shadow: 0 2px 0 #D99A00; }
-@keyframes wiggle { 0%, 100% { transform: rotate(-6deg) scale(1); } 50% { transform: rotate(6deg) scale(1.08); } }
 
 .practice { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #fff; border-radius: 22px; padding: 14px; margin-bottom: 16px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
 .timer { position: relative; width: 96px; height: 96px; border-radius: 50%; background: #F6F1E4; display: grid; place-items: center; align-content: center; flex: none; }
@@ -43,19 +41,10 @@ header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
 .itools { grid-column: 2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
 .go { min-height: 48px; padding: 6px 20px; border-radius: 999px; font-size: 22px; background: #2F4A3A; color: #F6F1E4; box-shadow: 0 3px 0 #1E3127; }
 .go:active { transform: translateY(2px); box-shadow: 0 1px 0 #1E3127; }
-.go.cards { background: #7F4FA3; box-shadow: 0 3px 0 #5E3880; }
-.go.piece { background: #11A38B; box-shadow: 0 3px 0 #0B7A68; }
+.go.cards { background: #EFE6F6; color: #5E3880; box-shadow: 0 3px 0 #CDB6E0; }
+.go.piece { background: #DFF3EE; color: #0B7A68; box-shadow: 0 3px 0 #9FD6CA; }
 .plays { color: #5B6B5F; font-size: 16px; }
-.metro { display: flex; align-items: center; background: #F6F1E4; border-radius: 999px; }
-.metro button { background: transparent; min-width: 40px; min-height: 44px; padding: 0 8px; font-size: 18px; border-radius: 999px; }
-.metro .mgo { font-weight: 500; font-variant-numeric: tabular-nums; }
-.metro.on .mgo { background: #E0A458; color: #fff; }
-.metro.on.tick .mgo { background: #D08F3D; }
 
-.goals { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.goals li { display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 999px; padding: 6px 14px 6px 8px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
-.goals .gs { font-size: 20px; }
-.goals .g2 { background: #FFF6D6; }
 .note { margin-top: 20px; white-space: pre-wrap; line-height: 1.45; }
 .foot { display: flex; justify-content: flex-end; margin-top: 28px; }
 .print { background: transparent; font-size: 22px; opacity: .6; }
@@ -64,8 +53,8 @@ header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
 
 @media print {
   body { background: #fff; font-size: 14px; }
-  .reward, .practice, .items li, .goals li { box-shadow: none; border: 1px solid #ccc; }
-  .timer, .goal, .itools, .print, .sticker { display: none; }
+  .reward, .practice, .items li { box-shadow: none; border: 1px solid #ccc; }
+  .timer, .goal, .itools, .print { display: none; }
   .days label { background: #fff; border: 1px solid #999; }
   .days label:has(input:checked) { background: #fff; color: inherit; transform: none; }
   .items li:has(> input:checked) { background: #fff; }

@@ -1,5 +1,8 @@
-/* Sounds made in the browser with Web Audio: nothing is loaded or recorded.
-   Everything is scheduled on the audio clock so rhythms stay steady. */
+/* Sounds for the lesson pages, scheduled on the audio clock so rhythms stay
+   steady. Recorded instruments (assets/sounds) share this context; when they
+   can't load, the tones made here stand in. */
+
+import * as samples from '/assets/sounds/samples.js';
 
 let ctx = null;
 let out = null;
@@ -119,4 +122,15 @@ export function no() {
 export function fanfare() {
   const t = now() + 0.02;
   [72, 76, 79, 84].forEach((m, i) => note(m, t + i * 0.1, i === 3 ? 0.8 : 0.15, { vol: 0.13 }));
+}
+
+/* Recorded instruments, loaded once and shared. Resolve to null if they can't load. */
+const loaded = {};
+export function instrument(name, range) {
+  if (!(name in loaded)) {
+    ac();
+    samples.setup(ctx, out);
+    loaded[name] = samples.instrument(name, range).catch(() => null);
+  }
+  return loaded[name];
 }

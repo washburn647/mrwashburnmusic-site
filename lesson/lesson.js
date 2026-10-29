@@ -1,13 +1,13 @@
 /* A private lesson student's page. Everything on it comes from the link
-   (see codec.js). Checkmarks, practice minutes and best scores are kept
-   only in this browser. */
+   (see codec.js). Checkmarks, practice minutes and flash card results are
+   kept only in this browser. */
 
 import { decodeLesson, formatDate } from './codec.js';
 import { LOGO, QR_SRC } from './paths.js';
 import { loadScript } from './score.js';
 import { confetti } from './fun.js';
 import { openPlayer } from './player.js';
-import { openDeck } from './games.js';
+import { openPractice } from './practice.js';
 import * as snd from './sound.js';
 
 const main = document.getElementById('page');
@@ -45,38 +45,11 @@ function practiceDays(date) {
 
 const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec) % 60).padStart(2, '0')}`;
 
-/* ---------- A metronome for an item's tempo ---------- */
-
-const metro = { on: null, bpm: 0, next: 0, beat: 0, timer: null };
-function metroStart(owner, bpm) {
-  metroStop();
-  metro.on = owner;
-  metro.bpm = bpm;
-  metro.next = snd.now() + 0.08;
-  metro.beat = 0;
-  metro.timer = setInterval(() => {
-    while (metro.next < snd.now() + 0.2) {
-      snd.click(metro.next, metro.beat % 4 === 0);
-      const at = metro.next;
-      setTimeout(() => owner.classList.toggle('tick', metro.beat % 2 === 0), Math.max(0, (at - snd.now()) * 1000));
-      metro.next += 60 / metro.bpm;
-      metro.beat++;
-    }
-  }, 30);
-  owner.classList.add('on');
-}
-function metroStop() {
-  clearInterval(metro.timer);
-  if (metro.on) metro.on.classList.remove('on', 'tick');
-  metro.on = null;
-}
-
 /* ---------- Overlays (piece player, flash cards) close with Back ---------- */
 
 let overlay = null;
 let ownBacks = 0;  // history.back() calls of ours whose popstate hasn't come yet
 function openOverlay(make) {
-  metroStop();
   history.pushState({ overlay: 1 }, '');
   const me = { ctl: null };
   overlay = me;
@@ -105,7 +78,7 @@ async function show() {
   const key = await keyFor(hash);
   const state = load(key);
   state.mins = state.mins || {};
-  state.best = state.best || {};
+  state.cards = state.cards || {};
   state.plays = state.plays || {};
   state.party = state.party || {};
   const save = () => { try { localStorage.setItem(key, JSON.stringify(state)); } catch { /* private window: nothing stays */ } };
@@ -114,10 +87,8 @@ async function show() {
     el('h1', { textContent: page.n }),
     el('p', { textContent: [page.i, formatDate(page.d)].filter(Boolean).join(' · ') })));
 
-  /* Reward from Mr. W */
-  const reward = (page.s || page.k) && el('div', { class: 'reward' },
-    page.k && el('span', { class: 'sticker', textContent: page.k }),
-    page.s ? el('span', { class: 'rstars', 'aria-label': `${page.s} stars` }, '★'.repeat(page.s)) : null);
+  /* Stars from Mr. W */
+  const reward = page.s ? el('div', { class: 'reward' }, el('span', { class: 'rstars', 'aria-label': `${page.s} stars` }, '★'.repeat(page.s))) : null;
 
   /* Practice timer and days */
   const days = practiceDays(page.d);
@@ -210,34 +181,33 @@ async function show() {
       const plays = el('span', { class: 'plays' });
       const showPlays = () => { plays.textContent = state.plays[i] ? `🔁 ${state.plays[i]}` : ''; };
       showPlays();
-      tools.append(el('button', { class: 'go piece', 'aria-label': 'Play the music', onclick: () => openOverlay(async (done) =>
-        openPlayer(document.body, {
-          xml: page.p[it.p], title: it.a, setup: it.u,
-          onClose: done,
-          onFinish: () => { state.plays[i] = (state.plays[i] || 0) + 1; save(); showPlays(); snd.fanfare(); confetti(80); },
-        })) }, '♫ ▶'), plays);
+      const open = (mode) => openOverlay(async (done) => openPlayer(document.body, {
+        xml: page.p[it.p], title: it.a, setup: it.u, mode,
+        onClose: done,
+        onFinish: () => { state.plays[i] = (state.plays[i] || 0) + 1; save(); showPlays(); },
+      }));
+      const v = it.u?.v ?? 3;
+      if (v & 1) tools.append(el('button', { class: 'go piece', 'aria-label': 'Listen', onclick: () => open('listen') }, '🎹 ▶'));
+      if (v & 2) tools.append(el('button', { class: 'go piece', 'aria-label': 'Sheet music', onclick: () => open('sheet') }, '🎼 ▶'));
+      tools.append(plays);
     }
     if (it.c) {
+      // Results per card, over every session: { [card]: [tries, right] }.
+      const mine = (state.cards[i] ||= { history: {}, done: 0 });
       const badge = el('span', { class: 'plays' });
-      const showBest = () => {
-        const b = state.best[i] || {};
-        const top = Object.values(b).reduce((m, x) => Math.max(m, x.score / x.of), 0);
-        badge.textContent = top ? `🏅 ${Math.round(top * 100)}%` : '';
-      };
-      showBest();
+      const showDone = () => { badge.textContent = mine.done ? `⭐ ${mine.done}` : ''; };
+      showDone();
       tools.append(el('button', { class: 'go cards', 'aria-label': 'Flash cards', onclick: () => openOverlay(async (done) =>
-        openDeck(document.body, it.c, { title: it.a, best: state.best[i] || {}, onClose: done, onResult: (best) => { state.best[i] = best; save(); showBest(); } })) }, '🃏'), badge);
-    }
-    if (it.q) {
-      let bpm = it.q;
-      const label = el('span', {}, `♩ ${bpm}`);
-      const chip = el('div', { class: 'metro' });
-      const set = (d) => { bpm = Math.max(30, Math.min(260, bpm + d)); label.textContent = `♩ ${bpm}`; metro.bpm = bpm; };
-      chip.append(
-        el('button', { class: 'm-', 'aria-label': 'Slower', onclick: () => set(-4) }, '−'),
-        el('button', { class: 'mgo', 'aria-label': 'Metronome', onclick: () => (metro.on === chip ? metroStop() : metroStart(chip, bpm)) }, label),
-        el('button', { class: 'm+', 'aria-label': 'Faster', onclick: () => set(4) }, '+'));
-      tools.append(chip);
+        openPractice(document.body, it.c, { title: it.a, history: mine.history, onClose: done, onEnd: (r) => {
+          for (const [card, [tries, right]] of Object.entries(r.items)) {
+            const h = (mine.history[card] ||= [0, 0]);
+            h[0] += tries;
+            h[1] += right;
+          }
+          mine.done += r.ok;
+          save();
+          showDone();
+        } })) }, '🃏'), badge);
     }
     return el('li', {},
       box,
@@ -246,11 +216,6 @@ async function show() {
       it.l ? el('a', { href: it.l, textContent: new URL(it.l).hostname.replace(/^www\./, ''), target: '_blank', rel: 'noopener noreferrer' }) : null,
       tools.childNodes.length ? tools : null);
   }));
-
-  /* Pieces and goals */
-  const STATUS = [['🌱', 'Learning'], ['✨', 'Polishing'], ['🏆', 'Done']];
-  const goals = page.g.length && el('ul', { class: 'goals' }, page.g.map(([text, s]) =>
-    el('li', { class: `g${s}` }, el('span', { class: 'gs', title: STATUS[s][1], 'aria-label': STATUS[s][1] }, STATUS[s][0]), el('span', {}, text))));
 
   /* Printing: a QR code back to this page when the link is short enough */
   const qr = el('div', { class: 'qr' });
@@ -267,7 +232,7 @@ async function show() {
   }
 
   main.replaceChildren(...[
-    header, reward, practice, list, goals,
+    header, reward, practice, list,
     page.m ? el('p', { class: 'note', textContent: page.m }) : null,
     el('div', { class: 'foot' }, el('button', { class: 'print', 'aria-label': 'Print', onclick: () => print() }, '🖨'), qr),
   ].filter(Boolean));

@@ -1,13 +1,16 @@
-/* The piece player: a MusicXML score that plays back at any speed with a
-   cursor (and a hopping ball) following along. Tap the music to start there,
-   loop a few bars, turn parts or hands on and off, transpose, and show note
-   names or colours. Used on the student's page and in the studio, where
-   Kyle sets a piece up (bars, speed, parts...) before sending it. */
+/* The piece player, in three modes:
+   - 'teach' (studio): everything. Kyle tries a piece, picks bars to loop and
+     saves sections and the student's settings.
+   - 'sheet' (student): the score full screen with a cursor and a hopping ball,
+     play/pause, speed within Kyle's range, his sections and (if allowed) parts.
+   - 'listen' (student): a small window with no score: speed, back, play/pause,
+     forward, sections, parts.
+   Students never see the settings. Notes play on the sampled piano when it
+   loads (assets/sounds), otherwise on the built-in tone. */
 
 import { loadOSMD, parseXML, letterName, solfege } from './score.js';
 import * as snd from './sound.js';
 
-const NAMES = ['', 'ABC', 'Do'];
 const BOOMWHACKER = ['#E5243B', '#F47B20', '#F5C400', '#7DC242', '#11A38B', '#7F4FA3', '#E0569B', '#2F4A3A'];
 const PIANO = /piano|keyboard|organ|harpsichord|celest|clavi/i;
 
@@ -91,16 +94,32 @@ function tAtSec(tl, sec) {
   return s.t + (sec - s.sec) * s.bpm / 240;
 }
 
+
 /* ---------- The player ---------- */
 
-export async function openPlayer(host, { xml, title = '', setup = {}, onSave, onClose, onFinish }) {
+/* Bar numbers as printed -> measure index. */
+function indexOfBar(osmd, bar) {
+  const i = osmd.Sheet.SourceMeasures.findIndex((sm) => sm.MeasureNumber === bar);
+  return i < 0 ? null : i;
+}
+
+export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'teach', onSave, onSection, onClose, onFinish }) {
   const O = await loadOSMD();
+  const teach = mode === 'teach';
+  const listen = mode === 'listen';
+  const range = Array.isArray(setup.sp) ? setup.sp : [20, 200];
+  const lo = teach ? 20 : Math.max(20, Math.min(...range));
+  const hi = teach ? 200 : Math.min(200, Math.max(...range));
   const st = {
-    speed: setup.s || 100, transpose: setup.k || 0, names: setup.n || 0, colors: !!setup.c,
+    speed: Math.max(lo, Math.min(hi, setup.s || 100)), transpose: setup.k || 0, names: setup.n || 0, colors: !!setup.c,
     click: !!setup.x, countIn: setup.ci !== 0, zoom: 0,
     muted: new Set(setup.m || []), hidden: new Set(setup.h || []),
-    loop: Number.isInteger(setup.a) && Number.isInteger(setup.b) ? [setup.a, setup.b] : null, picking: null,
+    loop: null, picking: null, section: -1,
   };
+  const sections = (Array.isArray(setup.sec) ? setup.sec : []).filter((x) => Array.isArray(x) && x.length === 3);
+  const pianoP = snd.instrument('piano', { lo: 21, hi: 108 });
+  let piano = null;
+  pianoP.then((p) => { piano = p; });
 
   const sheet = el('div', { class: 'psheet' });
   const layer = el('div', { class: 'player-layer' });
@@ -110,25 +129,47 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
   const scroller = el('div', { class: 'pscore' }, stage);
   const playBtn = el('button', { class: 'play', 'aria-label': 'Play', onclick: () => (playing ? pause() : play()) }, '▶');
   const speedOut = el('output', { class: 'speed' });
-  const speedIn = el('input', { type: 'range', min: 20, max: 200, step: 5, value: st.speed, 'aria-label': 'Speed', oninput: () => setSpeed(+speedIn.value) });
+  const speedIn = teach && el('input', { type: 'range', min: lo, max: hi, step: 5, value: st.speed, 'aria-label': 'Speed', oninput: () => setSpeed(+speedIn.value) });
   const loopBtn = el('button', { class: 'loop', 'aria-label': 'Loop', onclick: toggleLoop }, '🔁');
-  const moreBtn = el('button', { 'aria-label': 'More', onclick: () => { more.hidden = !more.hidden; } }, '⚙');
+  const moreBtn = teach && el('button', { 'aria-label': 'More', onclick: () => { more.hidden = !more.hidden; } }, '⚙');
   const more = el('div', { class: 'pmore', hidden: true });
-  const bar = el('div', { class: 'pbar' },
-    el('button', { 'aria-label': 'Back to start', onclick: () => { const was = playing; pause(); seekT(loopRange()?.[0] ?? 0); if (was) play(); } }, '⏮'),
-    playBtn,
-    el('div', { class: 'speedbox' },
-      el('button', { class: 'small', 'aria-label': 'Slower', onclick: () => setSpeed(st.speed - 5) }, '−'),
-      speedIn,
-      el('button', { class: 'small', 'aria-label': 'Faster', onclick: () => setSpeed(st.speed + 5) }, '+'),
-      speedOut),
-    loopBtn, moreBtn);
-  const saveBtn = onSave && el('button', { class: 'primary', onclick: () => { onSave(currentSetup()); saveBtn.textContent = 'Saved'; setTimeout(() => { saveBtn.textContent = 'Save setup'; }, 1500); } }, 'Save setup');
+  const chips = el('div', { class: 'pchips' });
+  const progress = el('div', { class: 'pprog' }, el('span'));
+  const barOut = el('output', { class: 'pbarnum' });
+  const toStart = () => restartIfPlaying(() => seekT(loopRange()?.[0] ?? 0));
+  const byBar = (d) => restartIfPlaying(() => {
+    const i = tl.measures.findIndex((ms) => ms.t <= pos + 1e-9 && ms.t + ms.len > pos + 1e-9);
+    const j = Math.max(0, Math.min(tl.measures.length - 1, (i < 0 ? 0 : i) + d));
+    seekT(tl.measures[j].t);
+  });
+  const speedBox = el('div', { class: 'speedbox' },
+    el('button', { class: 'small', 'aria-label': 'Slower', onclick: () => setSpeed(st.speed - 5) }, '−'),
+    speedIn,
+    el('button', { class: 'small', 'aria-label': 'Faster', onclick: () => setSpeed(st.speed + 5) }, '+'),
+    speedOut);
+  const bar = listen
+    ? el('div', { class: 'pbar' },
+      el('button', { 'aria-label': 'Back', onclick: () => byBar(-1) }, '⏪'), playBtn,
+      el('button', { 'aria-label': 'Forward', onclick: () => byBar(1) }, '⏩'), speedBox)
+    : el('div', { class: 'pbar' },
+      el('button', { 'aria-label': 'Back to start', onclick: toStart }, '⏮'), playBtn, speedBox,
+      teach && loopBtn, teach && el('button', { class: 'addsec', hidden: true, onclick: () => {
+        if (!st.loop || !onSection) return;
+        const nums = st.loop.map((i) => osmd.Sheet.SourceMeasures[i].MeasureNumber);
+        onSection(Math.min(...nums), Math.max(...nums));
+        addSec.textContent = '✓';
+        setTimeout(() => { addSec.textContent = '＋ Section'; }, 1200);
+      } }, '＋ Section'), moreBtn);
+  const addSec = bar.querySelector('.addsec');
+  const saveBtn = onSave && el('button', { class: 'primary', onclick: () => { onSave(currentSetup()); saveBtn.textContent = 'Saved'; setTimeout(() => { saveBtn.textContent = 'Save settings'; }, 1500); } }, 'Save settings');
   const top = el('div', { class: 'ptop' },
     el('button', { class: 'close', 'aria-label': 'Close', onclick: () => close() }, '✕'),
     el('h2', { textContent: title }),
     saveBtn);
-  const root = el('div', { class: 'player' }, top, scroller, more, bar);
+  const root = listen
+    ? el('div', { class: 'player listen' }, el('div', { class: 'lcard' }, top, el('div', { class: 'lprog' }, progress, barOut), chips, bar))
+    : el('div', { class: `player ${mode}` }, top, scroller, more, chips, bar);
+  if (listen) root.addEventListener('click', (e) => { if (e.target === root) close(); });
   host.append(root);
   document.body.classList.add('playing-piece');
 
@@ -144,7 +185,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     if (![...doc.querySelectorAll('work-title, movement-title, credit-words')].some((e) => e.textContent.trim())) osmd.setOptions({ drawTitle: false });
     await osmd.load(doc);
   } catch {
-    sheet.append(el('p', { class: 'perr', textContent: '⚠' }));
+    (listen ? chips : sheet).append(el('p', { class: 'perr', textContent: '⚠' }));
     return { close };
   }
 
@@ -158,11 +199,11 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     });
   }
   const buses = {};
-  for (const s of staves) buses[s.id] = null;
   const busFor = (id) => {
     if (!buses[id]) buses[id] = snd.bus(st.muted.has(id) ? 0 : 1);
     return buses[id];
   };
+  const voice = (midi, t, dur, opts) => (piano ? piano.note(midi, t, dur, opts) : snd.note(midi, t, dur, opts));
 
   // Key signature (as written) for each measure and staff, for solfege.
   const keys = [];
@@ -183,8 +224,9 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
   /* ---------- drawing ---------- */
 
   function render() {
+    if (listen) { drawProgress(); return; }
     const w = scroller.clientWidth;
-    if (!st.zoom) st.zoom = w < 520 ? 0.5 : w < 820 ? 0.75 : 1;
+    if (!st.zoom) st.zoom = w < 520 ? 0.5 : w < 820 ? 0.75 : Math.min(1.3, w / 1000);
     osmd.zoom = st.zoom;
     for (const s of staves) s.staff.Visible = !st.hidden.has(s.id);
     osmd.Sheet.Transpose = st.transpose;
@@ -221,6 +263,8 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
   }
 
   function drawLayer() {
+    drawChips();
+    if (listen) return;
     layer.replaceChildren(ball);
     const boxes = measureBoxes();
     const sel = st.picking != null ? [st.picking, st.picking] : st.loop;
@@ -232,6 +276,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     }
     if (st.names) drawNames(boxes);
     loopBtn.classList.toggle('on', !!st.loop || st.picking != null);
+    if (addSec) addSec.hidden = !(st.loop && onSection && st.section < 0);
   }
 
   function drawNames(boxes) {
@@ -266,7 +311,43 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     });
   }
 
-  /* ---------- cursor ---------- */
+  /* Sections and parts the student can choose. */
+  function drawChips() {
+    const kids = [];
+    if (sections.length) {
+      kids.push(el('button', { 'aria-pressed': String(st.section < 0 && !st.loop), onclick: () => pickSection(-1) }, '∞'));
+      sections.forEach(([name], i) => kids.push(el('button', { 'aria-pressed': String(st.section === i), onclick: () => pickSection(i) }, name || String(i + 1))));
+    }
+    if ((teach || setup.iso) && staves.length > 1 && !teach) {
+      if (kids.length) kids.push(el('span', { class: 'gap' }));
+      staves.forEach((s) => kids.push(el('button', { class: 'part', 'aria-pressed': String(!st.muted.has(s.id)), onclick: () => toggleMute(s.id) }, s.name)));
+    }
+    chips.replaceChildren(...kids);
+    chips.hidden = !kids.length;
+  }
+
+  function pickSection(i) {
+    st.section = i;
+    if (i < 0) st.loop = null;
+    else {
+      const [, a, b] = sections[i];
+      const ia = indexOfBar(osmd, a);
+      const ib = indexOfBar(osmd, b);
+      st.loop = ia == null || ib == null ? null : [ia, ib];
+    }
+    drawLayer();
+    restartIfPlaying(() => seekT(loopRange()?.[0] ?? 0));
+  }
+
+  function toggleMute(id) {
+    if (st.muted.has(id)) st.muted.delete(id);
+    else if (st.muted.size < staves.length - 1 || teach) st.muted.add(id);
+    if (buses[id]) buses[id].gain.setTargetAtTime(st.muted.has(id) ? 0 : 1, snd.now(), 0.02);
+    drawChips();
+    if (teach) fillMore();
+  }
+
+  /* ---------- cursor (or progress bar when listening) ---------- */
 
   let pos = 0;        // where we are, in whole notes along the played order
   let stepIdx = 0;    // the cursor's step
@@ -277,7 +358,14 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     return i;
   }
 
+  function drawProgress() {
+    progress.firstChild.style.width = `${tl.end ? (pos / tl.end) * 100 : 0}%`;
+    const ms = tl.measures.find((x) => x.t <= pos + 1e-9 && x.t + x.len > pos + 1e-9) || tl.measures[0];
+    barOut.textContent = ms ? String(osmd.Sheet.SourceMeasures[ms.m].MeasureNumber) : '';
+  }
+
   function moveCursorTo(i, force) {
+    if (listen) { drawProgress(); return; }
     if (!force && i === stepIdx) return;
     const c = osmd.cursor;
     if (force || i < stepIdx) { c.reset(); stepIdx = 0; }
@@ -344,11 +432,14 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     return tAtSec(tl, secAt(tl, a.t0) + (n - a.ctx) * sp());
   }
 
-  function play(countIn = st.countIn) {
+  async function play(countIn = st.countIn) {
     if (playing || !tl.steps.length) return;
+    playing = true;
+    // Give the piano a moment to arrive the first time.
+    if (!piano) await Promise.race([pianoP, new Promise((r) => setTimeout(r, 2500))]);
+    if (!playing) return;
     const range = loopRange();
     if (pos >= tl.end - 1e-6 || (range && (pos < range[0] - 1e-6 || pos >= range[1] - 1e-6))) pos = range ? range[0] : 0;
-    playing = true;
     playBtn.textContent = '⏸';
     playBtn.setAttribute('aria-label', 'Pause');
     let t0 = snd.now() + 0.12;
@@ -397,7 +488,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
       if (when > horizon) return;
       if (nextNote && nextNote.t === nextT) {
         const d = secAt(tl, Math.min(nextNote.t + nextNote.dur, tl.end)) - secAt(tl, nextNote.t);
-        voices.push({ when, stop: snd.note(nextNote.midi + st.transpose, Math.max(when, snd.now()), Math.max(0.08, d / sp() - 0.02), { vol: 0.22, dest: busFor(nextNote.staff) }) });
+        voices.push({ when, stop: voice(nextNote.midi + st.transpose, Math.max(when, snd.now()), Math.max(0.08, d / sp() - 0.02), { vol: 0.22, dest: busFor(nextNote.staff) }) });
         ni++;
       } else {
         snd.click(Math.max(when, snd.now()), nextClick.accent);
@@ -424,7 +515,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
 
   function pause() {
     if (!playing) return;
-    pos = Math.min(posNow(), tl.end);
+    pos = anchors.length ? Math.min(posNow(), tl.end) : pos;
     playing = false;
     clearInterval(timer);
     cancelAnimationFrame(raf);
@@ -442,9 +533,9 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
   }
 
   function setSpeed(v) {
-    v = Math.max(20, Math.min(200, Math.round(v / 5) * 5));
+    v = Math.max(lo, Math.min(hi, Math.round(v / 5) * 5));
     restartIfPlaying(() => { st.speed = v; });
-    speedIn.value = v;
+    if (speedIn) speedIn.value = v;
     speedOut.textContent = `♩ ${Math.round(startBpm * v / 100)}`;
     speedOut.title = `${v}%`;
     speedOut.dataset.pct = `${v}%`;
@@ -489,6 +580,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     if (st.picking != null) {
       st.loop = [st.picking, h.m].sort((a, b) => a - b);
       st.picking = null;
+      st.section = -1;
       drawLayer();
       restartIfPlaying(() => seekT(loopRange()[0]));
       return;
@@ -502,12 +594,12 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     const i = tl.steps.findIndex((s) => s.m === h.m && s.src >= h.src - 1e-9);
     if (i < 0) return;
     const range = loopRange();
-    if (range && (tl.steps[i].t < range[0] || tl.steps[i].t >= range[1])) { st.loop = null; drawLayer(); }
+    if (range && (tl.steps[i].t < range[0] || tl.steps[i].t >= range[1])) { st.loop = null; st.section = -1; drawLayer(); }
     restartIfPlaying(() => {
       seekT(tl.steps[i].t);
       if (!playing) {
         const n = snd.now() + 0.02;
-        tl.steps[i].notes.forEach((e) => { if (!st.muted.has(e.staff)) snd.note(e.midi + st.transpose, n, 0.5, { vol: 0.2 }); });
+        tl.steps[i].notes.forEach((e) => { if (!st.muted.has(e.staff)) voice(e.midi + st.transpose, n, 0.5, { vol: 0.2 }); });
       }
     });
   });
@@ -516,6 +608,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     if (st.loop || st.picking != null || loopBtn.classList.contains('arming')) {
       st.loop = null;
       st.picking = null;
+      st.section = -1;
       loopBtn.classList.remove('arming');
       drawLayer();
       return;
@@ -523,7 +616,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     loopBtn.classList.add('arming');
   }
 
-  /* ---------- the More panel ---------- */
+  /* ---------- the settings panel (studio only) ---------- */
 
   function seg(label, options, value, set) {
     return el('div', { class: 'prow' }, el('span', {}, label), el('div', { class: 'seg' }, options.map((o, i) =>
@@ -537,27 +630,24 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
   }
 
   function fillMore() {
+    if (!teach) return;
     more.replaceChildren(
-      seg('🥁', ['Off', 'On'], () => +st.click, (i) => restartIfPlaying(() => { st.click = !!i; })),
-      seg('1 2 3 4', ['Off', 'On'], () => +st.countIn, (i) => { st.countIn = !!i; }),
-      seg('A B C', ['Off', 'ABC', 'Do re mi'], () => st.names, (i) => { st.names = i; drawLayer(); }),
-      seg('🌈', ['Off', 'On'], () => +st.colors, (i) => { st.colors = !!i; restartIfPlaying(render); }),
-      stepper('♯♭', () => (st.transpose > 0 ? `+${st.transpose}` : String(st.transpose)), (d) => {
+      seg('Click', ['Off', 'On'], () => +st.click, (i) => restartIfPlaying(() => { st.click = !!i; })),
+      seg('Count in', ['Off', 'On'], () => +st.countIn, (i) => { st.countIn = !!i; }),
+      seg('Names', ['Off', 'ABC', 'Do re mi'], () => st.names, (i) => { st.names = i; drawLayer(); }),
+      seg('Colours', ['Off', 'On'], () => +st.colors, (i) => { st.colors = !!i; restartIfPlaying(render); }),
+      stepper('Transpose', () => (st.transpose > 0 ? `+${st.transpose}` : String(st.transpose)), (d) => {
         st.transpose = Math.max(-12, Math.min(12, st.transpose + d));
         restartIfPlaying(render);
       }),
-      stepper('🔍', () => `${Math.round(st.zoom * 100)}%`, (d) => {
+      stepper('Size', () => `${Math.round(st.zoom * 100)}%`, (d) => {
         st.zoom = Math.max(0.4, Math.min(2, Math.round((st.zoom + d * 0.1) * 10) / 10));
         render();
       }),
       staves.length > 1 && el('div', { class: 'parts' }, staves.map((s) => el('div', { class: 'prow' },
         el('span', { textContent: s.name }),
         el('div', { class: 'seg' },
-          el('button', { 'aria-label': 'Sound', 'aria-pressed': String(!st.muted.has(s.id)), onclick: () => {
-            if (st.muted.has(s.id)) st.muted.delete(s.id); else st.muted.add(s.id);
-            if (buses[s.id]) buses[s.id].gain.setTargetAtTime(st.muted.has(s.id) ? 0 : 1, snd.now(), 0.02);
-            fillMore();
-          } }, st.muted.has(s.id) ? '🔇' : '🔊'),
+          el('button', { 'aria-label': 'Sound', 'aria-pressed': String(!st.muted.has(s.id)), onclick: () => toggleMute(s.id) }, st.muted.has(s.id) ? '🔇' : '🔊'),
           el('button', { 'aria-label': 'Show', 'aria-pressed': String(!st.hidden.has(s.id)), onclick: () => {
             if (st.hidden.has(s.id)) st.hidden.delete(s.id);
             else if (st.hidden.size < staves.length - 1) st.hidden.add(s.id);
@@ -567,8 +657,11 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     );
   }
 
+  /* The settings the student starts with (sections, speed range and the
+     rest are edited beside the piece in the studio). */
   function currentSetup() {
-    const out = {};
+    const out = { ...setup };
+    for (const k of ['s', 'k', 'n', 'c', 'x', 'ci', 'm', 'h']) delete out[k];
     if (st.speed !== 100) out.s = st.speed;
     if (st.transpose) out.k = st.transpose;
     if (st.names) out.n = st.names;
@@ -577,7 +670,6 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     if (!st.countIn) out.ci = 0;
     if (st.muted.size) out.m = [...st.muted];
     if (st.hidden.size) out.h = [...st.hidden];
-    if (st.loop) { out.a = st.loop[0]; out.b = st.loop[1]; }
     return out;
   }
 
@@ -596,7 +688,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
     if (Math.abs(w - lastW) < 4) return;
     lastW = w;
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => restartIfPlaying(render), 150);
+    resizeTimer = setTimeout(() => { st.zoom = teach ? st.zoom : 0; restartIfPlaying(render); }, 150);
   });
 
   let closed = false;
@@ -616,7 +708,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, onSave, on
   fillMore();
   lastW = scroller.clientWidth;
   render();
-  if (st.loop) { const r = loopRange(); if (r) seekT(r[0]); }
-  ro.observe(scroller);
-  return { close, play, pause };
+  drawLayer();
+  if (!listen) ro.observe(scroller);
+  return { close, play, pause, bars: () => osmd.Sheet.SourceMeasures.map((sm) => sm.MeasureNumber) };
 }

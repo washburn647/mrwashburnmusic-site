@@ -23,22 +23,16 @@ main h2 { font-weight: 500; font-size: 14px; color: #5B6B5F; text-transform: upp
 .day h2 { margin-top: 18px; }
 .sheets .time { font-weight: 500; color: #5B6B5F; margin-right: 10px; font-variant-numeric: tabular-nums; }
 select, .who .time { font: inherit; font-size: 16px; border: 0; border-radius: 10px; padding: 6px 8px; background: #fff; color: inherit; }
-.goals { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
-.goals li { display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 12px; padding: 2px 6px; }
-.goals input { flex: 1; font: inherit; border: 0; background: transparent; padding: 6px; border-radius: 8px; }
-.goals input:focus { background: #F6F1E4; outline: none; }
-.goals .status { font-size: 20px; }
 .attach { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 4px; }
 .attach .add { padding: 4px 10px; background: #F6F1E4; box-shadow: none; font-size: 18px; }
 .attach .chip { display: inline-flex; align-items: center; gap: 4px; background: #F6F1E4; border-radius: 999px; padding: 2px 4px 2px 12px; font-size: 15px; }
 .attach .chip small { color: #5B6B5F; }
-.attach .tempo, .minutes { display: inline-flex; align-items: center; color: #5B6B5F; font-size: 15px; }
-.attach .tempo input, .minutes input { width: 64px; font: inherit; border: 0; border-radius: 8px; padding: 4px 6px; background: #F6F1E4; }
+.minutes { display: inline-flex; align-items: center; color: #5B6B5F; font-size: 15px; }
+.minutes input { width: 64px; font: inherit; border: 0; border-radius: 8px; padding: 4px 6px; background: #F6F1E4; }
 .minutes input { background: #fff; }
 .starpick { display: flex; }
 .starpick button { background: transparent; box-shadow: none; font-size: 26px; padding: 0 4px; color: #D8D0BC; }
 .starpick button.on { color: #F5B800; }
-button.sticker { font-size: 24px; min-width: 48px; padding: 2px 8px; }
 .notebox.private { margin-top: 10px; background: #EFE8D6; }
 dialog { border: 0; border-radius: 20px; padding: 16px; max-width: min(560px, calc(100vw - 32px)); box-shadow: 0 10px 40px rgba(47,74,58,.3); color: #2F4A3A; font-family: "Fredoka", system-ui, sans-serif; }
 dialog::backdrop { background: rgba(47,74,58,.35); }
@@ -56,11 +50,24 @@ dialog .tempo { width: 64px; font: inherit; border: 0; border-radius: 8px; paddi
 .pickdlg .sheets { max-height: 60vh; overflow: auto; margin-top: 12px; }
 .pickdlg .sheets a { background: #F6F1E4; box-shadow: none; }
 .search { font: inherit; border: 0; border-radius: 10px; padding: 8px 10px; background: #F6F1E4; flex: 1; }
-.stickers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.stickers button { font-size: 28px; padding: 6px; background: #F6F1E4; box-shadow: none; }
-.stickers button[aria-pressed="true"] { box-shadow: 0 0 0 3px #2F4A3A; }
 .lib .libitem { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 16px; padding: 8px 12px; flex-wrap: wrap; }
 .lib .libitem .item-title { flex: 1 1 200px; font: inherit; font-size: 17px; font-weight: 500; border: 0; background: transparent; padding: 6px; border-radius: 8px; }
 .lib .libitem .item-title:focus { background: #F6F1E4; outline: none; }
 .lib .libitem small { color: #8A968C; font-size: 14px; flex: 1 1 200px; }
+.piecebox { display: grid; gap: 6px; justify-items: start; }
+.sview { display: grid; gap: 6px; background: #F6F1E4; border-radius: 12px; padding: 8px 10px; font-size: 15px; width: 100%; box-sizing: border-box; }
+.sview h3 { margin: 0; font-size: 13px; font-weight: 500; color: #5B6B5F; text-transform: uppercase; letter-spacing: .06em; }
+.sview .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sview .icon { background: #fff; }
+.items .sview input.num { width: 64px; background: #fff; padding: 4px 6px; }
+.secs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sec { display: inline-flex; align-items: center; gap: 2px; background: #fff; border-radius: 10px; padding: 2px 2px 2px 6px; }
+.items .sec input.secname { width: 90px; font-weight: 500; }
+.items .sec input.num { width: 56px; background: #F6F1E4; }
+.patpick { display: flex; flex-wrap: wrap; gap: 6px; max-height: 40vh; overflow: auto; }
+.patpick button { background: #F6F1E4; box-shadow: none; font-size: 15px; padding: 4px 10px; }
+.patpick button[aria-pressed="true"] { background: #11A38B; color: #fff; }
+.patpick button.familiar { border-left: 4px solid #7DC242; }
+.patpick button.unfamiliar { border-left: 4px solid #F47B20; }
+dialog .modes label { background: #F6F1E4; border-radius: 10px; padding: 4px 10px; }
 .game, .player { z-index: 60; }

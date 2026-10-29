@@ -8,3 +8,4 @@ export const LOGO = '/assets/logo/option-f-notes-badge-icon.svg';
 export const LESSON_PAGE = `${location.origin}/lesson/`;
 export const LOCAL_PAGE = '/lesson/';
 export const STUDIO_HOME = '/studio/';
+export const VEXFLOW_SRC = '/assets/vendor/vexflow/vexflow-bravura.js';

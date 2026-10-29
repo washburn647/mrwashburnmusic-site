@@ -1,4 +1,4 @@
-/* Celebrations: confetti and a pop of stars. */
+/* Celebrations: confetti. */
 
 const COLORS = ['#E5243B', '#F47B20', '#F5C400', '#7DC242', '#11A38B', '#7F4FA3', '#E0569B'];
 
@@ -38,19 +38,4 @@ export function confetti(amount = 120) {
     }
     if (t < 2600) requestAnimationFrame(frame); else c.remove();
   })(start);
-}
-
-/* Three stars that pop in one by one; `n` of them filled. */
-export function starRow(n, total = 3) {
-  const row = document.createElement('div');
-  row.className = 'stars';
-  for (let i = 0; i < total; i++) {
-    const s = document.createElement('span');
-    s.textContent = i < n ? '★' : '☆';
-    if (i < n) s.className = 'on';
-    s.style.animationDelay = `${0.15 + i * 0.25}s`;
-    row.append(s);
-  }
-  row.setAttribute('aria-label', `${n} of ${total}`);
-  return row;
 }
