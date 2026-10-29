@@ -1,24 +1,34 @@
-/* Voice recorder: Kyle's list of spoken and sung patterns, a few takes of each.
-   Each take is recorded after a count-in, trimmed to where the voice starts, and saved as a
-   small mp3 (24 kHz mono) on this device (IndexedDB 'mwm-voice'). "Download for site"
-   makes a zip that tools/add_takes.py puts in /assets/sounds/, where samples.takes() plays
-   a different take each time a pattern comes up. */
+/* Voice recorder: Kyle's own voice for every rhythm and tonal pattern in
+   /assets/patterns/patterns.js, a few takes of each at three speeds.
+   Each take is recorded after a count-in (tonal ones after the key on the piano), trimmed
+   to where the voice starts, and saved as a small mp3 (24 kHz mono) on this device
+   (IndexedDB 'mwm-voice'). "Download for site" makes a zip that tools/add_takes.py puts in
+   /assets/sounds/, where samples.takes() plays a different take each time a pattern comes up. */
 
 import * as samples from '/assets/sounds/samples.js';
+import { METERS, TONALITIES, KEYS, rhythmPatterns, tonalPatterns, toneLabel, toneMidi, patternById } from '/assets/patterns/patterns.js';
+import { notation } from '/assets/patterns/notation.js';
 import { h } from '../dom.js';
 import { makeZip, readZip } from './zip.js';
 
-const { patternKey } = samples;
 const app = document.getElementById('app');
+const SPEEDS = { slow: 'Slow', medium: 'Medium', fast: 'Fast' };
+const TABS = { '2/4': 'Rhythm 2/4', '6/8': 'Rhythm 6/8', major: 'Major', minor: 'Minor' };
+const isRhythm = (tab) => tab in METERS;
 
 /* ---------- Storage ---------- */
 
-// lines: { id, text, order, takes: [{ id, bpm, created, seconds, mp3: Blob }] }
+// takes: { id, pattern, speed, bpm, key (sounding midi of do or la; null for rhythm), created, seconds, mp3 }
+// (lines is the first version's text list, kept so nothing recorded with it is lost.)
 let dbPromise = null;
 function db() {
   dbPromise ||= new Promise((resolve, reject) => {
-    const req = indexedDB.open('mwm-voice', 1);
-    req.onupgradeneeded = () => req.result.createObjectStore('lines', { keyPath: 'id' });
+    const req = indexedDB.open('mwm-voice', 2);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains('lines')) d.createObjectStore('lines', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('takes')) d.createObjectStore('takes', { keyPath: 'id' });
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -27,25 +37,37 @@ function db() {
 
 function tx(mode, fn) {
   return db().then((d) => new Promise((resolve, reject) => {
-    const t = d.transaction('lines', mode);
-    const req = fn(t.objectStore('lines'));
+    const t = d.transaction('takes', mode);
+    const req = fn(t.objectStore('takes'));
     t.oncomplete = () => resolve(req && req.result);
     t.onerror = () => reject(t.error);
   }));
 }
-const allLines = async () => (await tx('readonly', (s) => s.getAll())).sort((a, b) => a.order - b.order);
-const putLine = (line) => tx('readwrite', (s) => s.put(line));
-const deleteLine = (id) => tx('readwrite', (s) => s.delete(id));
+const allTakes = () => tx('readonly', (s) => s.getAll());
+const putTake = (take) => tx('readwrite', (s) => s.put(take));
+const deleteTake = (id) => tx('readwrite', (s) => s.delete(id));
 
-const SETTINGS = 'mwm-voice-settings';
-const settings = { voice: 'kyle', bpm: 80, countIn: 4, want: 3, startNote: '' };
+const SETTINGS = 'mwm-voice-settings-2';
+const settings = {
+  voice: 'kyle',
+  tab: '2/4',
+  bars: { '2/4': 1, '6/8': 1 },
+  length: { major: 3, minor: 3 },
+  tones: { major: TONALITIES.major.defaults, minor: TONALITIES.minor.defaults },
+  key: { major: 48, minor: 45 },
+  bpm: { slow: 60, medium: 80, fast: 100 },
+  speed: 'medium',
+  want: 3,
+  countIn: 4,
+  firstNote: true,
+};
 try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS)) || {}); } catch { /* defaults */ }
-function saveSettings() {
+function save() {
   try { localStorage.setItem(SETTINGS, JSON.stringify(settings)); } catch { /* not kept */ }
 }
 
-const slug = (text) => patternKey(text).replace(/'/g, '').replace(/ +/g, '-') || 'line';
 const today = () => new Date().toISOString().slice(0, 10);
+const keyName = (tab, midi) => KEYS[tab].find((k) => k.midi === midi)?.name || '';
 
 /* ---------- Audio ---------- */
 
@@ -61,7 +83,7 @@ async function audio() {
   }
   if (ctx.state === 'suspended') await ctx.resume();
   claves ||= await samples.instrument('claves');
-  piano ||= await samples.instrument('piano', { lo: 60, hi: 71 });
+  piano ||= await samples.instrument('piano', { lo: 36, hi: 72 });
   return ctx;
 }
 
@@ -135,83 +157,149 @@ async function playBlob(blob) {
 
 /* ---------- Page ---------- */
 
-let lines = [];
+let takes = [];
+let patterns = [];
 let current = null;
 let recording = null;
-const NOTES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 
-async function showList() {
-  lines = await allLines();
-  if (!lines.length) return showEdit();
-  if (!lines.some((l) => l.id === current)) current = (lines.find((l) => l.takes.length < settings.want) || lines[0]).id;
+function patternsFor(tab) {
+  return isRhythm(tab)
+    ? rhythmPatterns(tab, settings.bars[tab])
+    : tonalPatterns(tab, settings.tones[tab], settings.length[tab]);
+}
 
-  const restore = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true, onchange: () => restoreZip(restore.files[0]) });
-  const number = (key, min, max) => h('input', { type: 'number', min, max, value: settings[key], onchange: (e) => {
-    settings[key] = Math.max(min, Math.min(max, Number(e.target.value) || settings[key]));
-    e.target.value = settings[key];
-    saveSettings();
-    if (key === 'want') showList();
+const takesFor = (id, speed) => takes.filter((t) => t.pattern === id && (!speed || t.speed === speed)).sort((a, b) => a.created - b.created);
+const done = (id, speed) => takesFor(id, speed).length >= settings.want;
+
+async function show() {
+  takes = await allTakes();
+  render();
+}
+
+function seg(options, value, onpick) {
+  return h('span', { class: 'seg' }, Object.entries(options).map(([v, label]) =>
+    h('button', { class: String(v) === String(value) ? 'on' : '', onclick: () => onpick(v) }, label)));
+}
+
+function number(get, set, min, max) {
+  return h('input', { type: 'number', min, max, value: get(), onchange: (e) => {
+    const v = Math.max(min, Math.min(max, Number(e.target.value) || get()));
+    e.target.value = v;
+    set(v);
+    save();
+    render();
   } });
-  const startNote = h('select', { onchange: (e) => { settings.startNote = e.target.value; saveSettings(); } },
-    h('option', { value: '' }, 'No starting note'),
-    Array.from({ length: 12 }, (_, i) => h('option', { value: 60 + i, selected: String(60 + i) === String(settings.startNote) }, `Do = ${NOTES[i]}`)));
+}
+
+function render() {
+  const tab = settings.tab;
+  patterns = patternsFor(tab);
+  if (!patterns.some((p) => p.id === current)) current = (patterns.find((p) => !done(p.id, settings.speed)) || patterns[0])?.id;
+  const restore = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true, onchange: () => restoreZip(restore.files[0]) });
+  const pick = (fn) => (v) => { fn(v); save(); render(); };
+
+  const options = isRhythm(tab)
+    ? [h('label', {}, 'Bars', seg({ 1: '1', 2: '2' }, settings.bars[tab], pick((v) => { settings.bars[tab] = Number(v); })))]
+    : [
+      h('select', { onchange: (e) => pick((v) => { settings.key[tab] = Number(v); })(e.target.value) },
+        KEYS[tab].map((k) => h('option', { value: k.midi, selected: k.midi === settings.key[tab] }, `${tab === 'major' ? 'Do' : 'La'} = ${k.name.replace('b', '♭').replace('#', '♯')}`))),
+      seg({ 3: '3 notes', 4: '4 notes' }, settings.length[tab], pick((v) => { settings.length[tab] = Number(v); })),
+      h('select', { onchange: (e) => { if (e.target.value) pick((v) => { settings.tones[tab] = TONALITIES[tab].presets[v]; })(e.target.value); } },
+        h('option', { value: '' }, 'Notes…'),
+        Object.keys(TONALITIES[tab].presets).map((name) => h('option', { value: name }, name))),
+      h('span', { class: 'chips' }, TONALITIES[tab].tones.map((tone) => h('button', {
+        class: settings.tones[tab].includes(tone) ? 'on' : '',
+        onclick: pick(() => {
+          const set = settings.tones[tab];
+          settings.tones[tab] = set.includes(tone) ? set.filter((t) => t !== tone) : [...set, tone];
+        }),
+      }, toneLabel(tone)))),
+    ];
 
   app.replaceChildren(
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Voice recorder'),
-      h('button', { onclick: showEdit }, 'Edit list'),
       h('button', { onclick: () => restore.click() }, 'Restore'),
       restore,
-      h('button', { class: 'primary', onclick: downloadZip, disabled: !lines.some((l) => l.takes.length) }, 'Download for site'),
+      h('button', { class: 'primary', onclick: downloadZip, disabled: !takes.length }, 'Download for site'),
     ),
-    h('div', { class: 'bar' },
-      h('label', {}, 'Tempo', number('bpm', 40, 200)),
-      h('label', {}, 'Count-in', number('countIn', 1, 8)),
-      h('label', {}, 'Takes', number('want', 1, 10)),
-      startNote,
+    h('div', { class: 'bar tabs' }, seg(TABS, tab, pick((v) => { settings.tab = v; }))),
+    h('div', { class: 'bar' }, options),
+    h('div', { class: 'bar settings' },
+      Object.entries(SPEEDS).map(([s, label]) => h('label', {}, label, number(() => settings.bpm[s], (v) => { settings.bpm[s] = v; }, 30, 220))),
+      h('label', {}, 'Takes', number(() => settings.want, (v) => { settings.want = v; }, 1, 10)),
+      h('label', {}, 'Count-in', number(() => settings.countIn, (v) => { settings.countIn = v; }, 1, 8)),
+      isRhythm(tab) ? null : h('label', {}, h('input', { type: 'checkbox', checked: settings.firstNote, onchange: (e) => { settings.firstNote = e.target.checked; save(); } }), 'First note'),
+      h('span', { class: 'total' }, `${patterns.length} patterns`),
     ),
-    h('ul', { class: 'lines' }, lines.map(lineRow)),
+    h('div', { class: `grid ${isRhythm(tab) && settings.bars[tab] === 2 ? 'wide' : ''}` }, patterns.map(card)),
     stage(),
   );
-  app.querySelector('.lines li.on')?.scrollIntoView({ block: 'nearest' });
+  observe();
+  app.querySelector('.card.on')?.scrollIntoView({ block: 'nearest' });
 }
 
-function lineRow(line) {
-  return h('li', {
-    class: [line.id === current && 'on', line.takes.length >= settings.want && 'done'].filter(Boolean).join(' '),
-    onclick: (e) => { if (!e.target.closest('button') && !recording) { current = line.id; showList(); } },
+const tonicOf = (p) => (p.kind === 'tonal' ? settings.key[p.tonality] : null);
+
+function counts(id) {
+  return h('span', { class: 'counts' }, Object.entries(SPEEDS).map(([s, label]) =>
+    h('span', { class: done(id, s) ? 'sp done' : 'sp', title: `${label}, ${settings.bpm[s]} bpm` }, `${label[0]} ${takesFor(id, s).length}`)));
+}
+
+function card(p) {
+  return h('button', {
+    class: `card${p.id === current ? ' on' : ''}${Object.keys(SPEEDS).every((s) => done(p.id, s)) ? ' complete' : ''}`,
+    dataset: { id: p.id },
+    onclick: () => { if (!recording) { current = p.id; render(); } },
   },
-  h('span', { class: 'text' }, line.text),
-  line.takes.map((take, i) => h('span', { class: 'take' },
-    h('button', { title: `${take.bpm} bpm`, onclick: () => playBlob(take.mp3) }, `▶ ${i + 1}`),
-    h('button', { class: 'x', title: 'Delete take', onclick: () => deleteTake(line, take) }, '×'))),
-  h('span', { class: 'count' }, `${line.takes.length}/${settings.want}`));
+  h('span', { class: 'staff' }),
+  h('span', { class: 'syl' }, p.syllables),
+  counts(p.id));
+}
+
+// Draw notation only for the cards on screen.
+let observer = null;
+function observe() {
+  observer?.disconnect();
+  observer = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (!e.isIntersecting) return;
+    const el = e.target;
+    const p = patternById(el.dataset.id);
+    el.querySelector('.staff').innerHTML = notation(p, tonicOf(p));
+    observer.unobserve(el);
+  }), { rootMargin: '200px' });
+  app.querySelectorAll('.card').forEach((el) => observer.observe(el));
 }
 
 function stage() {
-  const line = lines.find((l) => l.id === current);
+  const p = patternById(current || '') || patterns[0];
+  if (!p) return h('div', { class: 'stage' });
+  const list = takesFor(p.id, settings.speed);
+  const staff = h('span', { class: 'staff' });
+  staff.innerHTML = notation(p, tonicOf(p));
   return h('div', { class: 'stage' },
-    h('span', { class: 'now' }, line?.text || ''),
-    h('div', { class: 'beats' }, Array.from({ length: settings.countIn }, () => h('span'))),
-    h('div', { class: 'meter' }, h('div')),
-    h('span', { class: 'note' }),
-    h('button', { class: 'rec', onclick: toggle }, 'Record'),
-  );
-}
-
-async function deleteTake(line, take) {
-  line.takes = line.takes.filter((t) => t !== take);
-  await putLine(line);
-  showList();
+    h('div', { class: 'now' }, staff, h('span', { class: 'syl' }, p.syllables)),
+    h('div', { class: 'controls' },
+      seg(Object.fromEntries(Object.entries(SPEEDS).map(([s, label]) => [s, `${label} ${settings.bpm[s]} · ${takesFor(p.id, s).length}`])),
+        settings.speed, (v) => { settings.speed = v; save(); render(); }),
+      h('span', { class: 'takes' }, list.map((take, i) => h('span', { class: 'take' },
+        h('button', { title: `${take.bpm} bpm`, onclick: () => playBlob(take.mp3) }, `▶ ${i + 1}${take.key != null ? ` ${keyName(p.tonality, take.key)}` : ''}`),
+        h('button', { class: 'x', title: 'Delete take', onclick: async () => { await deleteTake(take.id); show(); } }, '×')))),
+      h('span', { class: 'grow' }),
+      h('div', { class: 'beats' }, Array.from({ length: settings.countIn }, () => h('span'))),
+      h('div', { class: 'meter' }, h('div')),
+      h('span', { class: 'note' }),
+      h('button', { class: 'rec', onclick: toggle }, 'Record'),
+    ));
 }
 
 /* ---------- Recording ---------- */
 
 async function toggle() {
   if (recording) return recording.stop();
-  const line = lines.find((l) => l.id === current);
-  if (!line) return;
+  const p = patternById(current || '');
+  if (!p) return;
   const note = app.querySelector('.stage .note');
   note.textContent = '';
   try {
@@ -221,17 +309,19 @@ async function toggle() {
     note.textContent = 'No microphone';
     return;
   }
-  record(line);
+  record(p);
 }
 
-function record(line) {
+function record(p) {
   const btn = app.querySelector('.rec');
   const dots = [...app.querySelectorAll('.beats span')];
   const beatsEl = app.querySelector('.beats');
   const meter = app.querySelector('.meter div');
   const note = app.querySelector('.stage .note');
-  const bpm = settings.bpm;
+  const speed = settings.speed;
+  const bpm = settings.bpm[speed];
   const beat = 60 / bpm;
+  const key = p.kind === 'tonal' ? settings.key[p.tonality] : null;
 
   const recorder = new MediaRecorder(mic);
   const parts = [];
@@ -240,11 +330,22 @@ function record(line) {
   const begun = ctx.currentTime;
 
   let t0 = begun + 0.15;
-  if (settings.startNote) {
-    piano.note(Number(settings.startNote), t0, beat * 1.8, { vol: 0.3 });
-    t0 += beat * 2;
+  if (p.kind === 'tonal') {
+    // The key: tonic chord up and back to the tonic, then the pattern's first note.
+    const tonic = TONALITIES[p.tonality].tonic.map((tone) => toneMidi(p.tonality, key, tone));
+    [...tonic, tonic[0]].forEach((m, i) => piano.note(m, t0 + i * 0.4, i === 3 ? 1 : 0.38, { vol: 0.3 }));
+    t0 += 0.4 * 3 + 1.2;
+    if (settings.firstNote) {
+      piano.note(toneMidi(p.tonality, key, p.tones[0]), t0, 0.9, { vol: 0.3 });
+      t0 += 1.2;
+    }
   }
-  for (let i = 0; i < settings.countIn; i++) claves.hit(t0 + i * beat, { vol: i ? 0.6 : 1 });
+  // Count-in on the beat, with the eighths softly in 6/8.
+  const sub = p.meter === '6/8' ? 3 : 1;
+  for (let i = 0; i < settings.countIn; i++) {
+    claves.hit(t0 + i * beat, { vol: i ? 0.6 : 1 });
+    for (let j = 1; j < sub; j++) claves.hit(t0 + (i + j / sub) * beat, { vol: 0.2 });
+  }
   const downbeat = t0 + settings.countIn * beat;
 
   // Beat lights: the count-in, then a silent pulse while recording.
@@ -277,8 +378,7 @@ function record(line) {
   }, 50);
 
   function stop() {
-    if (recorder.state === 'inactive') return;
-    recorder.stop();
+    if (recorder.state !== 'inactive') recorder.stop();
   }
   recorder.onstop = async () => {
     clearInterval(poll);
@@ -289,22 +389,21 @@ function record(line) {
     btn.classList.remove('live');
     light(-1);
     meter.style.width = '0';
-    const blob = new Blob(parts, { type: recorder.mimeType });
     // Anything before a quarter beat ahead of the downbeat is count-in.
-    const take = await processTake(blob, downbeat - begun - beat / 4);
+    const take = await processTake(new Blob(parts, { type: recorder.mimeType }), downbeat - begun - beat / 4);
     if (!take) {
       note.textContent = 'Nothing heard';
       return;
     }
-    line.takes.push({ id: crypto.randomUUID(), bpm, created: Date.now(), ...take });
-    await putLine(line);
+    await putTake({ id: crypto.randomUUID(), pattern: p.id, speed, bpm, key, created: Date.now(), ...take });
     playBlob(take.mp3);
-    if (line.takes.length >= settings.want) {
-      const next = lines.find((l) => l.order > line.order && l.takes.length < settings.want)
-        || lines.find((l) => l.takes.length < settings.want);
+    takes = await allTakes();
+    if (done(p.id, speed)) {
+      const i = patterns.findIndex((q) => q.id === p.id);
+      const next = [...patterns.slice(i + 1), ...patterns.slice(0, i)].find((q) => !done(q.id, speed));
       if (next) current = next.id;
     }
-    showList();
+    render();
   };
 
   recording = { stop };
@@ -312,99 +411,62 @@ function record(line) {
   btn.classList.add('live');
 }
 
-/* ---------- Editing the list ---------- */
-
-async function showEdit() {
-  lines = await allLines();
-  const area = h('textarea', { class: 'list', placeholder: 'du de du de\ndu da di du\nso mi so mi', value: lines.map((l) => l.text).join('\n') });
-  const save = h('button', { class: 'primary', onclick: () => saveList(area.value, save) }, 'Save');
-  app.replaceChildren(
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
-    h('div', { class: 'bar' },
-      h('h1', { class: 'grow' }, 'Voice recorder'),
-      lines.length ? h('button', { onclick: showList }, 'Cancel') : null,
-      save,
-    ),
-    area,
-  );
-  area.focus();
-}
-
-async function saveList(text, btn) {
-  const wanted = [...new Map(text.split('\n').map((t) => t.trim()).filter(Boolean).map((t) => [patternKey(t), t])).values()];
-  const keep = new Set(wanted.map(patternKey));
-  const losing = lines.filter((l) => !keep.has(patternKey(l.text)));
-  const lost = losing.reduce((n, l) => n + l.takes.length, 0);
-  if (lost && !btn.dataset.armed) {
-    btn.dataset.armed = '1';
-    btn.textContent = `Save and delete ${lost} take${lost > 1 ? 's' : ''}`;
-    btn.classList.replace('primary', 'danger');
-    return;
-  }
-  const byKey = new Map(lines.map((l) => [patternKey(l.text), l]));
-  for (const l of losing) await deleteLine(l.id);
-  for (const [i, t] of wanted.entries()) {
-    const line = byKey.get(patternKey(t)) || { id: crypto.randomUUID(), takes: [] };
-    await putLine({ ...line, text: t, order: i });
-  }
-  showList();
-}
-
 /* ---------- Download and restore ---------- */
 
 async function downloadZip() {
   const voice = settings.voice;
   const files = [];
-  const patterns = {};
-  for (const line of lines) {
-    patterns[line.text] = [];
-    for (const [i, take] of line.takes.entries()) {
-      const file = `voice/${voice}/${slug(line.text)}-${i + 1}.mp3`;
-      files.push({ name: file, data: new Uint8Array(await take.mp3.arrayBuffer()) });
-      patterns[line.text].push({ file, bpm: take.bpm, id: take.id, created: take.created, seconds: Math.round(take.seconds * 100) / 100 });
-    }
+  const list = [];
+  const numbers = new Map();
+  for (const take of takes.sort((a, b) => a.created - b.created)) {
+    const p = patternById(take.pattern);
+    const tag = `${take.pattern}/${take.speed}${take.key != null ? `-${keyName(p.tonality, take.key).replace('#', 's')}` : ''}`;
+    numbers.set(tag, (numbers.get(tag) || 0) + 1);
+    const file = `voice/${voice}/${tag}-${numbers.get(tag)}.mp3`;
+    files.push({ name: file, data: new Uint8Array(await take.mp3.arrayBuffer()) });
+    list.push({ pattern: take.pattern, speed: take.speed, bpm: take.bpm, key: take.key, file, id: take.id, created: take.created, seconds: Math.round(take.seconds * 100) / 100 });
   }
-  const json = { voice, label: 'Mr. Washburn', patterns };
+  const json = { voice, label: 'Mr. Washburn', takes: list };
   files.unshift({ name: `voice/${voice}/takes.json`, data: new TextEncoder().encode(JSON.stringify(json, null, 1)) });
   const a = h('a', { href: URL.createObjectURL(makeZip(files)), download: `voice-${voice}-${today()}.zip` });
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-/* Adds the zip's lines and takes to the ones on this device. */
+/* Adds the zip's takes to the ones on this device. */
 async function restoreZip(file) {
   if (!file) return;
   const entries = readZip(await file.arrayBuffer());
   const jsonName = Object.keys(entries).find((n) => n.endsWith('/takes.json'));
   if (!jsonName) return;
   const json = JSON.parse(new TextDecoder().decode(entries[jsonName]));
-  lines = await allLines();
-  const byKey = new Map(lines.map((l) => [patternKey(l.text), l]));
-  let order = lines.length;
-  for (const [text, takes] of Object.entries(json.patterns)) {
-    const line = byKey.get(patternKey(text)) || { id: crypto.randomUUID(), text, order: order++, takes: [] };
-    const have = new Set(line.takes.map((t) => t.id));
-    for (const t of takes) {
-      if (have.has(t.id) || !entries[t.file]) continue;
-      line.takes.push({ id: t.id, bpm: t.bpm, created: t.created, seconds: t.seconds, mp3: new Blob([entries[t.file]], { type: 'audio/mpeg' }) });
-    }
-    await putLine(line);
+  const have = new Set(takes.map((t) => t.id));
+  for (const t of json.takes || []) {
+    if (have.has(t.id) || !entries[t.file] || !patternById(t.pattern)) continue;
+    await putTake({ id: t.id, pattern: t.pattern, speed: t.speed, bpm: t.bpm, key: t.key ?? null, created: t.created, seconds: t.seconds, mp3: new Blob([entries[t.file]], { type: 'audio/mpeg' }) });
   }
-  showList();
+  show();
 }
 
 /* ---------- Keys ---------- */
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.closest('textarea, input, select, button') || !lines.length || !app.querySelector('.lines')) return;
+  if (e.target.closest('textarea, input, select') || !patterns.length) return;
   if (e.code === 'Space') {
+    if (e.target.closest('.rec')) return; // the button's own click
     e.preventDefault();
     toggle();
-  } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !recording) {
+  } else if (recording) {
+    // nothing else while recording
+  } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
     e.preventDefault();
-    const i = lines.findIndex((l) => l.id === current) + (e.key === 'ArrowDown' ? 1 : -1);
-    if (lines[i]) { current = lines[i].id; showList(); }
+    const i = patterns.findIndex((p) => p.id === current) + (e.key === 'ArrowRight' ? 1 : -1);
+    if (patterns[i]) { current = patterns[i].id; render(); }
+  } else if (['1', '2', '3'].includes(e.key)) {
+    settings.speed = Object.keys(SPEEDS)[Number(e.key) - 1];
+    save();
+    render();
   }
 });
 
-showList();
+show();

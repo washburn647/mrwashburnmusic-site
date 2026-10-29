@@ -1,27 +1,49 @@
 select, input { font: inherit; color: inherit; }
 select, input[type=number] { border: 0; border-radius: 12px; padding: 8px 10px; background: #fff; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
-input[type=number] { width: 4.5em; }
+input[type=number] { width: 4.2em; }
 label { display: inline-flex; align-items: center; gap: 8px; color: #5B6B5F; }
-textarea.list { box-sizing: border-box; width: 100%; min-height: 260px; border: 0; border-radius: 16px; padding: 14px 16px; background: #fff; font: inherit; font-size: 18px; line-height: 1.5; }
-textarea.list:focus { outline: 2px solid #2F4A3A; }
-.lines { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-.lines li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border-radius: 16px; padding: 10px 14px; cursor: pointer; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
-.lines li.on { box-shadow: 0 0 0 3px #2F4A3A; }
-.lines li.done .text { color: #5B6B5F; }
-.lines .text { flex: 1; min-width: 160px; font-size: 20px; }
-.lines .count { color: #8A968C; font-variant-numeric: tabular-nums; }
+.seg { display: inline-flex; background: #EFE8D6; border-radius: 12px; padding: 3px; gap: 3px; flex-wrap: wrap; }
+.seg button { background: transparent; box-shadow: none; padding: 6px 12px; border-radius: 9px; }
+.seg button.on { background: #fff; box-shadow: 0 1px 0 rgba(47,74,58,.12); font-weight: 600; }
+.tabs .seg button { font-size: 17px; padding: 8px 16px; }
+.chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.chips button { padding: 6px 10px; min-width: 44px; color: #8A968C; background: transparent; box-shadow: inset 0 0 0 2px #E4DCC8; }
+.chips button.on { color: #2F4A3A; background: #fff; box-shadow: inset 0 0 0 2px #2F4A3A; font-weight: 600; }
+.settings input[type=number] { width: 3.6em; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.card { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; padding: 8px 10px 10px; border-radius: 16px; }
+.card.on { box-shadow: 0 0 0 3px #2F4A3A; }
+.card.complete { background: #EEF3EA; }
+.staff { display: block; min-height: 56px; }
+.syl { color: #5B6B5F; font-size: 14px; }
+.counts { display: flex; gap: 6px; }
+.sp { font-size: 13px; color: #8A968C; background: #F6F1E4; border-radius: 8px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+.sp.done { color: #fff; background: #2F4A3A; }
+
+.stage { position: sticky; bottom: 0; margin-top: 20px; padding: 12px 14px; background: #fff; border-radius: 18px 18px 0 0; box-shadow: 0 -4px 16px rgba(47,74,58,.12); display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.stage .now { width: 300px; max-width: 100%; }
+.stage .now .syl { font-size: 17px; color: #2F4A3A; }
+.stage .controls { flex: 1; min-width: 280px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.stage .grow { flex: 1; }
+.takes { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .take { display: inline-flex; align-items: center; border-radius: 10px; background: #F6F1E4; }
 .take button { background: transparent; box-shadow: none; padding: 4px 8px; }
 .take button:hover, .take button:focus-visible { box-shadow: none; background: #EFE8D6; }
 .take .x { color: #8A968C; }
-.stage { position: sticky; bottom: 0; margin-top: 20px; padding: 14px 0; background: #F6F1E4; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.stage .now { flex: 1; min-width: 200px; font-size: 26px; font-weight: 600; }
-.rec { min-width: 120px; min-height: 52px; font-size: 18px; }
+.rec { min-width: 120px; min-height: 52px; font-size: 18px; background: #2F4A3A; color: #F6F1E4; }
 .rec.live { background: #A33B2B; color: #fff; }
 .beats { display: flex; gap: 8px; }
-.beats span { width: 16px; height: 16px; border-radius: 50%; background: #E4DCC8; }
+.beats span { width: 14px; height: 14px; border-radius: 50%; background: #E4DCC8; }
 .beats span.lit { background: #E9B44C; }
 .beats.go span.lit { background: #A33B2B; }
-.meter { width: 120px; height: 8px; border-radius: 4px; background: #E4DCC8; overflow: hidden; }
+.meter { width: 90px; height: 8px; border-radius: 4px; background: #E4DCC8; overflow: hidden; }
 .meter div { height: 100%; width: 0; background: #2F4A3A; }
 .note { color: #A33B2B; }
+
+@media (max-width: 600px) {
+  .stage { gap: 8px; padding: 8px 10px; }
+  .stage .now { width: 170px; }
+  .stage .controls { min-width: 0; }
+}
