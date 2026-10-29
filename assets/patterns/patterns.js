@@ -12,8 +12,8 @@ export const METERS = {
     time: { num: 2, value: 4 },
     beam: [2, 8],
     cells: {
-      q: { syllables: ['du'], notes: ['q'] },
-      ee: { syllables: ['du', 'de'], notes: ['8', '8'] },
+      q: { syllables: ['du'], notes: ['q'], glyph: '♩' },
+      ee: { syllables: ['du', 'de'], notes: ['8', '8'], glyph: '♫' },
     },
   },
   '6/8': {
@@ -22,9 +22,9 @@ export const METERS = {
     time: { num: 6, value: 8 },
     beam: [3, 8],
     cells: {
-      dq: { syllables: ['du'], notes: ['qd'] },
-      eee: { syllables: ['du', 'da', 'di'], notes: ['8', '8', '8'] },
-      qe: { syllables: ['du', 'di'], notes: ['q', '8'] },
+      dq: { syllables: ['du'], notes: ['qd'], glyph: '♩.' },
+      eee: { syllables: ['du', 'da', 'di'], notes: ['8', '8', '8'], glyph: '♪♪♪' },
+      qe: { syllables: ['du', 'di'], notes: ['q', '8'], glyph: '♩♪' },
     },
   },
 };
@@ -102,10 +102,11 @@ export function rhythmPattern(meter, cells) {
   };
 }
 
-/* Every pattern in a meter, `bars` long, simplest first. */
-export function rhythmPatterns(meter, bars) {
+/* Every pattern in a meter, `bars` long, from the given cells (all by default). */
+export function rhythmPatterns(meter, bars, cells = Object.keys(METERS[meter].cells)) {
   const m = METERS[meter];
-  return product(Object.keys(m.cells), bars * m.beatsPerBar).map((cells) => rhythmPattern(meter, cells));
+  const order = Object.keys(m.cells).filter((c) => cells.includes(c));
+  return product(order, bars * m.beatsPerBar).map((p) => rhythmPattern(meter, p));
 }
 
 export function tonalPattern(tonality, tones) {
@@ -124,6 +125,34 @@ export function tonalPatterns(tonality, tones, length) {
   return product(order, length)
     .filter((p) => p.every((t, i) => !i || t !== p[i - 1]))
     .map((p) => tonalPattern(tonality, p));
+}
+
+/* Units follow Conversational Solfege: each one brings in a concept (rhythm cells in a
+   meter, or tonal syllables), and its patterns are drawn from what it allows. Kyle trims the
+   generated list and marks each pattern familiar or unfamiliar; the recorder keeps units
+   on the device and sends them to the site with the takes (assets/patterns/units.json).
+   unit: { id, name, kind: 'rhythm' | 'tonal', meter | tonality, concepts, require, bars | length,
+           removed: [pattern ids], marks: { [pattern id]: 'familiar' | 'unfamiliar' } } */
+export const DEFAULT_UNITS = [
+  { id: 'unit-1', name: 'Unit 1', kind: 'rhythm', meter: '2/4', concepts: ['q', 'ee'], require: [], bars: 2 },
+  { id: 'unit-2', name: 'Unit 2', kind: 'rhythm', meter: '6/8', concepts: ['dq', 'eee'], require: [], bars: 2 },
+  { id: 'unit-3', name: 'Unit 3', kind: 'rhythm', meter: '6/8', concepts: ['dq', 'eee', 'qe'], require: ['qe'], bars: 2 },
+  { id: 'unit-4', name: 'Unit 4', kind: 'tonal', tonality: 'major', concepts: ['do', 're', 'mi'], require: [], length: 3 },
+].map((u) => ({ removed: [], marks: {}, ...u }));
+
+/* Display name of a concept: a rhythm cell's syllables, or a tonal syllable. */
+export function conceptLabel(unit, concept) {
+  return unit.kind === 'rhythm' ? METERS[unit.meter].cells[concept].syllables.join(' ') : toneLabel(concept);
+}
+
+/* Every pattern the unit's concepts make (removed ones included), each using a required
+   concept when the unit names any. */
+export function unitPatterns(unit) {
+  const all = unit.kind === 'rhythm'
+    ? rhythmPatterns(unit.meter, unit.bars, unit.concepts)
+    : tonalPatterns(unit.tonality, unit.concepts, unit.length);
+  if (!unit.require?.length) return all;
+  return all.filter((p) => (p.cells || p.tones).some((c) => unit.require.includes(c)));
 }
 
 export function patternById(id) {

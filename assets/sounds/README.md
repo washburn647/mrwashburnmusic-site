@@ -26,9 +26,10 @@ The try-out page is `/studio/sounds/`.
 
 ## Recorded voice
 
-Kyle records every pattern in `/assets/patterns/patterns.js` at `/studio/record/`: rhythm
-patterns in 2/4 and 6/8, tonal patterns in major and minor, a few takes each at three speeds.
-Its "Download for site" zip goes in with `python tools/add_takes.py voice-kyle-....zip`. Then:
+Kyle records the patterns of each unit at `/studio/record/` (pattern ids from
+`/assets/patterns/patterns.js`), a few takes each at three speeds. Its "Save for site" zip goes
+in with `python tools/add_takes.py voice-kyle.zip`, which also writes the units to
+`/assets/patterns/units.json`. Then:
 
 ```js
 const kyle = await samples.takes('kyle');
