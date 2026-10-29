@@ -8,8 +8,10 @@ import * as store from './store.js';
 import { el } from './ui.js';
 import { readWorkbook } from './xlsx.js';
 import { fromWorkbook, schoolYear, nextYearLabel, newYear, SPECIALS, KIDS_CHOICE, isSpecial,
-         songInfo, slotsOf, playCount, gradeHint, normName, songTimes } from './plans.js';
+         songInfo, slotsOf, playCount, gradeHint, normName, songTimes, classDates } from './plans.js';
 import { buildClass } from './builder.js';
+import { renderCalendar } from './calendar.js';
+import { renderLists } from './lists.js';
 
 const LONG_CLASS = 30;                      // minutes; a class planned longer shows red
 const r1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
@@ -20,8 +22,11 @@ const recall = (k) => { try { return localStorage.getItem('class.' + k); } catch
 let undoStack = [];
 let keyHandler = null;
 
-export async function showPlanner(main) {
-  document.title = 'Planner · Class';
+const VIEWS = [['plan', 'Planner', '#/plan'], ['calendar', 'Calendar', '#/plan/calendar'], ['lists', 'Lists', '#/plan/lists']];
+
+/** view: 'plan', 'calendar' or 'lists'. */
+export async function showPlanner(main, view = 'plan') {
+  document.title = VIEWS.find((v) => v[0] === view)[1] + ' · Class';
   if (keyHandler) document.removeEventListener('keydown', keyHandler);
   const years = await store.listPlans();
   const rec = years.find((y) => y.year === recall('year')) || years[years.length - 1];
@@ -30,7 +35,66 @@ export async function showPlanner(main) {
   const decks = await store.listDecks();
   const times = songTimes(await store.listTimings());
   undoStack = [];
-  render(main, { rec, years, grade, decks, times });
+  const ctx = { rec, years, grade, decks, times, main, view };
+  ctx.reload = () => showPlanner(main, view);
+  ctx.save = () => {
+    rec.updated = Date.now();
+    store.setGradeHint(gradeHint(rec));
+    return store.putPlan(rec).catch((err) => { console.error(err); window.alert('Not saved: ' + err.message); });
+  };
+  ctx.build = (g, no) => buildAndOpen(ctx, g, no);
+  if (view === 'calendar') renderCalendar(main, ctx, header(ctx));
+  else if (view === 'lists') renderLists(main, ctx, header(ctx));
+  else render(main, ctx);
+}
+
+/** Planner, Calendar and Lists share this bar: which view, which year, plus the view's own tools. */
+function header(ctx, ...extra) {
+  const { rec, main } = ctx;
+  const yearSel = el('select', { class: 'pl-select', 'aria-label': 'Year' },
+    ctx.years.map((y) => el('option', { value: y.year, selected: y.year === rec.year }, y.year)),
+    el('option', { value: '__new' }, 'New year…'),
+    el('option', { value: '__import' }, 'Import workbook…'));
+  yearSel.addEventListener('change', async () => {
+    const v = yearSel.value;
+    yearSel.value = rec.year;
+    if (v === '__import') { importWorkbook(main, ctx.years); return; }
+    if (v === '__new') {
+      const label = (window.prompt('Name the new year:', nextYearLabel(rec.year)) || '').trim();
+      if (!label) return;
+      if (ctx.years.some((y) => y.year === label)) { window.alert('There is already a year called ' + label + '.'); return; }
+      if (!window.confirm('Start ' + label + ' from ' + rec.year + '? The catalog carries over; the plans and calendar are emptied and every Max goes back to 0. ' + rec.year + ' stays as it is.')) return;
+      await store.putPlan(newYear(rec, label));
+      remember('year', label);
+      ctx.reload();
+      return;
+    }
+    remember('year', v);
+    ctx.reload();
+  });
+  const views = el('span', { class: 'grades pl-views' }, VIEWS.map(([k, name, href]) =>
+    el('a', { class: 'chip' + (k === ctx.view ? ' on' : ''), href }, name)));
+  return el('div', { class: 'pl-head' }, views, yearSel, ...extra);
+}
+
+/** Build a class's deck into the library (replacing the last build) and open it. */
+async function buildAndOpen(ctx, grade, no) {
+  const { rec } = ctx;
+  try {
+    ctx.decks = await store.listDecks();
+    const { deck, name, missing } = buildClass(rec, grade, no, ctx.decks);
+    const old = ctx.decks.find((d) => d.deck.built && d.deck.built.year === rec.year && d.deck.built.grade === grade && d.deck.built.no === no);
+    const now = Date.now();
+    const id = old ? old.id : now.toString(36) + Math.random().toString(36).slice(2, 8);
+    await store.putDeck({ id, name, created: old ? old.created : now, updated: now, source: 'planner ' + rec.year, deck });
+    if (missing.length) window.alert('Built ' + name + ' without: ' + missing.join(', ') + '.');
+    location.hash = '#/deck/' + id;
+    return true;
+  } catch (err) {
+    console.error(err);
+    window.alert(err.message);
+    return false;
+  }
 }
 
 function emptyView(main) {
@@ -52,7 +116,7 @@ async function importWorkbook(main, years) {
       await store.putPlan(rec);
       remember('year', label);
       store.setGradeHint(gradeHint(rec));
-      showPlanner(main);
+      showPlanner(main, location.hash.startsWith('#/plan/') ? location.hash.slice(7) : 'plan');
     } catch (err) {
       console.error(err);
       window.alert('That workbook could not be read: ' + err.message);
@@ -67,6 +131,7 @@ function render(main, ctx) {
   const classByNo = (no) => classes().find((c) => c.no === no) || null;
   let drag = null;
   let built = builtMap();
+  const when = classDates(rec, grade);
 
   function builtMap() {
     const m = new Map();
@@ -85,39 +150,11 @@ function render(main, ctx) {
     if (msg) statusTimer = setTimeout(() => { status.textContent = ''; }, 2500);
   };
 
-  const save = () => {
-    rec.updated = Date.now();
-    store.putPlan(rec).catch((err) => { console.error(err); say('Not saved'); });
-    store.setGradeHint(gradeHint(rec));
-  };
-
-  // ---- header ---------------------------------------------------------------
-
-  const yearSel = el('select', { class: 'pl-select', 'aria-label': 'Year' },
-    ctx.years.map((y) => el('option', { value: y.year, selected: y.year === rec.year }, y.year)),
-    el('option', { value: '__new' }, 'New year…'),
-    el('option', { value: '__import' }, 'Import workbook…'));
-  yearSel.addEventListener('change', async () => {
-    const v = yearSel.value;
-    yearSel.value = rec.year;
-    if (v === '__import') { importWorkbook(main, ctx.years); return; }
-    if (v === '__new') {
-      const label = (window.prompt('Name the new year:', nextYearLabel(rec.year)) || '').trim();
-      if (!label) return;
-      if (ctx.years.some((y) => y.year === label)) { window.alert('There is already a year called ' + label + '.'); return; }
-      if (!window.confirm('Start ' + label + ' from ' + rec.year + '? The catalog carries over; the plans are emptied and every Max goes back to 0. ' + rec.year + ' stays as it is.')) return;
-      await store.putPlan(newYear(rec, label));
-      remember('year', label);
-      showPlanner(main);
-      return;
-    }
-    remember('year', v);
-    showPlanner(main);
-  });
+  const save = ctx.save;
 
   const tabs = el('span', { class: 'grades' }, rec.grades.map((g) => el('button', {
     class: 'chip' + (g === grade ? ' on' : ''),
-    onclick: () => { remember('grade', g); showPlanner(main); }
+    onclick: () => { remember('grade', g); ctx.reload(); }
   }, g)));
 
   const undoBtn = el('button', { class: 'btn quiet', disabled: true, onclick: () => undo() }, 'Undo');
@@ -130,12 +167,13 @@ function render(main, ctx) {
   search.addEventListener('input', () => renderCatalog());
   const catList = el('div', { class: 'pl-catlist' });
   const table = el('table', { class: 'pl-grid' });
+  const introList = el('datalist', { id: 'pl-intro' }, (rec.intro || []).map((m) => el('option', { value: m.name })));
 
   main.replaceChildren(el('div', { class: 'planner' },
-    el('div', { class: 'pl-head' }, el('h2', {}, 'Planner'), yearSel, tabs, el('span', { class: 'spacer' }), status, bgSel, undoBtn),
+    header(ctx, tabs, el('span', { class: 'spacer' }), status, bgSel, undoBtn),
     el('div', { class: 'pl-body' },
       el('aside', { class: 'pl-catalog' }, search, catList),
-      el('div', { class: 'pl-gridwrap' }, table))));
+      el('div', { class: 'pl-gridwrap' }, table)), introList));
 
   keyHandler = (e) => {
     if (!document.body.contains(table)) { document.removeEventListener('keydown', keyHandler); return; }
@@ -287,6 +325,7 @@ function render(main, ctx) {
     const b = el('button', { class: 'btn quiet small', onclick: () => build(cls.no, b) }, 'Build');
     return el('tr', {},
       el('td', { class: 'cls' }, el('div', {}, String(cls.no)),
+        when.has(cls.no) ? el('span', { class: 'when' }, when.get(cls.no)) : null,
         deck ? el('a', { class: 'built', href: '#/deck/' + deck.id }, 'built') : null),
       metaCell(cls, 'intro'),
       metaCell(cls, 'special'),
@@ -300,6 +339,7 @@ function render(main, ctx) {
 
   function metaCell(cls, field) {
     const input = el('input', { class: 'metain', value: cls[field] || '', spellcheck: 'false',
+      list: field === 'intro' ? 'pl-intro' : null,
       'aria-label': (field === 'intro' ? 'Intro music' : 'Special') + ', class ' + cls.no });
     let committed = input.value;
     input.addEventListener('blur', () => {
@@ -441,22 +481,7 @@ function render(main, ctx) {
 
   async function build(no, btn) {
     btn.disabled = true;
-    try {
-      ctx.decks = await store.listDecks();
-      const { deck, name, missing } = buildClass(rec, grade, no, ctx.decks);
-      const old = built.get(no);
-      const now = Date.now();
-      const id = old ? old.id : now.toString(36) + Math.random().toString(36).slice(2, 8);
-      await store.putDeck({ id, name, created: old ? old.created : now, updated: now, source: 'planner ' + rec.year, deck });
-      ctx.decks = await store.listDecks();
-      built = builtMap();
-      if (missing.length) window.alert('Built ' + name + ' without: ' + missing.join(', ') + '.');
-      location.hash = '#/deck/' + id;
-    } catch (err) {
-      console.error(err);
-      window.alert(err.message);
-      btn.disabled = false;
-    }
+    if (!(await ctx.build(grade, no))) btn.disabled = false;
   }
 
   redraw();

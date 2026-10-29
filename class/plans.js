@@ -5,8 +5,12 @@
    { year: '2026-27', grades: ['PK', 'K', '1'],
      slots: ['Vocal Warmup', 'Song Fragments', 'Simple Songs', 'Simple Songs', ...],
      categories: [...],                    // each once, in slot order
-     catalog: { category: [{ name, min, turns, pos, loc, eng, cmf, max: { PK: 6 }, shelf }] },
+     catalog: { category: [{ name, min, turns, pos, loc, eng, cmf, max: { PK: 6 }, shelf, more }] },
+     fields: { category: ['Key', 'Ton.', 'Met.', 'Lesson 1', ..., 'Notes'] },   // what `more` holds
      plan: { PK: [{ no, intro, special, slots: ['Slide Whistle', '', ...] }] },
+     calendar: [{ date: '2026-08-26', code: 'C1' }, ...],   // school days, Monday to Friday
+     pkWeeks: { '2026-08-24': 1, ... },                     // Monday -> PK's class that week
+     intro: [{ name, url }],                                // the intro music list
      titleBg: 'blank' | 'template', updated } */
 
 export const KIDS_CHOICE = '???';
@@ -56,10 +60,16 @@ export function fromWorkbook(sheets, year) {
   const gradeCols = [];
   catHead.forEach((v, c) => { if (c > 6 && v !== '' && v != null && gradeCols.length < gradeSheets.length) gradeCols.push({ key: str(v), max: c + 1 }); });
   const grades = gradeCols.map((g) => g.key);
+  const firstMore = gradeCols.length ? gradeCols[gradeCols.length - 1].max + 2 : 7;
 
   const catalog = {};
+  const fields = {};
   for (const category of categories) {
     const rows = sheets.get(category);
+    // Whatever the sheet keeps after the grade columns: Key, Lesson 1, Notes...
+    const more = [];
+    (rows[1] || []).forEach((v, c) => { if (c >= firstMore && str(v) && !/^\d+(\.\d+)?$/.test(str(v))) more.push({ c, name: str(v) }); });
+    fields[category] = more.map((m) => m.name);
     const out = [];
     let shelf = false;
     for (let r = CATALOG_FIRST_ROW - 1; r < rows.length; r++) {
@@ -67,10 +77,13 @@ export function fromWorkbook(sheets, year) {
       const name = str(row[0]);
       if (!name) continue;
       if (name.toUpperCase() === 'SUMMARY') { shelf = true; continue; }
+      if (SPECIALS.includes(name)) continue;            // the sheet's own ??? and CONCERT rows
       const max = {};
       for (const g of gradeCols) max[g.key] = num(row[g.max]);
+      const extra = {};
+      for (const m of more) if (str(row[m.c])) extra[m.name] = str(row[m.c]);
       out.push({ name, min: num(row[1]), turns: str(row[2]), pos: str(row[3]), loc: str(row[4]),
-                 eng: num(row[5]), cmf: num(row[6]), max, shelf });
+                 eng: num(row[5]), cmf: num(row[6]), max, shelf, more: extra });
     }
     catalog[category] = out;
   }
@@ -90,7 +103,74 @@ export function fromWorkbook(sheets, year) {
     plan[key] = classes;
   });
 
-  return { year, grades, slots, categories, catalog, plan, titleBg: 'blank', updated: Date.now() };
+  const { calendar, pkWeeks } = readCalendar(sheets.get('Calendar'));
+  const intro = (sheets.get('Intro Music') || []).filter((r) => r && str(r[1]))
+    .map((r) => ({ name: str(r[1]), url: str(r[2]) }));
+  return { year, grades, slots, categories, catalog, fields, plan, calendar, pkWeeks, intro,
+           titleBg: 'blank', updated: Date.now() };
+}
+
+// Excel keeps a date as days since 1899-12-30.
+function isoDate(v) {
+  if (typeof v !== 'number' || v < 30000) return null;
+  return new Date(Math.round((v - 25569) * 86400000)).toISOString().slice(0, 10);
+}
+
+/* The Calendar sheet: a row of Monday-Friday dates (with PK's week number in
+   F), then a row of what each day is: A12, B12, C12 for the K and 1
+   rotation, or '-', HD, Inservice and the like. */
+export function readCalendar(rows) {
+  const calendar = [], pkWeeks = {};
+  if (!rows) return { calendar, pkWeeks };
+  for (let r = 0; r < rows.length - 1; r++) {
+    const dates = (rows[r] || []).slice(0, 5).map(isoDate);
+    if (!dates.some(Boolean)) continue;
+    const codes = rows[r + 1] || [];
+    dates.forEach((d, i) => { if (d) calendar.push({ date: d, code: str(codes[i]) }); });
+    const wk = num((rows[r] || [])[5]);
+    if (wk && dates[0]) pkWeeks[dates[0]] = wk;
+    r++;
+  }
+  return { calendar, pkWeeks };
+}
+
+export const ROTATION = /^([A-Z])(\d+)$/;
+
+/** Monday of the week a date is in, as YYYY-MM-DD. */
+export function mondayOf(iso) {
+  const d = new Date(iso + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/** What happens on a date: { code, rotation: { group, no } | null, pk }. */
+export function dayInfo(rec, iso) {
+  const day = (rec.calendar || []).find((d) => d.date === iso);
+  const m = day && ROTATION.exec(day.code);
+  return { code: day ? day.code : '', rotation: m ? { group: m[1], no: Number(m[2]) } : null,
+           pk: (rec.pkWeeks || {})[mondayOf(iso)] || null };
+}
+
+/** A class day becomes `code` (or goes back to a class); later classes move with it when `shift`. */
+export function setDay(rec, iso, code, shift) {
+  const days = rec.calendar || (rec.calendar = []);
+  const i = days.findIndex((d) => d.date === iso);
+  if (i < 0) return;
+  const was = days[i].code;
+  const later = days.slice(i + 1).filter((d) => ROTATION.test(d.code));
+  if (shift && ROTATION.test(was) && !ROTATION.test(code)) {
+    // A class day lost: every later class slides one class day later.
+    const codes = [was, ...later.map((d) => d.code)];
+    days[i].code = code;
+    later.forEach((d, k) => { d.code = codes[k]; });
+  } else if (shift && !ROTATION.test(was) && code === '+') {
+    // A class day gained: this day takes the next class, the rest slide earlier.
+    if (!later.length) return;
+    days[i].code = later[0].code;
+    later.forEach((d, k) => { d.code = k + 1 < later.length ? later[k + 1].code : '-'; });
+  } else {
+    days[i].code = code === '+' ? '' : code;
+  }
 }
 
 /** "2026-27" for a date from August on, else the year before. */
@@ -110,6 +190,8 @@ export function nextYearLabel(label) {
 export function newYear(rec, label) {
   const y = structuredClone(rec);
   y.year = label;
+  y.calendar = [];
+  y.pkWeeks = {};
   for (const list of Object.values(y.catalog)) for (const s of list) for (const g of Object.keys(s.max)) s.max[g] = 0;
   for (const classes of Object.values(y.plan)) {
     for (const c of classes) { c.intro = ''; c.special = ''; c.slots = c.slots.map(() => ''); }
@@ -221,5 +303,32 @@ export function songTimes(timings) {
   }
   const out = new Map();
   for (const [song, s] of sums) out.set(song, { min: s.ms / s.n / 60000, n: s.n });
+  return out;
+}
+
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const short = (iso) => MON[Number(iso.slice(5, 7)) - 1] + ' ' + Number(iso.slice(8, 10));
+
+/** class number -> when it falls, from the calendar: "Oct 26–28" for the rotation, "wk of Oct 26" for PK. */
+export function classDates(rec, grade) {
+  const out = new Map();
+  if (grade === 'PK') {
+    for (const [mon, no] of Object.entries(rec.pkWeeks || {})) if (!out.has(no)) out.set(no, 'wk of ' + short(mon));
+    return out;
+  }
+  const spans = new Map();
+  for (const d of rec.calendar || []) {
+    const m = ROTATION.exec(d.code);
+    if (!m) continue;
+    const no = Number(m[2]);
+    const s = spans.get(no) || { from: d.date, to: d.date };
+    if (d.date < s.from) s.from = d.date;
+    if (d.date > s.to) s.to = d.date;
+    spans.set(no, s);
+  }
+  for (const [no, s] of spans) {
+    const a = short(s.from), b = short(s.to);
+    out.set(no, a === b ? a : a.slice(0, 3) === b.slice(0, 3) ? a + '–' + b.slice(4) : a + '–' + b);
+  }
   return out;
 }

@@ -309,3 +309,56 @@ main.lib.wide { max-width: none; padding: 0; }
 .present .bar button.on { background: rgba(255, 255, 255, .25); }
 .ed-wmenu { display: flex; flex-direction: column; min-width: 140px; }
 .ed-btn.ed-wide { justify-content: flex-start; text-align: left; width: 100%; }
+
+/* ---- calendar, lists, library sections ---- */
+.lib-h { font-size: 18px; font-weight: 600; color: var(--muted); margin: 26px 0 12px; }
+.lib-h:first-child { margin-top: 0; }
+.pl-grid th.cls, .pl-grid td.cls { width: 78px; }
+.pl-grid td.cls .when { display: block; font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; }
+.pl-views .chip { text-decoration: none; color: inherit; }
+.pl-views .chip.on { color: var(--cream); }
+.cal-body { flex: 1; min-height: 0; display: flex; overflow: auto; }
+.cal-main { flex: 1; padding: 14px 18px; min-width: 0; }
+.cal-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cal-month { margin: 0; font-size: 20px; font-weight: 600; min-width: 170px; text-align: center; }
+.cal-grid { display: grid; grid-template-columns: 44px repeat(5, 1fr); gap: 6px; }
+.cal-h { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); text-align: center; }
+.cal-wk { display: grid; place-items: center; font-weight: 600; color: var(--moss); background: #EFE8D6; border-radius: 10px; }
+.cal-day { min-height: 72px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); text-align: left; padding: 6px 8px;
+  display: flex; flex-direction: column; justify-content: space-between; }
+.cal-day.out { opacity: .4; }
+.cal-day.on { outline: 3px solid var(--wheat); }
+.cal-day.today .cal-n { background: var(--forest); color: var(--cream); border-radius: 999px; padding: 0 7px; }
+.cal-day .cal-n { font-size: 13px; color: var(--muted); align-self: flex-start; }
+.cal-day .cal-code { font-size: 18px; font-weight: 600; }
+.cal-day.g-A { background: #E3EEDC; } .cal-day.g-B { background: #DCE8F3; } .cal-day.g-C { background: #F6E6CF; }
+.cal-day.off .cal-code { color: var(--muted); font-size: 15px; }
+.cal-panel { width: 280px; flex: none; border-left: 1px solid var(--line); background: var(--card); padding: 16px; }
+.cal-panel h3 { margin: 0 0 10px; font-size: 20px; font-weight: 600; }
+.cal-what { margin-bottom: 10px; }
+.cal-pk, .cal-none { color: var(--muted); margin: 6px 0 12px; }
+.cal-class { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+.cal-class b { flex: 1; }
+.ls-bar { padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--card); overflow-x: auto; }
+.ls-cats { flex-wrap: wrap; }
+.ls-cats .chip.on { background: var(--c, var(--moss)); }
+.ls-wrap { flex: 1; overflow: auto; padding: 0 0 40px; }
+.ls-table { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: 14px; }
+.ls-table th { position: sticky; top: 0; background: var(--card); font-size: 12px; font-weight: 600; color: var(--muted); padding: 6px 4px; text-align: left; white-space: nowrap; z-index: 2; }
+.ls-table tr.ls-sub th { top: 27px; font-weight: 400; border-bottom: 1px solid var(--line); }
+.ls-table th.ls-g { text-align: center; border-left: 1px solid var(--line); }
+.ls-table td { padding: 1px 2px; border-bottom: 1px solid #EFE8D6; white-space: nowrap; }
+.ls-table .ls-name { position: sticky; left: 0; background: var(--cream); z-index: 1; min-width: 210px; }
+.ls-table th.ls-name { z-index: 3; background: var(--card); }
+.ls-in { font: inherit; font-size: 14px; border: 1px solid transparent; border-radius: 6px; background: transparent; padding: 4px 6px; width: 100%; min-width: 80px; color: inherit; }
+.ls-in.num { width: 56px; min-width: 0; }
+select.ls-in { min-width: 84px; }
+.ls-in:hover { border-color: var(--line); }
+.ls-in:focus { outline: none; border-color: var(--moss); background: #fff; }
+.ls-notes .ls-in { min-width: 240px; }
+.ls-used, .ls-left { text-align: center; color: var(--muted); min-width: 34px; }
+.ls-left.over { color: var(--danger); font-weight: 600; }
+.ls-act { display: flex; gap: 4px; }
+.ls-off { opacity: .55; }
+.ls-shelf-head td { font-weight: 600; color: var(--muted); padding: 16px 8px 6px; }
+.ls-add .ls-in { border-color: var(--line); background: #fff; }
