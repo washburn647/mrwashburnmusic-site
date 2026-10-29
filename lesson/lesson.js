@@ -1,9 +1,13 @@
-/* A private lesson student's page. Everything on it comes from the link
-   (see codec.js). Checkmarks, practice minutes and flash card results are
-   kept only in this browser. */
+/* A private lesson student's page. It opens two ways:
+   - with their code (/lesson/#tiger-moon-...): their locked pages from the site, this
+     week's lesson first, earlier ones below (see locked.js). The code is remembered on
+     this device; flash card results go back to Kyle, encrypted.
+   - with a lesson link: the whole page is inside the link (see codec.js).
+   Checkmarks and practice minutes are kept only in this browser. */
 
-import { decodeLesson, formatDate } from './codec.js';
-import { LOGO, QR_SRC } from './paths.js';
+import { decodeLesson, cleanPage, formatDate } from './codec.js';
+import { cleanCode, openPages, sendResult } from './locked.js';
+import { LOGO, QR_SRC, LESSON_PAGE } from './paths.js';
 import { loadScript } from './score.js';
 import { confetti } from './fun.js';
 import { openPlayer } from './player.js';
@@ -65,17 +69,101 @@ window.addEventListener('popstate', () => {
   if (overlay) { const o = overlay; overlay = null; o.ctl?.close(); }
 });
 
-/* ---------- The page ---------- */
+/* ---------- Which page ---------- */
+
+const CODE = 'lesson:code';
+const savedCode = () => { try { return localStorage.getItem(CODE) || ''; } catch { return ''; } };
+const logo = () => el('header', {}, el('img', { src: LOGO, alt: 'Mr. Washburn Music' }));
 
 async function show() {
-  const header = el('header', {}, el('img', { src: LOGO, alt: 'Mr. Washburn Music' }));
-  const hash = location.hash.slice(1);
+  const hash = decodeURIComponent(location.hash.slice(1));
+  const code = cleanCode(hash) || (!hash && savedCode());
+  if (code) { showLocked(code, !!hash); return; }
   let page = null;
   if (hash) { try { page = await decodeLesson(hash); } catch { page = null; } }
-  if (!page) { main.replaceChildren(header); return; }
+  if (!page) { showEntry(); return; }
+  render(page, { key: await keyFor(hash), qr: location.href });
+}
 
+/* Where a student types their code. */
+function showEntry(problem = '') {
+  stop();
+  document.title = 'Lesson · Mr. Washburn Music';
+  const box = el('input', { class: 'code', autocomplete: 'off', autocapitalize: 'none', spellcheck: false, 'aria-label': 'Code' });
+  const form = el('form', { class: 'codeform' + (problem ? ' shake' : ''), onsubmit: (e) => {
+    e.preventDefault();
+    const code = cleanCode(box.value);
+    if (!code) { form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); return; }
+    showLocked(code, false);
+  } }, el('span', { class: 'lock' }, '🔑'), box, el('button', { class: 'go', 'aria-label': 'Open' }, '▶'));
+  main.replaceChildren(logo(), form, ...(problem ? [el('p', { class: 'codeerr' }, problem)] : []));
+  box.focus();
+}
+
+async function showLocked(code, fromLink) {
+  stop();
+  main.replaceChildren(logo(), el('p', { class: 'loading' }, '🎵'));
+  let pages;
+  try {
+    pages = await openPages(code);
+  } catch {
+    main.replaceChildren(logo(), el('p', { class: 'codeerr' }, '📡'), el('button', { class: 'go', 'aria-label': 'Try again', onclick: () => showLocked(code, fromLink) }, '🔁'));
+    return;
+  }
+  if (!pages || !pages.l?.length) { showEntry(fromLink || savedCode() !== code ? '✗' : ''); return; }
+  try { localStorage.setItem(CODE, code); } catch { /* private window */ }
+  // The code stays on this device, not in the address bar.
+  if (fromLink) history.replaceState(null, '', location.pathname);
+  sendPending(code);
+  const lessons = pages.l.map((l) => cleanPage({ ...l, v: 2, n: pages.n, i: pages.i, p: pages.p }));
+  const open = async (index) => {
+    render(lessons[index], {
+      key: await keyFor(`${code}/${lessons[index].d}`),
+      qr: `${LESSON_PAGE}#${code}`,
+      lessons, index, open,
+      onCards: (it, r) => queueResult(code, { d: lessons[index].d, a: it.a, ...r }),
+      forget: () => { try { localStorage.removeItem(CODE); } catch { /* nothing kept */ } showEntry(); },
+    });
+    scrollTo(0, 0);
+  };
+  open(0);
+}
+
+/* Flash card results go to Kyle, encrypted; ones that can't go yet wait on this device. */
+const pendingKey = async (code) => `${await keyFor(code)}:pending`;
+async function queueResult(code, result) {
+  const key = await pendingKey(code);
+  const list = load(key).list || [];
+  list.push(result);
+  try { localStorage.setItem(key, JSON.stringify({ list: list.slice(-200) })); } catch { /* nothing kept */ }
+  sendPending(code);
+}
+let sending = false;
+async function sendPending(code) {
+  if (sending) return;
+  sending = true;
+  const key = await pendingKey(code);
+  try {
+    let list = load(key).list || [];
+    while (list.length) {
+      await sendResult(code, list[0]);
+      list = (load(key).list || []).slice(1);
+      localStorage.setItem(key, JSON.stringify({ list }));
+    }
+  } catch { /* offline: next time */ }
+  sending = false;
+}
+
+/* Timers of the page on show, stopped when another is shown. */
+let timers = [];
+function stop() { timers.forEach(clearInterval); timers = []; }
+
+/* ---------- The page ---------- */
+
+function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, forget }) {
+  stop();
+  const header = logo();
   document.title = `${page.n || 'Lesson'} · Mr. Washburn Music`;
-  const key = await keyFor(hash);
   const state = load(key);
   state.mins = state.mins || {};
   state.cards = state.cards || {};
@@ -143,15 +231,15 @@ async function show() {
     state.run = null;
   }
   timerBtn.addEventListener('click', () => {
-    if (state.run) { stopRun(); clearInterval(tick); } else { state.run = Date.now(); tick = setInterval(drawTimer, 500); }
+    if (state.run) { stopRun(); clearInterval(tick); } else { state.run = Date.now(); tick = setInterval(drawTimer, 500); timers.push(tick); }
     save();
     drawTimer();
     refreshDays();
   });
   if (state.run) {
-    if (Date.now() - state.run > 7200e3) { stopRun(); save(); } else tick = setInterval(drawTimer, 500);
+    if (Date.now() - state.run > 7200e3) { stopRun(); save(); } else { tick = setInterval(drawTimer, 500); timers.push(tick); }
   }
-  setInterval(() => { if (state.run) { stopRun(); state.run = Date.now(); save(); refreshDays(); } }, 30000);
+  timers.push(setInterval(() => { if (state.run) { stopRun(); state.run = Date.now(); save(); refreshDays(); } }, 30000));
   refreshDays();
   drawTimer();
 
@@ -207,6 +295,7 @@ async function show() {
           mine.done += r.ok;
           save();
           showDone();
+          if (onCards) onCards(it, r);
         } })) }, '🃏'), badge);
     }
     return el('li', {},
@@ -217,12 +306,16 @@ async function show() {
       tools.childNodes.length ? tools : null);
   }));
 
+  /* Earlier lessons, when the page came with the student's code */
+  const earlier = lessons?.length > 1 && el('nav', { class: 'earlier' }, lessons.map((l, i) =>
+    el('button', { 'aria-current': i === index ? 'true' : null, onclick: () => open(i) }, formatDate(l.d).replace(/^\w+, /, '') || '·')));
+
   /* Printing: a QR code back to this page when the link is short enough */
   const qr = el('div', { class: 'qr' });
-  if (location.href.length <= 2300) {
+  if (qrText.length <= 2300) {
     loadScript(QR_SRC).then(() => {
       const q = window.qrcode(0, 'L');
-      q.addData(location.href);
+      q.addData(qrText);
       q.make();
       const n = q.getModuleCount();
       let d = '';
@@ -234,7 +327,11 @@ async function show() {
   main.replaceChildren(...[
     header, reward, practice, list,
     page.m ? el('p', { class: 'note', textContent: page.m }) : null,
-    el('div', { class: 'foot' }, el('button', { class: 'print', 'aria-label': 'Print', onclick: () => print() }, '🖨'), qr),
+    earlier,
+    el('div', { class: 'foot' },
+      el('button', { class: 'print', 'aria-label': 'Print', onclick: () => print() }, '🖨'),
+      forget && el('button', { class: 'print', 'aria-label': 'Sign out on this device', onclick: forget }, '🚪'),
+      qr),
   ].filter(Boolean));
 }
 

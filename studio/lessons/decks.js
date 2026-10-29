@@ -44,10 +44,12 @@ export function loadUnits() {
   unitList ||= (async () => {
     const mine = await recorderUnits().catch(() => null);
     if (mine?.length) return mine;
-    try {
-      const r = await fetch('/assets/patterns/units.json');
-      if (r.ok) return (await r.json()).units;
-    } catch { /* offline */ }
+    if (location.protocol !== 'file:') {
+      try {
+        const r = await fetch('/assets/patterns/units.json');
+        if (r.ok) return (await r.json()).units;
+      } catch { /* offline */ }
+    }
     return DEFAULT_UNITS;
   })().then((list) => list.map((u) => ({ removed: [], marks: {}, ...u })));
   return unitList;

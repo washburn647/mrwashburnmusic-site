@@ -11,6 +11,7 @@ Use Chrome or Edge.
 - "Copy link" gives a mrwashburnmusic.com link. Those links only show pieces,
   flash cards and the rest once this version is on the website, so don't send
   them to families yet.
+- Student codes can be made here, but Publish and Results need the website.
 
 Pieces: MusicXML files (.musicxml, .xml or compressed .mxl), exported from
 MuseScore, Finale, Sibelius, Dorico, Noteflight or flat.io.

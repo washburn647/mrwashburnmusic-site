@@ -67,7 +67,11 @@ export function cleanDeck(c) {
 export async function decodeLesson(text) {
   const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
   const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  const page = JSON.parse(new TextDecoder().decode(await pipe(bytes, new DecompressionStream('deflate-raw'))));
+  return cleanPage(JSON.parse(new TextDecoder().decode(await pipe(bytes, new DecompressionStream('deflate-raw')))));
+}
+
+/* Only the fields a page may have, in the shapes it may have them. */
+export function cleanPage(page) {
   if (!page || (page.v !== 1 && page.v !== 2)) throw new Error('not a lesson page');
   const pieces = (page.v === 2 && Array.isArray(page.p) ? page.p : []).map((x) => str(x, 4e6));
   const items = (Array.isArray(page.t) ? page.t : []).slice(0, 100).map((r) => {

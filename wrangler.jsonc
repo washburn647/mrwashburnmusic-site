@@ -1,7 +1,11 @@
-// Lets Cloudflare Workers serve this folder as a static site.
+// Lets Cloudflare Workers serve this folder as a static site, plus the small Worker in
+// worker/ that keeps private students' locked lesson pages (see worker/index.js).
 {
   "name": "mrwashburnmusic-site",
   "compatibility_date": "2026-10-01",
+  "main": "worker/index.js",
+  // ACCESS_TEAM and ACCESS_AUD are set in the Cloudflare dashboard, not here.
+  "keep_vars": true,
   // Only serve on the real domain, so Cloudflare Access always guards /studio/.
   "workers_dev": false,
   "preview_urls": false,
@@ -13,6 +17,12 @@
   ],
   "assets": {
     "directory": "./",
-    "not_found_handling": "404-page"
-  }
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*", "/studio/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "BOXES", "class_name": "Box" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Box"] }]
 }

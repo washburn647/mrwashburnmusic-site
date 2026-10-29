@@ -61,3 +61,17 @@ header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
   .qr { display: block; width: 110px; }
   .qr svg { width: 100%; }
 }
+
+/* Code entry, and earlier lessons */
+.codeform { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 22px; padding: 10px 10px 10px 16px; margin-top: 24px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
+.codeform .lock { font-size: 28px; }
+.codeform .code { flex: 1; min-width: 0; font: inherit; font-size: 20px; border: 0; background: #F6F1E4; border-radius: 12px; padding: 10px 12px; color: #2F4A3A; }
+.codeerr, .loading { text-align: center; font-size: 40px; margin: 24px 0 12px; }
+.loading { animation: bob 1s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-8px); } }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.earlier { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.earlier button { background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 15px; min-height: 40px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.earlier button[aria-current] { background: #2F4A3A; color: #F6F1E4; }
+@media print { .earlier { display: none; } }

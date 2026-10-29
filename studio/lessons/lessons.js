@@ -1,8 +1,10 @@
 /* Private lesson pages: one page per lesson for each private student.
    Students, pieces (MusicXML) and the practice library are kept on this
-   device only (see ../db.js). A student gets their page as a link to
-   /lesson/ with the page inside the link itself (see /lesson/codec.js),
-   so no student information is stored online.
+   device (see ../db.js). A student gets their pages two ways:
+   - a code: Publish locks all their lessons with it and puts them on the site,
+     where only the code opens them (see /lesson/locked.js). Their flash card
+     results come back the same way, and Results shows the weak spots.
+   - a link to one lesson, with the page inside the link (see /lesson/codec.js).
    #/ is the week, #/library the practice library, #/<student> and
    #/<student>/<lesson> one student. */
 
@@ -12,7 +14,9 @@ import { encodeLesson, safeLink, formatDate, cleanDeck, cleanSetup } from '/less
 import { readPieceFile, slimXML, pieceInfo } from '/lesson/score.js';
 import { openPlayer } from '/lesson/player.js';
 import { openPractice } from '/lesson/practice.js';
-import { LESSON_PAGE, LOCAL_PAGE, STUDIO_HOME } from '/lesson/paths.js';
+import { LESSON_PAGE, LOCAL_PAGE, STUDIO_HOME, API } from '/lesson/paths.js';
+import { newCode, cleanCode, publish, results, unpublish } from '/lesson/locked.js';
+import { cardLabel, KINDS } from '/lesson/cards.js';
 import { editDeck, deckSummary, newDeck } from './decks.js';
 
 const students = store('students');
@@ -126,7 +130,7 @@ async function restoreBackup(file) {
     const here = await students.get(s.id);
     if (here && here.updated >= s.updated) continue;
     await students.put({
-      id: s.id, name: str(s.name), instrument: str(s.instrument),
+      id: s.id, name: str(s.name), instrument: str(s.instrument), code: cleanCode(s.code), published: Number(s.published) || 0,
       day: s.day === '' || s.day == null ? '' : Math.max(0, Math.min(6, Number(s.day) || 0)), time: /^\d\d:\d\d$/.test(s.time) ? s.time : '',
       created: Number(s.created) || Date.now(), updated: Number(s.updated) || Date.now(),
       lessons: s.lessons.map((l) => ({
@@ -447,6 +451,56 @@ async function showStudent(id, lessonId) {
     h('option', { value: '', selected: student.day === '' }, 'Day'),
     DAYS.map((d, i) => h('option', { value: i, selected: String(student.day) === String(i) }, d)));
 
+  /* The student's code, and their locked pages on the site */
+  function codeBar() {
+    const bar = h('div', { class: 'bar codebar' });
+    const status = h('small', {});
+    const showStatus = () => { status.textContent = student.published ? `✓ ${new Date(student.published).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''; };
+    const draw = () => {
+      showStatus();
+      if (!student.code) {
+        bar.replaceChildren(h('button', { onclick: () => { student.code = newCode(); save(); draw(); } }, '🔑 Make code'));
+        return;
+      }
+      const pub = h('button', { class: 'primary', disabled: API == null, onclick: async () => {
+        pub.disabled = true;
+        pub.textContent = '…';
+        try {
+          await flush();
+          await publish(student.code, await pagesFor(student));
+          student.published = Date.now();
+          save();
+          pub.textContent = 'Publish';
+        } catch (err) {
+          pub.textContent = `✗ ${err.message}`;
+        }
+        pub.disabled = false;
+        showStatus();
+      } }, 'Publish');
+      const copyCode = h('button', { onclick: async () => {
+        await navigator.clipboard.writeText(`${LESSON_PAGE}#${student.code}`);
+        copyCode.textContent = 'Copied';
+        setTimeout(() => { copyCode.textContent = 'Copy code link'; }, 1500);
+      } }, 'Copy code link');
+      bar.replaceChildren(
+        h('span', { class: 'code' }, '🔑 ', student.code.replace(/-/g, ' ')),
+        pub, status,
+        copyCode,
+        h('button', { disabled: API == null, onclick: () => showResults(student) }, 'Results'),
+        h('span', { class: 'grow' }),
+        confirmButton('New code', 'Old code stops working', async () => {
+          const old = student.code;
+          await unpublish(old).catch(() => {});
+          student.code = newCode();
+          student.published = 0;
+          save();
+          draw();
+        }));
+    };
+    draw();
+    return bar;
+  }
+
   app.replaceChildren(
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '#/' }, '‹ Lesson pages')),
     h('div', { class: 'who' },
@@ -457,11 +511,13 @@ async function showStudent(id, lessonId) {
       confirmButton('Remove student', 'Remove for good?', async () => {
         clearTimeout(saveTimer);
         saveTimer = null;
+        if (student.code) await unpublish(student.code).catch(() => {});
         await students.delete(student.id);
         student = null;
         location.hash = '#/';
       }),
     ),
+    codeBar(),
     h('div', { class: 'bar' },
       chips,
       h('span', { class: 'grow' }),
@@ -511,6 +567,57 @@ async function showStudent(id, lessonId) {
     ),
   );
   renderItems();
+}
+
+/* Everything a student's code opens: their last 20 lessons, newest first, sharing pieces. */
+async function pagesFor(s) {
+  const pool = [];
+  const lessons = [];
+  const recent = [...s.lessons].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
+  for (const lesson of recent) {
+    const page = await pageFor(s, lesson);
+    const mine = (page.p || []).map((xml) => { const i = pool.indexOf(xml); return i >= 0 ? i : pool.push(xml) - 1; });
+    for (const it of page.t) if (it.p !== undefined) it.p = mine[it.p];
+    lessons.push({ d: page.d, t: page.t, ...(page.m ? { m: page.m } : {}), ...(page.s ? { s: page.s } : {}), ...(page.w ? { w: page.w } : {}) });
+  }
+  return { v: 1, n: s.name.trim(), i: s.instrument.trim(), l: lessons, p: pool };
+}
+
+/* What a student's flash card sessions show: per deck, the cards missed most. */
+async function showResults(s) {
+  const dlg = h('dialog', { class: 'pickdlg results' });
+  document.body.append(dlg);
+  const close = () => { dlg.close(); dlg.remove(); };
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+  dlg.append(h('p', {}, '…'));
+  dlg.showModal();
+  let list;
+  try { list = await results(s.code); } catch (err) { dlg.replaceChildren(h('p', {}, `✗ ${err.message}`), h('button', { onclick: close }, 'Close')); return; }
+  const decks = new Map();
+  for (const r of list) {
+    const name = `${r.a || KINDS[r.k] || ''}`;
+    const d = decks.get(name) || { name, k: r.k, sessions: 0, n: 0, ok: 0, last: '', cards: {} };
+    d.sessions++;
+    d.n += r.n || 0;
+    d.ok += r.ok || 0;
+    if ((r.at || '') > d.last) d.last = r.at || '';
+    for (const [card, [tries, right]] of Object.entries(r.items || {})) {
+      const c = (d.cards[card] ||= [0, 0]);
+      c[0] += tries;
+      c[1] += right;
+    }
+    decks.set(name, d);
+  }
+  const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '—');
+  dlg.replaceChildren(
+    h('div', { class: 'bar' }, h('h2', { class: 'grow' }, s.name || 'Results'), h('button', { onclick: close }, 'Close')),
+    ...(list.length ? [] : [h('p', {}, '—')]),
+    ...[...decks.values()].sort((a, b) => b.last.localeCompare(a.last)).map((d) => {
+      const weak = Object.entries(d.cards).filter(([, [t, r]]) => r < t).sort((a, b) => a[1][1] / a[1][0] - b[1][1] / b[1][0]).slice(0, 10);
+      return h('section', { class: 'rdeck' },
+        h('h3', {}, d.name, h('small', {}, ` · ${d.sessions} × · ${d.n} · ${pct(d.ok, d.n)} · ${d.last}`)),
+        h('ul', { class: 'weak' }, weak.map(([card, [t, r]]) => h('li', {}, h('span', {}, cardLabel({ k: d.k }, card)), h('small', {}, `${r}/${t}`)))));
+    }));
 }
 
 function setupSummary(u) {

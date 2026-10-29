@@ -9,3 +9,5 @@ export const LESSON_PAGE = `${location.origin}/lesson/`;
 export const LOCAL_PAGE = '/lesson/';
 export const STUDIO_HOME = '/studio/';
 export const VEXFLOW_SRC = '/assets/vendor/vexflow/vexflow-bravura.js';
+/* Where locked student pages live (worker/index.js); null when there is no site. */
+export const API = '';
