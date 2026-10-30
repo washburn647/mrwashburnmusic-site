@@ -7,7 +7,7 @@
 import * as store from './store.js';
 import { el } from './ui.js';
 import { readWorkbook } from './xlsx.js';
-import { fromWorkbook, schoolYear, nextYearLabel, newYear, SPECIALS, KIDS_CHOICE, isSpecial,
+import { fromWorkbook, schoolYear, nextYearLabel, newYear, SPECIALS, KIDS_CHOICE, NULL_SLOT, isSpecial,
          songInfo, slotsOf, playCount, gradeHint, normName, songTimes, classDates } from './plans.js';
 import { buildClass } from './builder.js';
 import { renderCalendar } from './calendar.js';
@@ -21,6 +21,10 @@ const recall = (k) => { try { return localStorage.getItem('class.' + k); } catch
 
 let undoStack = [];
 let keyHandler = null;
+const expanded = new Set();                 // catalog categories opened; the rest stay folded
+const sticky = {};                          // category -> the column a shift-clicked song keeps to
+let saving = Promise.resolve(), pending = 0;
+window.addEventListener('beforeunload', (e) => { if (pending) { e.preventDefault(); e.returnValue = ''; } });
 
 const VIEWS = [['plan', 'Planner', '#/plan'], ['calendar', 'Calendar', '#/plan/calendar'], ['lists', 'Lists', '#/plan/lists']];
 
@@ -37,10 +41,27 @@ export async function showPlanner(main, view = 'plan') {
   undoStack = [];
   const ctx = { rec, years, grade, decks, times, main, view };
   ctx.reload = () => showPlanner(main, view);
+  // Saves run one after another. Each checks the stored plan is still the one
+  // this screen loaded: if another tab or a sync changed it, nothing is
+  // overwritten and the screen reloads.
+  let base = rec.updated, stale = false;
   ctx.save = () => {
-    rec.updated = Date.now();
-    store.setGradeHint(gradeHint(rec));
-    return store.putPlan(rec).catch((err) => { console.error(err); window.alert('Not saved: ' + err.message); });
+    pending++;
+    saving = saving.then(async () => {
+      if (stale) return;
+      const now = await store.getPlan(rec.year);
+      if (now && now.updated !== base) {
+        stale = true;
+        window.alert('This plan was changed somewhere else. Nothing was overwritten. Reloading.');
+        ctx.reload();
+        return;
+      }
+      store.setGradeHint(gradeHint(rec));
+      await store.putPlan(rec);
+      base = rec.updated;
+    }).catch((err) => { stale = true; console.error(err); window.alert('Not saved: ' + err.message); ctx.reload(); })
+      .finally(() => { pending--; });
+    return saving;
   };
   ctx.build = (g, no) => buildAndOpen(ctx, g, no);
   if (view === 'calendar') renderCalendar(main, ctx, header(ctx));
@@ -80,6 +101,7 @@ function header(ctx, ...extra) {
 /** Build a class's deck into the library (replacing the last build) and open it. */
 async function buildAndOpen(ctx, grade, no) {
   const { rec } = ctx;
+  await saving;                             // build from the plan on screen, once it is saved
   try {
     ctx.decks = await store.listDecks();
     const { deck, name, missing } = buildClass(rec, grade, no, ctx.decks);
@@ -233,7 +255,8 @@ function render(main, ctx) {
       out.push(el('div', { class: 'pl-cat-head' }, 'Placeholders'));
       for (const s of SPECIALS) {
         const chip = el('div', { class: 'pl-chip special', draggable: 'true',
-          title: s === KIDS_CHOICE ? 'The class picks a song from the category' : 'Concert prep: an empty slide' }, s);
+          title: s === KIDS_CHOICE ? 'The class picks a song from the category'
+            : s === NULL_SLOT ? 'Leave this slot empty on purpose: no slide in the deck' : 'Concert prep: an empty slide' }, s);
         chip.addEventListener('dragstart', (e) => { drag = { from: 'catalog', category: null, song: s }; e.dataTransfer.setData('text/plain', s); });
         out.push(chip);
       }
@@ -243,7 +266,11 @@ function render(main, ctx) {
       const songs = all.filter((s) => !q || s.name.toLowerCase().includes(q));
       if (!songs.length) continue;
       const cc = catClass(category);
-      out.push(el('div', { class: 'pl-cat-head ' + cc }, category));
+      const folded = !q && !expanded.has(category);
+      out.push(el('div', { class: 'pl-cat-head ' + cc + (folded ? ' folded' : ''), role: 'button', tabindex: '0',
+        onclick: () => { if (expanded.has(category)) expanded.delete(category); else expanded.add(category); renderCatalog(); } },
+        el('span', { class: 'caret' }, '▾'), category, el('span', { class: 'count' }, String(songs.length))));
+      if (folded) continue;
       for (const s of songs) out.push(catalogChip(category, s, all, cc));
     }
     catList.replaceChildren(...out);
@@ -274,7 +301,28 @@ function render(main, ctx) {
     chip.title = [s.pos, s.loc, 'Eng ' + s.eng, 'Cmf ' + s.cmf].filter(Boolean).join(' · ') +
       (timed ? ' · timed ' + r1(timed.min) + ' min (' + timed.n + ')' : '');
     chip.addEventListener('dragstart', (e) => { drag = { from: 'catalog', category, song: s.name }; e.dataTransfer.setData('text/plain', s.name); });
+    chip.addEventListener('click', (e) => {
+      if (!e.shiftKey) return;
+      e.preventDefault();
+      const to = shiftTarget(category, s.name);
+      if (!to) { say('No open ' + category + ' slot left'); return; }
+      sticky[category] = { song: s.name, slot: to.slot, no: to.no, grade, year: rec.year };
+      apply([{ no: to.no, slot: to.slot, value: s.name }]);
+      say('Added to class ' + to.no);
+    });
     return chip;
+  }
+
+  /** Shift-click: the first empty slot, then the same song keeps to that column, class after class. */
+  function shiftTarget(category, song) {
+    const st = sticky[category];
+    if (st && st.song === song && st.grade === grade && st.year === rec.year) {
+      const c = classes().find((x) => x.no > st.no && !x.slots[st.slot]);
+      return c ? { no: c.no, slot: st.slot } : null;
+    }
+    const idx = slotsOf(rec, category);
+    for (const c of classes()) for (const i of idx) if (!c.slots[i]) return { no: c.no, slot: i };
+    return null;
   }
 
   function editMax(s, span) {
@@ -364,6 +412,7 @@ function render(main, ctx) {
       const special = isSpecial(name);
       const info = special ? null : songInfo(rec, category, name);
       if (!info && !special) div.classList.add('missing');
+      if (name === NULL_SLOT) div.classList.add('nullslot');
       const n = special ? 0 : plays(category, name, cls.no);
       const max = info ? info.max[grade] || 0 : 0;
       const first = !!info && n === 1;
@@ -373,7 +422,7 @@ function render(main, ctx) {
       const seen = special ? -1 : lastSeen(category, name, cls.no, slot);
       div.append(el('div', { class: 'foot' },
         el('span', {}, info ? r1(info.min) + ' min · ' + n + '/' + (max || '–') + (info.loc ? ' · ' + info.loc : '')
-          : special ? '' : 'not in catalog'),
+          : name === NULL_SLOT ? 'left empty' : special ? '' : 'not in catalog'),
         seen > 0 ? el('span', { class: 'last' }, 'last ' + seen) : seen === 0 ? el('span', { class: 'last' }, 'new') : null));
 
       const start = runStart(name, cls.no, slot);

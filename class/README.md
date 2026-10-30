@@ -26,7 +26,12 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   planner. Import DATABASE.xlsx once per year (read in the browser, kept in IndexedDB `plans`).
   Grade tabs, years ("New year" keeps the catalog, empties plans, zeroes Max), catalog with Max,
   drag to place or swap, Shift-click to hold a song another class, Max raised when a song is
-  placed past it, undo (Ctrl+Z), class totals. A song's Max per grade also sets which grades
+  placed past it, undo (Ctrl+Z), class totals. Shift-click a catalog song to add it to the first
+  empty slot; more shift-clicks of that song keep to that column. Placeholders: ??? (the class
+  picks), CONCERT (an empty slide), NULL (left empty on purpose: no slide, no icon, not counted).
+  Catalog categories start folded. Saves run in order, and each checks the stored plan is the
+  one on screen: if another tab or a sync changed it, nothing is overwritten and it reloads.
+  Build waits for saves. A song's Max per grade also sets which grades
   its slides are for, until grades are set by hand in the editor. Timed minutes from Present
   show on the catalog chips' tooltips.
 - `calendar.js` (`#/plan/calendar`): the workbook's Calendar sheet a month at a time: each school

@@ -15,7 +15,8 @@
 
 export const KIDS_CHOICE = '???';
 export const CONCERT = 'CONCERT';
-export const SPECIALS = [KIDS_CHOICE, CONCERT];
+export const NULL_SLOT = 'NULL';           // leaves a slot empty on purpose: no slide, no icon
+export const SPECIALS = [KIDS_CHOICE, CONCERT, NULL_SLOT];
 
 const FIRST_PLAN_ROW = 7;                  // class 1 on row 7, class n on row 7 + (n - 1) * 2
 const FIRST_SLOT_COL = 4;                  // D, then every five columns
@@ -229,7 +230,7 @@ export function readClass(rec, grade, no) {
   if (!cls) return null;
   const songs = [];
   cls.slots.forEach((song, i) => {
-    if (!song) return;
+    if (!song || song === NULL_SLOT) return;
     const category = rec.slots[i];
     if (isSpecial(song)) { songs.push({ category, song, special: song, plays: 0, max: 0, isFirst: false, isLast: false }); return; }
     const plays = playCount(rec, grade, category, song, no);
