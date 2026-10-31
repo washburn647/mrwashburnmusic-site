@@ -38,6 +38,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .top img { height: 40px; }
 .top h1 { font-size: 22px; font-weight: 600; margin: 0; }
 .top .spacer { flex: 1; }
+.sync:not(.btn) { font-size: 22px; line-height: 1; cursor: pointer; user-select: none; color: #2E7D5B; }
+.sync.syncing { animation: sync-pulse 1s ease-in-out infinite alternate; }
+.sync.offline { color: #9a9a9a; }
+.sync.error { color: #C0392B; }
+@keyframes sync-pulse { from { opacity: 1; } to { opacity: .35; } }
 .btn { border: 0; border-radius: 999px; padding: 9px 18px; background: var(--moss); color: var(--cream);
   font-weight: 600; font-size: 15px; }
 .btn:hover { background: var(--forest); }
@@ -203,6 +208,13 @@ main.lib.wide { max-width: none; padding: 0; }
 .pl-chip .maxin { width: 44px; font: inherit; font-size: 12px; padding: 1px 3px; border: 1px solid var(--moss); border-radius: 4px; }
 .pl-chip.shelf { opacity: .55; }
 .pl-chip.nomax { opacity: .42; filter: grayscale(1); background: #F3EEE2; }
+.pl-cat-head { user-select: none; display: flex; align-items: center; gap: 6px; padding-right: 8px; }
+.pl-cat-head[role=button] { cursor: pointer; }
+.pl-cat-head .caret { font-size: 9px; opacity: .7; transition: transform .12s; }
+.pl-cat-head.folded .caret { transform: rotate(-90deg); }
+.pl-cat-head .count { margin-left: auto; opacity: .55; font-variant-numeric: tabular-nums; }
+.pl-grid .cell.nullslot { background: transparent; border: 1px dashed var(--line); border-left: 3px dashed var(--c); color: var(--muted); }
+.pl-grid .cell.nullslot .nm { font-style: italic; font-weight: 400; }
 .pl-chip.special { border-style: dashed; justify-content: center; font-weight: 600; letter-spacing: .04em; }
 .pl-chip .bar { height: 3px; background: #EFE8D6; border-radius: 2px; margin-top: 5px; overflow: hidden; }
 .pl-chip .bar i { display: block; height: 100%; background: var(--c, var(--moss)); }

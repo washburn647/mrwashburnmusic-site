@@ -6,3 +6,4 @@ wrangler.jsonc
 .gitignore
 songburner/src
 CLAUDE.md
+worker

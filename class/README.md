@@ -26,7 +26,12 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   planner. Import DATABASE.xlsx once per year (read in the browser, kept in IndexedDB `plans`).
   Grade tabs, years ("New year" keeps the catalog, empties plans, zeroes Max), catalog with Max,
   drag to place or swap, Shift-click to hold a song another class, Max raised when a song is
-  placed past it, undo (Ctrl+Z), class totals. A song's Max per grade also sets which grades
+  placed past it, undo (Ctrl+Z), class totals. Shift-click a catalog song to add it to the first
+  empty slot; more shift-clicks of that song keep to that column. Placeholders: ??? (the class
+  picks), CONCERT (an empty slide), NULL (left empty on purpose: no slide, no icon, not counted).
+  Catalog categories start folded. Saves run in order, and each checks the stored plan is the
+  one on screen: if another tab or a sync changed it, nothing is overwritten and it reloads.
+  Build waits for saves. A song's Max per grade also sets which grades
   its slides are for, until grades are set by hand in the editor. Timed minutes from Present
   show on the catalog chips' tooltips.
 - `calendar.js` (`#/plan/calendar`): the workbook's Calendar sheet a month at a time: each school
@@ -52,8 +57,21 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
   an online name spinner opens this spinner instead. Present also has a pen (D) that draws over
   the slide for the sitting; nothing is saved.
+- `sync.js`: keeps decks, pictures, plans and timings in step with the website's copy
+  (`/api/class/`, `worker/index.js`), so home and school share one library. Signing in goes
+  through Cloudflare Access (Kyle's login). Sync runs when the app opens, comes online or back
+  into view, and a moment after each change; the cloud in the header shows how it went.
+  - Each deck and plan has `updated` (its version) and `synced` (the version the website last
+    had). Changed only here: it goes up. Changed only there: it comes down. Changed in both: a
+    plan or built deck keeps the newer; another deck keeps both, this device's as "(copy)".
+  - A removal is remembered (localStorage `class.sync`) until the website has it, then removes
+    the deck everywhere.
+  - A device's first sync matches its decks to the website's by name: the website's copy wins,
+    this device's stays as a copy if it differs, and links between decks follow.
+  - The deck open in the editor is never swapped out under it. Pulled changes redraw the
+    library, a deck's page and the planner, but never Present.
+  - Spinner names are not synced. The service worker never caches `/api/`.
 - `pptx.js` (with `zip.js`): converts a .pptx into the deck format below, right in the browser.
-  Nothing is uploaded anywhere.
 - `render.js`: draws one slide on a 960 x 540 stage. Present mode, thumbnails and
   (later) the editor all use it.
 - `present.js`: full-screen Present mode. Clicker, arrow keys and swipes (a plain tap
@@ -99,4 +117,5 @@ be published on the public site.
 ## Private material
 
 Kyle's decks hold school material and pictures from the web. They are never
-committed here (this repo is public), and the app never sends them anywhere.
+committed here (this repo is public). Sync keeps them in a private R2 bucket that
+only Kyle's Access login reaches; nothing there is ever served on the public site.

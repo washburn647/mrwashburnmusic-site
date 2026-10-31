@@ -12,6 +12,7 @@ import { missingIcons, forGrade, GRADES } from './marks.js';
 import { showPlanner } from './planner.js';
 import { gradeHint, indexSongs, playCount, normName } from './plans.js';
 import { makeTemplate } from './builder.js';
+import * as sync from './sync.js';
 
 const CATEGORIES = ['Vocal Warmup', 'Song Fragments', 'Simple Songs', 'Arioso', 'Movement Exploration',
   'Form and Expression', 'Beat Motions', 'Songtales'];
@@ -109,7 +110,7 @@ async function showDeck(id, startPresenting, editAt) {
     el('button', { class: 'btn', onclick: () => run(first()) }, '▶ Present'),
     el('button', { class: 'btn quiet', onclick: () => { location.hash = '#/deck/' + rec.id + '/edit'; } }, 'Edit'),
     el('button', { class: 'btn danger', onclick: async () => {
-      if (!window.confirm('Remove "' + rec.name + '" from this device?')) return;
+      if (!window.confirm('Remove "' + rec.name + '"?')) return;
       await store.deleteDeck(rec.id);
       await store.pruneMedia();
       location.hash = '#/';
@@ -256,11 +257,41 @@ document.addEventListener('drop', (e) => {
   if (e.dataTransfer && e.dataTransfer.files.length) importFiles(e.dataTransfer.files);
 });
 
+// Sync with the website: the cloud in the header shows how it went.
+const cloud = $('#sync');
+const LOOK = { signin: ['Sign in', 'Sign in'], syncing: ['☁', 'Syncing…'], ok: ['☁', 'Synced'],
+  offline: ['☁', 'Offline'], error: ['☁', 'Sync failed'] };
+sync.onStatus((s, detail) => {
+  cloud.hidden = s === 'off';
+  if (s === 'off') return;
+  const [text, title] = LOOK[s];
+  cloud.textContent = text;
+  cloud.title = detail ? title + ': ' + detail : title;
+  cloud.className = 'sync ' + s + (s === 'signin' ? ' btn quiet' : '');
+  if (s === 'signin') cloud.href = '/api/class/login'; else cloud.removeAttribute('href');
+});
+cloud.addEventListener('click', (e) => { if (sync.getStatus() !== 'signin') { e.preventDefault(); sync.syncNow(); } });
+// The deck open in the editor is never swapped out under it.
+sync.holdWhile(() => {
+  const m = location.hash.match(/^#\/deck\/([\w-]+)\/edit/);
+  return m ? [m[1]] : [];
+});
+// Show what came down, unless it would pull the page out from under someone.
+sync.onPulled((list) => {
+  if (/\/(edit|present)/.test(location.hash) || document.querySelector('.present')) return;
+  const a = document.activeElement;
+  if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && main.contains(a)) return;
+  const m = location.hash.match(/^#\/deck\/([\w-]+)/);
+  if (m && !list.some((x) => x.kind === 'decks' && x.id === m[1])) return;
+  if (list.some((x) => x.kind === 'plans')) store.listPlans().then((years) => store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1])));
+  route();
+});
+
+function recall(k) { try { return localStorage.getItem('class.' + k); } catch (e) { return null; } }
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // Song slides take their grades from the plan's Max columns, so load it first.
 store.listPlans().then((years) => {
-  let want = null;
-  try { want = localStorage.getItem('class.year'); } catch (e) { /* private window */ }
-  store.setGradeHint(gradeHint(years.find((y) => y.year === want) || years[years.length - 1]));
-}).catch(() => {}).finally(route);
+  store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1]));
+}).catch(() => {}).finally(() => { route(); sync.syncNow(); });

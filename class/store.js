@@ -1,6 +1,7 @@
-/* On-device storage for decks and their pictures (IndexedDB).
-   Phase 1 keeps everything on the device it was imported on. Syncing
-   between home and school comes later, on top of the same records. */
+/* On-device storage for decks and their pictures (IndexedDB). sync.js copies
+   these records to the website and back. Each deck and plan carries
+   `updated` (its version) and `synced` (the version the website last had);
+   saves here keep `synced` from the stored copy, so only sync.js moves it. */
 
 import { markDeck } from './marks.js';
 
@@ -66,6 +67,23 @@ function marked(rec) {
 
 export function setGradeHint(map) { hint = map; }
 
+// Sync listens for changes made here; its own writes pass quiet and stay unheard.
+const listeners = [];
+export function onChange(fn) { listeners.push(fn); }
+const changed = (kind, id, gone) => { for (const fn of listeners) fn(kind, id, gone); };
+
+/** Saves a deck or plan record. Unless quiet, it is a new version: `synced` stays as stored. */
+function putRecord(store, key, rec, quiet) {
+  return tx(store, 'readwrite', async (s) => {
+    if (!quiet) {
+      const old = await wrap(s.get(rec[key]));
+      if (old && old.synced) rec.synced = old.synced; else delete rec.synced;
+      rec.updated = Math.max(Date.now(), (old && old.updated || 0) + 1);
+    }
+    return wrap(s.put(rec));
+  }).then((r) => { if (!quiet) changed(store, rec[key]); return r; });
+}
+
 export function listPlans() {
   return tx('plans', 'readonly', (s) => wrap(s.getAll()))
     .then((all) => all.sort((a, b) => a.year.localeCompare(b.year)));
@@ -75,25 +93,52 @@ export function getPlan(year) {
   return tx('plans', 'readonly', (s) => wrap(s.get(year)));
 }
 
-export function putPlan(rec) {
-  return tx('plans', 'readwrite', (s) => wrap(s.put(rec)));
+export function putPlan(rec, quiet) {
+  return putRecord('plans', 'year', rec, quiet);
+}
+
+export function deletePlan(year, quiet) {
+  return tx('plans', 'readwrite', (s) => wrap(s.delete(year))).then(() => { if (!quiet) changed('plans', year, true); });
 }
 
 /** Record how long a slide was on screen. */
 export function logTiming(row) {
-  return tx('timings', 'readwrite', (s) => wrap(s.add(row)));
+  return tx('timings', 'readwrite', (s) => wrap(s.add(row))).then((r) => { changed('timings'); return r; });
+}
+
+/** Timing rows not yet on the website, with their keys. */
+export function unsyncedTimings() {
+  return tx('timings', 'readonly', (s) => new Promise((resolve, reject) => {
+    const out = [];
+    const req = s.openCursor();
+    req.onsuccess = () => {
+      const c = req.result;
+      if (!c) { resolve(out); return; }
+      if (!c.value.synced) out.push({ key: c.key, row: c.value });
+      c.continue();
+    };
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+export function markTimings(list) {
+  return tx('timings', 'readwrite', (s) => { for (const { key, row } of list) s.put({ ...row, synced: true }, key); });
+}
+
+export function addTimings(rows) {
+  return tx('timings', 'readwrite', (s) => { for (const row of rows) s.add({ ...row, synced: true }); });
 }
 
 export function listTimings() {
   return tx('timings', 'readonly', (s) => wrap(s.getAll()));
 }
 
-export function putDeck(record) {
-  return tx('decks', 'readwrite', (s) => wrap(s.put(record)));
+export function putDeck(record, quiet) {
+  return putRecord('decks', 'id', record, quiet);
 }
 
-export function deleteDeck(id) {
-  return tx('decks', 'readwrite', (s) => wrap(s.delete(id)));
+export function deleteDeck(id, quiet) {
+  return tx('decks', 'readwrite', (s) => wrap(s.delete(id))).then(() => { if (!quiet) changed('decks', id, true); });
 }
 
 /** Store pictures we don't already have. New imports are tagged "classroom only". */
@@ -108,6 +153,16 @@ export async function putMedia(media) {
     }
   });
   return fresh.length;
+}
+
+/** Hashes of every picture and sound kept here. */
+export function mediaKeys() {
+  return tx('media', 'readonly', (s) => wrap(s.getAllKeys()));
+}
+
+/** A picture fetched from the website, as stored there. */
+export function putMediaRecord(rec) {
+  return tx('media', 'readwrite', (s) => wrap(s.put(rec)));
 }
 
 export function getMedia(hashes) {
