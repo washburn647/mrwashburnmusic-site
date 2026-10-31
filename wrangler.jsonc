@@ -23,6 +23,10 @@
   "r2_buckets": [
     { "binding": "CLASS_FILES", "bucket_name": "mwm-class-files" }
   ],
-  // ACCESS_TEAM and ACCESS_AUD are set in the dashboard; keep them across deploys.
-  "keep_vars": true
+  // Which Cloudflare Access login guards /api/class. Not secrets: the Worker checks each login
+  // token's signature against Access's public keys, so knowing these lets no one in.
+  "vars": {
+    "ACCESS_TEAM": "mute-union-7a1d.cloudflareaccess.com",
+    "ACCESS_AUD": "2bd16f1b6cec5e0b7a60223a7176858f37c303534f0a32c9f6fb287a47185aa9"
+  }
 }

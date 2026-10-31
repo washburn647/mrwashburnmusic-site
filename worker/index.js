@@ -3,9 +3,8 @@
    bucket. Cloudflare Access guards /api/class (Kyle's login), and every
    request is checked here too, so a missing Access rule never opens it up.
 
-   Settings in the Cloudflare dashboard (never in this repo):
-   - ACCESS_TEAM: the Zero Trust team domain, e.g. "name.cloudflareaccess.com"
-   - ACCESS_AUD: the Access application's Audience (AUD) tag */
+   wrangler.jsonc sets ACCESS_TEAM (the Zero Trust team domain) and ACCESS_AUD
+   (the Access application's Audience tag). */
 
 const KINDS = new Set(['decks', 'plans']);
 const ID = /^[\w.-]{1,80}$/;

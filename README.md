@@ -37,11 +37,4 @@ Anyone opening `/studio/` then has to enter a code emailed to you. Nothing in th
 
 ## Class sync
 
-The Class app keeps decks, pictures and plans on the website in a private R2 bucket. Set up once, before the change that adds `worker/` deploys (the deploy fails until the bucket exists):
-
-1. Cloudflare dashboard > R2 Object Storage. Turn R2 on if asked (the free tier covers this). Create bucket `mwm-class-files`. Leave public access off.
-2. Zero Trust > Access > Applications > the studio application > Edit. Add a second destination: domain `mrwashburnmusic.com`, path `api/class`. Save. Copy its Application Audience (AUD) tag.
-3. Zero Trust > Settings: copy the team domain (`<name>.cloudflareaccess.com`).
-4. Workers & Pages > mrwashburnmusic-site > Settings > Variables and Secrets. Add two of type Secret: `ACCESS_TEAM` (the team domain) and `ACCESS_AUD` (the AUD tag).
-
-The Worker checks every request's Access login itself as well, and answers nothing until both settings are there.
+The Class app keeps decks, pictures and plans on the website in a private R2 bucket, `mwm-class-files` (public access off). Cloudflare Access guards `/api/class` on `mrwashburnmusic.com` and `www.mrwashburnmusic.com`, as part of the studio application. `wrangler.jsonc` names that Access team domain and the application's Audience (AUD) tag (Access application > Additional settings); they are not secrets. The Worker checks every request's Access login itself as well.
