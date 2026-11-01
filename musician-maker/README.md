@@ -40,7 +40,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   (`/assets/sounds/`). Calls use Kyle's recorded takes when they're on the site, and stand-in
   drum sounds until then.
 - `clock.js`: the beat clock everything is scheduled on.
-- `mic.js`: syllable onsets from the mic, analysed live and never kept.
+- `mic.js`, `mic-worklet.js`: syllable onsets from the mic, found on the audio thread, analysed
+  live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 

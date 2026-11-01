@@ -143,6 +143,8 @@ export function groove(i, t, spb, { tier, mode, duck }) {
   const onOne = i % 2 === 0;
   const root = ROOTS[bar % 4];
   const g = grooveBus;
+  // While the mic listens, only the claves keep the beat: the mic hears everything else.
+  if (duck === 'mic') { hit('claves', t, onOne ? 0.3 : 0.2, g); return; }
   const level = duck ? 0.35 : 1;
   hit('claves', t, (onOne ? 0.55 : 0.4) * level, g);
   if (mode === 'breakdown') {

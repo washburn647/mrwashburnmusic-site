@@ -1,70 +1,57 @@
 /* Mic input: finds the start of each spoken or sung syllable, so "du du-de du du" said
    into the mic counts like taps. Audio is analysed live on the device and never kept.
-
-   A syllable starts where the level jumps above the noise floor. Joined syllables
-   ("du-de") don't fall back to silence between them, so after each start the detector
-   re-arms once the level has dipped well below that syllable's peak (the "d"). */
+   The detector runs on the audio thread (mic-worklet.js), which sees every sample. */
 
 let stream = null;
-let analyser = null;
-let ctx = null;
-let raf = 0;
+let node = null;
+let src = null;
 let listener = null;
-let floor = 0.005; // running noise level
-let level = 0; // last level, 0-1, for meters
-let armed = true;
-let peak = 0;
-let last = -1;
+let level = 0; // 0-1, for meters
+let lag = 0.01; // mic input delay, s
 
 export const on = () => !!stream;
 export const getLevel = () => level;
+/* What the mic hears arrives this much after it was said. */
+export const inputLag = () => lag;
 
-export async function start(audioCtx) {
+export async function start(ctx) {
   if (stream) return;
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser has no mic access here.');
-  ctx = audioCtx;
+  if (!ctx.audioWorklet) throw new Error('This browser can\'t listen for syllables. Tapping still works.');
+  await ctx.audioWorklet.addModule(new URL('./mic-worklet.js', import.meta.url));
+  // Auto gain pumps the room noise up between syllables, which reads as more syllables:
+  // leave it off, the detector measures against the room's own noise level instead.
   stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true },
+    audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false },
   });
-  const src = ctx.createMediaStreamSource(stream);
-  analyser = ctx.createAnalyser();
-  analyser.fftSize = 512;
+  const set = stream.getAudioTracks()[0]?.getSettings?.() || {};
+  if (set.latency > 0 && set.latency < 0.2) lag = set.latency;
+  src = ctx.createMediaStreamSource(stream);
+  node = new AudioWorkletNode(ctx, 'syllables', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+  node.port.onmessage = (e) => {
+    if (e.data.level != null) level = e.data.level;
+    if (e.data.onset != null) listener?.(e.data.onset - lag);
+  };
   // Some browsers (Safari) only run nodes that lead to the speakers: a silent path does.
   const mute = ctx.createGain();
   mute.gain.value = 0;
-  src.connect(analyser);
-  analyser.connect(mute).connect(ctx.destination);
-  const buf = new Float32Array(analyser.fftSize);
-  const loop = () => {
-    analyser.getFloatTimeDomainData(buf);
-    let sum = 0;
-    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-    const rms = Math.sqrt(sum / buf.length);
-    const now = ctx.currentTime;
-    level = Math.min(1, rms * 8);
-    const threshold = Math.max(floor * 3, 0.01);
-    if (rms > threshold && armed && now - last > 0.1) {
-      armed = false;
-      peak = rms;
-      last = now;
-      // The level rises over one analysis window; date it to the window's middle.
-      listener?.(now - analyser.fftSize / ctx.sampleRate / 2);
-    } else if (!armed) {
-      peak = Math.max(peak, rms);
-      if (rms < peak * 0.45 || rms < threshold) armed = true;
-    }
-    if (rms < threshold) floor = floor * 0.97 + rms * 0.03;
-    raf = requestAnimationFrame(loop);
-  };
-  loop();
+  src.connect(node).connect(mute).connect(ctx.destination);
 }
 
 export function listen(fn) { listener = fn; }
 
+/* Two syllables can't be closer than about half an eighth note at this tempo. */
+export function setTempo(bpm) {
+  node?.port.postMessage({ minGap: Math.min(0.16, Math.max(0.08, 0.45 * 30 / bpm)) });
+}
+
 export function stop() {
-  cancelAnimationFrame(raf);
   stream?.getTracks().forEach((t) => t.stop());
+  src?.disconnect();
+  node?.disconnect();
   stream = null;
+  node = null;
+  src = null;
   listener = null;
   level = 0;
 }
