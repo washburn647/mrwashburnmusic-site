@@ -68,10 +68,45 @@ function title() {
     h('button', { class: 'play', onclick: () => startRun() }, 'Play'),
     h('div', { class: 'opts' },
       h('label', {}, 'Mookie mode', seg({ off: 'Off', on: 'On' }, st.mookie ? 'on' : 'off', (v) => { st.mookie = v === 'on'; dir = makeDirector(st); save(); })),
-      h('label', {}, 'Answer by', seg({ tap: 'Tapping', mic: 'Mic and tapping' }, st.input, (v) => { st.input = v; save(); }))),
+      h('label', {}, 'Answer by', seg({ tap: 'Tapping', mic: 'Mic and tapping' }, st.input, (v) => { st.input = v; save(); title(); })),
+      st.input === 'mic' ? micCheck() : null),
     h('p', { class: 'stats' }, `Level ${lv.n} ${lv.title} · ${st.xp} XP · best combo ${st.bestCombo} · ${st.days} ${st.days === 1 ? 'day' : 'days'} played`),
     st.stickers.length ? h('p', { class: 'stickers' }, st.stickers.join(' ')) : null,
     h('button', { class: 'link', onclick: progress }, 'My progress')));
+}
+
+/* Say "du du du" and watch the meter: shows whether the mic hears you, and how many
+   syllables it counts. */
+function micCheck() {
+  const fill = h('span', {});
+  const heard = h('span', { class: 'heard' }, '');
+  let count = 0;
+  let raf = 0;
+  const box = h('div', { class: 'miccheck' },
+    h('button', { class: 'mini', onclick: async () => {
+      try {
+        await mic.start(snd.ac());
+        heard.textContent = 'Say "du du du"…';
+        mic.listen(() => { count++; heard.textContent = `Heard ${count} ${count === 1 ? 'syllable' : 'syllables'}`; bump(fill.parentElement, 'blip'); });
+        const draw = () => {
+          if (!box.isConnected) { mic.stop(); return; }
+          fill.style.width = `${Math.round(mic.getLevel() * 100)}%`;
+          raf = requestAnimationFrame(draw);
+        };
+        cancelAnimationFrame(raf);
+        draw();
+      } catch (e) {
+        heard.textContent = micProblem(e);
+      }
+    } }, 'Test the mic'),
+    h('span', { class: 'meter' }, fill), heard);
+  return box;
+}
+
+function micProblem(e) {
+  if (e?.name === 'NotAllowedError') return 'The mic is blocked. Allow it in the browser\'s site settings (the icon left of the address).';
+  if (e?.name === 'NotFoundError') return 'No mic found on this device.';
+  return `The mic didn't start (${e?.message || e}).`;
 }
 
 function progress() {
@@ -108,8 +143,9 @@ async function startRun(opts = {}) {
   app.replaceChildren(h('div', { class: 'loading' }, mookie(''), h('p', {}, 'Tuning up…')));
   await snd.load();
   let micOn = false;
+  let micError = '';
   if (st.input === 'mic') {
-    try { await mic.start(ctx); micOn = true; } catch { /* no mic: tapping still works */ }
+    try { await mic.start(ctx); micOn = true; } catch (e) { micError = `${micProblem(e)} Tapping still works.`; }
   }
   R = {
     ctx, clock: makeClock(ctx), force: opts.force || null, lap: 0, plan: [], idx: 0,
@@ -117,7 +153,7 @@ async function startRun(opts = {}) {
     lastGame: null, micOn, paused: false, ended: false, win: null, api: null,
     groove: { mode: 'play', duckFrom: 0, duckUntil: 0 },
     before: Object.fromEntries(STEPS.slice(1).map((s) => [s.n, dir.step(s.n).s])),
-    news: [],
+    news: micError ? [micError] : [],
   };
   if (st.lastDay !== today()) {
     st.days++;
@@ -361,7 +397,17 @@ function controlsFor(item, game, q, win) {
       }
     };
     const pad = h('button', { class: 'pad', onpointerdown: (e) => { e.preventDefault(); tap(R.ctx.currentTime, false); } },
-      h('b', {}, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'));
+      h('b', {}, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'),
+      R.micOn ? h('span', { class: 'meter' }, h('span', {})) : null);
+    if (R.micOn) {
+      const fill = pad.querySelector('.meter span');
+      const draw = () => {
+        if (!pad.isConnected) return;
+        fill.style.width = `${Math.round(mic.getLevel() * 100)}%`;
+        requestAnimationFrame(draw);
+      };
+      draw();
+    }
     R.onInput = tap;
     R.keys = (e) => {
       if (e.key === ' ' || e.key === 'Enter' || /^[a-z]$/i.test(e.key)) { tap(R.ctx.currentTime, false); return true; }

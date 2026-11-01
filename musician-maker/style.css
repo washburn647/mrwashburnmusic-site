@@ -246,3 +246,11 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
 }
+
+/* ---------- mic ---------- */
+.miccheck { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; font-size: 14px; color: var(--muted); }
+.meter { display: inline-block; width: 120px; height: 10px; border-radius: 5px; background: var(--sage-soft); overflow: hidden; }
+.meter span { display: block; height: 100%; width: 0; background: var(--moss); transition: width .05s; }
+.meter.blip { animation: blip .2s; }
+@keyframes blip { 50% { box-shadow: 0 0 0 3px var(--wheat); } }
+.pad .meter { width: 50%; height: 6px; margin-top: 4px; }
