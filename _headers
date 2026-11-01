@@ -24,3 +24,6 @@
 
 /class/sw.js
   Cache-Control: no-cache
+
+/musician-maker/*
+  X-Robots-Tag: noindex, nofollow

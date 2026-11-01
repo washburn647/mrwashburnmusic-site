@@ -6,6 +6,7 @@ Static site for Mr. Washburn Music. No build step: every file here is served as 
 
 - `index.html`: the public coming soon page
 - `songburner/`: Song Burner, the lyric memorization app (see `songburner/README.md`)
+- `musician-maker/`: Musician Maker, a nonstop stream of rhythm and melody micro-games for Conversational Solfège (first playable loop, Unit 1; not linked yet; see `musician-maker/README.md`)
 - `class/`: the classroom slides app, for presenting lessons on the classroom TV (see `class/README.md`)
 - `studio/`: private behind-the-scenes tools (locked with Cloudflare Access, see below). The hub links to Class, the planner, Song Burner and the tools. Tools keep their data on the device (IndexedDB `mwm-studio`, `studio/db.js`) and move between devices as a backup file.
   - `studio/cues/`: video cue sheets (shots with length, running time, what to say, on-screen text, notes; prints)
