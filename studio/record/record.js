@@ -67,7 +67,7 @@ const settings = {
   voice: 'kyle',
   unit: 'unit-1',
   key: { major: 48, minor: 45 },
-  bpm: { slow: 60, medium: 80, fast: 100 },
+  bpm: { slow: 92, medium: 108, fast: 126 },
   speed: 'medium',
   want: 3,
   countIn: 4,
@@ -77,6 +77,10 @@ const settings = {
   folder: '', // its name
 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS)) || {}); } catch { /* defaults */ }
+// The first speeds were 60, 80 and 100; a device still on them moves to the new ones.
+if (settings.bpm.slow === 60 && settings.bpm.medium === 80 && settings.bpm.fast === 100) {
+  settings.bpm = { slow: 92, medium: 108, fast: 126 };
+}
 function save() {
   try { localStorage.setItem(SETTINGS, JSON.stringify(settings)); } catch { /* not kept */ }
 }
