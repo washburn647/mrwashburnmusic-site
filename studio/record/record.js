@@ -5,24 +5,31 @@
    the rest familiar or unfamiliar. Each take is recorded after a count-in (tonal ones after the
    key on the piano), stops on its own after the pattern, is trimmed to the voice and saved as a
    small mp3 (24 kHz mono) on this device (IndexedDB 'mwm-voice'). "Save for site" writes
-   voice-kyle.zip (every take, tagged by pattern, plus the units) for tools/add_takes.py. */
+   voice-kyle.zip (every take, tagged by pattern, plus the units) for tools/add_takes.py.
+   Each pattern is recorded in syllables and on "bum" (Musician Maker's neutral call), and
+   Cue words holds Musician Maker's spoken cues (musician-maker/cues.js), at one speed. */
 
 import * as samples from '/assets/sounds/samples.js';
 import { METERS, TONALITIES, KEYS, DEFAULT_UNITS, unitPatterns, conceptLabel, toneMidi, patternById } from '/assets/patterns/patterns.js';
 import { notation } from '/assets/patterns/notation.js';
 import { h, confirmButton } from '../dom.js';
 import { makeZip, readZip } from './zip.js';
+import { CUES, cueById } from '/musician-maker/cues.js';
 
 const app = document.getElementById('app');
 const SPEEDS = { slow: 'Slow', medium: 'Medium', fast: 'Fast' };
 const MARKS = { familiar: 'Familiar', unfamiliar: 'Unfamiliar' };
 const FILTERS = { all: 'All', familiar: 'Familiar', unfamiliar: 'Unfamiliar', unmarked: 'Unmarked' };
 const KINDS = { rhythm: 'Rhythm', tonal: 'Tonal' };
+const VOICES = { syllables: 'Syllables', bum: 'On “bum”' };
+const CUE_UNIT = 'cues'; // the Cue words list, shown in place of a unit
+const CUE_SPEED = 'medium'; // cue words are recorded once, at this speed
 const ZIP_NAME = 'voice-kyle.zip';
 
 /* ---------- Storage ---------- */
 
-// takes: { id, pattern, speed, bpm, key (sounding midi of do or la; null for rhythm), created, seconds, mp3 }
+// takes: { id, pattern, as, speed, bpm, key (sounding midi of do or la; null for rhythm), created, seconds, mp3 }
+//   as: 'syllables' (also when missing: takes from before "bum"), 'bum', or 'cue' (pattern is cue/<id>)
 // misc: 'units' (the unit list), 'folder' (where Save for site writes)
 // (lines is the first version's text list, kept so nothing recorded with it is lost.)
 let dbPromise = null;
@@ -69,6 +76,7 @@ const settings = {
   key: { major: 48, minor: 45 },
   bpm: { slow: 92, medium: 108, fast: 126 },
   speed: 'medium',
+  as: 'syllables',
   want: 3,
   countIn: 4,
   firstNote: true,
@@ -269,9 +277,17 @@ let showRemoved = false;
 let status = { text: '', bad: false };
 let folder = null; // where Save for site writes, once picked
 
+const cuesShown = () => settings.unit === CUE_UNIT;
 const unitNow = () => units.find((u) => u.id === settings.unit) || units[0];
-const takesFor = (id, speed) => takes.filter((t) => t.pattern === id && (!speed || t.speed === speed)).sort((a, b) => a.created - b.created);
+const isCue = (id) => id?.startsWith('cue/');
+const takeAs = (t) => t.as || 'syllables';
+const asFor = (id) => (isCue(id) ? 'cue' : settings.as);
+const takesFor = (id, speed) => takes.filter((t) => t.pattern === id && takeAs(t) === asFor(id)
+  && (!speed || isCue(id) || t.speed === speed)).sort((a, b) => a.created - b.created);
 const done = (id, speed) => takesFor(id, speed).length >= settings.want;
+// A cue word as the recorder handles it: 2 beats, no notation.
+const cueItem = (c) => ({ id: `cue/${c.id}`, kind: 'cue', text: c.text });
+const itemById = (id) => (isCue(id) ? (cueById(id.slice(4)) ? cueItem(cueById(id.slice(4))) : null) : patternById(id));
 const tonicOf = (p) => (p.kind === 'tonal' ? settings.key[p.tonality] : null);
 const saveUnits = () => misc.put(units, 'units');
 
@@ -321,6 +337,7 @@ const describe = (u) => {
 };
 
 function render() {
+  if (cuesShown()) return renderCues();
   const u = unitNow();
   const all = u ? unitPatterns(u) : [];
   const kept = all.filter((p) => !u.removed.includes(p.id));
@@ -332,10 +349,81 @@ function render() {
   if (!filtered.some((p) => p.id === current)) current = (filtered.find((p) => !done(p.id, settings.speed)) || filtered[0])?.id;
   const counts = Object.fromEntries(Object.keys(FILTERS).map((f) => [f, f === 'all' ? kept.length : kept.filter((p) => markOf(p) === f).length]));
 
-  const restore = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true, onchange: () => { restoreZip(restore.files[0]); restore.value = ''; } });
   const wide = u?.kind === 'rhythm' && u.bars > 1;
 
   app.replaceChildren(
+    ...top(u),
+    ...(u ? [
+      h('div', { class: 'bar summary' },
+        h('h2', {}, u.name),
+        h('span', { class: 'total' }, `${kept.length} patterns`),
+        u.kind === 'tonal' ? h('select', { onchange: (e) => { settings.key[u.tonality] = Number(e.target.value); save(); render(); } },
+          KEYS[u.tonality].map((k) => h('option', { value: k.midi, selected: k.midi === settings.key[u.tonality] }, `${u.tonality === 'major' ? 'Do' : 'La'} = ${pretty(k.name)}`))) : null,
+        h('span', { class: 'grow' }),
+        h('button', { class: editing ? 'on' : '', onclick: () => { editing = !editing; render(); } }, editing ? 'Done' : 'Edit unit'),
+      ),
+      editing ? unitEditor(u) : null,
+      h('div', { class: 'bar' },
+        seg(Object.fromEntries(Object.entries(FILTERS).map(([f, label]) => [f, `${label} ${counts[f]}`])), showRemoved ? '' : settings.filter,
+          (v) => { settings.filter = v; showRemoved = false; save(); render(); }),
+        removed.length ? h('button', { class: showRemoved ? 'on' : '', onclick: () => { showRemoved = !showRemoved; render(); } }, `Removed ${removed.length}`) : null,
+        h('span', { class: 'grow' }),
+        h('span', { class: 'label' }, 'Voice'),
+        seg(VOICES, settings.as, (v) => { if (!recording) { settings.as = v; current = null; save(); render(); } }),
+      ),
+      h('div', { class: 'bar settings' },
+        Object.entries(SPEEDS).map(([s, label]) => h('label', {}, label, number(() => settings.bpm[s], (v) => { settings.bpm[s] = v; }, 30, 220))),
+        h('label', {}, 'Takes', number(() => settings.want, (v) => { settings.want = v; }, 1, 10)),
+        h('label', {}, 'Count-in', number(() => settings.countIn, (v) => { settings.countIn = v; }, 1, 8)),
+        u.kind === 'tonal' ? h('label', {}, h('input', { type: 'checkbox', checked: settings.firstNote, onchange: (e) => { settings.firstNote = e.target.checked; save(); } }), 'First note') : null,
+      ),
+      h('div', { class: `grid${wide ? ' wide' : ''}` }, shown.map((p) => card(p, u))),
+      stage(u),
+    ].filter(Boolean) : []),
+  );
+  observe();
+  app.querySelector('.card.on')?.scrollIntoView({ block: 'nearest' });
+}
+
+/* The cue words: like a unit with one speed and no notation. */
+function renderCues() {
+  shown = CUES.map(cueItem);
+  if (!shown.some((c) => c.id === current)) current = (shown.find((c) => !done(c.id)) || shown[0]).id;
+  const total = shown.reduce((n, c) => n + takesFor(c.id).length, 0);
+  app.replaceChildren(
+    ...top(null),
+    h('div', { class: 'bar summary' },
+      h('h2', {}, 'Cue words'),
+      h('span', { class: 'total' }, `${CUES.length} words · ${total} takes`),
+    ),
+    h('p', { class: 'hint' }, `Musician Maker says these on a beat. Say each within 2 beats, at ${settings.bpm[CUE_SPEED]} bpm; a different reading each take.`),
+    h('div', { class: 'bar settings' },
+      h('label', {}, SPEEDS[CUE_SPEED], number(() => settings.bpm[CUE_SPEED], (v) => { settings.bpm[CUE_SPEED] = v; }, 30, 220)),
+      h('label', {}, 'Takes', number(() => settings.want, (v) => { settings.want = v; }, 1, 10)),
+      h('label', {}, 'Count-in', number(() => settings.countIn, (v) => { settings.countIn = v; }, 1, 8)),
+    ),
+    h('div', { class: 'grid cues' }, shown.map((c) => {
+      const pick = () => { if (!recording) { current = c.id; render(); } };
+      return h('div', {
+        class: `card${c.id === current ? ' on' : ''}${done(c.id) ? ' complete' : ''}`,
+        tabindex: 0,
+        dataset: { id: c.id },
+        onclick: pick,
+        onkeydown: (e) => { if (e.key === 'Enter' && e.target === e.currentTarget) pick(); },
+      },
+      h('span', { class: 'word' }, c.text),
+      h('span', { class: 'counts' }, h('span', { class: done(c.id) ? 'sp done' : 'sp' }, `${takesFor(c.id).length} of ${settings.want}`)));
+    })),
+    stage(null),
+  );
+  app.querySelector('.card.on')?.scrollIntoView({ block: 'nearest' });
+}
+
+/* Title, microphone and the unit picker: the top of every view. */
+function top(u) {
+  const restore = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true, onchange: () => { restoreZip(restore.files[0]); restore.value = ''; } });
+  const pickUnit = (id) => { if (recording) return; settings.unit = id; showRemoved = false; current = null; save(); render(); };
+  return [
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Voice recorder'),
@@ -351,39 +439,17 @@ function render() {
         return list.length ? h('div', { class: 'group' },
           h('span', { class: 'label' }, label),
           h('span', { class: 'seg' }, list.map((x) => h('button', {
-            class: x.id === u.id ? 'on' : '',
-            onclick: () => { if (recording) return; settings.unit = x.id; showRemoved = false; save(); render(); },
+            class: x.id === u?.id ? 'on' : '',
+            onclick: () => pickUnit(x.id),
           }, h('b', {}, x.name), h('small', {}, describe(x)))))) : null;
       }),
       h('button', { onclick: newUnit }, '+ Unit'),
+      h('div', { class: 'group' },
+        h('span', { class: 'label' }, 'Musician Maker'),
+        h('span', { class: 'seg' }, h('button', { class: cuesShown() ? 'on' : '', onclick: () => pickUnit(CUE_UNIT) },
+          h('b', {}, 'Cue words'), h('small', {}, `${CUES.length} words`)))),
     ),
-    ...(u ? [
-      h('div', { class: 'bar summary' },
-        h('h2', {}, u.name),
-        h('span', { class: 'total' }, `${kept.length} patterns`),
-        u.kind === 'tonal' ? h('select', { onchange: (e) => { settings.key[u.tonality] = Number(e.target.value); save(); render(); } },
-          KEYS[u.tonality].map((k) => h('option', { value: k.midi, selected: k.midi === settings.key[u.tonality] }, `${u.tonality === 'major' ? 'Do' : 'La'} = ${pretty(k.name)}`))) : null,
-        h('span', { class: 'grow' }),
-        h('button', { class: editing ? 'on' : '', onclick: () => { editing = !editing; render(); } }, editing ? 'Done' : 'Edit unit'),
-      ),
-      editing ? unitEditor(u) : null,
-      h('div', { class: 'bar' },
-        seg(Object.fromEntries(Object.entries(FILTERS).map(([f, label]) => [f, `${label} ${counts[f]}`])), showRemoved ? '' : settings.filter,
-          (v) => { settings.filter = v; showRemoved = false; save(); render(); }),
-        removed.length ? h('button', { class: showRemoved ? 'on' : '', onclick: () => { showRemoved = !showRemoved; render(); } }, `Removed ${removed.length}`) : null,
-      ),
-      h('div', { class: 'bar settings' },
-        Object.entries(SPEEDS).map(([s, label]) => h('label', {}, label, number(() => settings.bpm[s], (v) => { settings.bpm[s] = v; }, 30, 220))),
-        h('label', {}, 'Takes', number(() => settings.want, (v) => { settings.want = v; }, 1, 10)),
-        h('label', {}, 'Count-in', number(() => settings.countIn, (v) => { settings.countIn = v; }, 1, 8)),
-        u.kind === 'tonal' ? h('label', {}, h('input', { type: 'checkbox', checked: settings.firstNote, onchange: (e) => { settings.firstNote = e.target.checked; save(); } }), 'First note') : null,
-      ),
-      h('div', { class: `grid${wide ? ' wide' : ''}` }, shown.map((p) => card(p, u))),
-      stage(u),
-    ].filter(Boolean) : []),
-  );
-  observe();
-  app.querySelector('.card.on')?.scrollIntoView({ block: 'nearest' });
+  ];
 }
 
 function micBar() {
@@ -532,21 +598,32 @@ function observe() {
   app.querySelectorAll('.card .staff:empty').forEach((el) => observer.observe(el.parentElement));
 }
 
-const beatsOf = (p) => (p.kind === 'rhythm' ? p.cells.length : p.tones.length);
+const beatsOf = (p) => (p.kind === 'cue' ? 2 : p.kind === 'rhythm' ? p.cells.length : p.tones.length);
+const bumOf = (p) => p.syllables.replace(/[a-z]+/gi, 'bum');
 
 function stage(u) {
   const st = h('span', { class: `status${status.bad ? ' bad' : ''}` }, status.text);
-  const p = current && patternById(current);
+  const p = current && itemById(current);
   if (!p) return h('div', { class: 'stage' }, st);
   const list = takesFor(p.id, settings.speed);
-  const staff = h('span', { class: 'staff' });
-  staff.innerHTML = notation(p, tonicOf(p));
-  const m = u.marks[p.id];
+  let now;
+  if (p.kind === 'cue') now = h('div', { class: 'now' }, h('span', { class: 'word' }, p.text));
+  else {
+    const staff = h('span', { class: 'staff' });
+    staff.innerHTML = notation(p, tonicOf(p));
+    const m = u.marks[p.id];
+    now = h('div', { class: 'now' }, staff, h('span', { class: 'syl' },
+      settings.as === 'bum' ? h('span', { class: 'bum' }, bumOf(p)) : p.syllables,
+      settings.as === 'bum' ? h('small', {}, ` · ${p.syllables}`) : null,
+      m ? h('small', {}, ` · ${MARKS[m]}`) : null));
+  }
   return h('div', { class: 'stage' },
-    h('div', { class: 'now' }, staff, h('span', { class: 'syl' }, p.syllables, m ? h('small', {}, ` · ${MARKS[m]}`) : null)),
+    now,
     h('div', { class: 'controls' },
-      seg(Object.fromEntries(Object.entries(SPEEDS).map(([s, label]) => [s, `${label} ${settings.bpm[s]} · ${takesFor(p.id, s).length}`])),
-        settings.speed, (v) => { if (!recording) { settings.speed = v; save(); render(); } }),
+      p.kind === 'cue'
+        ? h('span', { class: 'label' }, `${SPEEDS[CUE_SPEED]} ${settings.bpm[CUE_SPEED]} · ${list.length}`)
+        : seg(Object.fromEntries(Object.entries(SPEEDS).map(([s, label]) => [s, `${label} ${settings.bpm[s]} · ${takesFor(p.id, s).length}`])),
+          settings.speed, (v) => { if (!recording) { settings.speed = v; save(); render(); } }),
       h('span', { class: 'takes' }, list.map((take, i) => h('span', { class: 'take' },
         h('button', { title: `${take.bpm} bpm`, onclick: () => playBlob(take.mp3) }, `▶ ${i + 1}${take.key != null ? ` ${pretty(keyName(p.tonality, take.key))}` : ''}`),
         h('button', { class: 'x', title: 'Delete take', onclick: async () => { await takeStore.delete(take.id); takes = await takeStore.all(); render(); } }, '×')))),
@@ -564,7 +641,7 @@ function stage(u) {
 
 async function toggleRecording() {
   if (recording) return recording.cancel();
-  const p = current && patternById(current);
+  const p = current && itemById(current);
   if (!p) return;
   say('');
   try {
@@ -588,7 +665,8 @@ async function toggleRecording() {
 function record(p) {
   const btn = app.querySelector('.rec');
   const dots = [...app.querySelectorAll('.beats span')];
-  const speed = settings.speed;
+  const as = asFor(p.id);
+  const speed = p.kind === 'cue' ? CUE_SPEED : settings.speed;
   const bpm = settings.bpm[speed];
   const beat = 60 / bpm;
   const key = p.kind === 'tonal' ? settings.key[p.tonality] : null;
@@ -647,12 +725,12 @@ function record(p) {
       // Anything before a quarter beat ahead of the downbeat is count-in.
       const take = await processTake(new Blob(parts, { type: recorder.mimeType }), downbeat - begun - beat / 4);
       if (!take) { say('Too quiet, nothing saved. Check the microphone level.', true); return; }
-      await takeStore.put({ id: crypto.randomUUID(), pattern: p.id, speed, bpm, key, created: Date.now(), ...take });
+      await takeStore.put({ id: crypto.randomUUID(), pattern: p.id, as, speed, bpm, key, created: Date.now(), ...take });
       playBlob(take.mp3);
       takes = await takeStore.all();
-      say(`Saved: ${SPEEDS[speed]} take ${takesFor(p.id, speed).length}`);
-      if (done(p.id, speed) && current === p.id) {
-        const list = shown.filter((q) => !unitNow().removed.includes(q.id));
+      say(p.kind === 'cue' ? `Saved: take ${takesFor(p.id).length}` : `Saved: ${SPEEDS[speed]}${as === 'bum' ? ' bum' : ''} take ${takesFor(p.id, speed).length}`);
+      if (done(p.id, speed) && current === p.id && asFor(p.id) === as) {
+        const list = p.kind === 'cue' ? shown : shown.filter((q) => !unitNow().removed.includes(q.id));
         const i = list.findIndex((q) => q.id === p.id);
         const next = [...list.slice(i + 1), ...list.slice(0, i)].find((q) => !done(q.id, speed));
         if (next) current = next.id;
@@ -685,13 +763,16 @@ async function buildZip() {
   const list = [];
   const numbers = new Map();
   for (const take of [...takes].sort((a, b) => a.created - b.created)) {
-    const p = patternById(take.pattern);
+    const p = itemById(take.pattern);
     if (!p) continue;
-    const tag = `${take.pattern}/${take.speed}${take.key != null ? `-${keyName(p.tonality, take.key).replace('#', 's')}` : ''}`;
+    const as = takeAs(take);
+    // cue/echo-1, rhythm/2-4/q-ee/medium-1, rhythm/2-4/q-ee/bum/medium-1, tonal/…/medium-C-1
+    const tag = as === 'cue' ? take.pattern
+      : `${take.pattern}/${as === 'bum' ? 'bum/' : ''}${take.speed}${take.key != null ? `-${keyName(p.tonality, take.key).replace('#', 's')}` : ''}`;
     numbers.set(tag, (numbers.get(tag) || 0) + 1);
     const file = `voice/${voice}/${tag}-${numbers.get(tag)}.mp3`;
     files.push({ name: file, data: new Uint8Array(await take.mp3.arrayBuffer()) });
-    list.push({ pattern: take.pattern, speed: take.speed, bpm: take.bpm, key: take.key, file, id: take.id, created: take.created, seconds: Math.round(take.seconds * 100) / 100 });
+    list.push({ pattern: take.pattern, as, speed: take.speed, bpm: take.bpm, key: take.key, file, id: take.id, created: take.created, seconds: Math.round(take.seconds * 100) / 100 });
   }
   const json = { voice, label: 'Mr. Washburn', saved: new Date().toISOString(), takes: list, units: units.map(unitForSite) };
   files.unshift({ name: `voice/${voice}/takes.json`, data: new TextEncoder().encode(JSON.stringify(json, null, 1)) });
@@ -752,8 +833,8 @@ async function restoreZip(file) {
     const have = new Set(takes.map((t) => t.id));
     let added = 0;
     for (const t of json.takes || []) {
-      if (have.has(t.id) || !entries[t.file] || !patternById(t.pattern)) continue;
-      await takeStore.put({ id: t.id, pattern: t.pattern, speed: t.speed, bpm: t.bpm, key: t.key ?? null, created: t.created, seconds: t.seconds, mp3: new Blob([entries[t.file]], { type: 'audio/mpeg' }) });
+      if (have.has(t.id) || !entries[t.file] || !itemById(t.pattern)) continue;
+      await takeStore.put({ id: t.id, pattern: t.pattern, as: t.as || 'syllables', speed: t.speed, bpm: t.bpm, key: t.key ?? null, created: t.created, seconds: t.seconds, mp3: new Blob([entries[t.file]], { type: 'audio/mpeg' }) });
       added++;
     }
     for (const { patterns, ...x } of json.units || []) {
@@ -775,8 +856,8 @@ async function restoreZip(file) {
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('textarea, input, select') || e.ctrlKey || e.metaKey || e.altKey) return;
-  const u = unitNow();
-  if (!u || !current) return;
+  const u = cuesShown() ? null : unitNow();
+  if ((!u && !cuesShown()) || !current) return;
   if (e.code === 'Space') {
     if (e.target.closest('.rec')) return; // the button's own click
     e.preventDefault();
@@ -784,12 +865,18 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (recording) return;
-  const list = shown.filter((p) => !u.removed.includes(p.id));
+  const list = u ? shown.filter((p) => !u.removed.includes(p.id)) : shown;
   const key = e.key.toLowerCase();
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
     e.preventDefault();
     const i = list.findIndex((p) => p.id === current) + (e.key === 'ArrowRight' ? 1 : -1);
     if (list[i]) { current = list[i].id; render(); }
+  } else if (!u) {
+    // Cue words: nothing more to do by key.
+  } else if (key === 'b') {
+    settings.as = settings.as === 'bum' ? 'syllables' : 'bum';
+    save();
+    render();
   } else if (['1', '2', '3'].includes(e.key)) {
     settings.speed = Object.keys(SPEEDS)[Number(e.key) - 1];
     save();

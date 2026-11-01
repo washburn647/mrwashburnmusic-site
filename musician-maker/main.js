@@ -11,6 +11,7 @@ import { STEPS, BANDS, onsets, sylText, options, readTaps, fromCells, loadMarks 
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import { mookie } from './mookie.js';
+import { cueId } from './cues.js';
 import { notation } from '/assets/patterns/notation.js';
 import * as store from './store.js';
 
@@ -315,7 +316,7 @@ function gameSeg(B, seg) {
   const q = question(item, step);
   const win = { tResp: T(r0), spb, from: T(r0) - 0.25 * spb, to: T(p0) - 0.05 * spb, taps: [], usedMic: false, choice: null, slots: [null, null, null, null] };
 
-  snd.fx.cue(T(B));
+  if (!snd.speak(cueId(step.cue), T(B))) snd.fx.cue(T(B));
   later(T(B), () => {
     hud();
     showGame(item, step, game, q, win);
@@ -495,8 +496,12 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     snd.fx.win(t);
     if (tier > before) {
       snd.fx.tier(t);
+      snd.speak(cueId(TIER_NAMES[tier]), t);
       flash(`${TIER_NAMES[tier]}! ×${tier + 1}`, `tier t${tier}`);
-    } else if (!quiet) flash(`${res.perfect ? 'PERFECT! ' : ''}+${gained}`, 'plus');
+    } else {
+      if (res.perfect) snd.speak('perfect', t);
+      if (!quiet) flash(`${res.perfect ? 'PERFECT! ' : ''}+${gained}`, 'plus');
+    }
   } else {
     const was = R.combo;
     const tier = tierOf(R.combo);
@@ -530,7 +535,10 @@ function breather(B, seg) {
   if (lv.n > lvBefore) lines.push(`Level up! ${lv.title}`);
   if (!R.force) {
     const opened = dir.advance();
-    if (opened) lines.push(`NEW STEP: ${STEPS[opened].name}!`);
+    if (opened) {
+      lines.push(`NEW STEP: ${STEPS[opened].name}!`);
+      snd.speak('new-step', T(B));
+    }
     if (dir.step(12).mastered && !st.unitDone) { st.unitDone = true; lines.push('Unit 1 complete!'); }
   }
   lines.push(...R.news.splice(0));
@@ -567,6 +575,7 @@ function boss(B) {
   const rounds = 4;
   let hits = 0;
   snd.fx.boss(T(B));
+  snd.speak('boss', T(B));
   later(T(B), () => {
     hud();
     overlay(null);
@@ -638,6 +647,7 @@ function boss(B) {
 function intermission() {
   R.clock.stop();
   R.groove.mode = 'off';
+  snd.grooveStop();
   const grown = STEPS.slice(1).filter((s) => dir.step(s.n).s - R.before[s.n] >= 5)
     .map((s) => `${s.name} +${Math.round(dir.step(s.n).s - R.before[s.n])}`);
   const lv = levelOf(st.xp);
@@ -662,6 +672,7 @@ function askPause() {
 function pauseNow() {
   R.clock.stop();
   R.groove.mode = 'off';
+  snd.grooveStop();
   overlay(h('div', { class: 'card' },
     h('div', { class: 'cue-word small' }, 'Paused'),
     h('div', { class: 'row' },
@@ -673,6 +684,7 @@ function endRun() {
   if (!R) return;
   R.ended = true;
   R.clock.stop();
+  snd.grooveStop();
   mic.stop();
   document.onkeydown = null;
   R = null;

@@ -36,9 +36,10 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   (`/assets/patterns/units.json`) replace the built-in set once published.
 - `games.js`: the micro-games. A game is a scene and a gesture; it never knows the step.
   First versions of Mouse Catcher and Supper Time.
-- `sound.js`: the groove, calls, effects, on the site's sampled instruments
-  (`/assets/sounds/`). Calls use Kyle's recorded takes when they're on the site, and stand-in
-  drum sounds until then.
+- `sound.js`: the groove, calls, cue words, effects. Uses Kyle's recordings where they're on
+  the site (takes on "bum" and in syllables, cue words, groove loops per layer and tempo) and
+  the site's sampled instruments for anything missing.
+- `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
 - `clock.js`: the beat clock everything is scheduled on.
 - `mic.js`: syllable onsets from the mic, analysed live and never kept.
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
@@ -49,5 +50,5 @@ games without earning your way there.
 
 ## Next
 
-Kyle's "bum" takes and cue words in the recorder, more of Kyle's games, the progress backup
+Kyle's recordings ("bum" takes, cue words, groove loops), more of Kyle's games, the progress backup
 file, Gauntlet mode (4 lives), and Unit 4 (tonal, sung into the mic).
