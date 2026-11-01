@@ -1,6 +1,7 @@
 /* Sound: the site's sampled instruments, the backing groove that grows with the combo,
-   pattern calls, and game sound effects. Anything that fails to load falls back to a
-   synthesized tone, so the stream always plays. */
+   pattern calls, cue words and game sound effects. Kyle's recordings (takes on "bum" and in
+   syllables, cue words, groove loops) are used wherever they're on the site; anything missing
+   or failing to load falls back to a sampled or synthesized stand-in, so the stream always plays. */
 
 import * as samples from '/assets/sounds/samples.js';
 import { onsets } from './steps.js';
@@ -8,8 +9,10 @@ import { onsets } from './steps.js';
 let ctx = null;
 let master = null;
 let grooveBus = null;
+let loopBus = null; // Kyle's groove loops, ducked as one
 const inst = {};
 let kyle = null; // recorded voice, once Kyle's takes are on the site
+let loops = {}; // Kyle's groove loops: layer → bpm → { buffer, start, beats }
 
 const HITS = ['claves', 'log-drum-low', 'log-drum-high', 'bass-drum', 'snare', 'shaker', 'tambourine',
   'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low'];
@@ -23,6 +26,9 @@ export function ac() {
     master.connect(ctx.destination);
     grooveBus = ctx.createGain();
     grooveBus.connect(master);
+    loopBus = ctx.createGain();
+    loopBus.gain.value = 1;
+    loopBus.connect(grooveBus);
     samples.setup(ctx, master);
   }
   if (ctx.state === 'suspended') ctx.resume();
@@ -37,7 +43,11 @@ export function load() {
   loading ||= Promise.allSettled([
     ...HITS.map(async (n) => { inst[n] = await samples.instrument(n); }),
     ...Object.entries(PITCHED).map(async ([n, [lo, hi]]) => { inst[n] = await samples.instrument(n, { lo, hi }); }),
-    (async () => { kyle = await samples.takes('kyle'); })(),
+    (async () => {
+      kyle = await samples.takes('kyle');
+      await Promise.allSettled([kyle.prepare(kyle.patterns), kyle.prepareCues()]);
+    })(),
+    (async () => { loops = await samples.grooveLoops(); })(),
   ]);
   return loading;
 }
@@ -88,6 +98,10 @@ export function call(p, kind, t, spb) {
     kyle.say(p.id, t, { bpm: 60 / spb });
     return;
   }
+  if (kind === 'neutral' && kyle?.has(p.id, 'bum')) {
+    kyle.say(p.id, t, { bpm: 60 / spb, as: 'bum' });
+    return;
+  }
   // Stand-ins until the takes exist: a low thump for "bum", a bright one for syllables.
   for (const o of onsets(p)) {
     if (kind === 'neutral') hit('log-drum-low', t + o.b * spb, 1);
@@ -98,6 +112,13 @@ export function call(p, kind, t, spb) {
 /* A learner's own pattern played back (compose). */
 export function playBack(p, t, spb) {
   for (const o of onsets(p)) note('marimba', o.syl === 'du' ? 72 : 76, t + o.b * spb, spb * 0.45, 0.35);
+}
+
+/* A cue word in Kyle's voice (cues.js ids). false when it isn't recorded yet. */
+export function speak(id, t) {
+  if (!ctx || !kyle?.hasCue(id)) return false;
+  kyle.cue(id, t, { dest: master });
+  return true;
 }
 
 /* ---------- effects ---------- */
@@ -133,31 +154,95 @@ export const fx = {
 
 /* ---------- the groove ---------- */
 
-// Combo tiers: each adds a layer. 0 pulse, 1 bass, 2 drums, 3 horns, 4 full band.
+// Combo tiers: each adds a layer. 0 pulse, 1 bass, 2 drums, 3 horns, 4 full band. A layer
+// with Kyle's loop at this tempo plays the loop; the others play the stand-ins below.
+// Breathers play his breakdown loop alone, when there is one.
+export const LAYERS = ['pulse', 'bass', 'drums', 'horns', 'band'];
 const ROOTS = [41, 46, 48, 41]; // F Bb C F, one per bar of 2/4
 const CHORD = { 41: [65, 69, 72], 46: [65, 70, 74], 48: [64, 67, 72] };
 
+const live = {}; // layer → the pass playing: { src, gain, bpm, from, until } in beats
+let lastBeat = -1;
+
+function stopLayer(name, t) {
+  const p = live[name];
+  if (!p) return;
+  delete live[name];
+  t = Math.max(t, ctx.currentTime);
+  p.gain.gain.setTargetAtTime(0, t, 0.012);
+  try { p.src.stop(t + 0.08); } catch { /* already stopped */ }
+}
+
+/* Everything off now: pause, intermission, end of a run. */
+export function grooveStop() {
+  if (!ctx) return;
+  Object.keys(live).forEach((n) => stopLayer(n, ctx.currentTime));
+  lastBeat = -1;
+}
+
+/* Keeps a layer's loop playing through beat i. A pass runs to the loop's end; joining
+   mid-loop (a new combo tier, a new tempo) starts at the matching beat inside it. */
+function loopLayer(name, i, t, spb) {
+  const bpm = Math.round(60 / spb);
+  const L = loops[name]?.[bpm];
+  if (!L) { stopLayer(name, t); return false; }
+  const p = live[name];
+  if (p && p.bpm === bpm && i >= p.from && i < p.until) return true;
+  const seamless = p && p.bpm === bpm && i === p.until;
+  if (!seamless) stopLayer(name, t);
+  const pos = i % L.beats;
+  const end = t + (L.beats - pos) * spb;
+  const src = ctx.createBufferSource();
+  src.buffer = L.buffer;
+  const gain = ctx.createGain();
+  if (pos) {
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(1, t + 0.008);
+  }
+  src.connect(gain).connect(loopBus);
+  src.start(t, L.start + pos * spb);
+  src.stop(end);
+  live[name] = { src, gain, bpm, from: i, until: i + L.beats - pos };
+  return true;
+}
+
 export function groove(i, t, spb, { tier, mode, duck }) {
-  if (mode === 'off') return;
+  if (mode === 'off') { grooveStop(); return; }
+  if (i <= lastBeat) grooveStop(); // the clock started again
+  lastBeat = i;
+  loopBus.gain.setTargetAtTime(duck ? 0.3 : 1, t, 0.02);
+  const rec = {};
+  for (const [n, name] of [...LAYERS, 'breakdown'].entries()) {
+    const want = mode === 'breakdown' ? name === 'breakdown' : name !== 'breakdown' && n <= tier;
+    if (want) rec[name] = loopLayer(name, i, t, spb);
+    else stopLayer(name, t);
+  }
+  standIn(i, t, spb, { tier, mode, duck }, rec);
+}
+
+/* The sampled groove, for every layer Kyle hasn't recorded at this tempo. */
+function standIn(i, t, spb, { tier, mode, duck }, rec) {
   const bar = Math.floor(i / 2);
   const onOne = i % 2 === 0;
   const root = ROOTS[bar % 4];
   const g = grooveBus;
   const level = duck ? 0.35 : 1;
-  hit('claves', t, (onOne ? 0.55 : 0.4) * level, g);
   if (mode === 'breakdown') {
+    if (rec.breakdown) return;
+    hit('claves', t, (onOne ? 0.55 : 0.4) * level, g);
     if (onOne) note('bass', root, t, spb * 1.6, 0.4, g);
     hit('shaker', t + spb / 2, 0.25, g);
     return;
   }
-  if (tier >= 1) note('bass', onOne ? root : root + 7, t, spb * 0.85, 0.42 * level, g);
-  if (tier >= 2) {
+  if (!rec.pulse) hit('claves', t, (onOne ? 0.55 : 0.4) * level, g);
+  if (tier >= 1 && !rec.bass) note('bass', onOne ? root : root + 7, t, spb * 0.85, 0.42 * level, g);
+  if (tier >= 2 && !rec.drums) {
     hit(onOne ? 'bass-drum' : 'snare', t, (onOne ? 0.8 : 0.45) * level, g);
     hit('shaker', t, 0.18 * level, g);
     hit('shaker', t + spb / 2, 0.22 * level, g);
   }
-  if (tier >= 3 && !onOne && !duck) CHORD[root].forEach((m) => note('horn', m, t + spb / 2, spb * 0.35, 0.16, g));
-  if (tier >= 4 && !duck) {
+  if (tier >= 3 && !rec.horns && !onOne && !duck) CHORD[root].forEach((m) => note('horn', m, t + spb / 2, spb * 0.35, 0.16, g));
+  if (tier >= 4 && !rec.band && !duck) {
     hit('tambourine', t + spb / 2, 0.3, g);
     if (i % 8 === 0) hit('cymbal', t, 0.35, g);
   }

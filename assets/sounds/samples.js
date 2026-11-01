@@ -38,16 +38,17 @@ export function list() {
 
 /* Decoded buffer plus where the sound starts, measured after decoding:
    mp3 decoders add different amounts of silence, and rhythms need the true start. */
+function decoded(file) {
+  return fetch(new URL(file, base))
+    .then((r) => {
+      if (!r.ok) throw new Error(`${file}: ${r.status}`);
+      return r.arrayBuffer();
+    })
+    .then((data) => new Promise((ok, fail) => context().decodeAudioData(data, ok, fail)));
+}
+
 function load(file) {
-  if (!buffers.has(file)) {
-    buffers.set(file, fetch(new URL(file, base))
-      .then((r) => {
-        if (!r.ok) throw new Error(`${file}: ${r.status}`);
-        return r.arrayBuffer();
-      })
-      .then((data) => new Promise((ok, fail) => context().decodeAudioData(data, ok, fail)))
-      .then((buffer) => ({ buffer, start: onset(buffer) })));
-  }
+  if (!buffers.has(file)) buffers.set(file, decoded(file).then((buffer) => ({ buffer, start: onset(buffer) })));
   return buffers.get(file);
 }
 
@@ -131,14 +132,27 @@ export async function instrument(name, { lo = 0, hi = 127 } = {}) {
    say() picks the takes recorded nearest that tempo (or { speed: 'slow' }), never the same
    take twice running, and stretches it to bpm. { key } moves a tonal take to another key
    (sounding midi of do, or la in minor). Stretching moves pitch and tempo together, so a
-   take sounds best near the tempo and key it was recorded in. */
+   take sounds best near the tempo and key it was recorded in.
+   { as: 'bum' } picks the pattern's takes on "bum" instead of syllables:
+     kyle.has(id, 'bum') && kyle.say(id, t, { bpm, as: 'bum' });
+   Cue words (Musician Maker's spoken cues) play as recorded, never twice the same running:
+     kyle.hasCue('echo') && kyle.cue('echo', t); */
 export async function takes(name) {
   const spec = (await list()).voices?.[name];
   if (!spec) throw new Error(`No voice "${name}"`);
   const patterns = spec.patterns;
+  const cues = spec.cues || {};
   const last = new Map();
-  const choose = (id, { speed, bpm, key }) => {
-    let options = patterns[id] || [];
+  const asOf = (o) => o.as || 'syllables';
+  const vary = (tag, options) => {
+    if (options.length < 2) return options[0];
+    const others = options.filter((o) => o !== last.get(tag));
+    const take = others[Math.floor(Math.random() * others.length)];
+    last.set(tag, take);
+    return take;
+  };
+  const choose = (id, { speed, bpm, key, as }) => {
+    let options = (patterns[id] || []).filter((o) => asOf(o) === as);
     if (speed) options = options.filter((o) => o.speed === speed);
     else if (bpm) {
       const gap = (o) => Math.abs(Math.log(o.bpm / bpm));
@@ -146,22 +160,26 @@ export async function takes(name) {
       options = options.filter((o) => gap(o) - best < 0.05);
     }
     if (key != null && options.some((o) => o.key === key)) options = options.filter((o) => o.key === key);
-    if (options.length < 2) return options[0];
-    const others = options.filter((o) => o !== last.get(id));
-    const take = others[Math.floor(Math.random() * others.length)];
-    last.set(id, take);
-    return take;
+    return vary(`${as}:${id}`, options);
   };
   return {
     name,
     label: spec.label,
     patterns: Object.keys(patterns),
-    has: (id) => id in patterns,
-    speeds: (id) => [...new Set((patterns[id] || []).map((o) => o.speed))],
+    has: (id, as = 'syllables') => (patterns[id] || []).some((o) => asOf(o) === as),
+    speeds: (id, as = 'syllables') => [...new Set((patterns[id] || []).filter((o) => asOf(o) === as).map((o) => o.speed))],
     // Load the takes a page will use, ahead of time.
     prepare: (ids) => Promise.all(ids.flatMap((id) => (patterns[id] || []).map((o) => load(o.file)))),
-    async say(id, t, { speed = null, bpm = null, key = null, vol = 1, dest } = {}) {
-      const take = choose(id, { speed, bpm, key });
+    cues: Object.keys(cues),
+    hasCue: (id) => !!cues[id]?.length,
+    prepareCues: () => Promise.all(Object.values(cues).flat().map((o) => load(o.file))),
+    async cue(id, t, { vol = 1, dest } = {}) {
+      const take = vary(`cue:${id}`, cues[id] || []);
+      if (!take) return () => {};
+      return play(await load(take.file), Math.max(t, context().currentTime), { vol, dest });
+    },
+    async say(id, t, { speed = null, bpm = null, key = null, as = 'syllables', vol = 1, dest } = {}) {
+      const take = choose(id, { speed, bpm, key, as });
       if (!take) return () => {};
       const s = await load(take.file);
       let rate = bpm && take.bpm ? bpm / take.bpm : 1;
@@ -169,4 +187,21 @@ export async function takes(name) {
       return play(s, Math.max(t, context().currentTime), { vol, dest, rate });
     },
   };
+}
+
+/* Groove loops: Musician Maker's backing band, recorded by Kyle a layer at a time at each
+   tempo (index.json "groove": layer → bpm → { file, beats }; tools/add_groove.py writes it).
+   Gives layer → bpm → { buffer, start, beats }, every loop that loaded. A loop is timed by
+   its length, so start is where the loop's first beat is in the buffer: 0, or the mp3
+   encoder's lead-in on a decoder that keeps it. */
+export async function grooveLoops() {
+  const spec = (await list()).groove || {};
+  const out = {};
+  await Promise.allSettled(Object.entries(spec).flatMap(([layer, byBpm]) => Object.entries(byBpm).map(async ([bpm, o]) => {
+    const buffer = await decoded(o.file);
+    const extra = buffer.duration - (o.beats * 60) / Number(bpm);
+    const start = extra > 0.01 ? Math.min(extra, 1105 / 44100) : 0;
+    (out[layer] ||= {})[bpm] = { buffer, start, beats: o.beats };
+  })));
+  return out;
 }
