@@ -139,8 +139,12 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 .syl-card, .boss-name { background: var(--paper); border-radius: 14px; padding: 10px 16px; font-size: 22px; font-weight: 600; word-spacing: 10px; }
 .boss-name { color: var(--rose); word-spacing: normal; }
 .hearts { font-size: 24px; letter-spacing: 2px; }
-.say { display: flex; align-items: center; gap: 8px; background: var(--paper); border-radius: 14px; padding: 4px 12px 4px 4px; }
+.say { display: flex; align-items: center; gap: 8px; background: var(--paper); border-radius: 14px; padding: 6px 14px 6px 6px; font-size: 19px; font-weight: 600; }
 .say .mookie { width: 40px; height: 44px; }
+.say .ic { font-size: 24px; }
+.say.new { font-size: 22px; box-shadow: 0 0 0 3px var(--wheat); }
+.say .tag { background: var(--rose); color: var(--paper); font-size: 13px; padding: 2px 8px; border-radius: 999px; animation: tag 1s ease-in-out infinite; }
+@keyframes tag { 50% { transform: scale(1.12); } }
 .answer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .answer > span { color: var(--rose); font-weight: 600; }
 .answer .notation { width: 220px; }
@@ -156,6 +160,9 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
   background: var(--sage-soft); box-shadow: 0 6px 0 #b9c9ac; font-size: 30px; touch-action: manipulation; user-select: none;
 }
 .pad small { font-size: 13px; color: var(--muted); font-weight: 400; }
+.pad .now, .controls.live .pad .wait { display: none; }
+.controls.live .pad .now { display: block; }
+.pad .wait { font-size: 24px; color: var(--muted); }
 .controls.live .pad { background: var(--wheat); box-shadow: 0 6px 0 #b8924f; }
 .pad.hit { animation: hit .12s ease-out; }
 @keyframes hit { 50% { transform: translateY(4px) scale(.98); box-shadow: 0 2px 0 #b8924f; } }
@@ -254,3 +261,10 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 .meter.blip { animation: blip .2s; }
 @keyframes blip { 50% { box-shadow: 0 0 0 3px var(--wheat); } }
 .pad .meter { width: 50%; height: 6px; margin-top: 4px; }
+
+/* ---------- how to play ---------- */
+.tips { list-style: none; padding: 0; margin: 16px 0; display: grid; gap: 12px; font-size: 20px; }
+.tips li { display: flex; align-items: center; gap: 14px; background: var(--paper); border-radius: 18px; padding: 10px 14px; }
+.tips .ic { font-size: 30px; }
+.howto { text-align: center; }
+.howto .tips { text-align: left; }

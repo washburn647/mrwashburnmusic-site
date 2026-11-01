@@ -14,6 +14,7 @@ const DEFAULTS = {
   pat: {}, // pattern id: strength
   feat: {}, // pattern feature: strength
   stickers: [],
+  seen: {}, // step-mode: 1 once that kind of game has been played (its instruction stops saying NEW)
   test: false,
 };
 

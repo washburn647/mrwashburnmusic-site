@@ -44,6 +44,13 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 
+Every game shows a what-to-do line (`howTo` in `steps.js`), marked NEW the first time that
+kind of game comes up. The pad says Listen or Read until it's the learner's turn.
+How to play (on the title screen) explains the loop in four lines.
+
+Private preview: `python tools/mm_preview.py` copies the app and the assets it uses into
+`.mm-preview/` (git-ignored) for publishing as a Claude Artifact. The mic doesn't work there.
+
 Test mode (My progress → Test mode) adds a Drill button to every step, for trying any step's
 games without earning your way there.
 

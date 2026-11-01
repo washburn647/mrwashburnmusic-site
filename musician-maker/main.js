@@ -7,7 +7,7 @@
 import * as snd from './sound.js';
 import { makeClock } from './clock.js';
 import * as mic from './mic.js';
-import { STEPS, BANDS, onsets, sylText, options, readTaps, fromCells, loadMarks } from './steps.js';
+import { STEPS, BANDS, onsets, sylText, options, readTaps, fromCells, loadMarks, howTo } from './steps.js';
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import { mookie } from './mookie.js';
@@ -66,6 +66,7 @@ function title() {
     h('p', { class: 'sub' }, 'Unit 1 · du, du-de'),
     mookie('happy'),
     h('button', { class: 'play', onclick: () => startRun() }, 'Play'),
+    h('button', { class: 'link', onclick: howToPlay }, 'How to play'),
     h('div', { class: 'opts' },
       h('label', {}, 'Mookie mode', seg({ off: 'Off', on: 'On' }, st.mookie ? 'on' : 'off', (v) => { st.mookie = v === 'on'; dir = makeDirector(st); save(); })),
       h('label', {}, 'Answer by', seg({ tap: 'Tapping', mic: 'Mic and tapping' }, st.input, (v) => { st.input = v; save(); title(); })),
@@ -101,6 +102,20 @@ function micCheck() {
     } }, 'Test the mic'),
     h('span', { class: 'meter' }, fill), heard);
   return box;
+}
+
+function howToPlay() {
+  const tip = (icon, text) => h('li', {}, h('span', { class: 'ic' }, icon), text);
+  app.replaceChildren(h('div', { class: 'progress howto' },
+    h('button', { class: 'link back', onclick: title }, '‹ Back'),
+    h('h2', {}, 'How to play'),
+    h('ol', { class: 'tips' },
+      tip('👂', 'Listen. Mookie plays a little pattern.'),
+      tip('✨', 'The box glows. Now it\'s your turn!'),
+      tip('🥁', 'Do what the words say: tap it, say it, pick it or build it.'),
+      tip('🔥', 'Get lots right in a row and the band joins in.')),
+    h('p', { class: 'note' }, 'Miss one? No problem. The next one is coming. Press ❚❚ to stop.'),
+    h('button', { class: 'play', onclick: () => startRun() }, 'Play')));
 }
 
 function micProblem(e) {
@@ -332,7 +347,7 @@ function gameSeg(B, seg) {
   later(T(r0), () => {
     R.dom.controls.classList.add('live');
     R.dom.stage.parentElement.classList.add('yours');
-    flash(item.mode === 'compose' ? 'GO!' : 'YOUR TURN!', 'turn');
+    flash(howTo(item.step, item.mode).go, 'turn');
   });
   for (let k = 0; k < respBeats; k++) later(T(r0 + k), () => dots(k, respBeats, 'resp'));
   later(T(p0), () => {
@@ -369,14 +384,26 @@ function showGame(item, step, game, q, win) {
   R.api = game.make(d.stage, {});
   d.cue.textContent = step.cue;
   bump(d.cue, 'slam');
-  d.prompt.replaceChildren();
-  if (st.mookie) d.prompt.append(h('div', { class: 'say' }, mookie('happy'), h('span', {}, step.say)));
+  d.prompt.replaceChildren(instruction(item));
   if (step.call === 'notation') d.prompt.append(notes(item.pattern));
   if (step.call === 'text') d.prompt.append(h('div', { class: 'syl-card' }, sylText(item.pattern)));
   d.dots.replaceChildren();
   R.win = win;
   R.item = { item, q };
   controlsFor(item, game, q, win);
+}
+
+/* The what-to-do line, on screen for the whole game. The first time a kind of game comes
+   up it's marked NEW and stays big. */
+function instruction(item) {
+  const key = `${item.step}-${item.mode}`;
+  const fresh = !st.seen[key];
+  st.seen[key] = 1;
+  const { how, look } = howTo(item.step, item.mode);
+  return h('div', { class: `say${fresh ? ' new' : ''}` },
+    st.mookie ? mookie('happy') : h('span', { class: 'ic' }, look === 'read' ? '👀' : look === 'listen' ? '👂' : '✏️'),
+    fresh ? h('b', { class: 'tag' }, 'NEW') : null,
+    h('span', {}, how));
 }
 
 function controlsFor(item, game, q, win) {
@@ -397,7 +424,8 @@ function controlsFor(item, game, q, win) {
       }
     };
     const pad = h('button', { class: 'pad', onpointerdown: (e) => { e.preventDefault(); tap(R.ctx.currentTime, false); } },
-      h('b', {}, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'),
+      h('b', { class: 'wait' }, STEPS[item.step].call === 'notation' ? '👀 Read…' : '👂 Listen…'),
+      h('b', { class: 'now' }, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'),
       R.micOn ? h('span', { class: 'meter' }, h('span', {})) : null);
     if (R.micOn) {
       const fill = pad.querySelector('.meter span');
@@ -438,7 +466,7 @@ function controlsFor(item, game, q, win) {
     const draw = () => slots.forEach((b, i) => {
       const c = win.slots[i];
       b.className = `slot ${c || 'empty'}`;
-      b.replaceChildren(h('b', {}, c === 'ee' ? '♫' : c === 'q' ? '♩' : '?'), h('small', {}, c ? game.slotIcon(c) : `beat ${i + 1}`));
+      b.replaceChildren(h('b', {}, c === 'ee' ? '♫' : c === 'q' ? '♩' : '?'), h('small', {}, c ? game.slotIcon(c) : 'tap me'));
     });
     const cycle = (i) => {
       if (!R.win) return;
@@ -561,6 +589,12 @@ function breather(B, seg) {
 
 const BOSS_CALL = { 1: 'neutral', 2: 'syllables', 3: 'neutral', 4: 'neutral', 5: 'syllables', 6: 'syllables', 7: 'notation', 8: 'notation', 9: 'notation', 10: 'neutral', 11: 'neutral', 12: 'notation' };
 
+function bossSay(item, kind) {
+  const how = item.mode === 'create' ? 'Listen. Then answer with a different one.'
+    : kind === 'notation' ? 'Read it. Then say it and tap.' : 'Listen. Then tap it back.';
+  return h('div', { class: 'say' }, h('span', { class: 'ic' }, kind === 'notation' ? '👀' : '👂'), h('span', {}, how));
+}
+
 function boss(B) {
   const T = (i) => R.clock.timeOf(i);
   const spb = R.clock.spb();
@@ -587,6 +621,8 @@ function boss(B) {
     later(T(c0), () => {
       R.win = null;
       R.dom.prompt.querySelector('.notation')?.remove();
+      R.dom.prompt.querySelector('.say')?.remove();
+      R.dom.prompt.append(bossSay(item, kind));
       if (kind === 'notation') R.dom.prompt.append(notes(item.pattern));
       R.item = { item, q: {} };
       controlsFor(item, mouseCatcher, {}, win);
