@@ -131,6 +131,98 @@ export function toon(name, t, opts = {}) {
       break;
     }
     case 'twinkle': [88, 91, 96].forEach((m, i) => note('marimba', m, t + i * 0.07, 0.2, 0.25)); break;
+    case 'honk': {
+      // A bicycle horn: two buzzy reeds a little out of tune, squeezed twice.
+      [0, 0.16].forEach((d) => {
+        [370, 377].forEach((fq) => {
+          const o = ctx.createOscillator();
+          const f = ctx.createBiquadFilter();
+          const g = ctx.createGain();
+          o.type = 'square';
+          o.frequency.setValueAtTime(fq * rate, t + d);
+          o.frequency.linearRampToValueAtTime(fq * rate * 0.94, t + d + 0.13);
+          f.type = 'bandpass';
+          f.frequency.value = 1100;
+          f.Q.value = 1.4;
+          g.gain.setValueAtTime(0, t + d);
+          g.gain.linearRampToValueAtTime(0.13 * vol, t + d + 0.012);
+          g.gain.setValueAtTime(0.13 * vol, t + d + 0.1);
+          g.gain.linearRampToValueAtTime(0, t + d + 0.14);
+          o.connect(f).connect(g).connect(master);
+          o.start(t + d);
+          o.stop(t + d + 0.16);
+        });
+      });
+      break;
+    }
+    case 'gong': {
+      // A big bronze bell: inharmonic partials that ring for a long time, with a slow beat.
+      [[110, 0.3, 3.2], [111.4, 0.22, 3.2], [264, 0.16, 2.2], [302, 0.1, 1.8], [453, 0.08, 1.2], [701, 0.05, 0.8]].forEach(([fq, v, len]) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = fq * rate;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(v * vol, t + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0005, t + len);
+        o.connect(g).connect(master);
+        o.start(t);
+        o.stop(t + len + 0.05);
+      });
+      noise(t, 0.08, 0.25 * vol, 'bandpass', 2400, 900, 1.5);
+      break;
+    }
+    case 'croak': {
+      // A frog: a low buzzy pulse train, twice.
+      [0, 0.2].forEach((d) => {
+        const o = ctx.createOscillator();
+        const lfo = ctx.createOscillator();
+        const lg = ctx.createGain();
+        const f = ctx.createBiquadFilter();
+        const g = ctx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(95 * rate, t + d);
+        o.frequency.linearRampToValueAtTime(130 * rate, t + d + 0.14);
+        lfo.type = 'square';
+        lfo.frequency.value = 34;
+        lg.gain.value = 0.16 * vol;
+        f.type = 'bandpass';
+        f.frequency.value = 700;
+        f.Q.value = 3;
+        g.gain.setValueAtTime(0.16 * vol, t + d);
+        g.gain.linearRampToValueAtTime(0, t + d + 0.16);
+        lfo.connect(lg).connect(g.gain);
+        o.connect(f).connect(g).connect(master);
+        o.start(t + d); lfo.start(t + d);
+        o.stop(t + d + 0.18); lfo.stop(t + d + 0.18);
+      });
+      break;
+    }
+    case 'choir': {
+      // "Aaah": a major chord of soft vowel-ish voices that swell in.
+      [60, 64, 67, 72].forEach((m) => {
+        [-6, 6].forEach((cents) => {
+          const o = ctx.createOscillator();
+          const f = ctx.createBiquadFilter();
+          const g = ctx.createGain();
+          o.type = 'sawtooth';
+          o.frequency.value = 440 * 2 ** ((m - 69) / 12) * 2 ** (cents / 1200);
+          f.type = 'bandpass';
+          f.frequency.value = 800;
+          f.Q.value = 1.2;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.035 * vol, t + 0.25);
+          g.gain.setValueAtTime(0.035 * vol, t + 0.9);
+          g.gain.linearRampToValueAtTime(0, t + 1.4);
+          o.connect(f).connect(g).connect(master);
+          o.start(t);
+          o.stop(t + 1.45);
+        });
+      });
+      break;
+    }
+    case 'slide-up': tone(300, 0.5, 0.16, 'triangle', 4); break;
+    case 'slide-down': tone(1300, 0.6, 0.16, 'triangle', 0.22); break;
     default: break;
   }
 }

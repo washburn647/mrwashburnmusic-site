@@ -5,7 +5,12 @@
    sunglasses, blows a raspberry and zips home. Now and then a WarioWare-style close-up cuts
    in. The room gets a party as the combo grows: the poster bops, a disco ball drops, the
    spotlights swing, and at full band the floor lights up and Mookie puts on her shades.
-   Boss: The Big Cheese stands by the hole; each hit bonks him, the last one launches him.
+   Real photos join in, cut out like stickers (props/, CC0 museum objects): a Roman bronze bust
+   with googly eyes (the Critic) sings along and tuts, a frog flask hops through at big combos,
+   and the win and fail gags are picked at random (a teacup trap, a mouse in a jousting helmet,
+   a bronze decoy, a frog that honks out of the hole).
+   Boss: The Big Cheese turns up in a jousting helmet, which the first hit knocks off; each hit
+   bonks him, and the last one drops a bronze bell on him and a trophy on Mookie.
    Fixed markup only: nothing a learner types goes in here (call syllables are du/de). */
 
 import { rigMookie } from './rig.js';
@@ -75,6 +80,50 @@ const PLANT = `<svg viewBox="0 0 70 110" aria-hidden="true">
   <path d="M16 70 H54 L49 106 H21 Z" fill="#c46a5a"/><path d="M13 66 H57 V74 H13 Z" fill="#a85546"/>
 </svg>`;
 
+/* Real photos, cut out like stickers: CC0 museum objects (props/CREDITS.txt). */
+const PROPS = ['bust', 'frog', 'teacup', 'helmet', 'bronze-mouse', 'bell', 'trophy'];
+const propUrl = (name) => new URL(`./props/${name}.png`, import.meta.url).href;
+let preloaded = false;
+function preload() {
+  if (preloaded) return;
+  preloaded = true;
+  PROPS.forEach((n) => { const i = new Image(); i.src = propUrl(n); });
+}
+function photo(name, cls = '') {
+  const i = document.createElement('img');
+  i.src = propUrl(name);
+  i.alt = '';
+  i.draggable = false;
+  i.className = `ms-photo ${cls}`;
+  return i;
+}
+/* A googly eye at (x%, y%) of its parent, size as a % of the parent's width. */
+function googly(x, y, size) {
+  const g = h('span', 'googly');
+  g.style.left = `${x}%`;
+  g.style.top = `${y}%`;
+  g.style.setProperty('--gs', `${size}%`);
+  g.append(h('i'));
+  return g;
+}
+function jiggle(root) {
+  root.querySelectorAll('.googly i').forEach((p) => {
+    p.style.setProperty('--px', `${Math.round(Math.random() * 90 - 45)}%`);
+    p.style.setProperty('--py', `${Math.round(Math.random() * 90 - 45)}%`);
+  });
+}
+/* Pick from a list, never the same one twice in a row. */
+function deck(list) {
+  let last = null;
+  return () => {
+    const pool = list.filter((x) => x !== last);
+    last = pool[Math.floor(Math.random() * pool.length)];
+    return last;
+  };
+}
+const winGag = deck(['yank', 'yank', 'teacup', 'helmet']);
+const failGag = deck(['runner', 'runner', 'decoy', 'frog']);
+
 const CHEESE = `<svg viewBox="0 0 60 40" aria-hidden="true"><path d="M2 36 L56 8 L58 36 Z" fill="#f2c94c" stroke="#c99a2e" stroke-width="2" stroke-linejoin="round"/><path d="M56 8 Q40 4 2 36" fill="#ffe28a" opacity=".6"/><circle cx="40" cy="26" r="4" fill="#d9a93a"/><circle cx="26" cy="31" r="2.5" fill="#d9a93a"/><circle cx="50" cy="19" r="2.2" fill="#d9a93a"/></svg>`;
 
 export const mouseCatcher = {
@@ -85,6 +134,7 @@ export const mouseCatcher = {
   slotIcon: (c) => (c === 'ee' ? '🧀🧀' : '🧀'),
   make(stage, { boss = false } = {}) {
     stage.className = `stage scene-ms${boss ? ' boss' : ''}`;
+    preload();
     const cam = h('div', 'ms-cam');
     const wall = h('div', 'ms-wall');
     const clock = h('div', 'ms-clock');
@@ -118,13 +168,29 @@ export const mouseCatcher = {
     win.innerHTML = WINDOW; // fixed markup
     const plant = h('div', 'ms-plant');
     plant.innerHTML = PLANT; // fixed markup
+    /* The Critic: a Roman bronze bust with googly eyes and a ventriloquist's jaw, who pops
+       up from the bottom of the screen to sing along or to tut. */
+    const bust = h('div', 'ms-bust');
+    const bustIn = h('div', 'b-in');
+    bustIn.append(h('i', 'b-mouth'), photo('bust', 'b-jaw'), photo('bust', 'b-top'),
+      googly(25, 30.5, 19), googly(54, 30.5, 19));
+    bust.append(bustIn);
+    /* A frog-shaped oil flask (South Italy, 300s BCE) with googly eyes, who hops through. */
+    const frog = h('div', 'ms-frog');
+    const frogIn = h('div', 'f-in');
+    frogIn.append(photo('frog'), googly(17, 26, 13), googly(29, 21, 13));
+    frog.append(frogIn);
     wall.append(win, clock, poster, disco);
-    cam.append(wall, lights, floor, base, hole, plant, rug, cat.el);
+    cam.append(wall, lights, floor, base, hole, plant, rug, cat.el, frog, bust);
     let rat = null;
     let cheese = null;
+    let helm = null;
     if (boss) {
       rat = critter('boss');
       rat.classList.add('ms-rat');
+      // He turns up in a jousting helmet, which the first hit knocks off.
+      helm = photo('helmet', 'ms-helm');
+      rat.append(helm);
       cheese = h('div', 'ms-cheese');
       cheese.innerHTML = CHEESE; // fixed markup
       cam.append(cheese, rat);
@@ -216,6 +282,38 @@ export const mouseCatcher = {
       later(ms + 160, () => cut.remove());
     }
 
+    let bustBusy = 0;
+    function critic(text, mood = 'sing', ms = 900) {
+      clearTimeout(bustBusy);
+      bust.classList.remove('tsk', 'sing', 'nod');
+      bust.classList.add('up');
+      jiggle(bust);
+      void bust.offsetWidth;
+      bust.classList.add(mood);
+      const flaps = mood === 'tsk' ? 3 : 2;
+      for (let k = 0; k < flaps; k++) {
+        later(80 + k * 150, () => { bust.classList.add('talk'); jiggle(bust); });
+        later(150 + k * 150, () => bust.classList.remove('talk'));
+      }
+      if (text) later(60, () => bubble(text, centre(bust, -0.02)));
+      bustBusy = later(ms, () => bust.classList.remove('up', 'tsk', 'sing', 'nod'));
+    }
+
+    let frogOut = false;
+    function frogHop(say = 'ribbit') {
+      if (frogOut) return;
+      frogOut = true;
+      jiggle(frog);
+      bump(frog, 'hop');
+      later(260, () => {
+        toon('croak');
+        bubble(say, centre(frog, 0));
+        jiggle(frog);
+      });
+      later(1100, () => { frogOut = false; });
+    }
+    let downs = 0;
+
     // Mookie watches the hole.
     cat.look(0.9, 0.35);
 
@@ -232,6 +330,8 @@ export const mouseCatcher = {
         bump(mouse, 'peek');
         mouse.say(220);
         bubble(syl || 'squeak!', centre(hole, -0.25));
+        // From the second tier up, the Critic sometimes sings along, deadpan.
+        if (tierNow >= 1 && Math.random() < 0.22) critic(null, 'sing', 520);
       },
       onTap() {
         if (busy) return;
@@ -263,6 +363,10 @@ export const mouseCatcher = {
         if (down && !busy) bump(eyes, 'blink');
         if (tier >= 4 && !busy) bump(eyes, 'dance');
         if (rat && !busy) bump(rat, down ? 'bob' : 'bob2');
+        // Googly eyes rattle on the beat; at a big combo the frog hops through now and then.
+        jiggle(stage);
+        if (down) downs++;
+        if (tier >= 2 && down && !busy && downs % 4 === 0) frogHop();
         rug.classList.toggle('glow', tier >= 3);
       },
       /* Boss rounds: a hit bonks The Big Cheese; a miss makes him laugh. */
@@ -271,6 +375,20 @@ export const mouseCatcher = {
         const at = centre(rat, 0.2);
         cat.reach(at.x, at.y, 0.18);
         toon('pot', undefined, { vol: 0.9 });
+        if (helm) {
+          // First hit: the helmet goes flying with a clang.
+          const hm = helm;
+          helm = null;
+          later(60, () => {
+            toon('tin', undefined, { vol: 1.2 });
+            hm.classList.add('off');
+            comic('CLANG!', { x: at.x, y: at.y - 20 }, 'hit');
+            punch(at, 1.08, 380);
+            bump(rat, 'bonked');
+          });
+          later(700, () => hm.remove());
+          return;
+        }
         later(60, () => {
           rat.set('hurt', true);
           rat.set('stars', true);
@@ -286,32 +404,87 @@ export const mouseCatcher = {
         bump(rat, 'laugh');
         cat.mood('shock');
         comic('MWA HA HA!', centre(rat, 0), 'bad');
+        if (Math.random() < 0.4) later(250, () => critic('tsk.', 'tsk', 800));
         later(650, () => { rat.set('tongue', false); cat.mood('hunt'); });
       },
       win() {
         busy = true;
         if (rat) {
-          // Launch: the last bonk sends him flying off with a twinkle.
+          // KO: a Chinese bronze bell (400s BCE) drops on him. DONNNG. Then a trophy for Mookie.
           const at = centre(rat, 0.3);
+          const r = local({ x: rat.getBoundingClientRect().left, y: rat.getBoundingClientRect().top });
+          const rr = rat.getBoundingClientRect();
           cat.reach(at.x, at.y, 0.2);
           toon('punch');
-          toon('whistle-up', undefined, { vol: 1.2 });
           later(80, () => {
             rat.set('dizzy', true);
-            rat.classList.add('launch');
-            cat.mood('star');
-            flashSpeed('gold');
-            comic('KO!', { x: at.x, y: at.y - 30 }, 'big');
+            bump(rat, 'bonked');
+            toon('slide-down', undefined, { vol: 0.9 });
           });
-          later(700, () => {
-            toon('twinkle');
-            const tw = h('i', 'ms-twinkle');
-            fx.append(tw);
+          const bell = photo('bell', 'ms-bell');
+          // The bell is a little taller than he is, centred on him.
+          const bw = rr.height * 0.9 * (215 / 320);
+          bell.style.left = `${r.x + rr.width / 2 - bw / 2}px`;
+          bell.style.width = `${bw}px`;
+          bell.style.top = `${r.y + rr.height * 1.02}px`;
+          fx.append(bell);
+          later(380, () => {
+            bell.classList.add('land');
+            rat.classList.add('gone');
+            toon('gong', undefined, { vol: 1.2 });
+            bump(stage, 'ms-quake');
+            comic('DONNNG!', { x: at.x, y: at.y - 40 }, 'big');
+            flashSpeed('gold');
+            cat.mood('shock');
+          });
+          later(1000, () => {
+            const cup = photo('trophy', 'ms-trophy');
+            const head = local(centre(cat.el, 0));
+            cup.style.left = `${head.x}px`;
+            cup.style.top = `${head.y}px`;
+            fx.append(cup);
+            toon('choir', undefined, { vol: 1 });
+            cat.mood('star');
+            cat.hop(0.8);
+            later(250, () => comic('CHAMPION!', { x: head.x + 40, y: head.y - 30 }, 'big'));
           });
           return;
         }
-        const big = Math.random() < 0.35;
+        const gag = winGag();
         const at = centre(hole, 0.6);
+        if (gag === 'teacup') {
+          // A porcelain teacup from the Rijksmuseum drops over the hole. Clink. Trapped.
+          const hr = hole.getBoundingClientRect();
+          const p = local({ x: hr.left, y: hr.top });
+          const cup = photo('teacup', 'ms-teacup');
+          cup.style.left = `${p.x - hr.width * 0.22}px`;
+          cup.style.width = `${hr.width * 1.44}px`;
+          cup.style.top = `${p.y + hr.height * 1.04}px`;
+          fx.append(cup);
+          cat.reach(at.x, at.y - 60, 0.12);
+          toon('slide-down', undefined, { vol: 0.8 });
+          later(300, () => {
+            cup.classList.add('land');
+            mouse.classList.add('gone');
+            toon('clink', undefined, { vol: 1.3 });
+            dust({ x: at.x, y: hr.bottom }, 7);
+            comic('TEA TIME!', { x: at.x - 40, y: hr.top - 30 }, 'big');
+            punch({ x: at.x, y: hr.bottom }, 1.12, 600);
+            cat.mood('smug');
+          });
+          later(700, () => {
+            cup.classList.add('rattle');
+            const tail = h('i', 'ms-cup-tail');
+            cup.after(tail);
+            tail.style.left = `${p.x + hr.width * 0.9}px`;
+            tail.style.top = `${p.y + hr.height - 6}px`;
+            toon('squeak');
+            cat.mood('star');
+          });
+          later(1000, () => critic('bravo.', 'nod', 900));
+          return;
+        }
+        const big = Math.random() < 0.35;
         const go = () => {
           cat.reach(at.x, at.y, 0.2);
           toon('punch', undefined, { vol: 0.8 });
@@ -319,6 +492,12 @@ export const mouseCatcher = {
           // The yanked mouse, flying from the hole to above Mookie's head.
           const flyer = critter('mouse');
           flyer.classList.add('ms-flyer', 'dizzy');
+          let lid = null;
+          if (gag === 'helmet') {
+            // He was wearing a 500-year-old jousting helmet the whole time.
+            lid = photo('helmet', 'ms-helm');
+            flyer.append(lid);
+          }
           fx.append(flyer);
           const from = local(centre(hole, 0.55));
           const head = cat.el.getBoundingClientRect();
@@ -339,14 +518,22 @@ export const mouseCatcher = {
             cat.mood('star');
             cat.hop(0.6);
           });
+          if (lid) {
+            later(470, () => {
+              lid.classList.add('off');
+              toon('tin', undefined, { vol: 1.2 });
+              comic('CLANK!', { x: to.x + 30, y: to.y - 40 }, 'hit');
+            });
+          }
           later(620, () => { flyer.classList.add('flag'); toon('pop'); });
           later(140, () => {
             comic('GOTCHA!', { x: at.x - 30, y: at.y - 60 }, 'big');
             punch(centre(cat.el, 0.3), 1.12, 600);
             flashSpeed();
           });
+          if (tierNow >= 3) later(900, () => critic('bravo.', 'nod', 900));
         };
-        if (big && !rat) {
+        if (big) {
           cutaway('cat', 360);
           toon('pep', undefined, { vol: 0.8 });
           later(300, go);
@@ -363,6 +550,70 @@ export const mouseCatcher = {
           cat.mood('dizzy');
           comic('SEE YA!', centre(rat, 0), 'bad');
           toon('raspberry');
+          later(700, () => critic('tsk tsk.', 'tsk', 1000));
+          return;
+        }
+        const gag = failGag();
+        const b = box();
+        const hr = hole.getBoundingClientRect();
+        if (gag === 'decoy') {
+          // Mookie yanks out... a Roman bronze mouse (about 1900 years old). It weighs a ton. CLONK.
+          const at = centre(hole, 0.6);
+          cat.reach(at.x, at.y, 0.2);
+          toon('punch', undefined, { vol: 0.7 });
+          const statue = photo('bronze-mouse', 'ms-decoy');
+          const catBox = cat.el.getBoundingClientRect();
+          const land = local({ x: catBox.right - catBox.width * 0.1, y: hr.bottom + (b.bottom - hr.bottom) * 0.45 });
+          statue.style.left = `${land.x}px`;
+          statue.style.top = `${land.y}px`;
+          statue.style.width = `${hr.width * 1.1}px`;
+          fx.append(statue);
+          const from = local(at);
+          const dx = from.x - land.x;
+          const dy = from.y - land.y;
+          statue.animate([
+            { transform: `translate(-50%, -100%) translate(${dx}px, ${dy}px) rotate(0) scale(.5)` },
+            { transform: `translate(-50%, -100%) translate(${dx * 0.5}px, ${dy * 0.5 - 60}px) rotate(-200deg)`, offset: 0.5 },
+            { transform: 'translate(-50%, -100%) rotate(-360deg)' },
+          ], { duration: 360, delay: 60, easing: 'cubic-bezier(.4,.1,.7,1)', fill: 'backwards' });
+          later(420, () => {
+            toon('thud', undefined, { vol: 1.3 });
+            toon('pot', undefined, { vol: 0.8, rate: 0.7 });
+            statue.classList.add('thunk');
+            bump(stage, 'ms-quake');
+            dust(centre(statue, 1), 8);
+            comic('CLONK!', centre(statue, -0.4), 'hit');
+            cat.mood('dizzy');
+          });
+          later(800, () => {
+            bump(mouse, 'peek');
+            mouse.classList.add('shades', 'tongue');
+            toon('raspberry');
+            comic('PFFT!', centre(hole, -0.3), 'bad');
+          });
+          later(1150, () => mouse.classList.remove('shades', 'tongue'));
+          return;
+        }
+        if (gag === 'frog') {
+          // Out of the mouse hole comes... a frog flask. It honks. Nobody knows why.
+          cat.mood('shock');
+          const f = h('div', 'ms-holefrog');
+          f.append(photo('frog'), googly(17, 26, 13), googly(29, 21, 13));
+          const p = local({ x: hr.left + hr.width / 2, y: hr.bottom });
+          f.style.left = `${p.x}px`;
+          f.style.top = `${p.y}px`;
+          f.style.width = `${hr.width * 1.5}px`;
+          fx.append(f);
+          jiggle(f);
+          toon('slide-up', undefined, { vol: 0.7 });
+          later(380, () => {
+            toon('honk', undefined, { vol: 1.2 });
+            jiggle(f);
+            comic('HONK!', { x: p.x - 20, y: p.y - hr.height * 1.4 }, 'bad');
+            punch({ x: p.x, y: p.y - hr.height * 0.6 }, 1.14, 600);
+          });
+          later(620, () => { cat.mood('dizzy'); jiggle(f); });
+          later(900, () => { f.classList.add('back'); toon('zip'); });
           return;
         }
         const big = Math.random() < 0.35;
@@ -373,7 +624,6 @@ export const mouseCatcher = {
         run.classList.add('ms-runner', 'shades');
         fx.append(run);
         const from = local(centre(hole, 0.75));
-        const b = box();
         const catBox = cat.el.getBoundingClientRect();
         const stopX = Math.min(b.width * 0.62, catBox.right - b.left + b.width * 0.1);
         const w = run.getBoundingClientRect().width || 60;
@@ -401,6 +651,7 @@ export const mouseCatcher = {
           run.animate([{ transform: 'translate(0, 0)' }, { transform: `translate(${dx}px, 0) scale(.7)` }],
             { duration: 220, easing: 'ease-in', fill: 'forwards' });
         });
+        if (!big) later(900, () => critic('tsk.', 'tsk', 800));
       },
     };
   },

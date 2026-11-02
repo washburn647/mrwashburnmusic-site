@@ -53,13 +53,20 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   the XP to the counter; misses wobble the stage; combo tiers send a shockwave and the band in.
 - `scene-mouse.js`: Mouse Catcher in full: the room (pendulum clock on the beat, WANTED poster,
   window, mouse hole), rigged Mookie's rubber-hose swipes, the win and miss gags, close-up
-  cutaways, a party that grows with the combo, and The Big Cheese for the boss. Styles in
-  `scenes.css`.
+  cutaways, a party that grows with the combo, and The Big Cheese for the boss. Win and fail
+  gags are picked at random (never the same twice running). Real photo props join in: the
+  Critic (a googly-eyed Roman bust who sings along and tuts), a hopping frog flask, a teacup
+  trap, a jousting helmet, a bronze decoy mouse, and for the boss a bell drop and a trophy.
+  Styles in `scenes.css`.
+- `props/`: the photo props, CC0 museum objects cut out with a sticker edge
+  (`props/CREDITS.txt`). New props should be CC0 or public domain, transparent PNG, about
+  320px on the long side.
 - `rig.js`: rigged Mookie for scenes: springs on body, head, ears, eyes, arms and tail; moods
   (idle, hunt, happy, smug, star, shock, dizzy); `reach()` to any point on the page.
 - `critters.js`: the mouse and The Big Cheese, with props (shades, flag, crown, bandage).
 - `fx/`: cartoon sound effects from Kenney's CC0 packs (`fx/CREDITS.txt`); `toon()` in
-  `sound.js` plays them and synthesizes the rest (slide whistle, squeak, raspberry, zip).
+  `sound.js` plays them and synthesizes the rest (slide whistle, squeak, raspberry, zip, bike
+  horn, frog croak, gong, choir).
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 
