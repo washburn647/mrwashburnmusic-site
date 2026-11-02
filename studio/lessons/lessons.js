@@ -15,7 +15,7 @@ import { readPieceFile, slimXML, pieceInfo } from '/lesson/score.js';
 import { openPlayer, PIECE_MODES, KEYBOARD_MODES } from '/lesson/player.js';
 import { openPractice } from '/lesson/practice.js';
 import { LESSON_PAGE, LOCAL_PAGE, STUDIO_HOME, API } from '/lesson/paths.js';
-import { newCode, cleanCode, publish, results, unpublish } from '/lesson/locked.js';
+import { newCode, cleanCode, publish, results, unpublish, showCode } from '/lesson/locked.js';
 import { cardLabel, KINDS } from '/lesson/cards.js';
 import { editDeck, deckSummary, newDeck } from './decks.js';
 
@@ -470,7 +470,7 @@ async function showStudent(id, lessonId) {
         setTimeout(() => { copyCode.textContent = 'Copy code link'; }, 1500);
       } }, 'Copy code link');
       bar.replaceChildren(
-        h('span', { class: 'code' }, '🔑 ', student.code.replace(/-/g, ' ')),
+        h('span', { class: 'code' }, '🔑 ', showCode(student.code)),
         pub, status,
         copyCode,
         h('button', { disabled: API == null, onclick: () => showResults(student) }, 'Practice'),
