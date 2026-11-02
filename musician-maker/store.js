@@ -16,6 +16,7 @@ const DEFAULTS = {
   stickers: [],
   seen: {}, // step-mode: 1 once that kind of game has been played (its instruction stops saying NEW)
   test: false,
+  groove: 'mix', // 'mix' (a different groove each lap) or a groove's id (grooves.json)
   tx: 'mix', // transitions between games: 'mix' or one transition's id (transitions lab)
 };
 
