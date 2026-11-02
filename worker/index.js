@@ -1,10 +1,13 @@
-/* The site is static files. This Worker only answers /api/: the Class app's
-   files kept on the website (decks, pictures, plans, timings) in a private R2
-   bucket. Cloudflare Access guards /api/class (Kyle's login), and every
-   request is checked here too, so a missing Access rule never opens it up.
+/* The site is static files. This Worker only answers /api/:
+   - /api/class/: the Class app's files kept on the website (decks, pictures, plans,
+     timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
+     and every request is checked here too, so a missing Access rule never opens it up.
+   - /api/s/ and /studio/api/s/: a locked box for each private lesson student (see Box).
 
    wrangler.jsonc sets ACCESS_TEAM (the Zero Trust team domain) and ACCESS_AUD
    (the Access application's Audience tag). */
+
+import { DurableObject } from 'cloudflare:workers';
 
 const KINDS = new Set(['decks', 'plans']);
 const ID = /^[\w.-]{1,80}$/;
@@ -14,6 +17,8 @@ const TIMINGS = /^[\w-]{1,80}$/;
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const box = /^\/(studio\/)?api\/s\/([^/]+)(\/r)?$/.exec(url.pathname);
+    if (box) return boxApi(request, env, box);
     if (!url.pathname.startsWith('/api/class/')) return env.ASSETS.fetch(request);
     if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.CLASS_FILES) return reply({ error: 'not set up' }, 503);
     if (!(await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
@@ -165,5 +170,104 @@ export async function signedIn(request, env, keys = accessKeys) {
       typeof body.exp === 'number' && body.exp > now && !(body.nbf > now + 60);
   } catch (e) {
     return false;
+  }
+}
+
+// ---- Lesson students ----------------------------------------------------------
+
+/* Lesson students: a locked box for each private student.
+   Everything in a box is encrypted in the browser with a key made from the student's code
+   (see /lesson/locked.js), so nothing stored here can be read on this side. A box is found
+   by an id made from the same code; the code itself never reaches this server.
+
+   GET    /api/s/:id            the student's pages             (anyone with the code)
+   POST   /api/s/:id/r          add a practice result           (X-Token from the code)
+   PUT    /studio/api/s/:id     publish the student's pages     (Kyle, through Cloudflare Access)
+   GET    /studio/api/s/:id/r   the student's practice results (Kyle)
+   DELETE /studio/api/s/:id     empty the box                   (Kyle)
+
+   Studio calls are checked against the Cloudflare Access token as well as being behind
+   Access: set ACCESS_TEAM (the team name in <team>.cloudflareaccess.com) and ACCESS_AUD
+   (the Access application's audience tag) in the Worker's settings. */
+
+const BOX_ID = /^[0-9a-f]{32}$/;
+const MAX_PAGE = 8 * 1024 * 1024;   // encrypted pages, pieces included
+const MAX_RESULT = 16 * 1024;
+const MAX_RESULTS = 5000;
+const CHUNK = 1024 * 1024;
+
+
+async function boxApi(request, env, [, studio, id, results]) {
+  if (!BOX_ID.test(id)) return reply({ error: 'not found' }, 404);
+  if (studio && !(env.ACCESS_TEAM && env.ACCESS_AUD && await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
+  const box = env.BOXES.get(env.BOXES.idFromName(id));
+  const method = request.method;
+  if (!studio && !results && method === 'GET') return box.read();
+  if (!studio && results && method === 'POST') {
+    const body = await request.text();
+    if (body.length > MAX_RESULT) return reply({ error: 'too big' }, 413);
+    return box.add(request.headers.get('X-Token') || '', body);
+  }
+  if (studio && !results && method === 'PUT') {
+    const body = await request.text();
+    if (body.length > MAX_PAGE) return reply({ error: 'too big' }, 413);
+    return box.publish(body);
+  }
+  if (studio && results && method === 'GET') return box.results();
+  if (studio && !results && method === 'DELETE') return box.clear();
+  return reply({ error: 'method not allowed' }, 405);
+}
+
+async function sha256(text) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export class Box extends DurableObject {
+  // page: { iv, ct, token } as published; ct is split into chunks of stored text.
+  async read() {
+    const meta = await this.ctx.storage.get('meta');
+    if (!meta) return reply({ error: 'not found' }, 404);
+    const parts = await this.ctx.storage.get([...Array(meta.chunks).keys()].map((i) => `page:${i}`));
+    let ct = '';
+    for (let i = 0; i < meta.chunks; i++) ct += parts.get(`page:${i}`) || '';
+    return reply({ iv: meta.iv, ct, at: meta.at });
+  }
+
+  async publish(text) {
+    let page;
+    try { page = JSON.parse(text); } catch { return reply({ error: 'bad page' }, 400); }
+    if (typeof page.iv !== 'string' || typeof page.ct !== 'string' || !/^[0-9a-f]{64}$/.test(page.token || '')) return reply({ error: 'bad page' }, 400);
+    const old = await this.ctx.storage.get('meta');
+    const chunks = Math.ceil(page.ct.length / CHUNK) || 1;
+    const put = {};
+    for (let i = 0; i < chunks; i++) put[`page:${i}`] = page.ct.slice(i * CHUNK, (i + 1) * CHUNK);
+    put.meta = { iv: page.iv, chunks, token: page.token, at: Date.now() };
+    await this.ctx.storage.put(put);
+    if (old && old.chunks > chunks) await this.ctx.storage.delete([...Array(old.chunks - chunks).keys()].map((i) => `page:${chunks + i}`));
+    return reply({ ok: true });
+  }
+
+  async add(token, text) {
+    const meta = await this.ctx.storage.get('meta');
+    if (!meta || meta.token !== await sha256(token)) return reply({ error: 'forbidden' }, 403);
+    let r;
+    try { r = JSON.parse(text); } catch { return reply({ error: 'bad result' }, 400); }
+    if (typeof r.iv !== 'string' || typeof r.ct !== 'string') return reply({ error: 'bad result' }, 400);
+    const count = (await this.ctx.storage.get('count')) || 0;
+    if (count >= MAX_RESULTS) return reply({ error: 'full' }, 507);
+    const key = `r:${String(Date.now()).padStart(15, '0')}:${crypto.randomUUID().slice(0, 8)}`;
+    await this.ctx.storage.put({ [key]: { iv: r.iv, ct: r.ct }, count: count + 1 });
+    return reply({ ok: true });
+  }
+
+  async results() {
+    const list = await this.ctx.storage.list({ prefix: 'r:' });
+    return reply({ results: [...list.values()] });
+  }
+
+  async clear() {
+    await this.ctx.storage.deleteAll();
+    return reply({ ok: true });
   }
 }
