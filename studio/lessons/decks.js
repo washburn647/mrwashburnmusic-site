@@ -17,11 +17,12 @@ export const newDeck = (k) => (k === 'n'
 
 export function deckSummary(d) {
   if (!d) return '';
+  const name = d.tn || d.nm;
   if (d.k === 'n') {
     const clef = CLEF_NAMES.find(([k]) => k === d.f)?.[1] || '';
-    return `${clef} · ${d.r.map((p) => noteAnswer(d, p, 'letters') + p.slice(-1)).join(' ')}`;
+    return name ? `${name} · ${clef}` : `${clef} · ${d.r.map((p) => noteAnswer(d, p, 'letters') + p.slice(-1)).join(' ')}`;
   }
-  return `${d.u || KINDS[d.k]} · ${d.p.length}`;
+  return name ? `${name} · ${d.p.length}` : `${d.u || KINDS[d.k]} · ${d.p.length}`;
 }
 
 /* Units: the recorder's own copy on this device when there is one, else the site's. */
@@ -91,9 +92,11 @@ export async function editDeck(start, title = '', { keys = true } = {}) {
     }
 
     function draw() {
-      const rows = [seg(Object.entries(KINDS), d.k, (k) => {
+      const named = (key, placeholder) => h('input', { value: d[key] || '', maxLength: 60, placeholder, 'aria-label': placeholder, class: 'deckname',
+        oninput: (e) => { if (e.target.value.trim()) d[key] = e.target.value; else delete d[key]; } });
+      const rows = [h('div', { class: 'row names' }, named('tn', 'Name'), named('nm', 'Student name')), seg(Object.entries(KINDS), d.k, (k) => {
         if (k === d.k) return;
-        d = { ...newDeck(k), o: 1, w: d.w, g: d.g };
+        d = { ...newDeck(k), o: 1, w: d.w, g: d.g, ...(d.tn ? { tn: d.tn } : {}), ...(d.nm ? { nm: d.nm } : {}) };
         if (k !== 'n' && kindUnits()[0]) useUnit(kindUnits()[0]);
         draw();
       })];
@@ -155,8 +158,12 @@ export async function editDeck(start, title = '', { keys = true } = {}) {
       dlg.replaceChildren(h('form', { method: 'dialog', onsubmit: (e) => e.preventDefault() },
         ...rows,
         h('div', { class: 'bar actions' },
-          h('button', { type: 'button', class: 'primary', disabled: !ok, onclick: () => { if (!keys && d.k !== 'r') d.o &= ~2; done(d.o ? d : null); } }, 'Save'),
-          h('button', { type: 'button', disabled: !ok, onclick: () => openPractice(dlg, d, { title }) }, 'Try'),
+          h('button', { type: 'button', class: 'primary', disabled: !ok, onclick: () => {
+            if (!keys && d.k !== 'r') d.o &= ~2;
+            for (const k of ['tn', 'nm']) if (d[k]) d[k] = d[k].trim();
+            done(d.o ? d : null);
+          } }, 'Save'),
+          h('button', { type: 'button', disabled: !ok, onclick: () => openPractice(dlg, d, { title: d.nm || title }) }, 'Try'),
           h('span', { class: 'grow' }),
           h('button', { type: 'button', onclick: () => done(null) }, 'Cancel'))));
     }

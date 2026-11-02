@@ -115,7 +115,7 @@ async function restoreBackup(file) {
   const cleanItem = (it) => ({
     id: id(it.id), title: str(it.title), detail: str(it.detail), link: str(it.link),
     piece: typeof it.piece === 'string' ? it.piece : null,
-    setup: cleanSetup(it.setup), deck: cleanDeck(it.deck),
+    setup: cleanSetup(it.setup), deck: cleanDeck(it.deck, { studio: true }),
   });
   for (const p of Array.isArray(data.pieces) ? data.pieces : []) {
     if (!p || typeof p.id !== 'string' || typeof p.xml !== 'string' || await pieces.get(p.id)) continue;
@@ -287,8 +287,6 @@ async function pageFor(s, lesson) {
   const next = nextLesson(s, lesson.date);
   if (next) page.x = next;
   if (lesson.note.trim()) page.m = lesson.note.trim();
-  if (lesson.stars) page.s = lesson.stars;
-  if (Number(lesson.minutes) > 0) page.w = Math.round(Number(lesson.minutes));
   if (xmls.length) page.p = xmls;
   return page;
 }
@@ -326,7 +324,7 @@ async function showStudent(id, lessonId) {
     if (item.deck) {
       return h('div', { class: 'attach' }, h('span', { class: 'chip' }, '🃏 ', deckSummary(item.deck),
         h('button', { class: 'icon', title: 'Edit deck', onclick: async () => { const d = await editDeck(item.deck, item.title, { keys: playsKeys() }); if (d) { item.deck = d; save(); renderItems(); } } }, '✎'),
-        h('button', { class: 'icon', title: 'Try', onclick: () => openPractice(document.body, item.deck, { title: item.title }) }, '▶'),
+        h('button', { class: 'icon', title: 'Try', onclick: () => openPractice(document.body, item.deck, { title: item.deck.nm || item.title }) }, '▶'),
         h('button', { class: 'icon', title: 'Remove deck', onclick: () => { item.deck = null; save(); renderItems(); } }, '×')));
     }
     return h('div', { class: 'attach' },
@@ -432,13 +430,6 @@ async function showStudent(id, lessonId) {
     h('a', { href: `#/${student.id}/${l.id}`, 'aria-current': l === lesson ? 'true' : null }, chipLabel(l)),
   ));
 
-  const stars = h('div', { class: 'starpick', role: 'group', 'aria-label': 'Stars' });
-  const drawStars = () => stars.replaceChildren(...[1, 2, 3].map((n) => h('button', { class: n <= lesson.stars ? 'on' : '', onclick: () => {
-    lesson.stars = lesson.stars === n ? n - 1 : n;
-    save();
-    drawStars();
-  } }, '★')));
-  drawStars();
   // The instrument decides which tools a student's items offer. Guitar is still to come.
   const instrumentSel = h('select', { 'aria-label': 'Instrument', onchange: () => { student.instrument = instrumentSel.value; save(); renderItems(); } },
     h('option', { value: '', selected: !student.instrument }, 'Instrument'),
@@ -518,10 +509,9 @@ async function showStudent(id, lessonId) {
       chips,
       h('span', { class: 'grow' }),
       h('button', { onclick: async () => {
-        // A new lesson starts from the last one's practice list and daily minutes.
+        // A new lesson starts from the last one's practice list.
         const last = student.lessons[student.lessons.length - 1];
         const fresh = newLesson(last.items.map(copyItem));
-        fresh.minutes = last.minutes;
         student.lessons.push(fresh);
         save();
         await flush();
@@ -531,8 +521,6 @@ async function showStudent(id, lessonId) {
     h('div', { class: 'bar' },
       input(lesson, 'date', { class: 'date', type: 'date', 'aria-label': 'Lesson date' },
         () => { chips.querySelector('[aria-current]').textContent = chipLabel(lesson); }),
-      stars,
-      h('label', { class: 'minutes' }, '🎯 ', input(lesson, 'minutes', { type: 'number', min: 1, max: 240, placeholder: '—', 'aria-label': 'Practice minutes a day' }), ' min'),
     ),
     items,
     h('div', { class: 'bar' },

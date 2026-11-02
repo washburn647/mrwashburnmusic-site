@@ -125,7 +125,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
   const hi = teach ? 200 : Math.min(200, Math.max(...range));
   const st = {
     speed: Math.max(lo, Math.min(hi, setup.s || 100)), transpose: setup.k || 0, names: setup.n || 0, colors: !!setup.c,
-    click: !!setup.x, countIn: setup.ci !== 0, zoom: 0, fingers: { ...(setup.f || {}) },
+    click: !!setup.x, countIn: setup.ci !== 0, zoom: 0, fingers: { ...(setup.f || {}) }, fo: { ...(setup.fo || {}) },
     muted: new Set(setup.m || []), hidden: new Set(setup.h || []),
     loop: null, picking: null, section: -1,
   };
@@ -324,7 +324,8 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
   }
 
   /* Fingerings Kyle types (they aren't in most files): above the top staff of a part,
-     below the others. In the studio each is a box to type in. */
+     below the others, centred on the note. In the studio each is a box to type in,
+     and dragging it moves it (kept as an offset in tenths of a staff space). */
   function drawFingers(boxes) {
     const u = unit();
     const o = origin();
@@ -335,23 +336,50 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
         const below = gm.ParentStaff.ParentInstrument.Staves.indexOf(gm.ParentStaff) > 0;
         const y = o.y + (gm.PositionAndShape.AbsolutePosition.y + (below ? 5.2 : -2.6)) * u;
         for (const se of gm.staffEntries) {
-          const hasNote = se.graphicalVoiceEntries.some((g) => g.notes.some((gn) => !gn.sourceNote.isRest()));
-          if (!hasNote) continue;
+          const heads = se.graphicalVoiceEntries.flatMap((g) => g.notes).filter((gn) => !gn.sourceNote.isRest());
+          if (!heads.length) continue;
           const key = fingerKey(mi, si, se);
-          const x = o.x + se.PositionAndShape.AbsolutePosition.x * u;
+          const ps = heads[0].PositionAndShape;
+          const cx = o.x + (ps.AbsolutePosition.x + ((ps.BorderLeft || 0) + (ps.BorderRight || 0)) / 2) * u;
           const size = Math.max(11, 14 * osmd.zoom);
+          const [dx, dy] = st.fo[key] || [0, 0];
+          const at = (ox, oy) => `left:${cx + ox * u / 10}px;top:${y + oy * u / 10}px;font-size:${size}px`;
           if (teach) {
-            const box = el('input', { class: 'finger edit', value: st.fingers[key] || '', maxLength: 8, 'aria-label': 'Fingering',
-              style: `left:${x - size * 0.2}px;top:${y}px;font-size:${size}px` });
+            const box = el('input', { class: 'finger edit', value: st.fingers[key] || '', maxLength: 8, 'aria-label': 'Fingering', style: at(dx, dy) });
             box.addEventListener('click', (e) => e.stopPropagation());
             box.addEventListener('input', () => {
               const v = box.value.replace(/[^0-9a-zA-Z,\-/ ]/g, '').slice(0, 8);
               if (v !== box.value) box.value = v;
               if (v.trim()) st.fingers[key] = v.trim(); else delete st.fingers[key];
             });
+            box.addEventListener('pointerdown', (e) => {
+              const sx = e.clientX;
+              const sy = e.clientY;
+              let moved = false;
+              let off = [dx, dy];
+              const move = (m) => {
+                if (!moved && Math.hypot(m.clientX - sx, m.clientY - sy) < 4) return;
+                if (!moved) { moved = true; box.setPointerCapture(e.pointerId); box.classList.add('dragging'); }
+                m.preventDefault();
+                off = [dx + Math.round((m.clientX - sx) / u * 10), dy + Math.round((m.clientY - sy) / u * 10)].map((n) => Math.max(-60, Math.min(60, n)));
+                box.style.cssText = at(...off);
+              };
+              const up = () => {
+                box.removeEventListener('pointermove', move);
+                box.removeEventListener('pointerup', up);
+                box.removeEventListener('pointercancel', up);
+                if (!moved) return;
+                box.classList.remove('dragging');
+                if (off[0] || off[1]) st.fo[key] = off; else delete st.fo[key];
+                drawLayer();
+              };
+              box.addEventListener('pointermove', move);
+              box.addEventListener('pointerup', up);
+              box.addEventListener('pointercancel', up);
+            });
             layer.append(box);
           } else if (st.fingers[key]) {
-            layer.append(el('div', { class: 'finger', style: `left:${x}px;top:${y}px;font-size:${size}px`, textContent: st.fingers[key] }));
+            layer.append(el('div', { class: 'finger', style: at(dx, dy), textContent: st.fingers[key] }));
           }
         }
       });
@@ -724,6 +752,34 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
       el('button', { onclick: () => { change(1); fillMore(); } }, '+')));
   }
 
+  /* Sections: a name (a letter or anything) and the first and last bar. */
+  function sectionEditor() {
+    const nums = osmd.Sheet.SourceMeasures.map((m) => m.MeasureNumber);
+    const first = Math.min(...nums);
+    const last = Math.max(...nums);
+    const bar = (x, j) => el('input', { type: 'number', min: first, max: last, value: x[j], class: 'barnum', 'aria-label': j === 1 ? 'First bar' : 'Last bar',
+      onchange: (e) => {
+        x[j] = Math.max(first, Math.min(last, Math.round(+e.target.value) || x[j]));
+        if (x[1] > x[2]) [x[1], x[2]] = [x[2], x[1]];
+        st.section = -1; st.loop = null; drawLayer(); fillMore();
+      } });
+    return el('div', { class: 'secs' },
+      el('div', { class: 'prow' }, el('span', {}, 'Sections'), el('button', { class: 'small', onclick: () => {
+        const used = new Set(sections.map((x) => x[0]));
+        let n = 0;
+        while (n < 26 && used.has(String.fromCharCode(65 + n))) n++;
+        const from = sections.length ? Math.min(last, Math.max(...sections.map((x) => x[2])) + 1) : first;
+        const range = st.loop ? st.loop.map((i) => osmd.Sheet.SourceMeasures[i].MeasureNumber) : [from, last];
+        sections.push([String.fromCharCode(65 + (n % 26)), Math.min(...range), Math.max(...range)]);
+        drawLayer(); fillMore();
+        more.querySelector('.secs .prow:last-child input')?.focus();
+      } }, '＋')),
+      sections.map((x, i) => el('div', { class: 'prow' },
+        el('input', { value: x[0], maxLength: 30, 'aria-label': 'Section name', oninput: (e) => { x[0] = e.target.value; drawLayer(); } }),
+        bar(x, 1), el('span', { class: 'bars' }, '–'), bar(x, 2),
+        el('button', { 'aria-label': 'Remove section', onclick: () => { sections.splice(i, 1); st.section = -1; st.loop = null; drawLayer(); fillMore(); } }, '×'))));
+  }
+
   function fillMore() {
     if (!teach) return;
     more.replaceChildren(...[
@@ -735,10 +791,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
         st.transpose = Math.max(-12, Math.min(12, st.transpose + d));
         restartIfPlaying(render);
       }),
-      sections.length ? el('div', { class: 'secs' }, sections.map((x, i) => el('div', { class: 'prow' },
-        el('input', { value: x[0], maxLength: 30, 'aria-label': 'Section name', oninput: (e) => { x[0] = e.target.value; drawLayer(); } }),
-        el('span', { class: 'bars' }, x[1] === x[2] ? String(x[1]) : `${x[1]}–${x[2]}`),
-        el('button', { 'aria-label': 'Remove section', onclick: () => { sections.splice(i, 1); st.section = -1; st.loop = null; drawLayer(); fillMore(); } }, '×')))) : null,
+      sectionEditor(),
       staves.length > 1 ? el('div', { class: 'parts' }, staves.map((s) => el('div', { class: 'prow' },
         el('span', { textContent: s.name }),
         el('div', { class: 'seg' },
@@ -756,7 +809,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
      rest are edited beside the piece in the studio). */
   function currentSetup() {
     const out = { ...setup };
-    for (const k of ['s', 'k', 'n', 'c', 'x', 'ci', 'm', 'h', 'f', 'sec', 'iso']) delete out[k];
+    for (const k of ['s', 'k', 'n', 'c', 'x', 'ci', 'm', 'h', 'f', 'fo', 'sec', 'iso']) delete out[k];
     if (st.speed !== 100) out.s = st.speed;
     if (st.transpose) out.k = st.transpose;
     if (st.names) out.n = st.names;
@@ -766,6 +819,8 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     if (st.muted.size) out.m = [...st.muted];
     if (st.hidden.size) out.h = [...st.hidden];
     if (Object.keys(st.fingers).length) out.f = { ...st.fingers };
+    const fo = Object.entries(st.fo).filter(([k]) => st.fingers[k]);
+    if (fo.length) out.fo = Object.fromEntries(fo);
     const sec = sections.filter((x) => x[0].trim());
     if (sec.length) out.sec = sec.map(([n, a, b]) => [n.trim(), a, b]);
     return out;

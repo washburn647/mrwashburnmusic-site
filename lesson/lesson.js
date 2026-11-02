@@ -254,7 +254,7 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPi
       const showStars = () => { badge.textContent = mine.done ? `⭐ ${mine.done}` : ''; };
       showStars();
       tools.append(el('button', { class: 'go cards', 'aria-label': 'Flash cards', onclick: () => openOverlay(async (done) =>
-        openPractice(document.body, it.c, { title: it.a, history: mine.history, onClose: done, onEnd: (r) => {
+        openPractice(document.body, it.c, { title: it.c.nm || it.a, history: mine.history, onClose: done, onEnd: (r) => {
           for (const [card, [tries, right]] of Object.entries(r.items)) {
             const h = (mine.history[card] ||= [0, 0]);
             h[0] += tries;
@@ -266,7 +266,7 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPi
           showStars();
           addTime(r.ms / 1000);
           if (onCards) onCards(it, r);
-        } })) }, '🃏'), badge);
+        } })) }, it.c.nm ? `🃏 ${it.c.nm}` : '🃏'), badge);
     }
     return el('li', {},
       box,

@@ -130,11 +130,14 @@ body.playing-piece { overflow: hidden; }
 .player.keys .kbd { height: min(46vh, 320px); }
 .player.both .kbd { height: clamp(90px, 20vh, 160px); }
 .secmark { position: absolute; font-weight: 600; font-size: 15px; color: #fff; background: #7F4FA3; border-radius: 8px; padding: 1px 8px; white-space: nowrap; }
-.finger { position: absolute; transform: translateX(-10%); font-weight: 600; color: #7F4FA3; line-height: 1; }
+.finger { position: absolute; transform: translateX(-50%); font-weight: 600; color: #7F4FA3; line-height: 1; }
 .finger.edit { pointer-events: auto; width: 2.2em; border: 1px dashed #CDB6E0; border-radius: 4px; background: rgba(255,255,255,.85); font-family: inherit; padding: 0 2px; text-align: center; }
+.finger.edit { touch-action: none; cursor: grab; }
+.finger.edit.dragging { cursor: grabbing; user-select: none; }
 .finger.edit:focus { outline: 2px solid #7F4FA3; background: #fff; }
 .pmore .secs { border-top: 2px solid #F6F1E4; margin-top: 6px; padding-top: 6px; }
 .pmore .secs input { flex: 1; min-width: 0; font: inherit; font-size: 16px; border: 0; border-radius: 8px; background: #F6F1E4; padding: 6px 8px; }
+.pmore .secs input.barnum { flex: 0 0 4.2em; text-align: center; }
 .pmore .secs .bars { color: #5B6B5F; font-variant-numeric: tabular-nums; }
 
 /* End of a session */

@@ -27,7 +27,8 @@ const ints = (x, lo, hi) => (Array.isArray(x) ? x.filter((n) => int(n, lo, hi) !
 /* Only the settings the player knows, as small whole numbers and short names.
    v: which buttons the student gets (1 listen, 2 sheet music, 4 lit keyboard, 8 sheet
    music and keyboard), sp: speed range, sec: sections [name, first bar, last bar],
-   n: names (1 letters, 2 solfege, 3 fingerings), f: fingerings { 'measure.staff.time': '3' }. */
+   n: names (1 letters, 2 solfege, 3 fingerings), f: fingerings { 'measure.staff.time': '3' }, fo: where Kyle moved them
+   { 'measure.staff.time': [x, y] } in tenths of a staff space. */
 const FINGER_KEY = /^\d{1,4}\.\d{1,3}\.\d{1,7}$/;
 const FINGER = /^[0-9a-zA-Z,\-/ ]{1,8}$/;
 export function cleanSetup(u) {
@@ -36,6 +37,10 @@ export function cleanSetup(u) {
   if (u.f && typeof u.f === 'object') {
     const f = Object.entries(u.f).filter(([k, v]) => FINGER_KEY.test(k) && typeof v === 'string' && FINGER.test(v)).slice(0, 5000);
     if (f.length) out.f = Object.fromEntries(f);
+  }
+  if (out.f && u.fo && typeof u.fo === 'object') {
+    const fo = Object.entries(u.fo).filter(([k, v]) => out.f[k] && Array.isArray(v) && v.length === 2 && v.every((n) => int(n, -60, 60) !== undefined));
+    if (fo.length) out.fo = Object.fromEntries(fo.map(([k, v]) => [k, v.map(Number)]));
   }
   if (Array.isArray(u.sp) && u.sp.length === 2 && u.sp.every((n) => int(n, 20, 200) !== undefined)) out.sp = [Math.min(...u.sp), Math.max(...u.sp)];
   if (Array.isArray(u.sec)) {
@@ -49,9 +54,12 @@ export function cleanSetup(u) {
 const PITCH = /^[A-G](#|b)?[0-8]$/;
 const PATTERN = /^(rhythm\/(2-4|6-8)|tonal\/(major|minor))\/[a-z]{1,4}(-[a-z]{1,4}){0,15}$/;
 /* A deck: see cards.js. o: ways of answering (bits), w: say it first, g: goal. */
-export function cleanDeck(c) {
+/* nm: the name the student sees; tn: Kyle's own name for it, kept in the studio only. */
+export function cleanDeck(c, { studio = false } = {}) {
   if (!c || typeof c !== 'object') return null;
   const common = { o: int(c.o, 1, 7) ?? 1, w: int(c.w, 0, 1) ?? 0, g: int(c.g, 0, 500) ?? 0 };
+  if (str(c.nm, 60).trim()) common.nm = str(c.nm, 60).trim();
+  if (studio && str(c.tn, 60).trim()) common.tn = str(c.tn, 60).trim();
   if (c.k === 'n') {
     const notes = (Array.isArray(c.r) ? c.r : []).filter((p) => typeof p === 'string' && PITCH.test(p)).slice(0, 60);
     if (!notes.length) return null;
