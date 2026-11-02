@@ -73,7 +73,8 @@ export function loadGrooves() {
 /* Loads every instrument these grooves use, over the notes they play. */
 export async function useInstruments(list) {
   const want = {};
-  for (const g of list) for (const tracks of Object.values(g.layers)) for (const tr of tracks) {
+  const versions = list.flatMap((g) => (g.versions ? Object.values(g.versions) : [g]));
+  for (const g of versions) for (const tracks of Object.values(g.layers)) for (const tr of tracks) {
     const w = (want[tr.inst] ||= { lo: 127, hi: 0 });
     for (const n of tr.notes) if (n.m != null) { w.lo = Math.min(w.lo, n.m); w.hi = Math.max(w.hi, n.m); }
   }
@@ -373,34 +374,55 @@ export const stepsPerBeat = (g) => (g.meter === '6/8' ? 6 : 4);
 const ROOTS = [41, 46, 48, 41]; // F Bb C F, one per bar of 2/4 (stand-in when grooves.json is missing)
 const CHORD = { 41: [65, 69, 72], 46: [65, 70, 74], 48: [64, 67, 72] };
 
-/* Grooves as the game trusts them: whole beats, known layers, notes inside the loop. */
+/* Grooves as the game trusts them. A groove has a name, a key and up to two versions, one
+   per meter (2/4 and 6/8), meant to share instruments and chords so the game can switch
+   between them: { id, name, key, versions: { '2/4': { meter, beats, swing, layers }, … } }.
+   (A first-format groove, with meter, beats and layers at the top, becomes one version.) */
 export function checkGrooves(list) {
   if (!Array.isArray(list)) return [];
-  return list.filter((g) => g && typeof g.id === 'string' && Number.isInteger(g.beats) && g.beats > 0 && g.layers).map((g) => ({
-    id: g.id,
-    name: String(g.name || g.id),
-    meter: g.meter === '6/8' ? '6/8' : '2/4',
-    beats: g.beats,
-    swing: Math.max(0, Math.min(1, Number(g.swing) || 0)),
-    key: Number.isInteger(g.key) ? g.key : 0,
-    layers: Object.fromEntries(ALL_LAYERS.map((name) => [name, (Array.isArray(g.layers[name]) ? g.layers[name] : [])
-      .filter((tr) => tr && typeof tr.inst === 'string' && Array.isArray(tr.notes))
-      .map((tr) => ({
-        inst: tr.inst,
-        vol: Math.max(0, Math.min(1.5, Number(tr.vol ?? 1))),
-        notes: tr.notes.filter((n) => Number.isInteger(n.s) && n.s >= 0 && n.s < g.beats * (g.meter === '6/8' ? 6 : 4)),
-      }))])),
-  }));
+  const version = (v, meter) => {
+    if (!v || !Number.isInteger(v.beats) || v.beats <= 0 || !v.layers) return null;
+    const steps = v.beats * (meter === '6/8' ? 6 : 4);
+    return {
+      meter,
+      beats: v.beats,
+      swing: meter === '6/8' ? 0 : Math.max(0, Math.min(1, Number(v.swing) || 0)),
+      layers: Object.fromEntries(ALL_LAYERS.map((name) => [name, (Array.isArray(v.layers[name]) ? v.layers[name] : [])
+        .filter((tr) => tr && typeof tr.inst === 'string' && Array.isArray(tr.notes))
+        .map((tr) => ({
+          inst: tr.inst,
+          vol: Math.max(0, Math.min(1.5, Number(tr.vol ?? 1))),
+          notes: tr.notes.filter((n) => Number.isInteger(n.s) && n.s >= 0 && n.s < steps),
+        }))])),
+    };
+  };
+  return list.filter((g) => g && typeof g.id === 'string').map((g) => {
+    const given = g.versions || (g.layers ? { [g.meter === '6/8' ? '6/8' : '2/4']: g } : {});
+    const versions = {};
+    for (const meter of Object.keys(METERS)) {
+      const v = version(given[meter], meter);
+      if (v) versions[meter] = v;
+    }
+    return { id: g.id, name: String(g.name || g.id), key: Number.isInteger(g.key) ? g.key : 0, versions };
+  }).filter((g) => Object.keys(g.versions).length);
 }
 
-export const grooveList = (meter = null) => (meter ? grooves.filter((g) => g.meter === meter) : grooves);
+export const grooveList = (meter = null) => (meter ? grooves.filter((g) => g.versions[meter]) : grooves);
 export const grooveNow = () => G;
 export function setGroove(id) {
   G = grooves.find((g) => g.id === id) || G || grooves[0] || null;
   return G;
 }
 
-/* One beat (i) of a groove's layers, at t. In 2/4, swing moves the off-beat 8th toward a
+/* The meter the groove plays in: the unit's, or a review item's from another unit. The
+   switch takes effect on the next beat, at the same place in the loop, so a groove whose
+   versions share bars and chords carries on in the other meter. */
+let M = '2/4';
+export const grooveMeter = () => M;
+export function setGrooveMeter(meter) { M = meter === '6/8' ? '6/8' : '2/4'; }
+const versionNow = () => (G ? G.versions[M] || Object.values(G.versions)[0] : null);
+
+/* One beat (i) of a groove version's layers, at t. In 2/4, swing moves the off-beat 8th toward a
    triplet (1 = full triplet) and the 16ths with it; 6/8 is already in threes. */
 export function playGrooveBeat(g, i, t, spb, { layers, level = 1, dest = grooveBus }) {
   const pos = i % g.beats;
@@ -472,19 +494,20 @@ export function groove(i, t, spb, { tier, mode, duck }) {
   lastBeat = i;
   loopBus.gain.setTargetAtTime(duck ? 0.3 : 1, t, 0.02);
   const rec = {};
-  const useLoops = !G || G.id === 'basic';
+  const useLoops = (!G || G.id === 'basic') && M === '2/4';
   for (const [n, name] of ALL_LAYERS.entries()) {
     const want = useLoops && (mode === 'breakdown' ? name === 'breakdown' : name !== 'breakdown' && n <= tier);
     if (want) rec[name] = loopLayer(name, i, t, spb);
     else stopLayer(name, t);
   }
-  if (!G) { standIn(i, t, spb, { tier, mode, duck }, rec); return; }
+  const V = versionNow();
+  if (!V) { standIn(i, t, spb, { tier, mode, duck }, rec); return; }
   // While the mic listens, only the pulse keeps the beat, softly: the mic hears everything else.
-  if (duck === 'mic') { playGrooveBeat(G, i, t, spb, { layers: ['pulse'], level: 0.45 }); return; }
+  if (duck === 'mic') { playGrooveBeat(V, i, t, spb, { layers: ['pulse'], level: 0.45 }); return; }
   let layers;
-  if (mode === 'breakdown') layers = G.layers.breakdown.some((tr) => tr.notes.length) ? ['breakdown'] : ['pulse'];
+  if (mode === 'breakdown') layers = V.layers.breakdown.some((tr) => tr.notes.length) ? ['breakdown'] : ['pulse'];
   else layers = LAYERS.filter((name, n) => n <= tier && !(duck && (name === 'horns' || name === 'band')));
-  playGrooveBeat(G, i, t, spb, { layers: layers.filter((name) => !rec[name]), level: duck ? 0.35 : 1 });
+  playGrooveBeat(V, i, t, spb, { layers: layers.filter((name) => !rec[name]), level: duck ? 0.35 : 1 });
 }
 
 /* The sampled groove, for every layer Kyle hasn't recorded at this tempo. */

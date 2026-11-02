@@ -45,7 +45,9 @@ let past = [];
 let future = [];
 let status = '';
 
-const now = () => grooves.find((g) => g.id === settings.groove) || grooves[0];
+const whole = () => grooves.find((g) => g.id === settings.groove) || grooves[0];
+// The version being edited: the groove in the meter picked (2/4 or 6/8), if it has one.
+const now = () => whole()?.versions[settings.meter || '2/4'];
 const isHit = (name) => index?.instruments[name]?.kind === 'hit';
 const label = (name) => index?.instruments[name]?.label || name;
 const per = (g) => snd.stepsPerBeat(g);
@@ -91,16 +93,18 @@ async function start() {
   render();
 }
 
-function blank(name) {
+function emptyVersion(meter, beats = 8) {
   return {
-    id: `g-${Date.now().toString(36)}`,
-    name,
-    meter: settings.meter || '2/4',
-    beats: 8,
+    meter,
+    beats,
     swing: 0,
-    key: 5,
     layers: Object.fromEntries(snd.ALL_LAYERS.map((l) => [l, DEFAULT_TRACKS[l].map((inst) => ({ inst, vol: 1, notes: [] }))])),
   };
+}
+
+function blank(name) {
+  const meter = settings.meter || '2/4';
+  return { id: `g-${Date.now().toString(36)}`, name, key: 5, versions: { [meter]: emptyVersion(meter) } };
 }
 
 /* ---------- playback ---------- */
@@ -171,8 +175,10 @@ function seg(options, value, onpick, titles = {}) {
 const canvases = [];
 
 function render() {
+  const G = whole();
+  if (!G) return;
   const g = now();
-  if (!g) return;
+  if (!g) { renderMissing(G); return; }
   canvases.length = 0;
   const restore = h('input', { type: 'file', accept: '.json,application/json', hidden: true, onchange: () => { restoreFile(restore.files[0]); restore.value = ''; } });
   const layer = settings.layer;
@@ -191,11 +197,11 @@ function render() {
     ),
     h('div', { class: 'bar' },
       h('select', { class: 'pick', onchange: (e) => { settings.groove = e.target.value; store(); render(); } },
-        grooves.map((x) => h('option', { value: x.id, selected: x.id === g.id }, `${x.name} · ${x.meter}`))),
-      h('input', { class: 'name', value: g.name, 'aria-label': 'Groove name', onchange: (e) => { snapshot(); g.name = e.target.value.trim() || g.name; changed(); } }),
+        grooves.map((x) => h('option', { value: x.id, selected: x.id === G.id }, `${x.name} · ${Object.keys(x.versions).join(' + ')}`))),
+      h('input', { class: 'name', value: G.name, 'aria-label': 'Groove name', onchange: (e) => { snapshot(); G.name = e.target.value.trim() || G.name; changed(); } }),
       h('button', { onclick: () => { snapshot(); const x = blank('New groove'); grooves.push(x); settings.groove = x.id; changed(); } }, 'New'),
-      h('button', { onclick: () => { snapshot(); const x = { ...structuredClone(g), id: `g-${Date.now().toString(36)}`, name: `${g.name} copy` }; grooves.push(x); settings.groove = x.id; changed(); } }, 'Copy'),
-      grooves.length > 1 ? confirmButton('Delete', 'Delete?', () => { snapshot(); grooves = grooves.filter((x) => x !== g); settings.groove = grooves[0].id; changed(); }) : null,
+      h('button', { onclick: () => { snapshot(); const x = { ...structuredClone(G), id: `g-${Date.now().toString(36)}`, name: `${G.name} copy` }; grooves.push(x); settings.groove = x.id; changed(); } }, 'Copy'),
+      grooves.length > 1 ? confirmButton('Delete', 'Delete?', () => { snapshot(); grooves = grooves.filter((x) => x !== G); settings.groove = grooves[0].id; changed(); }) : null,
       h('span', { class: 'grow' }),
       h('button', { class: 'icon', title: 'Undo (Ctrl+Z)', disabled: !past.length, onclick: () => undo() }, '↶ Undo'),
       h('button', { class: 'icon', title: 'Redo (Ctrl+Shift+Z)', disabled: !future.length, onclick: () => undo(true) }, '↷ Redo'),
@@ -210,13 +216,13 @@ function render() {
     ),
     h('div', { class: 'bar' },
       h('span', { class: 'label' }, 'Meter'),
-      seg(snd.METERS, g.meter, (v) => setMeter(g, v)),
+      meterSeg(G),
+      Object.keys(G.versions).length > 1 ? confirmButton(`Remove ${g.meter}`, 'Remove?', () => { snapshot(); delete G.versions[g.meter]; settings.meter = Object.keys(G.versions)[0]; changed(); }) : null,
       h('span', { class: 'label' }, 'Length'),
       seg({ 8: '8 beats', 16: '16 beats' }, g.beats, (v) => setLength(g, Number(v))),
       g.meter === '6/8' ? null : h('label', {}, 'Swing', h('input', { type: 'range', min: 0, max: 100, value: Math.round(g.swing * 100), onchange: (e) => { snapshot(); g.swing = Number(e.target.value) / 100; changed(); } }),
         h('span', { class: 'total' }, `${Math.round(g.swing * 100)}%`)),
-      h('label', {}, 'Key', h('select', { onchange: (e) => { snapshot(); g.key = Number(e.target.value); changed(); } },
-        KEYS.map((k, i) => h('option', { value: i, selected: i === g.key }, `${k} major`)))),
+      keySelect(G),
     ),
     h('div', { class: 'bar layers' }, snd.ALL_LAYERS.map((l) => h('button', {
       class: l === layer ? 'on' : '',
@@ -400,7 +406,7 @@ function rollCard(g, tr) {
     for (let m = hi; m >= lo; m--) {
       const y = rowOf(m) * ROLL_ROW;
       const pc = ((m % 12) + 12) % 12;
-      const deg = (pc - g.key + 12) % 12;
+      const deg = (pc - whole().key + 12) % 12;
       if (!MAJOR.includes(deg)) { c.fillStyle = 'rgba(47,74,58,.07)'; c.fillRect(GUTTER, y, w - GUTTER, ROLL_ROW); }
       if (deg === 0) { c.fillStyle = 'rgba(233,180,76,.16)'; c.fillRect(GUTTER, y, w - GUTTER, ROLL_ROW); }
       c.fillStyle = BLACK.includes(pc) ? '#3E5446' : '#FBF8F0';
@@ -497,26 +503,63 @@ function centerRolls() {
   }
 }
 
-/* 2/4 ↔ 6/8 changes the grid under the notes: each keeps its beat and its place in the beat
-   as near as the new grid allows (an 8th stays an 8th: 2 of 4 steps ↔ 3 of 6). */
-function setMeter(g, meter) {
-  if (meter === g.meter) return;
-  snapshot();
-  const from = per(g);
+/* A groove's other-meter version, started from this one: each note keeps its beat and its
+   place in the beat as near as the new grid allows (an 8th stays an 8th: 2 of 4 steps ↔ 3 of
+   6), so bars, chords and instruments carry over, ready to reshape. */
+function convert(v, meter) {
+  const from = per(v);
   const to = meter === '6/8' ? 6 : 4;
-  for (const tracks of Object.values(g.layers)) {
+  const out = structuredClone(v);
+  out.meter = meter;
+  out.swing = 0;
+  for (const tracks of Object.values(out.layers)) {
     for (const tr of tracks) {
       const seen = new Set();
       tr.notes = tr.notes.map((n) => {
         const s = Math.floor(n.s / from) * to + Math.round((n.s % from) * to / from);
-        return { ...n, s: Math.min(s, g.beats * to - 1), ...(n.l ? { l: Math.max(1, Math.round(n.l * to / from)) } : {}) };
+        return { ...n, s: Math.min(s, v.beats * to - 1), ...(n.l ? { l: Math.max(1, Math.round(n.l * to / from)) } : {}) };
       }).filter((n) => { const k = `${n.s}:${n.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
     }
   }
-  g.meter = meter;
-  settings.meter = meter;
-  if (!LENGTHS[meter][settings.len]) settings.len = 1;
-  changed();
+  return out;
+}
+
+function meterSeg(G) {
+  const labels = Object.fromEntries(Object.entries(snd.METERS).map(([m, text]) => [m, G.versions[m] ? text : `${text} +`]));
+  return seg(labels, settings.meter || '2/4', (m) => {
+    settings.meter = m;
+    if (!LENGTHS[m][settings.len]) settings.len = 1;
+    store();
+    if (playing) stop();
+    render();
+  }, { '2/4': 'Edit the 2/4 version', '6/8': 'Edit the 6/8 version' });
+}
+
+function keySelect(G) {
+  return h('label', {}, 'Key', h('select', { onchange: (e) => { snapshot(); G.key = Number(e.target.value); changed(); } },
+    KEYS.map((k, i) => h('option', { value: i, selected: i === G.key }, `${k} major`))));
+}
+
+/* The groove has no version in this meter yet: start one. */
+function renderMissing(G) {
+  canvases.length = 0;
+  const meter = settings.meter || '2/4';
+  const other = Object.values(G.versions)[0];
+  app.replaceChildren(
+    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
+    h('div', { class: 'bar' }, h('h1', { class: 'grow' }, 'Groove Lab', h('small', {}, ' Musician Maker'))),
+    h('div', { class: 'bar' },
+      h('select', { class: 'pick', onchange: (e) => { settings.groove = e.target.value; store(); render(); } },
+        grooves.map((x) => h('option', { value: x.id, selected: x.id === G.id }, `${x.name} · ${Object.keys(x.versions).join(' + ')}`))),
+      h('span', { class: 'label' }, 'Meter'),
+      meterSeg(G)),
+    h('section', { class: 'card missing' },
+      h('h2', {}, `${G.name} has no ${meter} version yet`),
+      h('p', {}, `The game plays the ${meter} version in ${meter} units, and switches to it when a review item from a ${meter} unit comes up. Keep the same instruments and chords as the ${other.meter} version so the switch sounds like the same band.`),
+      h('div', { class: 'bar' },
+        h('button', { class: 'primary', onclick: () => { snapshot(); G.versions[meter] = convert(other, meter); changed(); } }, `Start from the ${other.meter} version`),
+        h('button', { onclick: () => { snapshot(); G.versions[meter] = emptyVersion(meter, other.beats); changed(); } }, 'Start empty'))),
+  );
 }
 
 /* 8 → 16 beats repeats the loop into the new half; 16 → 8 keeps the first half. */

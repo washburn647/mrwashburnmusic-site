@@ -2,8 +2,8 @@
 
   python tools/add_grooves.py grooves.json
 
-Checks the file Groove Lab's "Save for site" downloads (every groove has an id, a meter, whole
-beats, known layers, and notes inside the loop on sounds in assets/sounds/index.json) and writes it to
+Checks the file Groove Lab's "Save for site" downloads (every groove has an id and a 2/4 and/or
+6/8 version, each with whole beats, known layers, and notes inside the loop on sounds in assets/sounds/index.json) and writes it to
 musician-maker/grooves.json, one groove per line. It replaces the grooves there: the Lab keeps
 them all and saves them all.
 """
@@ -30,25 +30,27 @@ def main():
         if not isinstance(g.get('id'), str) or g['id'] in ids:
             raise SystemExit(f'{name}: missing or repeated id')
         ids.add(g['id'])
-        if g.get('meter', '2/4') not in STEPS_PER_BEAT:
-            raise SystemExit(f'{name}: meter must be 2/4 or 6/8')
-        if g.get('beats') not in (8, 16):
-            raise SystemExit(f'{name}: beats must be 8 or 16')
-        if set(g.get('layers', {})) - set(LAYERS):
-            raise SystemExit(f'{name}: unknown layer {set(g["layers"]) - set(LAYERS)}')
-        steps = g['beats'] * STEPS_PER_BEAT[g.get('meter', '2/4')]
-        for layer, tracks in g['layers'].items():
-            for t in tracks:
-                spec = sounds.get(t.get('inst'))
-                if not spec:
-                    raise SystemExit(f'{name} {layer}: no sound "{t.get("inst")}"')
-                for n in t.get('notes', []):
-                    if not (isinstance(n.get('s'), int) and 0 <= n['s'] < steps):
-                        raise SystemExit(f'{name} {layer}: a note outside the loop')
-                    if spec['kind'] != 'hit' and not isinstance(n.get('m'), int):
-                        raise SystemExit(f'{name} {layer}: a {t["inst"]} note without a pitch')
-        notes = sum(len(t.get('notes', [])) for ts in g['layers'].values() for t in ts)
-        print(f'{name}: {g.get("meter", "2/4")}, {g["beats"]} beats, {notes} notes')
+        versions = g.get('versions')
+        if not isinstance(versions, dict) or not versions or set(versions) - set(STEPS_PER_BEAT):
+            raise SystemExit(f'{name}: needs a 2/4 and/or a 6/8 version')
+        for meter, v in versions.items():
+            if v.get('beats') not in (8, 16):
+                raise SystemExit(f'{name} {meter}: beats must be 8 or 16')
+            if set(v.get('layers', {})) - set(LAYERS):
+                raise SystemExit(f'{name} {meter}: unknown layer {set(v["layers"]) - set(LAYERS)}')
+            steps = v['beats'] * STEPS_PER_BEAT[meter]
+            for layer, tracks in v['layers'].items():
+                for t in tracks:
+                    spec = sounds.get(t.get('inst'))
+                    if not spec:
+                        raise SystemExit(f'{name} {meter} {layer}: no sound "{t.get("inst")}"')
+                    for n in t.get('notes', []):
+                        if not (isinstance(n.get('s'), int) and 0 <= n['s'] < steps):
+                            raise SystemExit(f'{name} {meter} {layer}: a note outside the loop')
+                        if spec['kind'] != 'hit' and not isinstance(n.get('m'), int):
+                            raise SystemExit(f'{name} {meter} {layer}: a {t["inst"]} note without a pitch')
+            notes = sum(len(t.get('notes', [])) for ts in v['layers'].values() for t in ts)
+            print(f'{name} {meter}: {v["beats"]} beats, {notes} notes')
     with open(OUT, 'w') as f:
         f.write('{"grooves":[\n' + ',\n'.join(json.dumps(g, separators=(',', ':'), ensure_ascii=False) for g in grooves) + '\n]}\n')
     print(f'{len(grooves)} grooves written to musician-maker/grooves.json')

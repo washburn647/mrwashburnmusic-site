@@ -96,8 +96,10 @@ function groovePick() {
   return b;
 }
 
-/* The groove for a new lap. */
+/* The groove for a new lap, in the unit's meter. (A review item from a unit in the other
+   meter can switch it with snd.setGrooveMeter: the groove carries on in its other version.) */
 function pickGroove() {
+  snd.setGrooveMeter(UNIT.meter);
   const list = snd.grooveList(UNIT.meter);
   if (st.groove !== 'mix' && list.some((g) => g.id === st.groove)) return snd.setGroove(st.groove);
   const others = list.filter((g) => g !== snd.grooveNow());
