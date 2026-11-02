@@ -22,6 +22,9 @@ for f in (ROOT / 'musician-maker').iterdir():
         text = f.read_text().replace("'/assets/", "'./assets/").replace('"/assets/', '"./assets/')
         text = text.replace('<link rel="icon" href="/favicon.svg" type="image/svg+xml">\n', '')
         (OUT / f.name).write_text(text)
+# The scenes' photo props and cartoon sound effects.
+for d in ('props', 'fx'):
+    shutil.copytree(ROOT / 'musician-maker' / d, OUT / d, ignore=shutil.ignore_patterns('*.txt'))
 for a in ASSETS:
     src = ROOT / 'assets' / a
     dst = OUT / 'assets' / a

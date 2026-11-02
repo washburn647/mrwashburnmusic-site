@@ -126,6 +126,7 @@ export const mouseCatcher = {
   tap: 'snare',
   pickClass: 'opt-hole',
   slotIcon: (c) => (c === 'ee' ? '🧀🧀' : '🧀'),
+  bossName: 'The Big Cheese',
   make(stage, { boss = false } = {}) {
     stage.className = `stage scene-ms${boss ? ' boss' : ''}`;
     preload();

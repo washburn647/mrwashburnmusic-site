@@ -1,0 +1,253 @@
+/* Supper Time (scene-supper.js) and Bindi and Rusty (cats.js). Shares the comic lettering,
+   dust, bubbles, speed lines, cutaways, googly eyes and sticker photos of Mouse Catcher
+   (scenes.css, the ms- classes). */
+
+/* ---------- Bindi and Rusty ---------- */
+.kat { position: absolute; aspect-ratio: 200 / 222; }
+.kat svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.kat [class^="k-eyes-"], .kat .k-mouth, .kat .k-mask, .kat .k-shades, .kat .k-bib, .kat .k-crumbs,
+.kat .k-stars, .kat .k-sweat { display: none; }
+.kat svg[data-eyes="open"] .k-eyes-open, .kat svg[data-eyes="happy"] .k-eyes-happy,
+.kat svg[data-eyes="shut"] .k-eyes-shut, .kat svg[data-eyes="dizzy"] .k-eyes-dizzy { display: inline; }
+.kat svg[data-mouth="w"] .m-w, .kat svg[data-mouth="flat"] .m-flat, .kat svg[data-mouth="open"] .m-open,
+.kat svg[data-mouth="yowl"] .m-yowl, .kat svg[data-mouth="o"] .m-o, .kat svg[data-mouth="grin"] .m-grin,
+.kat svg[data-mouth="chew"] .m-chew, .kat svg[data-mouth="tongue"] .m-tongue { display: inline; }
+.kat svg.mask .k-mask, .kat svg.shades .k-shades, .kat svg.bib .k-bib, .kat svg.crumbs .k-crumbs,
+.kat svg.stars .k-stars, .kat svg.sweat .k-sweat { display: inline; }
+.kat svg[data-eyes="dizzy"] .k-stars { display: inline; }
+.kat svg.shades .k-eyes-open, .kat svg.shades .k-eyes-happy { display: none; }
+.kat .k-eyes-dizzy path { transform-box: fill-box; transform-origin: center; animation: spin .6s linear infinite; }
+.kat .k-stars { transform-box: fill-box; transform-origin: center; animation: spin 1.2s linear infinite; }
+.kat .k-sweat { animation: sweat .7s ease-in infinite; }
+.kat .m-chew { animation: chew .16s steps(2) infinite; }
+@keyframes chew { 50% { transform: translateY(2px); } }
+
+/* ---------- Mookie's Supper Time extras (rig.js) ---------- */
+.rig svg[data-eyes="sleep"] .r-eyes-sleep, .rig svg[data-mouth="chew"] .m-chew { display: inline; }
+.rig .r-snot { display: none; }
+.rig svg.snot .r-snot { display: inline; transform-box: fill-box; transform-origin: 0% 60%; transform: scale(var(--snot, 1)); transition: transform .35s ease-in-out; }
+.rig .m-chew { animation: chew .16s steps(2) infinite; }
+
+/* ---------- the kitchen ---------- */
+/* --u is 1% of the stage height, or less on a tall narrow stage, so the room still fits across. */
+.scene-sp { container-type: size; background: #f5e3b3; overflow: hidden; --bowl-x: 47%; --u: min(1cqh, .9cqw); }
+.sp-cam { position: absolute; inset: 0; }
+.sp-wall { position: absolute; inset: 0 0 30% 0;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 246, 210, .7), transparent 62%),
+    radial-gradient(circle, rgba(63, 143, 138, .28) 2.4px, transparent 3px) 0 0 / 40px 40px,
+    repeating-linear-gradient(90deg, transparent 0 18px, rgba(255, 255, 255, .45) 18px 21px, transparent 21px 40px),
+    linear-gradient(180deg, #f8e7b4, #efd38f); }
+.sp-wall::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 9%;
+  background: repeating-linear-gradient(90deg, #fffaf0 0 22px, #e7dcc4 22px 24px); border-top: 3px solid #d8c8a4; }
+.sp-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; overflow: hidden; background: #2f6f6b; }
+.sp-floor::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .25), transparent 35%); pointer-events: none; }
+.sp-checks { position: absolute; left: -45%; right: -45%; top: 0; height: 190%; display: grid;
+  grid-template-columns: repeat(13, 1fr); grid-template-rows: repeat(5, 1fr);
+  transform-origin: 50% 0; transform: perspective(300px) rotateX(52deg); }
+.sp-checks i { background: #f1e8d4; transition: background .12s; }
+.sp-checks i:nth-child(2n) { background: #3f8f8a; }
+.scene-sp[data-tier="4"] .sp-checks i.lit:nth-child(3n) { background: #ffd84a; }
+.scene-sp[data-tier="4"] .sp-checks i.lit:nth-child(3n+1) { background: #ff8fa3; }
+.scene-sp[data-tier="4"] .sp-checks i.lit:nth-child(3n+2) { background: #9b7bff; }
+.sp-base { position: absolute; left: 0; right: 0; bottom: 30%; height: 10px; transform: translateY(100%);
+  background: linear-gradient(180deg, #fdf4e0, #d9c39a); box-shadow: 0 2px 0 rgba(0, 0, 0, .12); }
+
+.sp-window { position: absolute; left: 4%; top: 7%; height: calc(27 * var(--u)); aspect-ratio: 100 / 110; }
+.sp-window svg, .sp-menu svg, .sp-lamp svg, .sp-counter svg, .sp-pot svg, .sp-bed svg, .sp-toque svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.sp-sun { animation: sun 6s ease-in-out infinite alternate; }
+@keyframes sun { to { transform: translateY(5px); } }
+.sp-birds { animation: birds 9s linear infinite; }
+@keyframes birds { from { transform: translateX(-20px); } to { transform: translateX(30px); } }
+.sp-menu { position: absolute; right: 4%; top: 6%; height: calc(30 * var(--u)); aspect-ratio: 100 / 120; transform: rotate(-3deg); transform-origin: 50% 0;
+  filter: drop-shadow(0 3px 0 rgba(80, 50, 20, .2)); }
+.sp-menu.bop { animation: bop .3s ease-out; }
+.sp-menu.bop2 { animation: bop2 .3s ease-out; }
+
+.sp-lamp { position: absolute; left: calc(52% - 10 * var(--u)); top: 0; height: calc(30 * var(--u)); aspect-ratio: 80 / 120; transform-origin: 50% 0; z-index: 1; }
+.sp-cone { position: absolute; left: 50%; top: 78%; width: 260%; height: 250%; transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(ellipse 50% 100% at 50% 0, rgba(255, 240, 170, .45), rgba(255, 240, 170, .12) 60%, transparent 75%);
+  clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%); }
+.scene-sp[data-tier="2"] .sp-lamp svg, .scene-sp[data-tier="3"] .sp-lamp svg, .scene-sp[data-tier="4"] .sp-lamp svg,
+.scene-sp[data-tier="2"] .sp-cone, .scene-sp[data-tier="3"] .sp-cone, .scene-sp[data-tier="4"] .sp-cone { animation: disco-lamp 1.2s linear infinite; }
+@keyframes disco-lamp { to { filter: hue-rotate(360deg) saturate(1.6); } }
+
+/* A garland of paper fish drops in at the second combo tier. */
+.sp-bunting { position: absolute; left: 2%; right: 2%; top: 0; height: 16cqh; display: flex; justify-content: space-around; align-items: flex-start;
+  transform: translateY(-40cqh); transition: transform .6s cubic-bezier(.3, 1.5, .5, 1); z-index: 1;
+  background: radial-gradient(ellipse 60% 70% at 50% 0, transparent 92%, #8a5a32 93%, #8a5a32 96%, transparent 97%) 0 0 / 100% 100% no-repeat; }
+.scene-sp[data-tier="2"] .sp-bunting, .scene-sp[data-tier="3"] .sp-bunting, .scene-sp[data-tier="4"] .sp-bunting { transform: none; }
+.sp-bunting i { width: 6%; max-width: 9cqh; aspect-ratio: 2 / 1; margin-top: calc(1.5cqh + var(--sag, 0cqh)); border-radius: 50% 30% 30% 50%; transform-origin: 50% 0;
+  clip-path: polygon(0 50%, 25% 0, 70% 15%, 100% 0, 88% 50%, 100% 100%, 70% 85%, 25% 100%); animation: flap .5s ease-in-out infinite alternate; }
+.sp-bunting i:nth-child(3n) { background: #e05a4f; } .sp-bunting i:nth-child(3n+1) { background: #3f8f8a; } .sp-bunting i:nth-child(3n+2) { background: #f2c94c; }
+.sp-bunting i:nth-child(2), .sp-bunting i:nth-child(8) { --sag: 3cqh; } .sp-bunting i:nth-child(3), .sp-bunting i:nth-child(7) { --sag: 5cqh; }
+.sp-bunting i:nth-child(4), .sp-bunting i:nth-child(6) { --sag: 6.5cqh; } .sp-bunting i:nth-child(5) { --sag: 7cqh; }
+.sp-bunting i:nth-child(2n) { animation-delay: -.25s; }
+@keyframes flap { to { transform: rotate(8deg); } }
+.sp-lights i.l { background: conic-gradient(from 160deg at 10% 0, transparent 0deg, rgba(255, 216, 74, .55) 10deg, transparent 28deg); }
+.sp-lights i.r { background: conic-gradient(from 172deg at 90% 0, transparent 0deg, rgba(255, 143, 163, .5) 10deg, transparent 28deg); }
+
+/* The counter, the pot on it, and Chef Bastet behind it. */
+.sp-counter { position: absolute; left: 0; bottom: 3%; height: calc(59 * var(--u)); width: calc(30 * var(--u)); z-index: 3; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, .12)); }
+.sp-pot { position: absolute; right: 4%; bottom: 99%; width: 42%; aspect-ratio: 80 / 70; }
+.sp-lid { transform-box: fill-box; transform-origin: 50% 100%; }
+.sp-pot.rattle .sp-lid { animation: lid .22s ease-out; }
+.sp-pot.rattle2 .sp-lid { animation: lid2 .2s ease-out; }
+@keyframes lid { 35% { transform: translateY(-5px) rotate(-6deg); } 70% { transform: translateY(-1px) rotate(3deg); } }
+@keyframes lid2 { 40% { transform: translateY(-2px) rotate(3deg); } }
+.sp-steam { position: absolute; left: 30%; bottom: 80%; width: 40%; height: 120%; pointer-events: none; }
+.sp-steam i { position: absolute; bottom: 0; width: 40%; aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, .8); opacity: 0; }
+.sp-steam i:nth-child(2) { left: 40%; } .sp-steam i:nth-child(3) { left: 15%; }
+.sp-steam.puff i { animation: steam .9s ease-out; }
+.sp-steam.puff i:nth-child(2) { animation-delay: .1s; } .sp-steam.puff i:nth-child(3) { animation-delay: .2s; }
+@keyframes steam { 0% { opacity: .9; transform: translateY(0) scale(.5); } 100% { opacity: 0; transform: translateY(-160%) scale(1.6); } }
+
+.sp-chef-mask { position: absolute; left: var(--u); bottom: calc(3% + 59 * var(--u)); height: calc(38 * var(--u)); width: calc(17 * var(--u)); overflow: hidden; z-index: 2; }
+.sp-chef { position: absolute; left: 22%; bottom: -1%; height: 70%; aspect-ratio: 141 / 320; transform: translateY(140%); transition: transform .2s cubic-bezier(.2, 1.5, .5, 1); }
+.sp-chef.up { transform: translateY(0); }
+.sp-chef .c-in { position: absolute; inset: 0; transform-origin: 50% 100%; }
+.sp-chef .ms-photo { position: absolute; left: 0; top: 0; }
+.sp-chef .c-top { clip-path: inset(0 0 82% 0); }
+.sp-chef .c-jaw { clip-path: inset(18% 0 0 0); transition: transform .06s; }
+.sp-chef .c-mouth { position: absolute; left: 4%; top: 16.5%; width: 30%; height: 4%; border-radius: 40%; background: #1a0d0d; }
+.sp-chef.talk .c-jaw { transform: translateY(4%); }
+.sp-chef.sing .c-in { animation: sing .4s ease-in-out; }
+.sp-chef.nod .c-in { animation: nod .35s ease-in-out 2; }
+.sp-chef.tsk .c-in { animation: tsk .5s ease-in-out 2; }
+.sp-toque { position: absolute; left: -14%; top: -17%; width: 84%; aspect-ratio: 100 / 80; transform: rotate(-8deg); }
+.sp-chef.talk .sp-toque { transform: rotate(-8deg) translateY(-6%); }
+
+/* The thieves sneak along the floor from behind the counter. */
+.sp-bindi { left: 7%; bottom: 6%; height: calc(30 * var(--u)); z-index: 2; transition: left .18s ease-out; transform-origin: 50% 100%; }
+.sp-rusty { left: -3%; bottom: 12%; height: calc(39 * var(--u)); z-index: 1; transition: left .18s ease-out; transform-origin: 50% 100%; }
+.kat.flee { animation: flee-legs .1s linear infinite; }
+@keyframes flee-legs { 50% { transform: translateY(-4%) rotate(-4deg); } }
+.kat.flop { z-index: 6; transition: left .3s, transform .25s cubic-bezier(.3, 1.6, .5, 1); transform: translate(42%, -26%) rotate(-92deg); }
+
+/* Supper: the placemat, the bowl (a Japanese gong bowl, early 1800s), a herring, the beater. */
+.sp-mat { position: absolute; left: var(--bowl-x); bottom: 3%; height: calc(9 * var(--u)); width: calc(30 * var(--u)); transform: translateX(-50%); border-radius: 50%; z-index: 4;
+  background: repeating-linear-gradient(0deg, rgba(224, 90, 79, .55) 0 6px, transparent 6px 12px), repeating-linear-gradient(90deg, rgba(224, 90, 79, .55) 0 6px, #fff8ec 6px 12px);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .15); display: grid; place-items: end center; }
+.sp-mat-name { font-size: clamp(8px, 2.6 * var(--u), 13px); color: #fff; background: #e05a4f; padding: 0 6px; border-radius: 6px; margin-bottom: -4%; letter-spacing: 1px; }
+.sp-bowl { position: absolute; left: var(--bowl-x); bottom: 6%; height: calc(16 * var(--u)); aspect-ratio: 320 / 241; transform: translateX(-50%); z-index: 5; }
+.sp-bowl .ms-photo { position: absolute; left: 0; bottom: 0; }
+.sp-bowl-img { filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 4px 3px rgba(0, 0, 0, .3)) brightness(1.15); }
+.sp-fish.ms-photo { width: 96%; left: 6%; bottom: 66%; z-index: 1; transform: rotate(-20deg); transform-origin: 70% 80%; transition: transform .2s, opacity .2s; }
+.sp-fish.eaten { opacity: 0; transform: rotate(-20deg) translateY(30%) scale(.4); }
+.sp-bowl.ding { animation: ding .3s ease-out; }
+@keyframes ding { 25% { transform: translateX(-50%) scale(1.06, .94); } 60% { transform: translateX(-50%) scale(.98, 1.03); } }
+.sp-bowl.hide, .sp-beater.hide { visibility: hidden; }
+.sp-bowl.squashed { animation: none; transform: translateX(-50%) scale(1.12, .7); transform-origin: 50% 100%; transition: transform .15s; }
+.sp-stonefish.ms-photo { width: 96%; left: 4%; bottom: 62%; z-index: 1; transform: rotate(-12deg); }
+.sp-beater { position: absolute; left: calc(var(--bowl-x) - 4 * var(--u)); bottom: calc(6% + 13 * var(--u)); width: calc(19 * var(--u)); z-index: 6; transform-origin: 92% 50%; transform: rotate(-24deg); }
+.sp-beater .ms-photo { filter: drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff) drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff) drop-shadow(0 3px 2px rgba(0, 0, 0, .3)); }
+.sp-beater.strike { animation: strike .2s cubic-bezier(.3, .6, .4, 1); }
+@keyframes strike { 30% { transform: rotate(6deg); } 60% { transform: rotate(-30deg); } 100% { transform: rotate(-24deg); } }
+.sp-rings { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+.sp-ring { position: absolute; width: calc(14 * var(--u)); aspect-ratio: 1.6; margin: calc(-4.4 * var(--u)) 0 0 calc(-7 * var(--u)); border-radius: 50%; border: 3px solid rgba(255, 216, 74, .95);
+  box-shadow: 0 0 8px rgba(255, 216, 74, .7); animation: ring .6s ease-out both; }
+.sp-ring.big { border-width: 5px; }
+@keyframes ring { from { transform: scale(.3); opacity: 1; } to { transform: scale(2.6); opacity: 0; } }
+
+/* Mookie's basket. */
+.sp-bed { position: absolute; right: 1%; bottom: 3%; height: calc(46 * var(--u)); width: calc(44 * var(--u)); z-index: 4; }
+.sp-bed-back { position: absolute; left: 0; right: 0; bottom: 4%; height: 36%; }
+.sp-bed-front { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; z-index: 1; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .15)); }
+.sp-mookie { left: calc(3 * var(--u)); bottom: 10%; height: 90%; }
+.sp-mookie.stir { animation: stir .25s ease-out; }
+@keyframes stir { 40% { transform: rotate(-3deg) translateY(-2%); } }
+.sp-mookie.flying { z-index: 2; }
+.sp-mookie.flipped { transition: transform .35s cubic-bezier(.3, 1.6, .5, 1); transform: translate(-40%, -10%) rotate(-150deg); }
+.sp-zzz { position: absolute; right: calc(22 * var(--u)); bottom: calc(3% + 42 * var(--u)); z-index: 5; display: flex; gap: 4px; font-weight: 700; color: #6f7f9b; font-size: clamp(14px, 5 * var(--u), 26px); pointer-events: none; }
+.sp-zzz i { font-style: normal; display: inline-block; opacity: .25; }
+.sp-zzz i:nth-child(2) { font-size: 1.3em; } .sp-zzz i:nth-child(3) { font-size: 1.6em; }
+.sp-zzz i.zpop { animation: zpop2 .7s ease-out; }
+@keyframes zpop2 { 30% { opacity: 1; transform: translateY(-10px) scale(1.3) rotate(-10deg); } }
+
+/* Gags. */
+.sp-fx .ms-dust.fur { background: #b98a5a; border-radius: 40% 60% 50% 50%; }
+.sp-bones { position: absolute; width: calc(12 * var(--u)); aspect-ratio: 60 / 24; z-index: 6; }
+.sp-bones svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 0 1.5px #333); }
+.sp-flyfish.ms-photo { position: absolute; width: calc(16 * var(--u)); z-index: 6; }
+.sp-tureen { position: absolute; transform: translate(-50%, -100%); z-index: 5; aspect-ratio: 320 / 247; opacity: 0; }
+.sp-tureen.hen { aspect-ratio: 320 / 191; }
+.sp-tureen .ms-photo { position: absolute; left: 0; top: 0; }
+.sp-tureen.royal .t-lid { clip-path: inset(0 0 63% 0); } .sp-tureen.royal .t-base { clip-path: inset(37% 0 0 0); }
+.sp-tureen.hen .t-lid { clip-path: polygon(14% 0, 90% 0, 90% 52%, 60% 47%, 30% 50%, 14% 52%); }
+.sp-tureen.hen .t-base { clip-path: polygon(0 52%, 14% 52%, 30% 50%, 60% 47%, 90% 52%, 100% 52%, 100% 100%, 0 100%); }
+.sp-tureen .googly { z-index: 2; }
+.sp-tureen.land { opacity: 1; animation: tureen-drop .28s cubic-bezier(.5, 0, .9, .6) backwards; }
+@keyframes tureen-drop { from { transform: translate(-50%, -100%) translateY(-260%); } }
+.sp-tureen .t-lid { transition: transform .35s cubic-bezier(.3, 1.4, .5, 1); }
+.sp-tureen.open .t-lid { transform: translate(-30%, -55%) rotate(-24deg); }
+.sp-tureen.bawk .t-lid, .sp-tureen.bawk .googly { animation: bawk .12s ease-in-out 6 alternate; }
+@keyframes bawk { to { transform: translateY(-14%) rotate(-5deg); } }
+.sp-rays { position: absolute; width: calc(60 * var(--u)); aspect-ratio: 1; transform: translate(-50%, -50%) scale(0); border-radius: 50%; z-index: 4; pointer-events: none;
+  background: repeating-conic-gradient(rgba(255, 216, 74, .65) 0 10deg, transparent 10deg 20deg);
+  -webkit-mask: radial-gradient(circle, #000 30%, transparent 70%); mask: radial-gradient(circle, #000 30%, transparent 70%); transition: transform .3s cubic-bezier(.3, 1.5, .5, 1); }
+.sp-rays.on { transform: translate(-50%, -50%) scale(1); animation: rays 3s linear infinite; }
+@keyframes rays { to { transform: translate(-50%, -50%) rotate(180deg); } }
+.sp-lobster.ms-photo { position: absolute; z-index: 6; transform: translate(-50%, -30%) scale(.2) rotate(30deg); opacity: 0; transition: transform .2s cubic-bezier(.3, 1.6, .5, 1), opacity .1s; }
+.sp-lobster.snip { opacity: 1; transform: translate(-90%, -80%) scale(1) rotate(-12deg) scaleX(-1); }
+.sp-lobster.back { opacity: 0; transform: translate(-50%, -10%) scale(.2); }
+.sp-loot.ms-photo { position: absolute; left: 30%; top: -14%; width: 70%; transform: rotate(-20deg); animation: dangle .3s ease-in-out infinite alternate; }
+.scene-sp.sp-quake .sp-cam { animation: quake .4s linear; }
+.scene-sp.sp-blast .sp-cam { animation: quake .5s linear; }
+.sp-cut.bindi { background: #c9b8f0; } .sp-cut.rusty { background: #f2b46b; } .sp-cut.mookie { background: #ffd84a; }
+.sp-cut .kat.ms-cut-face { width: 110%; max-width: 560px; top: 62%; }
+
+/* ---------- boss: Rusty, The Big Fluff, on a silver tureen (London, 1812) ---------- */
+.scene-sp.boss { --bowl-x: 38%; }
+.scene-sp.boss .sp-wall { background:
+    radial-gradient(ellipse at 70% 30%, rgba(255, 230, 190, .5), transparent 60%),
+    repeating-linear-gradient(90deg, transparent 0 18px, rgba(120, 60, 30, .12) 18px 21px, transparent 21px 40px),
+    linear-gradient(180deg, #f2c08a, #dd9a62); }
+.scene-sp.boss .sp-mookie { left: calc(var(--bowl-x) - 30 * var(--u)); bottom: 5%; height: calc(42 * var(--u)); z-index: 4; }
+.scene-sp.boss .sp-bindi { left: 2%; bottom: calc(-8 * var(--u)); height: calc(30 * var(--u)); z-index: 7; }
+.sp-bindi.cheer { animation: cheer .3s ease-out; }
+@keyframes cheer { 40% { transform: translateY(-12%) rotate(-6deg); } }
+.sp-prize { position: absolute; right: 4%; bottom: 4%; height: calc(30 * var(--u)); aspect-ratio: 320 / 242; z-index: 3; }
+.sp-prize .ms-photo { position: absolute; inset: 0; width: 100%; }
+.sp-prize.open::after { content: ''; position: absolute; left: 10%; right: 10%; top: -40%; height: 60%; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 216, 74, .8), transparent 70%); animation: glow-up .6s ease-out both; }
+@keyframes glow-up { from { opacity: 0; transform: scaleY(.3); } }
+.scene-sp.boss .sp-rusty { left: auto; right: 4%; bottom: calc(4% + 21 * var(--u)); height: calc(46 * var(--u)); z-index: 4; transition: none; }
+.sp-rusty.taunt { animation: taunt .3s ease-out; }
+.sp-rusty.flinch { animation: flinch .2s ease-out; }
+.sp-rusty.yawn { animation: laugh .2s linear 3; }
+.sp-rusty.blown { animation: blown .5s ease-out; }
+@keyframes blown { 25% { transform: translateX(calc(var(--blown, 1) * 4%)) skewX(calc(var(--blown, 1) * -6deg)) rotate(6deg); } }
+.sp-rusty.launch { animation: launch .7s cubic-bezier(.3, .1, .6, 1) forwards; }
+@keyframes launch { 30% { transform: translate(10%, -40%) rotate(160deg); } 100% { transform: translate(-40%, -260%) rotate(900deg) scale(.6); } }
+.scene-sp.boss .sp-rusty.rug { bottom: 2%; right: 6%; z-index: 5; transform-origin: 50% 100%; animation: rug .35s cubic-bezier(.5, 0, .9, .5) both; transform: scale(1.5, .28); }
+@keyframes rug { from { transform: translateY(-300%) scale(.8); } 70% { transform: scale(1.6, .2); } }
+.scene-sp.boss .sp-rusty.flop { transform: translate(0, 18%) rotate(-92deg); }
+
+@container (min-aspect-ratio: 3 / 2) {
+  .scene-sp { --bowl-x: 50%; }
+  .sp-window { height: calc(34 * var(--u)); left: 6%; }
+  .sp-lamp { left: calc(38% - 10 * var(--u)); }
+  .sp-menu { right: 6%; }
+  .sp-cut .kat.ms-cut-face, .sp-cut .ms-cut-face { width: auto; height: 170%; top: 80%; }
+  .scene-sp.boss { --bowl-x: 42%; }
+}
+/* A tall, narrow stage (a phone held upright): bigger cats, and the basket sits further back
+   so the bowl can stand in front of it. */
+@container (max-aspect-ratio: 4 / 5) {
+  .scene-sp { --u: min(1cqh, 1.2cqw); --bowl-x: 42%; }
+  .sp-bed { right: -2%; bottom: 13%; }
+  .sp-zzz { bottom: calc(13% + 42 * var(--u)); }
+  .sp-rusty { bottom: 15%; }
+  .sp-bindi { bottom: 4%; }
+  .scene-sp.boss .sp-prize { bottom: 12%; }
+  .scene-sp.boss .sp-rusty { bottom: calc(12% + 21 * var(--u)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-sun, .sp-birds, .sp-bunting i, .sp-rays.on, .kat.flee, .scene-sp.sp-quake .sp-cam, .scene-sp.sp-blast .sp-cam,
+  .scene-sp .sp-lamp svg, .scene-sp .sp-cone { animation: none !important; }
+}
+
+/* Lettering sized to the stage, so a phone held upright still fits NOM NOM NOM. */
+.sp-fx .ms-comic { font-size: clamp(18px, 6.5cqw, 34px); }
+.sp-fx .ms-comic.big { font-size: clamp(24px, 8.5cqw, 58px); }
+.sp-fx .ms-comic.hit { font-size: clamp(20px, 7cqw, 40px); }

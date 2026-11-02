@@ -1,5 +1,5 @@
 Photo props for the scenes. Every one is CC0 (public domain dedication): free to use, no
-credit required, credited here anyway. Backgrounds were cut away and the images shrunk.
+credit required, credited here anyway. Backgrounds were cut away (rembg) and the images shrunk.
 
 From the Cleveland Museum of Art Open Access collection (https://www.clevelandart.org/open-access):
   bust.png          Portrait Bust of a Man, Italy, Roman, 27 BCE-14 CE. 1928.860
@@ -15,9 +15,27 @@ From the Cleveland Museum of Art Open Access collection (https://www.clevelandar
   trophy.png        Trophy Cup and Cover, England, 1792-1793. 1968.30
                     https://clevelandart.org/art/1968.30
 
+  For Supper Time:
+  bowl.png,         Gong and Gong Beater, Japan, Edo period, early to mid-1800s. 1947.675
+  beater.png        https://clevelandart.org/art/1947.675
+  bastet.png        Cat, Egypt, Late period, 664-30 BCE. 1942.776 (Chef Bastet)
+                    https://clevelandart.org/art/1942.776
+  tureen.png        Covered Tureen (Terrine du roi), France, Sevres, 1756-57. 1949.15
+                    https://clevelandart.org/art/1949.15
+  hen-tureen.png    Hen and Chicks Covered Tureen on Stand, England, Chelsea, c. 1755. 1984.58
+                    https://clevelandart.org/art/1984.58
+  lobster.png       Lobster, Italy, possibly Padua, c. 1500-1550. 1987.6
+                    https://clevelandart.org/art/1987.6
+  stone-fish.png    Palette in the Form of a Fish, Egypt, Predynastic, c. 3500-2950 BCE. 1989.32
+                    https://clevelandart.org/art/1989.32
+  silver-tureen.png Covered Tureen on Stand, England, London, 1812. 1968.242
+                    https://clevelandart.org/art/1968.242
+
 From iNaturalist, via GBIF (photographer chose CC0):
   mouse.png         House mouse (Mus musculus), photo by Astrid Osborne.
                     https://www.inaturalist.org/observations/341355944
+  herring.png       Atlantic herring (Clupea harengus), photo by nickjeff13.
+                    https://www.inaturalist.org/observations/390630767
 
 From Wikimedia Commons:
   teacup.png        "Teacup.png", Rijksmuseum, CC0.

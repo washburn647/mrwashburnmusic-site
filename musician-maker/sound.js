@@ -255,6 +255,95 @@ export function toon(name, t, opts = {}) {
     }
     case 'slide-up': tone(300, 0.5, 0.16, 'triangle', 4); break;
     case 'slide-down': tone(1300, 0.6, 0.16, 'triangle', 0.22); break;
+    /* Supper Time (scene-supper.js) */
+    case 'ding': {
+      // Mookie's bowl is an old Japanese gong bowl: a bright ring with a slow shimmer.
+      [[660, 0.16, 1.4], [664, 0.12, 1.4], [1782, 0.06, 0.8], [3366, 0.03, 0.4]].forEach(([fq, v, len]) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = fq * rate;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(v * vol, t + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0005, t + len);
+        o.connect(g).connect(master);
+        o.start(t);
+        o.stop(t + len + 0.05);
+      });
+      break;
+    }
+    case 'meow': case 'yowl': {
+      // A cat: a buzzy voice whose pitch and vowel rise and fall ("mee-OW"). The yowl is
+      // longer, lower, louder and wobbles.
+      const yowl = name === 'yowl';
+      const len = (yowl ? 0.85 : 0.38) / rate;
+      const p = (yowl ? 360 : 520) * rate;
+      const o = ctx.createOscillator();
+      const f = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(p, t);
+      o.frequency.linearRampToValueAtTime(p * 1.55, t + len * 0.35);
+      o.frequency.linearRampToValueAtTime(p * 0.8, t + len);
+      if (yowl) {
+        const lfo = ctx.createOscillator();
+        const lg = ctx.createGain();
+        lfo.frequency.value = 7;
+        lg.gain.value = p * 0.06;
+        lfo.connect(lg).connect(o.frequency);
+        lfo.start(t);
+        lfo.stop(t + len + 0.05);
+      }
+      f.type = 'bandpass';
+      f.Q.value = 2.2;
+      f.frequency.setValueAtTime(800, t);
+      f.frequency.linearRampToValueAtTime(1800, t + len * 0.4);
+      f.frequency.linearRampToValueAtTime(700, t + len);
+      const v = (yowl ? 0.3 : 0.22) * vol;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(v, t + 0.04);
+      g.gain.setValueAtTime(v, t + len * 0.7);
+      g.gain.linearRampToValueAtTime(0, t + len);
+      o.connect(f).connect(g).connect(master);
+      o.start(t);
+      o.stop(t + len + 0.05);
+      break;
+    }
+    case 'chomp':
+      [0, 0.13].forEach((d) => {
+        noise(t + d, 0.07, 0.35 * vol, 'lowpass', 1400, 500, 1);
+        synth(t + d, 150, 0.08, 0.25 * vol, master, 'sine', 0.5);
+      });
+      break;
+    case 'burp': {
+      const o = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lg = ctx.createGain();
+      const f = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(95 * rate, t);
+      o.frequency.linearRampToValueAtTime(70 * rate, t + 0.5);
+      lfo.frequency.value = 22;
+      lg.gain.value = 0.2 * vol;
+      f.type = 'lowpass';
+      f.frequency.value = 500;
+      g.gain.setValueAtTime(0.22 * vol, t);
+      g.gain.linearRampToValueAtTime(0, t + 0.55);
+      lfo.connect(lg).connect(g.gain);
+      o.connect(f).connect(g).connect(master);
+      o.start(t); lfo.start(t);
+      o.stop(t + 0.6); lfo.stop(t + 0.6);
+      break;
+    }
+    case 'cluck': [0, 0.09, 0.16].forEach((d, i) => synth(t + d, (i === 2 ? 820 : 640) * rate, 0.05, 0.14 * vol, master, 'square', 0.6)); break;
+    case 'fanfare': [[67, 0, 0.1], [72, 0.12, 0.1], [76, 0.24, 0.1], [79, 0.36, 0.5]].forEach(([m, d, len]) => {
+      synth(t + d, 440 * 2 ** ((m - 69) / 12), len, 0.12 * vol, master, 'sawtooth');
+      synth(t + d, 440 * 2 ** ((m - 69) / 12) * 1.003, len, 0.08 * vol, master, 'square');
+    }); break;
+    case 'hiss': noise(t, 0.45, 0.22 * vol, 'highpass', 3500, 5000, 0.7); break;
+    case 'snore': noise(t, 0.6, 0.18 * vol, 'lowpass', 250, 700, 2); synth(t, 70, 0.55, 0.12 * vol, master, 'sawtooth', 1.3); break;
+    case 'tiptoe': synth(t, 1100 * rate, 0.05, 0.1 * vol, master, 'triangle', 0.7); break;
     default: break;
   }
 }
