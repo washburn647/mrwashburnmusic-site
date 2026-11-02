@@ -3,6 +3,8 @@
      onCall(i, syl)  a note of the call sounds (syl is set when the call is in syllables)
      onTap()         the learner tapped (or spoke) a note
      win(), fail()   the payoff gag
+     onBeat(down)    every beat of the groove (down: beat 1 of the 2/4 bar), so the scene
+                     shows the pulse
    plus its look for Pick options (pickClass) and Build slots (slotIcon).
    These are first versions of Kyle's ideas; see the design doc's Game ideas. */
 
@@ -41,9 +43,17 @@ export const mouseCatcher = {
     const paw = h('div', 'mc-paw', '🐾');
     const hole = h('div', 'mc-hole');
     const mouse = h('div', boss ? 'mc-mouse boss' : 'mc-mouse', boss ? '🐀' : '🐭');
-    hole.append(mouse);
+    const eyes = h('div', 'mc-eyes');
+    eyes.append(h('i'), h('i'));
+    hole.append(eyes, mouse);
     stage.append(h('div', 'floor'), hole, cat, paw);
     return {
+      // Mookie's head ticks side to side like a metronome; eyes blink in the hole on beat 1.
+      onBeat(down) {
+        cat.classList.toggle('lean-l', down);
+        cat.classList.toggle('lean-r', !down);
+        if (down) { bump(cat, 'flick'); bump(eyes, 'blink'); }
+      },
       onCall(i, syl) {
         bump(mouse, 'peek');
         bubble(stage, syl || 'squeak!', 'mc-squeak');
@@ -76,7 +86,10 @@ export const supperTime = {
     const zzz = h('div', 'st-zzz', 'z z z');
     const bowl = h('div', 'st-bowl', '🥣');
     const thieves = h('div', 'st-thieves', '🐈 🐈');
-    stage.append(h('div', 'floor'), h('div', 'st-cushion'), cat, zzz, bowl, thieves);
+    zzz.replaceChildren(h('i', '', 'z'), h('i', '', 'z'), h('i', '', 'z'));
+    const cushion = h('div', 'st-cushion');
+    stage.append(h('div', 'floor'), cushion, cat, zzz, bowl, thieves);
+    let n = 0;
     const clang = (text) => {
       bump(bowl, 'wobble');
       bubble(stage, text, 'st-clang');
@@ -84,6 +97,14 @@ export const supperTime = {
     return {
       onCall(i, syl) { clang(syl || 'clang!'); },
       onTap() { clang('CLANG!'); },
+      // Mookie snores on the beat: a big breath on 1, a small one on 2, and one z floats up per beat.
+      onBeat(down) {
+        if (!cat.classList.contains('run')) {
+          bump(cat, down ? 'breathe' : 'breathe-s');
+          bump(cushion, down ? 'squish' : 'squish-s');
+        }
+        if (zzz.isConnected) bump(zzz.children[n++ % 3], 'zpop');
+      },
       win() {
         zzz.remove();
         cat.mood('happy');

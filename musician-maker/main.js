@@ -222,7 +222,7 @@ async function startRun(opts = {}) {
     const g = R.groove;
     const duck = t >= g.duckFrom && t < g.duckUntil;
     snd.groove(i, t, spb, { tier: tierOf(R.combo), mode: g.mode, duck: duck && t >= g.micFrom ? 'mic' : duck });
-    later(t, () => bump(R.dom.pulse, 'beat'));
+    later(t, () => beat(i, spb));
   });
   mic.listen((time) => R?.onInput?.(time, true));
   beginLap();
@@ -288,12 +288,13 @@ function buildRunDom() {
   d.combo = h('div', { class: 'combo' });
   d.tempo = h('div', { class: 'tempo' });
   d.sets = h('div', { class: 'sets' });
-  d.pulse = h('div', { class: 'pulse' });
+  d.pulse = h('div', { class: 'pulse' }, h('i', {}), h('i', {}));
   d.pause = h('button', { class: 'pause', 'aria-label': 'Pause', onclick: askPause }, '❚❚');
   d.stage = h('div', { class: 'stage' });
   d.cue = h('div', { class: 'cue' });
   d.prompt = h('div', { class: 'prompt' });
   d.dots = h('div', { class: 'dots' });
+  d.ball = h('div', { class: 'ball' });
   d.controls = h('div', { class: 'controls' });
   d.overlay = h('div', { class: 'overlay' });
   d.flash = h('div', { class: 'flash' });
@@ -301,7 +302,7 @@ function buildRunDom() {
     h('header', { class: 'hud' }, h('div', { class: 'hud-l' }, d.level, d.xp), d.combo, h('div', { class: 'hud-r' }, d.pulse, d.tempo, d.pause)),
     d.sets,
     h('div', { class: 'stage-wrap' }, d.stage, d.cue, d.flash),
-    d.prompt, d.dots, d.controls, d.overlay));
+    d.prompt, h('div', { class: 'lane' }, d.dots, d.ball), d.controls, d.overlay));
   R.dom = d;
   hud();
   document.onkeydown = (e) => {
@@ -421,6 +422,54 @@ function question(item, step) {
 function dots(k, n, kind) {
   R.dom.dots.className = `dots ${kind}`;
   R.dom.dots.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < k ? 'past' : i === k ? 'now' : '' })));
+  hop(k, n, kind);
+}
+
+/* Beat cues: every beat of the groove. The run's pulse lights beat 1 or 2 of the bar (2/4),
+   the scene's characters move on the beat (each game's onBeat), and the stage thumps on
+   beat 1, harder as the band grows with the combo. */
+function beat(i, spb) {
+  const d = R.dom;
+  const down = i % 2 === 0;
+  d.pulse.className = `pulse ${down ? 'one' : 'two'}`;
+  bump(d.pulse.children[down ? 0 : 1], 'beat');
+  R.api?.onBeat?.(down, spb);
+  if (down && R.groove.mode === 'play') {
+    const wrap = d.stage.parentElement;
+    wrap.dataset.tier = tierOf(R.combo);
+    bump(wrap, 'thump');
+  }
+}
+
+/* The bouncing ball: lands on each beat's dot and hops to the next one in one beat. */
+function hop(k, n, kind) {
+  const { dots: row, ball } = R.dom;
+  const spb = R.clock.spb();
+  const x = (j) => {
+    const dot = row.children[j];
+    return dot.offsetLeft + dot.offsetWidth / 2 - ball.offsetWidth / 2;
+  };
+  ball.className = `ball on ${kind}`;
+  ball.getAnimations().forEach((a) => a.cancel());
+  const x0 = x(k);
+  const at = (px, y, sx = 1, sy = 1) => `translate(${px}px, ${y}px) scale(${sx}, ${sy})`;
+  // Last beat of the call: hop back to the start for the response. Last of the response: stay.
+  if (k + 1 >= n && kind !== 'call') {
+    ball.animate([{ transform: at(x0, 0, 1.35, 0.7) }, { transform: at(x0, 0), offset: 0.15 }, { transform: at(x0, 0) }], { duration: spb * 1000, fill: 'forwards' });
+    return;
+  }
+  const x1 = x(k + 1 >= n ? 0 : k + 1);
+  ball.animate([
+    { transform: at(x0, 0, 1.35, 0.7), easing: 'ease-out' },
+    { transform: at(x0, -2, 0.9, 1.15), offset: 0.12, easing: 'cubic-bezier(.2,.6,.4,1)' },
+    { transform: at((x0 + x1) / 2, k + 1 >= n ? -40 : -26), offset: 0.55, easing: 'cubic-bezier(.6,0,.8,.4)' },
+    { transform: at(x1, 0) },
+  ], { duration: spb * 1000, fill: 'forwards' });
+}
+
+function clearDots() {
+  R.dom.dots.replaceChildren();
+  R.dom.ball.className = 'ball';
 }
 
 function showGame(item, step, game, q, win, tx, spb) {
@@ -439,7 +488,7 @@ function showGame(item, step, game, q, win, tx, spb) {
   if (st.mookie) d.prompt.append(h('div', { class: 'say' }, mookie('happy'), h('span', {}, step.say)));
   if (step.call === 'notation') d.prompt.append(notes(item.pattern));
   if (step.call === 'text') d.prompt.append(h('div', { class: 'syl-card' }, sylText(item.pattern)));
-  d.dots.replaceChildren();
+  clearDots();
   R.win = win;
   R.item = { item, q };
   controlsFor(item, game, q, win);
@@ -719,7 +768,7 @@ function boss(B) {
     }
     save();
     R.dom.controls.replaceChildren();
-    R.dom.dots.replaceChildren();
+    clearDots();
     hud();
   });
   R.clock.at(done + 4, () => next(done + 4));

@@ -93,8 +93,10 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 .hud-r { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .tempo i { display: inline-block; width: 7px; height: 14px; margin-right: 2px; border-radius: 2px; background: var(--sage-soft); vertical-align: -2px; }
 .tempo i.on { background: var(--forest); }
-.pulse { width: 12px; height: 12px; border-radius: 50%; background: var(--wheat); opacity: .35; }
-.pulse.beat { animation: pulse .25s ease-out; }
+.pulse { display: flex; align-items: center; gap: 4px; }
+.pulse i { width: 13px; height: 13px; border-radius: 50%; background: var(--wheat); opacity: .3; }
+.pulse i + i { width: 9px; height: 9px; }
+.pulse i.beat { animation: pulse .3s ease-out; }
 @keyframes pulse { from { opacity: 1; transform: scale(1.5); } to { opacity: .35; transform: scale(1); } }
 .pause { width: 34px; height: 34px; border-radius: 50%; background: var(--paper); font-size: 12px; }
 .sets { display: flex; gap: 10px; justify-content: center; }
@@ -232,7 +234,11 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 .st-cushion { position: absolute; right: 4%; bottom: 14%; width: 38%; max-width: 200px; height: 38px; background: var(--rose); border-radius: 20px; }
 .st-cat { position: absolute; right: 8%; bottom: 18%; width: 28%; max-width: 140px; aspect-ratio: 200 / 222; transition: right .6s ease-in; }
 .st-cat.run { right: 50%; }
-.st-zzz { position: absolute; right: 12%; top: 12%; font-weight: 600; color: var(--muted); animation: float 2s ease-in-out infinite; }
+.st-zzz { position: absolute; right: 12%; top: 12%; font-weight: 600; color: var(--muted); display: flex; gap: 6px; }
+.st-zzz i { font-style: normal; display: inline-block; opacity: .35; }
+.st-zzz i:nth-child(2) { font-size: 1.25em; } .st-zzz i:nth-child(3) { font-size: 1.5em; }
+.st-zzz i.zpop { animation: zpop .5s ease-out; }
+@keyframes zpop { 30% { opacity: 1; transform: translateY(-10px) scale(1.3); } }
 @keyframes float { 50% { transform: translateY(-8px); } }
 .st-bowl { position: absolute; left: 20%; bottom: 20%; font-size: clamp(60px, 15vw, 88px); line-height: 1; transition: opacity .3s .5s; }
 .st-bowl.wobble { animation: wobble .2s ease-out; }
@@ -393,6 +399,45 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 .txbtn small { color: var(--muted); font-size: 13px; line-height: 1.3; }
 .txbtn.on { box-shadow: 0 0 0 3px var(--wheat), 0 3px 0 rgba(47, 74, 58, .15); }
 .lab .opts { margin: 10px 0; }
+
+/* ---------- beat cues ---------- */
+/* The bouncing ball over the beat dots (main.js hop()). */
+.lane { position: relative; }
+.ball { position: absolute; left: 0; top: -2px; width: 18px; height: 18px; border-radius: 50%; pointer-events: none; z-index: 1;
+  opacity: 0; transition: opacity .15s; transform-origin: 50% 100%; box-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
+.ball.on { opacity: 1; }
+.ball.call { background: var(--moss); }
+.ball.resp { background: var(--write); }
+/* The stage thumps on beat 1; with the band in, it glows in the combo's colour. */
+.stage-wrap.thump { animation: thump .25s ease-out; }
+.stage-wrap.thump[data-tier="2"] { animation: thump .25s ease-out, glow2 .35s ease-out; }
+.stage-wrap.thump[data-tier="3"] { animation: thump .25s ease-out, glow3 .35s ease-out; }
+.stage-wrap.thump[data-tier="4"] { animation: thump .25s ease-out, glow4 .35s ease-out; }
+@keyframes thump { 25% { transform: scale(1.012); } }
+@keyframes glow2 { 20% { box-shadow: 0 0 0 5px #d08a2e88, 0 0 24px #d08a2e66; } }
+@keyframes glow3 { 20% { box-shadow: 0 0 0 6px #c46a5a99, 0 0 30px #c46a5a77; } }
+@keyframes glow4 { 20% { box-shadow: 0 0 0 7px #8a5ac499, 0 0 36px #d08a2e88; } }
+/* Scene characters on the beat (games.js onBeat). */
+.mookie.lean-l:not(.oops) .mk-head { transform: rotate(-7deg); }
+.mookie.lean-r:not(.oops) .mk-head { transform: rotate(7deg); }
+.mookie .mk-tail { transform-box: view-box; transform-origin: 140px 183px; }
+.mookie.flick .mk-tail { animation: flick .3s ease-out; }
+@keyframes flick { 35% { transform: rotate(-14deg); } }
+.mc-eyes { position: absolute; left: 50%; top: 38%; transform: translateX(-50%); display: flex; gap: 10px; }
+.mc-eyes i { width: 9px; height: 11px; border-radius: 50%; background: #f2e3c4; }
+.mc-hole:has(.boss) .mc-eyes i { background: #ff5a4a; width: 13px; height: 15px; }
+.mc-eyes.blink i { animation: eye-blink .22s ease-in-out; }
+@keyframes eye-blink { 50% { transform: scaleY(.1); } }
+.st-cat { transform-origin: 50% 100%; }
+.st-cat.breathe { animation: breathe .45s ease-out; }
+.st-cat.breathe-s { animation: breathe-s .4s ease-out; }
+@keyframes breathe { 30% { transform: scale(1.06, .95); } }
+@keyframes breathe-s { 30% { transform: scale(1.025, .98); } }
+.st-cushion { transform-origin: 50% 100%; }
+.st-cushion.squish { animation: squish .4s ease-out; }
+.st-cushion.squish-s { animation: squish-s .35s ease-out; }
+@keyframes squish { 30% { transform: scale(1.04, .85); } }
+@keyframes squish-s { 30% { transform: scale(1.02, .93); } }
 
 /* ---------- mic ---------- */
 .miccheck { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; font-size: 14px; color: var(--muted); }

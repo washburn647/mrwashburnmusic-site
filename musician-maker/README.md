@@ -45,6 +45,9 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.
 - `transitions.js`: the transitions between games (cover on the beat, swap the scene, uncover).
   Test mode → Transitions lab plays each one and picks which the stream uses.
+- Beat cues: a bouncing ball lands on each beat's dot, the HUD pulse lights beat 1 or 2 of the
+  2/4 bar, the stage thumps on beat 1 (glowing in the combo's colour), and each game's
+  characters move on the beat (`onBeat` in `games.js`).
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 
