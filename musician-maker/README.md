@@ -41,7 +41,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   the site's sampled instruments for anything missing.
 - `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
 - `clock.js`: the beat clock everything is scheduled on.
-- `mic.js`: syllable onsets from the mic, analysed live and never kept.
+- `mic.js`, `mic-worklet.js`: syllable onsets from the mic, found on the audio thread, analysed
+  live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 

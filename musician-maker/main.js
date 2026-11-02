@@ -76,19 +76,26 @@ function title() {
     h('button', { class: 'link', onclick: progress }, 'My progress')));
 }
 
-/* Say "du du du" and watch the meter: shows whether the mic hears you, and how many
-   syllables it counts. */
+/* Say "du du-de du du" and watch the meter: shows whether the mic hears you, and how many
+   syllables it counts. A pause of 1.5 s starts a new count, so each try is counted alone. */
 function micCheck() {
   const fill = h('span', {});
   const heard = h('span', { class: 'heard' }, '');
   let count = 0;
+  let lastAt = -9;
   let raf = 0;
   const box = h('div', { class: 'miccheck' },
     h('button', { class: 'mini', onclick: async () => {
       try {
         await mic.start(snd.ac());
-        heard.textContent = 'Say "du du du"…';
-        mic.listen(() => { count++; heard.textContent = `Heard ${count} ${count === 1 ? 'syllable' : 'syllables'}`; bump(fill.parentElement, 'blip'); });
+        heard.textContent = 'Say "du du-de du du"…';
+        mic.listen((t) => {
+          if (t - lastAt > 1.5) count = 0;
+          lastAt = t;
+          count++;
+          heard.textContent = `Heard ${count} ${count === 1 ? 'syllable' : 'syllables'}`;
+          bump(fill.parentElement, 'blip');
+        });
         const draw = () => {
           if (!box.isConnected) { mic.stop(); return; }
           fill.style.width = `${Math.round(mic.getLevel() * 100)}%`;
@@ -152,7 +159,7 @@ async function startRun(opts = {}) {
     ctx, clock: makeClock(ctx), force: opts.force || null, lap: 0, plan: [], idx: 0,
     combo: 0, runCombo: 0, runXP: 0, setXP: 0, setMisses: 0, setGames: 0, tempo: 92,
     lastGame: null, micOn, paused: false, ended: false, win: null, api: null,
-    groove: { mode: 'play', duckFrom: 0, duckUntil: 0 },
+    groove: { mode: 'play', duckFrom: 0, duckUntil: 0, micFrom: Infinity },
     before: Object.fromEntries(STEPS.slice(1).map((s) => [s.n, dir.step(s.n).s])),
     news: micError ? [micError] : [],
   };
@@ -165,7 +172,8 @@ async function startRun(opts = {}) {
   buildRunDom();
   R.clock.onBeat((i, t, spb) => {
     const g = R.groove;
-    snd.groove(i, t, spb, { tier: tierOf(R.combo), mode: g.mode, duck: t >= g.duckFrom && t < g.duckUntil });
+    const duck = t >= g.duckFrom && t < g.duckUntil;
+    snd.groove(i, t, spb, { tier: tierOf(R.combo), mode: g.mode, duck: duck && t >= g.micFrom ? 'mic' : duck });
     later(t, () => bump(R.dom.pulse, 'beat'));
   });
   mic.listen((time) => R?.onInput?.(time, true));
@@ -219,6 +227,7 @@ function setTempo(set, B) {
   if (set > 0 && dir.flow() < 0.65) bpm = Math.min(bpm, R.tempo);
   R.tempo = bpm;
   R.clock.setBpm(bpm, B);
+  later(R.clock.timeOf(B), () => mic.setTempo(bpm));
   later(R.clock.timeOf(B), hud);
 }
 
@@ -324,6 +333,7 @@ function gameSeg(B, seg) {
   if (callBeats) {
     R.groove.duckFrom = T(c0);
     R.groove.duckUntil = R.micOn && ['perform', 'create'].includes(item.mode) ? T(p0) : T(r0);
+    R.groove.micFrom = T(r0) - 0.3 * spb;
     for (let k = 0; k < callBeats; k++) later(T(c0 + k), () => dots(k, callBeats, 'call'));
   }
   if (step.call === 'neutral' || step.call === 'syllables') {
@@ -385,17 +395,28 @@ function controlsFor(item, game, q, win) {
   R.keys = null;
   R.onInput = null;
   if (item.mode === 'perform' || item.mode === 'create') {
+    let tappedAt = -9;
     const tap = (time, fromMic) => {
-      if (!fromMic) snd.hit(game.tap, R.ctx.currentTime, 0.9);
-      R.api.onTap();
-      bump(pad, 'hit');
-      if (!R.win) return;
+      // A tap plays a sound, and the mic hears it: that isn't a syllable.
+      if (fromMic && time > tappedAt - 0.05 && time < tappedAt + snd.latency() + 0.12) return;
+      if (!fromMic) {
+        tappedAt = time;
+        snd.hit(game.tap, R.ctx.currentTime, 0.9);
+      }
       // What the learner hears lags the clock; their taps line up with what they hear.
-      const t = time - snd.latency() - (fromMic ? 0.02 : 0);
-      if (t >= win.from && t <= win.to) {
+      const t = time - snd.latency();
+      // The mic stops a little early: the payoff sounds right after the turn, and it hears them.
+      const open = R.win && t >= win.from && t <= win.to - (fromMic ? 0.2 * win.spb : 0);
+      // The mic only listens on the learner's turn: before it, it would hear the call.
+      if (fromMic && !open) return;
+      // Tapping while speaking gives two inputs for one syllable: count it once.
+      const same = 0.3 * win.spb / 2;
+      if (open && !win.taps.some((x) => Math.abs(x - t) < same)) {
         win.taps.push(t);
         if (fromMic) win.usedMic = true;
-      }
+      } else if (fromMic) return;
+      R.api.onTap();
+      bump(pad, 'hit');
     };
     const pad = h('button', { class: 'pad', onpointerdown: (e) => { e.preventDefault(); tap(R.ctx.currentTime, false); } },
       h('b', {}, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'),
@@ -593,6 +614,7 @@ function boss(B) {
     const win = { tResp: T(r0), spb, from: T(r0) - 0.25 * spb, to: T(r0 + 4) - 0.05 * spb, taps: [], usedMic: false };
     R.groove.duckFrom = T(c0);
     R.groove.duckUntil = T(R.micOn ? r0 + 4 : r0);
+    R.groove.micFrom = T(r0) - 0.3 * spb;
     later(T(c0), () => {
       R.win = null;
       R.dom.prompt.querySelector('.notation')?.remove();

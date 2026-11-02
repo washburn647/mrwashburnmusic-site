@@ -226,6 +226,8 @@ function standIn(i, t, spb, { tier, mode, duck }, rec) {
   const onOne = i % 2 === 0;
   const root = ROOTS[bar % 4];
   const g = grooveBus;
+  // While the mic listens, only the claves keep the beat: the mic hears everything else.
+  if (duck === 'mic') { hit('claves', t, onOne ? 0.3 : 0.2, g); return; }
   const level = duck ? 0.35 : 1;
   if (mode === 'breakdown') {
     if (rec.breakdown) return;
