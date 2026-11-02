@@ -1,0 +1,10 @@
+Sound effects in this folder
+
+From Kenney's "Impact Sounds", "RPG Audio" and "Digital Audio" packs by Kenney (www.kenney.nl).
+  Licence: CC0 1.0 (public domain), https://creativecommons.org/publicdomain/zero/1.0/
+  Converted from Ogg to mono MP3.
+
+  swish   cloth_1             punch   impact_punch_medium_002   thud   impact_soft_heavy_001
+  step-1  footstep_wood_001   step-2  footstep_wood_002         pot    metal_pot_1
+  boing   phase_jump_1        creak   creak_1                   tin    impact_tin_medium_000
+  clink   impact_plate_light_002   wah   phaser_down_1           pep    pep_sound_1

@@ -48,8 +48,91 @@ export function load() {
       await Promise.allSettled([kyle.prepare(kyle.patterns), kyle.prepareCues()]);
     })(),
     (async () => { loops = await samples.grooveLoops(); })(),
+    ...TOON_FILES.map(loadToon),
   ]);
   return loading;
+}
+
+/* ---------- cartoon effects for the scenes ---------- */
+// Recorded ones are Kenney's CC0 packs (fx/CREDITS.txt); the rest are synthesized.
+const TOON_FILES = ['swish', 'punch', 'thud', 'step-1', 'step-2', 'pot', 'boing', 'creak', 'tin', 'clink', 'wah', 'pep'];
+const toonBuf = {};
+const toonBase = new URL('./fx/', import.meta.url);
+async function loadToon(name) {
+  const r = await fetch(new URL(`${name}.mp3`, toonBase));
+  if (!r.ok) return;
+  const data = await r.arrayBuffer();
+  toonBuf[name] = await new Promise((ok, fail) => ctx.decodeAudioData(data, ok, fail));
+}
+
+function playBuf(buf, t, vol = 0.6, rate = 1) {
+  const src = ctx.createBufferSource();
+  const g = ctx.createGain();
+  src.buffer = buf;
+  src.playbackRate.value = rate;
+  g.gain.value = vol;
+  src.connect(g).connect(master);
+  src.start(Math.max(t, ctx.currentTime));
+}
+
+function noise(t, len, vol, filter, from, to, q = 1) {
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * len), ctx.sampleRate);
+  const x = buf.getChannelData(0);
+  for (let i = 0; i < x.length; i++) x[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const f = ctx.createBiquadFilter();
+  f.type = filter;
+  f.Q.value = q;
+  f.frequency.setValueAtTime(from, t);
+  f.frequency.exponentialRampToValueAtTime(to, t + len);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.01);
+  g.gain.setValueAtTime(vol, t + len * 0.7);
+  g.gain.linearRampToValueAtTime(0, t + len);
+  src.connect(f).connect(g).connect(master);
+  src.start(t);
+}
+
+/* toon(name, t): play a scene effect at audio time t (now if t is left out). */
+export function toon(name, t, opts = {}) {
+  if (!ctx) return;
+  t = Math.max(t ?? ctx.currentTime, ctx.currentTime);
+  const { vol = 1, rate = 1 } = opts;
+  if (toonBuf[name]) { playBuf(toonBuf[name], t, 0.6 * vol, rate); return; }
+  const tone = (f, len, v, type, slide) => synth(t, f, len, v * vol, master, type, slide);
+  switch (name) {
+    case 'whistle-up': tone(500, 0.35, 0.18, 'sine', 3.2); break;
+    case 'whistle-down': tone(1500, 0.45, 0.18, 'sine', 0.3); break;
+    case 'squeak': tone(1900, 0.07, 0.12, 'sine', 1.5); synth(t + 0.08, 2300, 0.06, 0.1 * vol, master, 'sine', 1.3); break;
+    case 'pop': tone(700, 0.06, 0.3, 'sine', 2.2); break;
+    case 'zip': noise(t, 0.22, 0.35 * vol, 'bandpass', 900, 6000, 3); break;
+    case 'raspberry': {
+      // A wobbling buzz: a low sawtooth under a fast tremolo.
+      const o = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lg = ctx.createGain();
+      const g = ctx.createGain();
+      const f = ctx.createBiquadFilter();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(110, t);
+      o.frequency.linearRampToValueAtTime(80, t + 0.45);
+      lfo.frequency.value = 28;
+      lg.gain.value = 0.18 * vol;
+      f.type = 'lowpass';
+      f.frequency.value = 1400;
+      g.gain.setValueAtTime(0.18 * vol, t);
+      g.gain.linearRampToValueAtTime(0, t + 0.5);
+      lfo.connect(lg).connect(g.gain);
+      o.connect(f).connect(g).connect(master);
+      o.start(t); lfo.start(t);
+      o.stop(t + 0.55); lfo.stop(t + 0.55);
+      break;
+    }
+    case 'twinkle': [88, 91, 96].forEach((m, i) => note('marimba', m, t + i * 0.07, 0.2, 0.25)); break;
+    default: break;
+  }
 }
 
 /* ---------- basic voices ---------- */

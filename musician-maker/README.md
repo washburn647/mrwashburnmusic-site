@@ -51,6 +51,15 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `effects.js`: feedback effects. Taps ripple and leave a tick on the beat lane, coloured by
   timing (on time, early or late); right answers burst confetti (stars when perfect) and fly
   the XP to the counter; misses wobble the stage; combo tiers send a shockwave and the band in.
+- `scene-mouse.js`: Mouse Catcher in full: the room (pendulum clock on the beat, WANTED poster,
+  window, mouse hole), rigged Mookie's rubber-hose swipes, the win and miss gags, close-up
+  cutaways, a party that grows with the combo, and The Big Cheese for the boss. Styles in
+  `scenes.css`.
+- `rig.js`: rigged Mookie for scenes: springs on body, head, ears, eyes, arms and tail; moods
+  (idle, hunt, happy, smug, star, shock, dizzy); `reach()` to any point on the page.
+- `critters.js`: the mouse and The Big Cheese, with props (shades, flag, crown, bandage).
+- `fx/`: cartoon sound effects from Kenney's CC0 packs (`fx/CREDITS.txt`); `toon()` in
+  `sound.js` plays them and synthesizes the rest (slide whistle, squeak, raspberry, zip).
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 

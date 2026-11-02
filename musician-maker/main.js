@@ -608,7 +608,7 @@ function beat(i, spb) {
   const down = i % 2 === 0;
   d.pulse.className = `pulse ${down ? 'one' : 'two'}`;
   bump(d.pulse.children[down ? 0 : 1], 'beat');
-  R.api?.onBeat?.(down, spb);
+  R.api?.onBeat?.(down, spb, tierOf(R.combo));
   if (down && R.groove.mode === 'play') {
     const wrap = d.stage.parentElement;
     wrap.dataset.tier = tierOf(R.combo);
@@ -988,8 +988,9 @@ function boss(B) {
           hearts.textContent = '❤️'.repeat(rounds - hits) + '🖤'.repeat(hits);
           bump(hearts, 'fx-hit');
           flash('BAM!', 'plus');
+          R.api.hit?.();
         },
-        onFail: () => { bump(R.dom.prompt.querySelector('.hearts'), 'fx-no'); flash('missed!', 'bad'); },
+        onFail: () => { bump(R.dom.prompt.querySelector('.hearts'), 'fx-no'); flash('missed!', 'bad'); R.api.miss?.(); },
       });
     });
   }
