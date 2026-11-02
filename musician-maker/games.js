@@ -99,7 +99,7 @@ export const supperTime = {
       onTap() { clang('CLANG!'); },
       // Mookie snores on the beat: a big breath on 1, a small one on 2, and one z floats up per beat.
       onBeat(down) {
-        if (!cat.classList.contains('run')) {
+        if (!cat.classList.contains('dash')) {
           bump(cat, down ? 'breathe' : 'breathe-s');
           bump(cushion, down ? 'squish' : 'squish-s');
         }
@@ -108,7 +108,7 @@ export const supperTime = {
       win() {
         zzz.remove();
         cat.mood('happy');
-        cat.classList.add('run');
+        cat.classList.add('dash');
         bubble(stage, 'NOM NOM NOM!', 'big');
       },
       fail() {

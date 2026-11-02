@@ -233,7 +233,7 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 .scene-supper .floor { background: #b6c8a3; }
 .st-cushion { position: absolute; right: 4%; bottom: 14%; width: 38%; max-width: 200px; height: 38px; background: var(--rose); border-radius: 20px; }
 .st-cat { position: absolute; right: 8%; bottom: 18%; width: 28%; max-width: 140px; aspect-ratio: 200 / 222; transition: right .6s ease-in; }
-.st-cat.run { right: 50%; }
+.st-cat.dash { right: 50%; }
 .st-zzz { position: absolute; right: 12%; top: 12%; font-weight: 600; color: var(--muted); display: flex; gap: 6px; }
 .st-zzz i { font-style: normal; display: inline-block; opacity: .35; }
 .st-zzz i:nth-child(2) { font-size: 1.25em; } .st-zzz i:nth-child(3) { font-size: 1.5em; }
@@ -438,6 +438,75 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 .st-cushion.squish-s { animation: squish-s .35s ease-out; }
 @keyframes squish { 30% { transform: scale(1.04, .85); } }
 @keyframes squish-s { 30% { transform: scale(1.02, .93); } }
+
+/* ---------- feedback effects (effects.js) ---------- */
+.fx-burst { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 4; }
+.fx-p { position: absolute; left: 0; top: 0; font-style: normal; font-weight: 700; line-height: 1; color: var(--c);
+  animation: fx-p var(--d) cubic-bezier(.2, .7, .4, 1) forwards; }
+.fx-p.confetti { width: 9px; height: 13px; margin: -6px 0 0 -4px; border-radius: 2px; background: var(--c); }
+.fx-p.stars, .fx-p.notes, .fx-p.hearts { font-size: 22px; margin: -11px 0 0 -8px; text-shadow: 0 1px 0 rgba(0, 0, 0, .15); }
+.fx-p.notes { font-family: 'Times New Roman', serif; }
+@keyframes fx-p {
+  0% { transform: translate(0, 0) scale(.3) rotate(0); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + 60px)) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+.pad { position: relative; }
+.fx-ripple { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; pointer-events: none;
+  border: 4px solid var(--sage); animation: fx-ripple .5s ease-out forwards; }
+.fx-ripple.tap { border-color: var(--forest); }
+.fx-ripple.on { border-color: var(--moss); border-width: 6px; }
+.fx-ripple.close { border-color: #d08a2e; }
+.fx-ripple.off { border-color: var(--rose); }
+@keyframes fx-ripple { to { transform: scale(6); opacity: 0; } }
+.fx-pop { position: absolute; transform: translate(-50%, 0); font-size: 16px; pointer-events: none; white-space: nowrap;
+  background: var(--paper); padding: 1px 8px; border-radius: 999px; animation: fx-pop .8s ease-out forwards; }
+.fx-pop.close { color: #b8741e; } .fx-pop.off { color: var(--rose); }
+@keyframes fx-pop { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.7); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -22px); } }
+.tick { position: absolute; top: -8px; width: 4px; height: 30px; margin-left: -2px; border-radius: 2px; background: var(--forest); pointer-events: none;
+  animation: tick-in .2s ease-out; }
+.tick.on { background: var(--moss); } .tick.close { background: #d08a2e; } .tick.off { background: var(--rose); }
+@keyframes tick-in { from { transform: scaleY(0); } }
+.fx-fly { position: fixed; z-index: 20; pointer-events: none; font-weight: 700; font-size: 26px; color: var(--moss);
+  text-shadow: 0 2px 0 var(--paper), 0 0 10px var(--paper); }
+.fx-fly.gold { color: #d08a2e; }
+.xp.fx-got, .combo.fx-got { animation: fx-got .35s ease-out; }
+@keyframes fx-got { 40% { transform: scale(1.25); } }
+.xpbar span { transition: width .6s cubic-bezier(.3, 1.4, .5, 1); }
+.combo { position: relative; }
+.combo.fx-no { animation: fx-no .35s ease-out; }
+@keyframes fx-no { 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+.fx-drop { position: absolute; left: 50%; top: 0; white-space: nowrap; color: var(--rose); font-size: 15px; pointer-events: none;
+  animation: fx-drop .9s ease-in forwards; }
+@keyframes fx-drop { 0% { transform: translate(-50%, 0) rotate(0); opacity: 1; } 100% { transform: translate(-30%, 46px) rotate(18deg); opacity: 0; } }
+.fx-shock { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; pointer-events: none; z-index: 3;
+  border: 10px solid var(--c); animation: fx-shock .7s ease-out forwards; }
+@keyframes fx-shock { to { transform: scale(18); opacity: 0; border-width: 2px; } }
+.fx-parade { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-end; gap: 6px; padding-bottom: 6%; pointer-events: none; z-index: 3; }
+.fx-parade i { font-style: normal; font-size: clamp(36px, 10vw, 56px); line-height: 1; opacity: 0;
+  animation: fx-parade 1.5s cubic-bezier(.3, 1.3, .5, 1) calc(var(--i) * .08s) forwards; }
+@keyframes fx-parade {
+  0% { opacity: 0; transform: translateX(var(--from)) rotate(-30deg); }
+  30% { opacity: 1; transform: none; }
+  45% { transform: translateY(-16px); } 60% { transform: none; }
+  85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); }
+}
+.stage-wrap.fx-miss { animation: fx-miss .45s ease-out; }
+.stage-wrap.fx-miss .stage { animation: fx-tint .6s ease-out; }
+@keyframes fx-miss { 15% { transform: translateX(-8px) rotate(-.6deg); } 35% { transform: translateX(7px) rotate(.5deg); } 55% { transform: translateX(-4px); } 75% { transform: translateX(2px); } }
+@keyframes fx-tint { 15% { filter: saturate(.4) brightness(.92); box-shadow: inset 0 0 0 6px rgba(196, 106, 90, .6); } }
+.opt.press, .slot.flip { animation: press .22s ease-out; }
+@keyframes press { 40% { transform: scale(.94) rotateX(25deg); } }
+.opt.right { animation: opt-right .5s ease-out; }
+@keyframes opt-right { 30% { transform: scale(1.08); } }
+.opt.wrong { box-shadow: 0 0 0 4px var(--rose); animation: fx-no .4s ease-out; }
+.slot.right { box-shadow: 0 0 0 4px var(--moss); }
+.slot.wrong { box-shadow: 0 0 0 4px var(--rose); animation: fx-no .4s ease-out; }
+.hearts { display: inline-block; }
+.hearts.fx-hit { animation: fx-got .4s ease-out; }
+.hearts.fx-no { animation: fx-no .4s ease-out; }
+.flash.gold { color: #d08a2e; font-size: 28px; }
+.card { position: relative; }
 
 /* ---------- mic ---------- */
 .miccheck { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; font-size: 14px; color: var(--muted); }

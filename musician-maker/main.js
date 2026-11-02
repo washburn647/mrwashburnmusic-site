@@ -12,6 +12,7 @@ import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js'
 import { GAMES, mouseCatcher, bump } from './games.js';
 import { mookie } from './mookie.js';
 import * as TX from './transitions.js';
+import * as FX from './effects.js';
 import { cueId } from './cues.js';
 import { notation } from '/assets/patterns/notation.js';
 import * as store from './store.js';
@@ -26,6 +27,10 @@ const save = () => store.save(st);
 const today = () => new Date().toLocaleDateString('en-CA');
 const LADDER = () => (st.mookie ? [92, 108, 108] : [92, 108, 126]);
 const TEMPO_XP = { 92: 1, 108: 1.5, 126: 2 };
+const TIER_COLORS = ['#5E7D4F', '#5E7D4F', '#d08a2e', '#C46A5A', '#8a5ac4'];
+// The band joining at each combo tier: bass, drums, horns, everyone.
+const BAND = [[], ['🎸'], ['🥁', '🎸'], ['🎺', '🥁', '🎺'], ['🎷', '🎺', '🥁', '🎸', '🎹']];
+const PRAISE = ['Yes!', 'Nice!', 'Got it!', 'Woo!', 'Yeah!'];
 const STICKERS = ['🧀', '🐭', '🥁', '🎺', '🎻', '🪕', '🎷', '🏆'];
 const GAGS = ['Mookie licks a paw. Coolly.', 'Mookie knocks a pencil off the desk.', 'Mookie does a little stretch.',
   'Mookie stares at nothing for a while.', 'Mookie pretends that was on purpose.', 'Mookie purrs in 2/4.'];
@@ -317,7 +322,13 @@ function hud() {
   const d = R.dom;
   const lv = levelOf(st.xp);
   d.level.textContent = `Lv ${lv.n} · ${lv.title}`;
-  d.xp.replaceChildren(h('span', { class: 'xpbar' }, h('span', { style: `width:${Math.round(lv.frac * 100)}%` })), ` ${st.xp} XP`);
+  if (!d.xpFill) {
+    d.xpFill = h('span', {});
+    d.xpText = h('span', {});
+    d.xp.replaceChildren(h('span', { class: 'xpbar' }, d.xpFill), d.xpText);
+  }
+  d.xpFill.style.width = `${Math.round(lv.frac * 100)}%`;
+  d.xpText.textContent = ` ${st.xp} XP`;
   const t = tierOf(R.combo);
   d.combo.className = `combo t${t}`;
   d.combo.replaceChildren(h('b', {}, R.combo ? `${R.combo} in a row` : ''), t ? h('span', {}, ` ×${t + 1} ${TIER_NAMES[t]}`) : '');
@@ -420,6 +431,7 @@ function question(item, step) {
 }
 
 function dots(k, n, kind) {
+  if (k === 0 && kind === 'call') clearTicks();
   R.dom.dots.className = `dots ${kind}`;
   R.dom.dots.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < k ? 'past' : i === k ? 'now' : '' })));
   hop(k, n, kind);
@@ -470,6 +482,24 @@ function hop(k, n, kind) {
 function clearDots() {
   R.dom.dots.replaceChildren();
   R.dom.ball.className = 'ball';
+  clearTicks();
+}
+
+const clearTicks = () => R.dom.dots.parentElement.querySelectorAll('.tick').forEach((t) => t.remove());
+
+/* A mark on the beat lane where a tap fell (b: beats after the response began). */
+function tick(b, cls) {
+  const row = R.dom.dots;
+  const n = row.children.length;
+  if (!n) return;
+  const cx = (j) => row.children[j].offsetLeft + row.children[j].offsetWidth / 2;
+  const gap = n > 1 ? cx(1) - cx(0) : 22;
+  const k = Math.max(0, Math.min(n - 1, Math.floor(b)));
+  if (b < -0.5) return;
+  const x = cx(k) + (b - k) * gap;
+  const m = h('i', { class: `tick ${cls}` });
+  m.style.left = `${x}px`;
+  row.parentElement.append(m);
 }
 
 function showGame(item, step, game, q, win, tx, spb) {
@@ -500,7 +530,26 @@ function controlsFor(item, game, q, win) {
   R.onInput = null;
   if (item.mode === 'perform' || item.mode === 'create') {
     let tappedAt = -9;
-    const tap = (time, fromMic) => {
+    // Tap feedback: a ripple where the finger landed, coloured by timing when the answer is
+    // known (on time, close, off), and a tick on the beat lane where the tap fell.
+    const expected = item.mode === 'perform' ? onsets(item.pattern).map((o) => win.tResp + o.b * win.spb) : null;
+    const feel = (t, open, ev) => {
+      const r = pad.getBoundingClientRect();
+      const x = ev?.clientX != null ? ev.clientX - r.left : r.width / 2;
+      const y = ev?.clientY != null ? ev.clientY - r.top : r.height / 2;
+      let cls = open ? 'tap' : 'idle';
+      let word = '';
+      if (open && expected) {
+        const e = expected.reduce((best, x) => (Math.abs(t - x) < Math.abs(best) ? t - x : best), Infinity);
+        const a = Math.abs(e);
+        if (a <= 0.08 * win.spb + 0.02) cls = 'on';
+        else if (a <= 0.2 * win.spb + 0.03) { cls = 'close'; word = e < 0 ? 'early' : 'late'; } else { cls = 'off'; word = e < 0 ? 'too early' : 'too late'; }
+      }
+      FX.ripple(pad, x, y, cls);
+      if (word) FX.pop(pad, x, y - 24, word, cls);
+      if (open) tick((t - win.tResp) / win.spb, cls);
+    };
+    const tap = (time, fromMic, ev) => {
       // A tap plays a sound, and the mic hears it: that isn't a syllable.
       if (fromMic && time > tappedAt - 0.05 && time < tappedAt + snd.latency() + 0.12) return;
       if (!fromMic) {
@@ -521,8 +570,9 @@ function controlsFor(item, game, q, win) {
       } else if (fromMic) return;
       R.api.onTap();
       bump(pad, 'hit');
+      feel(t, open, ev);
     };
-    const pad = h('button', { class: 'pad', onpointerdown: (e) => { e.preventDefault(); tap(R.ctx.currentTime, false); } },
+    const pad = h('button', { class: 'pad', onpointerdown: (e) => { e.preventDefault(); tap(R.ctx.currentTime, false, e); } },
       h('b', {}, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'),
       R.micOn ? h('span', { class: 'meter' }, h('span', {})) : null);
     if (R.micOn) {
@@ -549,6 +599,7 @@ function controlsFor(item, game, q, win) {
       if (!R.win || win.choice != null) return;
       win.choice = i;
       buttons[i].classList.add('chosen');
+      bump(buttons[i], 'press');
       snd.hit(game.tap, R.ctx.currentTime, 0.7);
     };
     R.keys = (e) => {
@@ -561,6 +612,7 @@ function controlsFor(item, game, q, win) {
   } else {
     // Build and compose: four beat slots, each ♩ or ♫.
     const slots = win.slots.map((_, i) => h('button', { class: 'slot', onclick: () => cycle(i) }));
+    R.slotButtons = slots;
     const draw = () => slots.forEach((b, i) => {
       const c = win.slots[i];
       b.className = `slot ${c || 'empty'}`;
@@ -571,6 +623,7 @@ function controlsFor(item, game, q, win) {
       win.slots[i] = win.slots[i] === 'q' ? 'ee' : 'q';
       snd.hit(game.tap, R.ctx.currentTime, 0.6);
       draw();
+      bump(slots[i], 'flip');
     };
     R.keys = (e) => {
       const n = Number(e.key);
@@ -599,11 +652,14 @@ function grade(item, q, win) {
     return { right: !!got && got.id !== p.id, got, why: !got ? 'unclear' : got.id === p.id ? 'same' : '', mic: win.usedMic };
   }
   if (item.mode === 'pick') {
-    R.pickButtons?.forEach((b, i) => b.classList.add(i === q.correct ? 'right' : 'dim'));
+    R.pickButtons?.forEach((b, i) => b.classList.add(i === q.correct ? 'right' : i === win.choice ? 'wrong' : 'dim'));
+    if (win.choice === q.correct) FX.burst(R.pickButtons[q.correct], { kind: 'stars', count: 10, spread: 0.6 });
     return { right: win.choice === q.correct };
   }
   const full = win.slots.every(Boolean);
   if (item.mode === 'compose') return { right: full, got: full ? fromCells(win.slots) : null };
+  // Build: each slot shows whether it was right.
+  R.slotButtons?.forEach((b, i) => b.classList.add(win.slots[i] === p.cells[i] ? 'right' : 'wrong'));
   return { right: full && fromCells(win.slots).id === p.id };
 }
 
@@ -619,13 +675,19 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     const gained = addXP((10 + (res.perfect ? 5 : 0)) * (TEMPO_XP[R.tempo] || 1) * (res.mic ? 1.5 : 1) * (tier + 1));
     onWin();
     snd.fx.win(t);
+    // Right: confetti (stars when perfect) that grows with the combo, and the XP flies to the counter.
+    const wrap = R.dom.stage.parentElement;
+    FX.burst(wrap, { kind: res.perfect ? 'stars' : 'confetti', y: 0.45, count: 14 + tier * 6, spread: 1 + tier * 0.25 });
+    FX.fly(wrap, R.dom.xp, `+${gained}`, res.perfect ? 'gold' : '');
     if (tier > before) {
       snd.fx.tier(t);
       snd.speak(cueId(TIER_NAMES[tier]), t);
       flash(`${TIER_NAMES[tier]}! ×${tier + 1}`, `tier t${tier}`);
+      FX.shockwave(wrap, TIER_COLORS[tier]);
+      FX.parade(wrap, BAND[tier]);
     } else {
       if (res.perfect) snd.speak('perfect', t);
-      if (!quiet) flash(`${res.perfect ? 'PERFECT! ' : ''}+${gained}`, 'plus');
+      if (!quiet) flash(res.perfect ? 'PERFECT!' : PRAISE[Math.floor(Math.random() * PRAISE.length)], res.perfect ? 'plus gold' : 'plus');
     }
   } else {
     const was = R.combo;
@@ -635,6 +697,9 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     onFail();
     if (was >= 3) snd.fx.scratch(t);
     else snd.fx.fail(t);
+    // Miss: the stage wobbles, and a lost combo falls off the counter.
+    bump(R.dom.stage.parentElement, 'fx-miss');
+    if (was >= 3) R.lostCombo = was;
     if (!quiet) {
       const why = { missing: 'Not enough notes', extra: 'Too many notes', same: 'Make it different from mine!', unclear: "Couldn't hear a pattern" }[res.why];
       R.dom.prompt.replaceChildren(h('div', { class: 'answer' },
@@ -646,6 +711,12 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
   st.bestCombo = Math.max(st.bestCombo, R.combo);
   save();
   hud();
+  if (res.right) bump(R.dom.combo, 'fx-got');
+  else if (R.lostCombo) {
+    FX.drop(R.dom.combo, `${R.lostCombo} in a row`);
+    bump(R.dom.combo, 'fx-no');
+    R.lostCombo = 0;
+  }
 }
 
 /* ---------------- breather ---------------- */
@@ -680,8 +751,9 @@ function breather(B, seg) {
       R.combo >= 3 ? h('p', {}, `${R.combo} in a row, keep it going!`) : null,
       ...lines.map((l) => h('p', { class: 'news' }, l)),
       h('div', { class: 'gag' }, mookie('happy'), h('span', {}, GAGS[Math.floor(Math.random() * GAGS.length)]))));
-    // XP counts up on the beat.
-    for (let k = 1; k <= 4; k++) later(T(B + k), () => { count.textContent = `+${Math.round(setXP * k / 4)}`; bump(count, 'beat'); });
+    // XP counts up on the beat, with a pop of notes; confetti for no misses or a level up.
+    for (let k = 1; k <= 4; k++) later(T(B + k), () => { count.textContent = `+${Math.round(setXP * k / 4)}`; bump(count, 'beat'); FX.burst(count, { kind: 'notes', count: 5, spread: 0.6 }); });
+    if (lines.some((l) => /No misses|Level up|NEW STEP|complete/.test(l))) later(T(B + 1), () => FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.2, count: 30, spread: 1.6 }));
     hud();
   });
   R.clock.at(B + 8, () => {
@@ -748,8 +820,13 @@ function boss(B) {
       result(item, res, {
         t: T(r0 + 4),
         quiet: true,
-        onWin: () => { R.dom.prompt.querySelector('.hearts').textContent = '❤️'.repeat(rounds - hits) + '🖤'.repeat(hits); flash('BAM!', 'plus'); },
-        onFail: () => flash('missed!', 'bad'),
+        onWin: () => {
+          const hearts = R.dom.prompt.querySelector('.hearts');
+          hearts.textContent = '❤️'.repeat(rounds - hits) + '🖤'.repeat(hits);
+          bump(hearts, 'fx-hit');
+          flash('BAM!', 'plus');
+        },
+        onFail: () => { bump(R.dom.prompt.querySelector('.hearts'), 'fx-no'); flash('missed!', 'bad'); },
       });
     });
   }
@@ -793,6 +870,7 @@ function intermission() {
     h('div', { class: 'row' },
       h('button', { class: 'play', onclick: () => { overlay(null); R.lap++; beginLap(); } }, 'Keep going'),
       h('button', { class: 'link', onclick: endRun }, 'Done for today'))));
+  FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.15, count: 36, spread: 1.8 });
 }
 
 function askPause() {
