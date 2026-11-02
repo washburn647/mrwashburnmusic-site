@@ -1,6 +1,6 @@
 """Build the shared instrument samples in assets/sounds/ from the source libraries.
 
-  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--only NAME,NAME]
+  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--only NAME,NAME]
 
 VSCO_DIR   a clone of https://github.com/sgossner/VSCO-2-CE (CC0)
 PIANO_DIR  the audio/ folder of the npm package @audio-samples/piano-mp3-velocity10
@@ -8,6 +8,11 @@ PIANO_DIR  the audio/ folder of the npm package @audio-samples/piano-mp3-velocit
 DRUMS_DIR  salamanderDrumkit.tar.bz2 unpacked, from https://archive.org/details/SalamanderDrumkit
            (Salamander Drumkit by Alexander Holm, CC BY-SA 3.0): the drum kit, kit-*
            (--only kit-kick,… builds just those; the other folders aren't opened then)
+--guitar   the samples/ folder of FreePats' Spanish Classical Guitar (SFZ+FLAC), from
+           https://freepats.zenvoid.org/Guitar/acoustic-guitar.html (CC0)
+--banjo    the samples/ folder of the FlameStudios Kay 5-String Banjo SFZ, from
+           https://github.com/sfzinstruments/FlameStudios.Kay5StringBanjo (GNU GPL v3 or later);
+           only the hard_* files of strings 1-4 are used, so those are all it needs
 
 Needs ffmpeg and numpy. Every sample is checked with a pitch detector: the file name's
 octave is corrected when the source counts octaves differently, and the measured tuning
@@ -51,6 +56,14 @@ PITCHED = {
     'glockenspiel': ('Glockenspiel', 'vsco', 'Percussion/Glock/*.wav', [''], 3, 0.4, True),
     'xylophone': ('Xylophone', 'vsco', 'Percussion/Xylo/*.wav', [''], 1.5, 0.2, True),
     'marimba': ('Marimba', 'vsco', 'Percussion/Marimba/*.wav', [''], 2.5, 0.3, True),
+    'guitar': ('Nylon guitar', 'guitar', '*.flac', [''], 3, 0.3, True),
+    'banjo': ('Banjo', 'banjo', 'string*/hard_*.wav', [''], 2, 0.2, True),
+}
+
+# Sources that don't name their files by note: file name to MIDI note.
+NOTE_FROM = {
+    # Kay banjo: hard_40.wav is MIDI 64 (the number is the note counted from C1).
+    'banjo': lambda base: int(re.search(r'hard_(\d+)', base).group(1)) + 24,
 }
 
 # name: label, file in VSCO_DIR, seconds kept
@@ -94,6 +107,8 @@ KIT = {
 
 CREDITS = {
     'piano': 'salamander',
+    'guitar': 'freepats-guitar',
+    'banjo': 'flamestudios-banjo',
 }
 
 
@@ -172,7 +187,7 @@ def build_pitched(name, spec, src):
     by_note = {}
     for f in files:
         base = os.path.basename(f)
-        m = label_midi(base)
+        m = NOTE_FROM[source](base) if source in NOTE_FROM else label_midi(base)
         if m is None:
             continue
         rank = next((i for i, l in enumerate(layers) if not l or re.search(rf'_{l}(_|\.|$)', base)), None)
@@ -206,6 +221,9 @@ def build_pitched(name, spec, src):
         x = trim(z['x'], seconds if seconds else max(2, min(7, 7 - (root - 21) * 0.06)))
         z.update(root=root, tune=tune, x=x)
         out.append(z)
+    # A relabelled note that lands on another sample's note is dropped; its neighbours cover it.
+    taken = {z['labelled'] + shift for z in out}
+    out = [z for z in out if z['root'] == z['labelled'] + shift or z['root'] not in taken]
     rms = lambda x: np.sqrt(np.mean(x[:int(0.5 * SR)] ** 2)) or 1
     if even:
         target = np.median([rms(z['x']) for z in out])
@@ -238,16 +256,23 @@ def build_hit(name, spec, src, source='vsco'):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith('--')]
-    only = None
-    if '--only' in sys.argv:
-        only = set(sys.argv[sys.argv.index('--only') + 1].split(','))
-        args = [a for a in args if a != sys.argv[sys.argv.index('--only') + 1]]
-    src = {'vsco': args[0], 'piano': args[1], 'drums': args[2] if len(args) > 2 else None}
+    argv = sys.argv[1:]
+    opts = {}
+    for flag in ('--only', '--guitar', '--banjo'):
+        if flag in argv:
+            i = argv.index(flag)
+            opts[flag] = argv[i + 1]
+            del argv[i:i + 2]
+    args = argv
+    only = set(opts['--only'].split(',')) if '--only' in opts else None
+    src = {'vsco': args[0], 'piano': args[1], 'drums': args[2] if len(args) > 2 else None,
+           'guitar': opts.get('--guitar'), 'banjo': opts.get('--banjo')}
     index_path = os.path.join(OUT, 'index.json')
     index = json.load(open(index_path)) if os.path.exists(index_path) else {}
     instruments = index.get('instruments', {})
     for name, spec in PITCHED.items():
+        if spec[1] in ('guitar', 'banjo') and not src[spec[1]]:
+            continue
         if not only or name in only:
             instruments[name] = build_pitched(name, spec, src)
     for name, spec in HITS.items():
@@ -263,6 +288,8 @@ def main():
         'salamander': 'Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0',
         'vsco': 'VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0',
         'salamander-drums': 'Salamander Drumkit by Alexander Holm, CC BY-SA 3.0',
+        'freepats-guitar': 'Spanish Classical Guitar by Roberto (FreePats project), CC0',
+        'flamestudios-banjo': 'Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3',
     }
     with open(index_path, 'w') as f:
         json.dump(index, f, indent=1)
