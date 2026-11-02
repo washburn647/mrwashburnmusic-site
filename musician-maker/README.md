@@ -43,6 +43,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `clock.js`: the beat clock everything is scheduled on.
 - `mic.js`, `mic-worklet.js`: syllable onsets from the mic, found on the audio thread, analysed
   live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.
+- `transitions.js`: the transitions between games (cover on the beat, swap the scene, uncover).
+  Test mode → Transitions lab plays each one and picks which the stream uses.
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 

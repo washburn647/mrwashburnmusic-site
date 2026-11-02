@@ -15,7 +15,7 @@ let kyle = null; // recorded voice, once Kyle's takes are on the site
 let loops = {}; // Kyle's groove loops: layer → bpm → { buffer, start, beats }
 
 const HITS = ['claves', 'log-drum-low', 'log-drum-high', 'bass-drum', 'snare', 'shaker', 'tambourine',
-  'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low'];
+  'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low', 'conga', 'finger-cymbals', 'sleigh-bells'];
 const PITCHED = { bass: [36, 52], horn: [60, 74], marimba: [60, 88], trombone: [40, 55] };
 
 export function ac() {
@@ -72,6 +72,7 @@ const FALLBACK = {
   claves: [2500, 0.05], 'log-drum-low': [160, 0.2], 'log-drum-high': [320, 0.15], 'bass-drum': [70, 0.25],
   snare: [220, 0.12], shaker: [6000, 0.03], tambourine: [5000, 0.06], cymbal: [7000, 0.4], triangle: [3000, 0.4],
   cowbell: [800, 0.15], agogo: [900, 0.15], guiro: [1200, 0.1], 'bongo-high': [400, 0.1], 'bongo-low': [250, 0.12],
+  conga: [200, 0.15], 'finger-cymbals': [4000, 0.5], 'sleigh-bells': [6000, 0.3],
 };
 
 export function hit(name, t, vol = 0.8, dest = master) {

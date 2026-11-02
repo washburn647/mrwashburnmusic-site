@@ -15,6 +15,7 @@ const DEFAULTS = {
   feat: {}, // pattern feature: strength
   stickers: [],
   test: false,
+  tx: 'mix', // transitions between games: 'mix' or one transition's id (transitions lab)
 };
 
 export function load() {

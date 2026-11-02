@@ -11,6 +11,7 @@ import { STEPS, BANDS, onsets, sylText, options, readTaps, fromCells, loadMarks 
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import { mookie } from './mookie.js';
+import * as TX from './transitions.js';
 import { cueId } from './cues.js';
 import { notation } from '/assets/patterns/notation.js';
 import * as store from './store.js';
@@ -135,7 +136,54 @@ function progress() {
     ...rows,
     h('div', { class: 'testbox' },
       h('label', {}, 'Test mode (for Kyle): drill any step', seg({ off: 'Off', on: 'On' }, st.test ? 'on' : 'off', (v) => { st.test = v === 'on'; save(); progress(); })),
+      st.test ? h('button', { class: 'mini', onclick: lab }, 'Transitions lab') : null,
       st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); dir = makeDirector(st); progress(); } }, 'Reset all progress') : null)));
+}
+
+/* Transitions lab (test mode): play each transition on a demo stage at a game tempo, and
+   choose which ones the stream uses. */
+function lab() {
+  let bpm = 108;
+  let flip = 0;
+  const stage = h('div', { class: 'stage' });
+  const cue = h('div', { class: 'cue' });
+  const wrap = h('div', { class: 'stage-wrap' }, stage, cue);
+  mouseCatcher.make(stage, {});
+  const scenes = [() => GAMES[1].make(stage, {}), () => GAMES[0].make(stage, {})];
+  const cues = ['TAP IT!', 'SAY IT!', 'PICK ONE!', 'BUILD IT!'];
+  const run = async (tx) => {
+    const ctx = snd.ac();
+    await snd.load();
+    const spb = 60 / bpm;
+    const t = ctx.currentTime + 0.1;
+    for (let k = 0; k < 3; k++) snd.hit('claves', t + k * spb, k ? 0.4 : 0.7);
+    snd.fx.cue(t);
+    tx.sound(snd, t, spb);
+    setTimeout(() => TX.play(wrap, tx, spb, () => {
+      stage.replaceChildren();
+      scenes[flip++ % 2]();
+      cue.textContent = cues[flip % cues.length];
+      bump(cue, 'slam');
+    }), Math.max(0, (t - ctx.currentTime + snd.latency()) * 1000));
+  };
+  const list = h('div', { class: 'txlist' });
+  const drawList = () => list.replaceChildren(...[...TX.TRANSITIONS, TX.BOSS_TX].map((tx) =>
+    h('button', { class: `txbtn ${st.tx === tx.id ? 'on' : ''}`, onclick: () => run(tx) },
+      h('b', {}, tx.name), h('small', {}, tx.about))));
+  drawList();
+  const choices = { mix: 'Mix them all', ...Object.fromEntries(TX.TRANSITIONS.map((x) => [x.id, x.name])) };
+  const pickSel = h('select', { onchange: (e) => { st.tx = e.target.value; save(); drawList(); } },
+    ...Object.entries(choices).map(([v, label]) => h('option', { value: v, selected: v === (st.tx || 'mix') }, label)));
+  app.replaceChildren(h('div', { class: 'progress lab' },
+    h('button', { class: 'link back', onclick: progress }, '‹ Back'),
+    h('h2', {}, 'Transitions lab'),
+    h('p', { class: 'note' }, 'Tap one to play it. They run on the beat, so try each tempo.'),
+    wrap,
+    h('div', { class: 'opts' },
+      h('label', {}, 'Tempo', seg({ 92: '92', 108: '108', 126: '126' }, String(bpm), (v) => { bpm = Number(v); })),
+      h('label', {}, 'In the game', pickSel)),
+    list,
+    h('button', { class: 'play', onclick: () => startRun() }, 'Play with these')));
 }
 
 /* ---------------- the run ---------------- */
@@ -325,10 +373,12 @@ function gameSeg(B, seg) {
   const q = question(item, step);
   const win = { tResp: T(r0), spb, from: T(r0) - 0.25 * spb, to: T(p0) - 0.05 * spb, taps: [], usedMic: false, choice: null, slots: [null, null, null, null] };
 
+  const tx = TX.pick(st.tx);
   if (!snd.speak(cueId(step.cue), T(B))) snd.fx.cue(T(B));
+  tx.sound(snd, T(B), spb);
   later(T(B), () => {
     hud();
-    showGame(item, step, game, q, win);
+    showGame(item, step, game, q, win, tx, spb);
   });
   if (callBeats) {
     R.groove.duckFrom = T(c0);
@@ -373,11 +423,16 @@ function dots(k, n, kind) {
   R.dom.dots.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < k ? 'past' : i === k ? 'now' : '' })));
 }
 
-function showGame(item, step, game, q, win) {
+function showGame(item, step, game, q, win, tx, spb) {
   const d = R.dom;
   overlay(null);
-  d.stage.replaceChildren();
-  R.api = game.make(d.stage, {});
+  // The new scene goes in once the transition has hidden the old one (transitions.js).
+  R.api = game.make(h('div'), {});
+  TX.play(d.stage.parentElement, tx, spb, () => {
+    if (!R || R.dom !== d) return;
+    d.stage.replaceChildren();
+    R.api = game.make(d.stage, {});
+  });
   d.cue.textContent = step.cue;
   bump(d.cue, 'slam');
   d.prompt.replaceChildren();
@@ -597,11 +652,17 @@ function boss(B) {
   let hits = 0;
   snd.fx.boss(T(B));
   snd.speak('boss', T(B));
+  TX.BOSS_TX.sound(snd, T(B), spb);
   later(T(B), () => {
     hud();
     overlay(null);
-    R.dom.stage.replaceChildren();
-    R.api = mouseCatcher.make(R.dom.stage, { boss: true });
+    const d = R.dom;
+    R.api = mouseCatcher.make(h('div'), { boss: true });
+    TX.play(d.stage.parentElement, TX.BOSS_TX, spb, () => {
+      if (!R || R.dom !== d) return;
+      d.stage.replaceChildren();
+      R.api = mouseCatcher.make(d.stage, { boss: true });
+    });
     R.dom.cue.textContent = 'BOSS!';
     bump(R.dom.cue, 'slam');
     R.dom.prompt.replaceChildren(h('div', { class: 'boss-name' }, 'The Big Cheese'), h('div', { class: 'hearts' }, '❤️❤️❤️❤️'));
