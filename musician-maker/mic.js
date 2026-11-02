@@ -8,14 +8,28 @@ let src = null;
 let listener = null;
 let level = 0; // 0-1, for meters
 let lag = 0.01; // mic input delay, s
+let users = 0; // the mic check and the run each hold the mic; it stops when neither does
+let opening = null;
 
 export const on = () => !!stream;
 export const getLevel = () => level;
 /* What the mic hears arrives this much after it was said. */
 export const inputLag = () => lag;
 
+/* Each start() needs its own stop(): the mic stays open while anyone still holds it. */
 export async function start(ctx) {
-  if (stream) return;
+  users++;
+  try {
+    opening ||= open(ctx);
+    await opening;
+  } catch (e) {
+    users--;
+    opening = null;
+    throw e;
+  }
+}
+
+async function open(ctx) {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser has no mic access here.');
   if (!ctx.audioWorklet) throw new Error('This browser can\'t listen for syllables. Tapping still works.');
   await ctx.audioWorklet.addModule(new URL('./mic-worklet.js', import.meta.url));
@@ -46,6 +60,9 @@ export function setTempo(bpm) {
 }
 
 export function stop() {
+  users = Math.max(0, users - 1);
+  if (users) return;
+  opening = null;
   stream?.getTracks().forEach((t) => t.stop());
   src?.disconnect();
   node?.disconnect();
