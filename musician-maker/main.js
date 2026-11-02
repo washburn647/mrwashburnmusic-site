@@ -176,10 +176,12 @@ function micCheck() {
   let count = 0;
   let lastAt = -9;
   let raf = 0;
+  let holding = false;
   const box = h('div', { class: 'miccheck' },
     h('button', { class: 'mini', onclick: async () => {
       try {
-        await mic.start(snd.ac());
+        if (!holding) await mic.start(snd.ac());
+        holding = true;
         heard.textContent = 'Say "du du-de du du"…';
         mic.listen((t) => {
           if (t - lastAt > 1.5) count = 0;
@@ -189,7 +191,8 @@ function micCheck() {
           bump(fill.parentElement, 'blip');
         });
         const draw = () => {
-          if (!box.isConnected) { mic.stop(); return; }
+          // Leaving the page lets go of the mic; a run that has started keeps its own hold.
+          if (!box.isConnected) { mic.stop(); holding = false; return; }
           fill.style.width = `${Math.round(mic.getLevel() * 100)}%`;
           raf = requestAnimationFrame(draw);
         };
