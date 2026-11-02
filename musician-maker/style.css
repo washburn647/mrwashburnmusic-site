@@ -268,3 +268,16 @@ button:focus-visible { outline: 3px solid var(--wheat); outline-offset: 2px; }
 .tips .ic { font-size: 30px; }
 .howto { text-align: center; }
 .howto .tips { text-align: left; }
+
+/* ---------- big instruction at the start of a game ---------- */
+.how-big { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; pointer-events: none; z-index: 2; animation: how-big 2.4s ease-in-out forwards; }
+.how-big span {
+  background: var(--paper); border-radius: 22px; padding: 14px 22px; box-shadow: 0 0 0 4px var(--wheat), 0 8px 0 rgba(47, 74, 58, .15);
+  font-size: clamp(26px, 7vw, 40px); font-weight: 700; text-align: center; line-height: 1.2; max-width: 92%;
+}
+@keyframes how-big {
+  0% { opacity: 0; transform: scale(.6); }
+  10% { opacity: 1; transform: scale(1.04); }
+  15%, 80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: translateY(45%) scale(.5); }
+}

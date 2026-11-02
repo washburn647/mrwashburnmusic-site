@@ -385,6 +385,7 @@ function showGame(item, step, game, q, win) {
   d.cue.textContent = step.cue;
   bump(d.cue, 'slam');
   d.prompt.replaceChildren(instruction(item));
+  bigHow(item);
   if (step.call === 'notation') d.prompt.append(notes(item.pattern));
   if (step.call === 'text') d.prompt.append(h('div', { class: 'syl-card' }, sylText(item.pattern)));
   d.dots.replaceChildren();
@@ -404,6 +405,17 @@ function instruction(item) {
     st.mookie ? mookie('happy') : h('span', { class: 'ic' }, look === 'read' ? '👀' : look === 'listen' ? '👂' : '✏️'),
     fresh ? h('b', { class: 'tag' }, 'NEW') : null,
     h('span', {}, how));
+}
+
+/* The instruction pops up big over the scene at the start of each game, then shrinks
+   away into the line under it. Held for 4 beats (at least 2.4 s) so it can be read. */
+function bigHow(item) {
+  const wrap = R.dom.stage.parentElement;
+  wrap.querySelector('.how-big')?.remove();
+  const el = h('div', { class: 'how-big' }, h('span', {}, howTo(item.step, item.mode).how));
+  el.style.animationDuration = `${Math.max(2.4, 4 * R.clock.spb())}s`;
+  el.addEventListener('animationend', () => el.remove());
+  wrap.append(el);
 }
 
 function controlsFor(item, game, q, win) {
