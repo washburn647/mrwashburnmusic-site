@@ -1,10 +1,13 @@
 """Build the shared instrument samples in assets/sounds/ from the source libraries.
 
-  python tools/build_sounds.py VSCO_DIR PIANO_DIR [--only NAME,NAME]
+  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--only NAME,NAME]
 
 VSCO_DIR   a clone of https://github.com/sgossner/VSCO-2-CE (CC0)
 PIANO_DIR  the audio/ folder of the npm package @audio-samples/piano-mp3-velocity10
            (Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0)
+DRUMS_DIR  salamanderDrumkit.tar.bz2 unpacked, from https://archive.org/details/SalamanderDrumkit
+           (Salamander Drumkit by Alexander Holm, CC BY-SA 3.0): the drum kit, kit-*
+           (--only kit-kick,… builds just those; the other folders aren't opened then)
 
 Needs ffmpeg and numpy. Every sample is checked with a pitch detector: the file name's
 octave is corrected when the source counts octaves differently, and the measured tuning
@@ -70,6 +73,23 @@ HITS = {
     'bongo-high': ('Bongo (high)', 'VSCO 1 Percussion/drums/other/Bongos/HighBongo1.wav', 0.6),
     'bongo-low': ('Bongo (low)', 'VSCO 1 Percussion/drums/other/Bongos/LowBongo1.wav', 0.7),
     'cymbal': ('Crash cymbal', 'Percussion/cymbal-crash1_mf_rr1.wav', 3.5),
+}
+
+# The drum kit: one overhead-mic hit each, from the Salamander Drumkit.
+KIT = {
+    'kit-kick': ('Kick', 'OH/kick_OH_F_1.wav', 1.2),
+    'kit-snare': ('Snare', 'OH/snare_OH_F_1.wav', 1),
+    'kit-snare-ghost': ('Snare ghost note', 'OH/snare_OH_Ghost_1.wav', 0.6),
+    'kit-cross-stick': ('Cross-stick', 'OH/snareStick_OH_F_1.wav', 0.6),
+    'kit-hihat-closed': ('Hi-hat closed', 'OH/hihatClosed_OH_F_1.wav', 0.5),
+    'kit-hihat-open': ('Hi-hat open', 'OH/hihatOpen_OH_F_1.wav', 1.6),
+    'kit-hihat-pedal': ('Hi-hat pedal', 'OH/hihatFoot_OH_MP_1.wav', 0.5),
+    'kit-tom-high': ('High tom', 'OH/hiTom_OH_F_1.wav', 1.2),
+    'kit-tom-low': ('Low tom', 'OH/loTom_OH_MP_1.wav', 1.5),
+    'kit-ride': ('Ride', 'OH/ride1_OH_MP_1.wav', 2.5),
+    'kit-ride-bell': ('Ride bell', 'OH/ride1Bell_OH_F_1.wav', 2.5),
+    'kit-crash': ('Crash', 'OH/crash1_OH_FF_1.wav', 3.5),
+    'kit-splash': ('Splash', 'OH/splash1_OH_F_1.wav', 2),
 }
 
 CREDITS = {
@@ -206,12 +226,15 @@ def build_pitched(name, spec, src):
     return inst
 
 
-def build_hit(name, spec, src):
+def build_hit(name, spec, src, source='vsco'):
     label, path, seconds = spec
-    x = trim(decode(os.path.join(src['vsco'], path)), seconds)
+    x = trim(decode(os.path.join(src[source], path)), seconds)
     rel = f'hits/{name}.mp3'
     encode(x * 0.89 / np.max(np.abs(x)), os.path.join(OUT, rel))
-    return {'label': label, 'kind': 'hit', 'file': rel, 'credit': 'vsco'}
+    entry = {'label': label, 'kind': 'hit', 'file': rel, 'credit': {'vsco': 'vsco', 'drums': 'salamander-drums'}[source]}
+    if source == 'drums':
+        entry['group'] = 'kit'
+    return entry
 
 
 def main():
@@ -220,7 +243,7 @@ def main():
     if '--only' in sys.argv:
         only = set(sys.argv[sys.argv.index('--only') + 1].split(','))
         args = [a for a in args if a != sys.argv[sys.argv.index('--only') + 1]]
-    src = {'vsco': args[0], 'piano': args[1]}
+    src = {'vsco': args[0], 'piano': args[1], 'drums': args[2] if len(args) > 2 else None}
     index_path = os.path.join(OUT, 'index.json')
     index = json.load(open(index_path)) if os.path.exists(index_path) else {}
     instruments = index.get('instruments', {})
@@ -230,11 +253,16 @@ def main():
     for name, spec in HITS.items():
         if not only or name in only:
             instruments[name] = build_hit(name, spec, src)
+    if src['drums']:
+        for name, spec in KIT.items():
+            if not only or name in only:
+                instruments[name] = build_hit(name, spec, src, 'drums')
     index['instruments'] = instruments
     index.setdefault('voices', {})
     index['credits'] = {
         'salamander': 'Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0',
         'vsco': 'VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0',
+        'salamander-drums': 'Salamander Drumkit by Alexander Holm, CC BY-SA 3.0',
     }
     with open(index_path, 'w') as f:
         json.dump(index, f, indent=1)

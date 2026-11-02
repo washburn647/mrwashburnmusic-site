@@ -23,6 +23,9 @@ The try-out page is `/studio/sounds/`.
 - Hits: claves, log-drum-high, log-drum-low, cowbell, agogo, triangle, finger-cymbals,
   tambourine, sleigh-bells, shaker, cabasa, guiro, snare, bass-drum, conga, bongo-high,
   bongo-low, cymbal
+- Drum kit (`group: "kit"`): kit-kick, kit-snare, kit-snare-ghost, kit-cross-stick,
+  kit-hihat-closed, kit-hihat-open, kit-hihat-pedal, kit-tom-high, kit-tom-low, kit-ride,
+  kit-ride-bell, kit-crash, kit-splash (Salamander Drumkit, CC BY-SA: see `CREDITS.txt`)
 
 ## Recorded voice
 

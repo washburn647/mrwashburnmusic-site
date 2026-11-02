@@ -1367,11 +1367,103 @@
    "kind": "hit",
    "file": "hits/cymbal.mp3",
    "credit": "vsco"
+  },
+  "kit-kick": {
+   "label": "Kick",
+   "kind": "hit",
+   "file": "hits/kit-kick.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-snare": {
+   "label": "Snare",
+   "kind": "hit",
+   "file": "hits/kit-snare.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-snare-ghost": {
+   "label": "Snare ghost note",
+   "kind": "hit",
+   "file": "hits/kit-snare-ghost.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-cross-stick": {
+   "label": "Cross-stick",
+   "kind": "hit",
+   "file": "hits/kit-cross-stick.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-hihat-closed": {
+   "label": "Hi-hat closed",
+   "kind": "hit",
+   "file": "hits/kit-hihat-closed.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-hihat-open": {
+   "label": "Hi-hat open",
+   "kind": "hit",
+   "file": "hits/kit-hihat-open.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-hihat-pedal": {
+   "label": "Hi-hat pedal",
+   "kind": "hit",
+   "file": "hits/kit-hihat-pedal.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-tom-high": {
+   "label": "High tom",
+   "kind": "hit",
+   "file": "hits/kit-tom-high.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-tom-low": {
+   "label": "Low tom",
+   "kind": "hit",
+   "file": "hits/kit-tom-low.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-ride": {
+   "label": "Ride",
+   "kind": "hit",
+   "file": "hits/kit-ride.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-ride-bell": {
+   "label": "Ride bell",
+   "kind": "hit",
+   "file": "hits/kit-ride-bell.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-crash": {
+   "label": "Crash",
+   "kind": "hit",
+   "file": "hits/kit-crash.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
+  },
+  "kit-splash": {
+   "label": "Splash",
+   "kind": "hit",
+   "file": "hits/kit-splash.mp3",
+   "credit": "salamander-drums",
+   "group": "kit"
   }
  },
  "voices": {},
  "credits": {
   "salamander": "Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0",
-  "vsco": "VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0"
+  "vsco": "VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0",
+  "salamander-drums": "Salamander Drumkit by Alexander Holm, CC BY-SA 3.0"
  }
 }
