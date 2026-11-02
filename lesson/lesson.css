@@ -1,25 +1,65 @@
 @font-face { font-family: "Fredoka"; src: url("/assets/fonts/fredoka-latin.woff2") format("woff2"); font-weight: 400 600; }
 body { margin: 0; min-height: 100vh; background: #F6F1E4; color: #2F4A3A; font-family: "Fredoka", system-ui, sans-serif; font-size: 18px; }
+button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
 header img { width: 56px; height: 56px; }
 h1 { font-weight: 600; margin: 0; font-size: 32px; }
 header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
-.days { display: flex; gap: 8px; margin: 0 0 20px; flex-wrap: wrap; }
-.days label { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; cursor: pointer; font-weight: 500; box-shadow: 0 2px 0 rgba(47,74,58,.08); user-select: none; }
-.days input { position: absolute; opacity: 0; pointer-events: none; }
-.days label:has(input:checked) { background: #2F4A3A; color: #F6F1E4; }
-.days label:has(input:focus-visible) { box-shadow: 0 0 0 3px #E0A458; }
-ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-li { background: #fff; border-radius: 16px; padding: 14px 16px; display: grid; grid-template-columns: 28px 1fr; gap: 4px 12px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
-li input { width: 24px; height: 24px; margin: 2px 0 0; accent-color: #2F4A3A; }
-li strong { font-weight: 500; }
-li:has(input:checked) strong { text-decoration: line-through; color: #8A968C; }
-li p { grid-column: 2; margin: 0; color: #5B6B5F; white-space: pre-wrap; line-height: 1.4; }
-li a { grid-column: 2; justify-self: start; color: #2F4A3A; font-weight: 500; overflow-wrap: anywhere; }
+
+.reward { display: flex; align-items: center; justify-content: center; gap: 14px; background: #fff; border-radius: 22px; padding: 12px 18px; margin-bottom: 16px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
+.rstars { font-size: 38px; color: #F5B800; letter-spacing: 4px; text-shadow: 0 2px 0 #D99A00; }
+
+.practice { display: flex; flex-direction: column; align-items: center; gap: 10px; background: #fff; border-radius: 22px; padding: 14px; margin-bottom: 16px; box-shadow: 0 3px 0 rgba(47,74,58,.08); text-align: center; }
+.nextlesson { margin: 0; font-size: 20px; }
+.nextlesson b { font-size: 34px; color: #7F4FA3; }
+.done { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.done span { background: #F6F1E4; border-radius: 999px; padding: 6px 14px; font-size: 17px; font-variant-numeric: tabular-nums; }
+.done b { font-weight: 600; }
+
+.items { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 10px; }
+.items li { background: #fff; border-radius: 18px; padding: 14px 16px; display: grid; grid-template-columns: 30px 1fr; gap: 4px 12px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
+.items li > input { width: 26px; height: 26px; margin: 2px 0 0; accent-color: #7DC242; }
+.items strong { font-weight: 500; }
+.items li:has(> input:checked) { background: #F2F8EC; }
+.items li:has(> input:checked) strong { color: #5B6B5F; }
+.items p { grid-column: 2; margin: 0; color: #5B6B5F; white-space: pre-wrap; line-height: 1.4; }
+.items a { grid-column: 2; justify-self: start; color: #2F4A3A; font-weight: 500; overflow-wrap: anywhere; }
+.itools { grid-column: 2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.go { min-height: 48px; padding: 6px 20px; border-radius: 999px; font-size: 22px; background: #2F4A3A; color: #F6F1E4; box-shadow: 0 3px 0 #1E3127; }
+.go:active { transform: translateY(2px); box-shadow: 0 1px 0 #1E3127; }
+.go.cards { background: #EFE6F6; color: #5E3880; box-shadow: 0 3px 0 #CDB6E0; }
+.go.piece { background: #DFF3EE; color: #0B7A68; box-shadow: 0 3px 0 #9FD6CA; }
+.plays { color: #5B6B5F; font-size: 16px; }
+
 .note { margin-top: 20px; white-space: pre-wrap; line-height: 1.45; }
+.foot { display: flex; justify-content: flex-end; margin-top: 28px; }
+.print { background: transparent; font-size: 22px; opacity: .6; }
+.qr { display: none; }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 100; }
+
 @media print {
-  body { background: #fff; }
-  li, .days label { box-shadow: none; border: 1px solid #ccc; }
-  .days label:has(input:checked) { background: #fff; color: inherit; }
+  body { background: #fff; font-size: 14px; }
+  .reward, .practice, .items li { box-shadow: none; border: 1px solid #ccc; }
+  .done, .itools, .print { display: none; }
+  .days label { background: #fff; border: 1px solid #999; }
+  .days label:has(input:checked) { background: #fff; color: inherit; transform: none; }
+  .items li:has(> input:checked) { background: #fff; }
+  .qr { display: block; width: 110px; }
+  .qr svg { width: 100%; }
 }
+
+/* Code entry, and earlier lessons */
+.codeform { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 22px; padding: 10px 10px 10px 16px; margin-top: 24px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
+.codeform .lock { font-size: 28px; }
+.codeform .picks { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.codeform .codepick { min-width: 0; font: inherit; font-size: 18px; border: 0; background: #F6F1E4; border-radius: 12px; padding: 10px 8px; color: #2F4A3A; }
+.codeerr, .loading { text-align: center; font-size: 40px; margin: 24px 0 12px; }
+.loading { animation: bob 1s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-8px); } }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.earlier { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.earlier button { background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 15px; min-height: 40px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.earlier button[aria-current] { background: #2F4A3A; color: #F6F1E4; }
+@media print { .earlier { display: none; } }
