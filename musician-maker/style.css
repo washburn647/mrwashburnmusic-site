@@ -151,6 +151,7 @@ body[data-screen="title"]::before {
 .sw-knob::after { content: ''; position: absolute; left: 3px; top: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--cream); transition: transform .2s; }
 .switch[aria-checked="true"] .sw-knob { background: var(--moss); }
 .switch[aria-checked="true"] .sw-knob::after { transform: translateX(22px); }
+.groove-pick .gp-ico { flex: none; display: grid; place-items: center; width: 52px; height: 30px; border-radius: 999px; background: rgba(255, 253, 247, .2); font-size: 18px; }
 .title .miccheck { color: var(--sage); }
 .title .mini { background: var(--sage); color: var(--night); }
 

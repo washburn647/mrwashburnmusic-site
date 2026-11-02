@@ -81,6 +81,30 @@ function scene(name) {
   document.body.dataset.screen = name;
 }
 
+/* Which groove plays: Mix (a different one each lap) or one the learner picks. Each tap
+   moves to the next. The list loads with the sounds, so it fills in once they have. */
+function groovePick() {
+  const label = () => (st.groove === 'mix' ? 'Mix: a new one each lap' : snd.grooveList().find((g) => g.id === st.groove)?.name || 'Mix: a new one each lap');
+  const small = h('small', {}, label());
+  const b = h('button', { class: 'switch groove-pick', onclick: () => {
+    const ids = ['mix', ...snd.grooveList().map((g) => g.id)];
+    st.groove = ids[(ids.indexOf(st.groove) + 1) % ids.length] || 'mix';
+    save();
+    small.textContent = label();
+  } }, h('span', { class: 'sw-text' }, h('b', {}, 'Groove'), small), h('span', { class: 'gp-ico', 'aria-hidden': 'true' }, '♫'));
+  snd.loadGrooves().then(() => { small.textContent = label(); });
+  return b;
+}
+
+/* The groove for a new lap. */
+function pickGroove() {
+  const list = snd.grooveList();
+  if (st.groove !== 'mix' && list.some((g) => g.id === st.groove)) return snd.setGroove(st.groove);
+  const others = list.filter((g) => g !== snd.grooveNow());
+  const pool = others.length ? others : list;
+  return pool.length ? snd.setGroove(pool[Math.floor(Math.random() * pool.length)].id) : null;
+}
+
 /* An on/off switch with a label and a short hint under it. */
 function toggle(label, hint, on, change) {
   const b = h('button', { class: 'switch', role: 'switch', 'aria-checked': String(on), onclick: () => {
@@ -135,7 +159,8 @@ function title() {
       h('div', { class: 'switches' },
         toggle('Mookie mode', 'An easier pace', st.mookie, (v) => { st.mookie = v; dir = makeDirector(st); save(); }),
         toggle('Use the mic', 'Say your answers too', st.input === 'mic', (v) => { st.input = v ? 'mic' : 'tap'; save(); title(); }),
-        st.input === 'mic' ? micCheck() : null),
+        st.input === 'mic' ? micCheck() : null,
+        groovePick()),
       h('button', { class: 'to-map', onclick: progress },
         h('span', { class: 'staff-ico' }), 'My progress'))));
 }
@@ -436,6 +461,8 @@ function lapPlan() {
 function beginLap() {
   R.plan = lapPlan();
   R.idx = 0;
+  const g = pickGroove();
+  if (g && snd.grooveList().length > 1) R.news.push(`Groove: ${g.name}`);
   countIn();
 }
 

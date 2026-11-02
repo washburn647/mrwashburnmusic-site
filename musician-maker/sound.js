@@ -13,6 +13,8 @@ let loopBus = null; // Kyle's groove loops, ducked as one
 const inst = {};
 let kyle = null; // recorded voice, once Kyle's takes are on the site
 let loops = {}; // Kyle's groove loops: layer → bpm → { buffer, start, beats }
+let grooves = []; // grooves.json, made in the studio's Groove Lab
+let G = null; // the groove playing
 
 const HITS = ['claves', 'log-drum-low', 'log-drum-high', 'bass-drum', 'snare', 'shaker', 'tambourine',
   'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low', 'conga', 'finger-cymbals', 'sleigh-bells'];
@@ -48,9 +50,38 @@ export function load() {
       await Promise.allSettled([kyle.prepare(kyle.patterns), kyle.prepareCues()]);
     })(),
     (async () => { loops = await samples.grooveLoops(); })(),
+    loadGrooves(),
     ...TOON_FILES.map(loadToon),
-  ]);
+  ]).then(() => useInstruments(grooves));
   return loading;
+}
+
+/* The groove list alone (no sound), e.g. for a picker. */
+let groovesLoading = null;
+export function loadGrooves() {
+  groovesLoading ||= fetch(new URL('grooves.json', import.meta.url))
+    .then((r) => (r.ok ? r.json() : { grooves: [] }))
+    .then((data) => {
+      grooves = checkGrooves(data.grooves);
+      G ||= grooves[0] || null;
+      return grooves;
+    })
+    .catch(() => grooves);
+  return groovesLoading;
+}
+
+/* Loads every instrument these grooves use, over the notes they play. */
+export async function useInstruments(list) {
+  const want = {};
+  for (const g of list) for (const tracks of Object.values(g.layers)) for (const tr of tracks) {
+    const w = (want[tr.inst] ||= { lo: 127, hi: 0 });
+    for (const n of tr.notes) if (n.m != null) { w.lo = Math.min(w.lo, n.m); w.hi = Math.max(w.hi, n.m); }
+  }
+  await Promise.allSettled(Object.entries(want).map(async ([name, { lo, hi }]) => {
+    if (inst[name]?.hit) return;
+    const [plo, phi] = PITCHED[name] || [lo, hi];
+    inst[name] = await samples.instrument(name, hi >= lo ? { lo: Math.min(lo, plo), hi: Math.max(hi, phi) } : {});
+  }));
 }
 
 /* ---------- cartoon effects for the scenes ---------- */
@@ -330,12 +361,61 @@ export const fx = {
 
 /* ---------- the groove ---------- */
 
-// Combo tiers: each adds a layer. 0 pulse, 1 bass, 2 drums, 3 horns, 4 full band. A layer
-// with Kyle's loop at this tempo plays the loop; the others play the stand-ins below.
-// Breathers play his breakdown loop alone, when there is one.
+// Combo tiers: each adds a layer. 0 pulse, 1 bass, 2 drums, 3 horns, 4 full band; breathers
+// play the breakdown layer alone. A groove (grooves.json, from the studio's Groove Lab) is
+// notes on a 16th-note grid, so it plays at any tempo. Kyle's recorded loops, if any, play in
+// place of the Basic groove's layers at their tempo.
 export const LAYERS = ['pulse', 'bass', 'drums', 'horns', 'band'];
-const ROOTS = [41, 46, 48, 41]; // F Bb C F, one per bar of 2/4
+export const ALL_LAYERS = [...LAYERS, 'breakdown'];
+export const STEPS_PER_BEAT = 4;
+const ROOTS = [41, 46, 48, 41]; // F Bb C F, one per bar of 2/4 (stand-in when grooves.json is missing)
 const CHORD = { 41: [65, 69, 72], 46: [65, 70, 74], 48: [64, 67, 72] };
+
+/* Grooves as the game trusts them: whole beats, known layers, notes inside the loop. */
+export function checkGrooves(list) {
+  if (!Array.isArray(list)) return [];
+  return list.filter((g) => g && typeof g.id === 'string' && Number.isInteger(g.beats) && g.beats > 0 && g.layers).map((g) => ({
+    id: g.id,
+    name: String(g.name || g.id),
+    beats: g.beats,
+    swing: Math.max(0, Math.min(1, Number(g.swing) || 0)),
+    key: Number.isInteger(g.key) ? g.key : 0,
+    layers: Object.fromEntries(ALL_LAYERS.map((name) => [name, (Array.isArray(g.layers[name]) ? g.layers[name] : [])
+      .filter((tr) => tr && typeof tr.inst === 'string' && Array.isArray(tr.notes))
+      .map((tr) => ({
+        inst: tr.inst,
+        vol: Math.max(0, Math.min(1.5, Number(tr.vol ?? 1))),
+        notes: tr.notes.filter((n) => Number.isInteger(n.s) && n.s >= 0 && n.s < g.beats * STEPS_PER_BEAT),
+      }))])),
+  }));
+}
+
+export const grooveList = () => grooves;
+export const grooveNow = () => G;
+export function setGroove(id) {
+  G = grooves.find((g) => g.id === id) || G || grooves[0] || null;
+  return G;
+}
+
+/* One beat (i) of a groove's layers, at t. Swing moves the off-beat 8th toward a triplet
+   (1 = full triplet) and the 16ths with it. */
+export function playGrooveBeat(g, i, t, spb, { layers, level = 1, dest = grooveBus }) {
+  const pos = i % g.beats;
+  const d = g.swing / 6;
+  const warp = (x) => (x < 0.5 ? x * (0.5 + d) / 0.5 : 0.5 + d + (x - 0.5) * (0.5 - d) / 0.5);
+  const step = spb / STEPS_PER_BEAT;
+  for (const name of layers) {
+    for (const tr of g.layers[name] || []) {
+      for (const n of tr.notes) {
+        if (Math.floor(n.s / STEPS_PER_BEAT) !== pos) continue;
+        const at = t + warp((n.s % STEPS_PER_BEAT) / STEPS_PER_BEAT) * spb;
+        const vol = tr.vol * (n.v ?? 0.8) * level;
+        if (n.m == null) hit(tr.inst, at, vol, dest);
+        else note(tr.inst, n.m, at, Math.max(1, n.l || 1) * step * 0.95, vol * 0.5, dest);
+      }
+    }
+  }
+}
 
 const live = {}; // layer → the pass playing: { src, gain, bpm, from, until } in beats
 let lastBeat = -1;
@@ -388,12 +468,19 @@ export function groove(i, t, spb, { tier, mode, duck }) {
   lastBeat = i;
   loopBus.gain.setTargetAtTime(duck ? 0.3 : 1, t, 0.02);
   const rec = {};
-  for (const [n, name] of [...LAYERS, 'breakdown'].entries()) {
-    const want = mode === 'breakdown' ? name === 'breakdown' : name !== 'breakdown' && n <= tier;
+  const useLoops = !G || G.id === 'basic';
+  for (const [n, name] of ALL_LAYERS.entries()) {
+    const want = useLoops && (mode === 'breakdown' ? name === 'breakdown' : name !== 'breakdown' && n <= tier);
     if (want) rec[name] = loopLayer(name, i, t, spb);
     else stopLayer(name, t);
   }
-  standIn(i, t, spb, { tier, mode, duck }, rec);
+  if (!G) { standIn(i, t, spb, { tier, mode, duck }, rec); return; }
+  // While the mic listens, only the pulse keeps the beat, softly: the mic hears everything else.
+  if (duck === 'mic') { playGrooveBeat(G, i, t, spb, { layers: ['pulse'], level: 0.45 }); return; }
+  let layers;
+  if (mode === 'breakdown') layers = G.layers.breakdown.some((tr) => tr.notes.length) ? ['breakdown'] : ['pulse'];
+  else layers = LAYERS.filter((name, n) => n <= tier && !(duck && (name === 'horns' || name === 'band')));
+  playGrooveBeat(G, i, t, spb, { layers: layers.filter((name) => !rec[name]), level: duck ? 0.35 : 1 });
 }
 
 /* The sampled groove, for every layer Kyle hasn't recorded at this tempo. */
