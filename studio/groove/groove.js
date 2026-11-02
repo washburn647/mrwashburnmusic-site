@@ -245,27 +245,60 @@ function render() {
   requestAnimationFrame(() => { drawAll(); centerRolls(); });
 }
 
-function addSound(g, layer) {
-  const list = Object.entries(index.instruments);
-  return h('select', { class: 'add', onchange: (e) => {
-    const inst = e.target.value;
-    if (!inst) return;
-    snapshot();
-    g.layers[layer].push({ inst, vol: 1, notes: [] });
-    snd.useInstruments([g]);
-    changed();
-  } },
-  h('option', { value: '' }, '+ Add a sound…'),
-  h('optgroup', { label: 'Drum kit' }, list.filter(([, s]) => s.group === 'kit').map(([n, s]) => h('option', { value: n }, s.label))),
-  h('optgroup', { label: 'Percussion' }, list.filter(([, s]) => s.kind === 'hit' && s.group !== 'kit').map(([n, s]) => h('option', { value: n }, s.label))),
-  h('optgroup', { label: 'Instruments' }, list.filter(([, s]) => s.kind !== 'hit').map(([n, s]) => h('option', { value: n }, s.label))));
+/* The sound picker's sections, in order. A sound not listed goes under Other. */
+const SECTIONS = [
+  ['Keys and mallets', ['piano', 'marimba', 'xylophone', 'glockenspiel', 'harp']],
+  ['Guitars and bass', ['guitar', 'banjo', 'electric-bass', 'bass']],
+  ['Strings', ['violins', 'violas', 'cellos', 'pizzicato', 'cello-pizz']],
+  ['Woodwinds', ['flute', 'oboe', 'clarinet', 'bassoon']],
+  ['Brass', ['trumpet', 'horn', 'trombone', 'tuba']],
+  ['Drum kit', ['kit-kick', 'kit-snare', 'kit-snare-ghost', 'kit-cross-stick', 'kit-hihat-closed', 'kit-hihat-pedal',
+    'kit-hihat-open', 'kit-tom-high', 'kit-tom-low', 'kit-ride', 'kit-ride-bell', 'kit-crash', 'kit-splash']],
+  ['Hand drums', ['conga', 'bongo-high', 'bongo-low', 'log-drum-high', 'log-drum-low']],
+  ['Shakers and scrapers', ['shaker', 'cabasa', 'guiro', 'tambourine', 'sleigh-bells']],
+  ['Bells and wood', ['claves', 'cowbell', 'agogo', 'triangle', 'finger-cymbals']],
+  ['Concert percussion', ['snare', 'bass-drum', 'cymbal']],
+];
+
+/* Sections with the sounds index.json has, for a picker or a track's select. */
+function sections(filter = () => true) {
+  const all = index.instruments;
+  const listed = new Set(SECTIONS.flatMap(([, ids]) => ids));
+  const out = SECTIONS.map(([title, ids]) => [title, ids.filter((id) => all[id] && filter(all[id]))]);
+  out.push(['Other', Object.keys(all).filter((id) => !listed.has(id) && filter(all[id]))]);
+  return out.filter(([, ids]) => ids.length);
 }
 
+function addSound(g, layer) {
+  const picker = h('details', { class: 'add' },
+    h('summary', {}, '+ Add a sound'),
+    h('div', { class: 'picker' }, sections().map(([title, ids]) => h('div', { class: ids.length > 8 ? 'pick-group wide' : 'pick-group' },
+      h('div', { class: 'label' }, title),
+      h('div', { class: 'pick-grid' }, ids.map((id) => h('button', {
+        title: index.instruments[id].kind === 'hit' ? 'Percussion row' : 'Piano roll',
+        onclick: () => {
+          snapshot();
+          g.layers[layer].push({ inst: id, vol: 1, notes: [] });
+          snd.useInstruments([g]);
+          changed();
+        },
+      }, index.instruments[id].label)))))));
+  return picker;
+}
+
+// The sound picker closes on a click outside it or on Escape.
+document.addEventListener('pointerdown', (e) => {
+  for (const d of document.querySelectorAll('details.add[open]')) if (!d.contains(e.target)) d.open = false;
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') for (const d of document.querySelectorAll('details.add[open]')) d.open = false;
+});
+
 function trackTools(g, tr, kind) {
-  const list = Object.entries(index.instruments).filter(([, s]) => (s.kind === 'hit') === (kind === 'hit'));
   return [
     h('select', { onchange: (e) => { snapshot(); tr.inst = e.target.value; snd.useInstruments([g]); changed(); } },
-      list.map(([n, s]) => h('option', { value: n, selected: n === tr.inst }, s.label))),
+      sections((s) => (s.kind === 'hit') === (kind === 'hit')).map(([title, ids]) => h('optgroup', { label: title },
+        ids.map((n) => h('option', { value: n, selected: n === tr.inst }, index.instruments[n].label))))),
     h('input', { type: 'range', min: 0, max: 150, value: Math.round(tr.vol * 100), title: 'Volume',
       onchange: (e) => { snapshot(); tr.vol = Number(e.target.value) / 100; changed(); } }),
     h('button', { class: 'icon', title: 'Remove this sound', onclick: () => {
@@ -664,7 +697,7 @@ async function restoreFile(file) {
 /* ---------- keys ---------- */
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.closest('input, select, textarea')) return;
+  if (e.target.closest('input, select, textarea, summary')) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(e.shiftKey); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); undo(true); return; }
   if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); if (playing) stop(); else play(); }

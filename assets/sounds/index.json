@@ -1878,6 +1878,113 @@
     }
    ],
    "credit": "flamestudios-banjo"
+  },
+  "electric-bass": {
+   "label": "Electric bass",
+   "kind": "pitched",
+   "release": 0.2,
+   "zones": [
+    {
+     "midi": 28,
+     "file": "electric-bass/28.mp3",
+     "tune": 28
+    },
+    {
+     "midi": 30,
+     "file": "electric-bass/30.mp3",
+     "tune": 23
+    },
+    {
+     "midi": 31,
+     "file": "electric-bass/31.mp3",
+     "tune": 22
+    },
+    {
+     "midi": 33,
+     "file": "electric-bass/33.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 35,
+     "file": "electric-bass/35.mp3",
+     "tune": 7
+    },
+    {
+     "midi": 36,
+     "file": "electric-bass/36.mp3",
+     "tune": 6
+    },
+    {
+     "midi": 37,
+     "file": "electric-bass/37.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 38,
+     "file": "electric-bass/38.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 39,
+     "file": "electric-bass/39.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 40,
+     "file": "electric-bass/40.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 42,
+     "file": "electric-bass/42.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 43,
+     "file": "electric-bass/43.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 44,
+     "file": "electric-bass/44.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 45,
+     "file": "electric-bass/45.mp3"
+    },
+    {
+     "midi": 46,
+     "file": "electric-bass/46.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 47,
+     "file": "electric-bass/47.mp3",
+     "tune": 14
+    },
+    {
+     "midi": 48,
+     "file": "electric-bass/48.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 49,
+     "file": "electric-bass/49.mp3",
+     "tune": 14
+    },
+    {
+     "midi": 50,
+     "file": "electric-bass/50.mp3",
+     "tune": 21
+    },
+    {
+     "midi": 52,
+     "file": "electric-bass/52.mp3",
+     "tune": 20
+    }
+   ],
+   "credit": "flamestudios-bass"
   }
  },
  "voices": {},
@@ -1886,6 +1993,7 @@
   "vsco": "VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0",
   "salamander-drums": "Salamander Drumkit by Alexander Holm, CC BY-SA 3.0",
   "freepats-guitar": "Spanish Classical Guitar by Roberto (FreePats project), CC0",
+  "flamestudios-bass": "Ibanez Electric Bass Guitar by FlameStudios (Gary Campion), GNU GPL v3",
   "flamestudios-banjo": "Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3"
  }
 }

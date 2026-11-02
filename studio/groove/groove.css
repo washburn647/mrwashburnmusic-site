@@ -33,3 +33,23 @@ canvas.grid { display: block; touch-action: none; cursor: pointer; border-radius
 
 .empty, .hint { color: #8A968C; }
 .status { color: #5B6B5F; }
+
+/* Sound picker: a panel of sections, each a grid of sounds. */
+details.add { position: relative; }
+details.add summary { list-style: none; cursor: pointer; border-radius: 12px; padding: 8px 14px; background: #fff; box-shadow: 0 2px 0 rgba(47,74,58,.08); user-select: none; }
+details.add summary::-webkit-details-marker { display: none; }
+details.add summary:hover, details.add summary:focus-visible, details.add[open] summary { box-shadow: 0 0 0 2px #2F4A3A; outline: none; }
+.picker { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; width: min(820px, calc(100vw - 32px)); max-height: min(70vh, 640px); overflow-y: auto;
+  background: #FBF8F0; border-radius: 16px; padding: 14px; box-shadow: 0 12px 32px rgba(47,74,58,.22), 0 0 0 1px rgba(47,74,58,.08);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); grid-auto-flow: row dense; gap: 14px 18px; align-items: start; }
+.pick-group.wide { grid-column: span 2; }
+.pick-group.wide .pick-grid { grid-template-columns: repeat(4, 1fr); }
+.pick-group .label { margin-bottom: 6px; }
+.pick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.pick-grid button { padding: 7px 10px; font-size: 15px; text-align: left; line-height: 1.2; }
+@media (max-width: 640px) {
+  details.add[open] { flex-basis: 100%; }
+  .picker { position: static; width: auto; max-height: none; margin-top: 8px; grid-template-columns: 1fr; }
+  .pick-group.wide { grid-column: auto; }
+  .pick-group.wide .pick-grid { grid-template-columns: repeat(2, 1fr); }
+}
