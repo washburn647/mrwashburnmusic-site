@@ -27,9 +27,28 @@ const WORDS = `
 `.trim().split(/\s+/);
 const SET = new Set(WORDS);
 
+/* New codes come from these 64 words, each with a picture, so a student can pick their
+   code from five lists instead of typing it (64^5, about a billion codes). Older codes
+   from the longer list above still open by link. */
+export const PICKS = [
+  ['apple', '🍎'], ['bear', '🐻'], ['bell', '🔔'], ['bike', '🚲'], ['bird', '🐦'], ['boat', '⛵'], ['book', '📖'], ['bread', '🍞'],
+  ['bunny', '🐰'], ['cake', '🎂'], ['candy', '🍬'], ['carrot', '🥕'], ['castle', '🏰'], ['cheese', '🧀'], ['cherry', '🍒'], ['chick', '🐥'],
+  ['clock', '⏰'], ['cookie', '🍪'], ['corn', '🌽'], ['crab', '🦀'], ['crown', '👑'], ['cupcake', '🧁'], ['deer', '🦌'], ['dino', '🦕'],
+  ['dolphin', '🐬'], ['donut', '🍩'], ['dragon', '🐉'], ['drum', '🥁'], ['duck', '🦆'], ['eagle', '🦅'], ['fish', '🐟'], ['fox', '🦊'],
+  ['frog', '🐸'], ['gem', '💎'], ['goat', '🐐'], ['grape', '🍇'], ['guitar', '🎸'], ['hippo', '🦛'], ['horse', '🐴'], ['house', '🏠'],
+  ['koala', '🐨'], ['lemon', '🍋'], ['lion', '🦁'], ['llama', '🦙'], ['moon', '🌙'], ['mouse', '🐭'], ['owl', '🦉'], ['panda', '🐼'],
+  ['piano', '🎹'], ['pig', '🐷'], ['pizza', '🍕'], ['rocket', '🚀'], ['snail', '🐌'], ['star', '⭐'], ['taco', '🌮'], ['tiger', '🐯'],
+  ['train', '🚂'], ['tree', '🌳'], ['turtle', '🐢'], ['violin', '🎻'], ['whale', '🐳'], ['zebra', '🦓'], ['popcorn', '🍿'], ['puppy', '🐶'],
+];
+const EMOJI = new Map(PICKS);
+export const emojiFor = (word) => EMOJI.get(word) || '';
+/* "🐯 tiger  🌙 moon ..." */
+export const showCode = (code) => code.split('-').map((w) => `${emojiFor(w)} ${w}`.trim()).join('  ');
+export const pickable = (code) => code.split('-').every((w) => EMOJI.has(w));
+
 export function newCode() {
   const n = crypto.getRandomValues(new Uint8Array(5));
-  return [...n].map((x) => WORDS[x]).join('-');
+  return [...n].map((x) => PICKS[x & 63][0]).join('-');
 }
 
 /* A typed or linked code, tidied: "Tiger moon, PIANO..." becomes "tiger-moon-piano...". */

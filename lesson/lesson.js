@@ -6,7 +6,7 @@
    Checkmarks and practice minutes are kept only in this browser. */
 
 import { decodeLesson, cleanPage, formatDate } from './codec.js';
-import { cleanCode, openPages, sendResult } from './locked.js';
+import { cleanCode, openPages, sendResult, PICKS } from './locked.js';
 import { LOGO, QR_SRC, LESSON_PAGE } from './paths.js';
 import { loadScript } from './score.js';
 import { confetti } from './fun.js';
@@ -84,19 +84,21 @@ async function show() {
   render(page, { key: await keyFor(hash), qr: location.href });
 }
 
-/* Where a student types their code. */
+/* Where a student picks their code: five lists of pictures and words. */
 function showEntry(problem = '') {
   stop();
   document.title = 'Lesson · Mr. Washburn Music';
-  const box = el('input', { class: 'code', autocomplete: 'off', autocapitalize: 'none', spellcheck: false, 'aria-label': 'Code' });
+  const picks = [...PICKS].sort((a, b) => a[0].localeCompare(b[0]));
+  const lists = [1, 2, 3, 4, 5].map((n) => el('select', { class: 'codepick', 'aria-label': `Word ${n}` },
+    el('option', { value: '' }, '—'),
+    ...picks.map(([w, e]) => el('option', { value: w }, `${e} ${w}`))));
   const form = el('form', { class: 'codeform' + (problem ? ' shake' : ''), onsubmit: (e) => {
     e.preventDefault();
-    const code = cleanCode(box.value);
+    const code = cleanCode(lists.map((x) => x.value).join(' '));
     if (!code) { form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); return; }
     showLocked(code, false);
-  } }, el('span', { class: 'lock' }, '🔑'), box, el('button', { class: 'go', 'aria-label': 'Open' }, '▶'));
+  } }, el('span', { class: 'lock' }, '🔑'), el('div', { class: 'picks' }, ...lists), el('button', { class: 'go', 'aria-label': 'Open' }, '▶'));
   main.replaceChildren(logo(), form, ...(problem ? [el('p', { class: 'codeerr' }, problem)] : []));
-  box.focus();
 }
 
 async function showLocked(code, fromLink) {
