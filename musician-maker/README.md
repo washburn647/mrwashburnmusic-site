@@ -14,8 +14,9 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   followed by an 8-beat breather, then a boss (The Big Cheese) and an intermission where the
   learner can stop. The next lap starts back at 92. A rung is held when the learner is
   struggling.
-- **Micro-game:** cue (2 beats) · call (4) · response (4 beats; Build and Compose 8) · payoff
-  (2). The call is "bum" (neutral), syllables, notation or text, depending on the step.
+- **Micro-game:** cue (4 beats) · call (4) · response (4 beats; Build and Compose 8) · payoff
+  (4; Compose 8, to play the pattern back). Every part is whole bars, and the groove loop
+  restarts at bar 1 on each call, so a game never lands mid-loop. The call is "bum" (neutral), syllables, notation or text, depending on the step.
   Syllables on screen carry iconic notation: a stem over each note, a beam over each du-de.
 - **Band seats:** either side of the bouncing ball, one seat per layer (bass, drums, horns,
   keys). Each lights up when its layer joins at a combo tier and bobs on the beat.

@@ -285,7 +285,7 @@ const FALLBACK = {
 export function hit(name, t, vol = 0.8, dest = master) {
   if (!ctx) return;
   t = Math.max(t, ctx.currentTime);
-  if (inst[name]?.hit) inst[name].hit(t, { vol, dest });
+  if (inst[name]?.hit) return inst[name].hit(t, { vol, dest });
   else {
     const [f, d] = FALLBACK[name] || [600, 0.1];
     synth(t, f, d, vol * 0.4, dest, f > 2000 ? 'square' : 'triangle', 0.7);
@@ -371,7 +371,7 @@ export const ALL_LAYERS = [...LAYERS, 'breakdown'];
 export const METERS = { '2/4': 'Simple 2/4', '6/8': 'Compound 6/8' };
 // Grid steps in a beat: 16ths of a quarter in 2/4, of a dotted quarter in 6/8.
 export const stepsPerBeat = (g) => (g.meter === '6/8' ? 6 : 4);
-const ROOTS = [41, 46, 48, 41]; // F Bb C F, one per bar of 2/4 (stand-in when grooves.json is missing)
+const ROOTS = [41, 41, 46, 48]; // F F Bb C, one per bar of 2/4 (stand-in when grooves.json is missing)
 const CHORD = { 41: [65, 69, 72], 46: [65, 70, 74], 48: [64, 67, 72] };
 
 /* Grooves as the game trusts them. A groove has a name, a key and up to two versions, one
@@ -418,14 +418,19 @@ export function setGroove(id) {
    switch takes effect on the next beat, at the same place in the loop, so a groove whose
    versions share bars and chords carries on in the other meter. */
 let M = '2/4';
+// Beat index where the loop starts: games set it to their call, so every call is on bar 1.
+let phase = 0;
+export function setGroovePhase(i) { phase = i; }
+const loopPos = (i, beats) => (((i - phase) % beats) + beats) % beats;
 export const grooveMeter = () => M;
 export function setGrooveMeter(meter) { M = meter === '6/8' ? '6/8' : '2/4'; }
 const versionNow = () => (G ? G.versions[M] || Object.values(G.versions)[0] : null);
 
 /* One beat (i) of a groove version's layers, at t. In 2/4, swing moves the off-beat 8th toward a
    triplet (1 = full triplet) and the 16ths with it; 6/8 is already in threes. */
+let openHat = null; // stops the open hi-hat ringing now
 export function playGrooveBeat(g, i, t, spb, { layers, level = 1, dest = grooveBus }) {
-  const pos = i % g.beats;
+  const pos = loopPos(i, g.beats);
   const per = stepsPerBeat(g);
   const d = g.meter === '6/8' ? 0 : g.swing / 6;
   const warp = (x) => (x < 0.5 ? x * (0.5 + d) / 0.5 : 0.5 + d + (x - 0.5) * (0.5 - d) / 0.5);
@@ -436,7 +441,16 @@ export function playGrooveBeat(g, i, t, spb, { layers, level = 1, dest = grooveB
         if (Math.floor(n.s / per) !== pos) continue;
         const at = t + warp((n.s % per) / per) * spb;
         const vol = tr.vol * (n.v ?? 0.8) * level;
-        if (n.m == null) hit(tr.inst, at, vol, dest);
+        if (n.m == null) {
+          const stop = hit(tr.inst, at, vol, dest);
+          // A closed or pedal hi-hat cuts off an open one, as on a real kit.
+          if (tr.inst === 'kit-hihat-open') openHat = stop;
+          else if ((tr.inst === 'kit-hihat-closed' || tr.inst === 'kit-hihat-pedal') && openHat) {
+            const cut = openHat;
+            openHat = null;
+            setTimeout(() => cut?.(), Math.max(0, (at - ctx.currentTime) * 1000));
+          }
+        }
         else note(tr.inst, n.m, at, Math.max(1, n.l || 1) * step * 0.95, vol * 0.5, dest);
       }
     }
@@ -472,7 +486,7 @@ function loopLayer(name, i, t, spb) {
   if (p && p.bpm === bpm && i >= p.from && i < p.until) return true;
   const seamless = p && p.bpm === bpm && i === p.until;
   if (!seamless) stopLayer(name, t);
-  const pos = i % L.beats;
+  const pos = loopPos(i, L.beats);
   const end = t + (L.beats - pos) * spb;
   const src = ctx.createBufferSource();
   src.buffer = L.buffer;

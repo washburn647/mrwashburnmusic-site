@@ -1,6 +1,7 @@
 /* Musician Maker: one nonstop stream of micro-games on one groove.
    A run is laps of three sets (92, 108, 126 bpm), each set followed by a breather, then a
-   boss and an intermission. A micro-game is cue (2 beats), call (4), response, payoff (2).
+   boss and an intermission. A micro-game is cue (4 beats), call (4), response, payoff (4):
+   whole 2-bar phrases, so the groove's 4-bar loop starts again on every call.
    The director (director.js) picks every game; the groove (sound.js) grows with the combo.
    Why it works this way: the stream engine design doc in the project. */
 
@@ -598,8 +599,10 @@ function gameSeg(B, seg) {
   const T = (i) => R.clock.timeOf(i);
   const callBeats = step.call === 'none' ? 0 : 4;
   const respBeats = { perform: 4, create: 4, pick: 4, build: 8, compose: 8 }[item.mode];
-  const payBeats = item.mode === 'compose' ? 6 : 2;
-  const c0 = B + 2;
+  // Compose plays the learner's pattern back after 2 beats of payoff, so it gets 8.
+  const payBeats = item.mode === 'compose' ? 8 : 4;
+  const c0 = B + 4;
+  snd.setGroovePhase(c0); // the call (or a compose answer) starts on bar 1 of the groove
   const r0 = c0 + callBeats;
   const p0 = r0 + respBeats;
   const end = p0 + payBeats;
@@ -635,7 +638,7 @@ function gameSeg(B, seg) {
     const res = grade(item, q, win);
     result(item, res, { onWin: () => R.api.win(), onFail: () => R.api.fail(), t: T(p0) });
     if (item.mode === 'compose' && res.got) {
-      snd.playBack(res.got, T(p0 + 1), spb);
+      snd.playBack(res.got, T(p0 + 2), spb);
       R.dom.prompt.replaceChildren(h('div', { class: 'answer' }, h('span', {}, 'Your pattern'), notes(res.got), sylIcons(res.got)));
     }
     R.win = null;
@@ -1055,8 +1058,9 @@ function boss(B) {
     bump(R.dom.cue, 'slam');
     R.dom.prompt.replaceChildren(h('div', { class: 'boss-name' }, 'The Big Cheese'), h('div', { class: 'hearts' }, '❤️❤️❤️❤️'));
   });
+  snd.setGroovePhase(B + 4);
   for (let r = 0; r < rounds; r++) {
-    const c0 = B + 2 + r * 8;
+    const c0 = B + 4 + r * 8;
     const r0 = c0 + 4;
     const item = dir.next({ boss: true, force: R.force });
     const kind = BOSS_CALL[item.step];
@@ -1100,7 +1104,7 @@ function boss(B) {
       });
     });
   }
-  const done = B + 2 + rounds * 8;
+  const done = B + 4 + rounds * 8;
   later(T(done), () => {
     if (hits >= 3) {
       R.api.win();

@@ -256,7 +256,8 @@ function addSound(g, layer) {
     changed();
   } },
   h('option', { value: '' }, '+ Add a sound…'),
-  h('optgroup', { label: 'Percussion' }, list.filter(([, s]) => s.kind === 'hit').map(([n, s]) => h('option', { value: n }, s.label))),
+  h('optgroup', { label: 'Drum kit' }, list.filter(([, s]) => s.group === 'kit').map(([n, s]) => h('option', { value: n }, s.label))),
+  h('optgroup', { label: 'Percussion' }, list.filter(([, s]) => s.kind === 'hit' && s.group !== 'kit').map(([n, s]) => h('option', { value: n }, s.label))),
   h('optgroup', { label: 'Instruments' }, list.filter(([, s]) => s.kind !== 'hit').map(([n, s]) => h('option', { value: n }, s.label))));
 }
 
