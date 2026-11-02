@@ -60,20 +60,67 @@ function seg(options, value, change) {
   return wrap;
 }
 
+/* Which screen is showing, for the page background (the title is a stage at night). */
+function scene(name) {
+  document.body.dataset.screen = name;
+}
+
+/* An on/off switch with a label and a short hint under it. */
+function toggle(label, hint, on, change) {
+  const b = h('button', { class: 'switch', role: 'switch', 'aria-checked': String(on), onclick: () => {
+    on = !on;
+    b.setAttribute('aria-checked', String(on));
+    change(on);
+  } }, h('span', { class: 'sw-text' }, h('b', {}, label), h('small', {}, hint)), h('span', { class: 'sw-knob' }));
+  return b;
+}
+
+const NOTE_SVG = {
+  q: '<svg viewBox="0 0 20 40" aria-hidden="true"><ellipse cx="7.5" cy="33" rx="7" ry="5" transform="rotate(-20 7.5 33)"/><rect x="12.6" y="3" width="2.4" height="30"/></svg>',
+  ee: '<svg viewBox="0 0 42 40" aria-hidden="true"><ellipse cx="7.5" cy="33" rx="7" ry="5" transform="rotate(-20 7.5 33)"/><ellipse cx="30.5" cy="33" rx="7" ry="5" transform="rotate(-20 30.5 33)"/><rect x="12.6" y="5" width="2.4" height="28"/><rect x="35.6" y="5" width="2.4" height="28"/><rect x="12.6" y="3" width="25.4" height="6"/></svg>',
+};
+
+function floatNote(kind, i) {
+  const el = h('span', { class: `fnote fn${i}` });
+  el.innerHTML = NOTE_SVG[kind]; // fixed markup above
+  return el;
+}
+
 function title() {
+  scene('title');
   const lv = levelOf(st.xp);
+  const toNext = 150 * lv.n * (lv.n + 1) / 2;
   app.replaceChildren(h('div', { class: 'title' },
-    h('h1', {}, 'Musician Maker'),
-    h('p', { class: 'sub' }, 'Unit 1 · du, du-de'),
-    mookie('happy'),
-    h('button', { class: 'play', onclick: () => startRun() }, 'Play'),
-    h('div', { class: 'opts' },
-      h('label', {}, 'Mookie mode', seg({ off: 'Off', on: 'On' }, st.mookie ? 'on' : 'off', (v) => { st.mookie = v === 'on'; dir = makeDirector(st); save(); })),
-      h('label', {}, 'Answer by', seg({ tap: 'Tapping', mic: 'Mic and tapping' }, st.input, (v) => { st.input = v; save(); title(); })),
-      st.input === 'mic' ? micCheck() : null),
-    h('p', { class: 'stats' }, `Level ${lv.n} ${lv.title} · ${st.xp} XP · best combo ${st.bestCombo} · ${st.days} ${st.days === 1 ? 'day' : 'days'} played`),
-    st.stickers.length ? h('p', { class: 'stickers' }, st.stickers.join(' ')) : null,
-    h('button', { class: 'link', onclick: progress }, 'My progress')));
+    h('div', { class: 'headliner' },
+      h('header', { class: 'marquee' }, h('div', { class: 'marquee-in' },
+        h('small', {}, 'Mookie presents'),
+        h('h1', {}, 'Musician', h('br'), 'Maker'))),
+      h('p', { class: 'unit-tag' }, h('span', {}, 'Unit 1'), ' du · du-de'),
+      h('div', { class: 'hero' },
+        h('div', { class: 'beam' }),
+        ...['q', 'ee', 'q', 'ee', 'q'].map(floatNote),
+        mookie('happy'),
+        h('div', { class: 'rug' })),
+      h('button', { class: 'play big-play', onclick: () => startRun() }, h('span', { class: 'tri' }), 'Play')),
+    h('div', { class: 'side' },
+      h('div', { class: 'pass' },
+        h('div', { class: 'pass-top' }, 'Backstage pass'),
+        h('div', { class: 'pass-body' },
+          h('div', { class: 'pass-lv' }, h('small', {}, 'Level'), h('b', {}, String(lv.n))),
+          h('div', { class: 'pass-who' },
+            h('b', {}, lv.title),
+            h('span', { class: 'xpbar' }, h('span', { style: `width:${Math.round(lv.frac * 100)}%` })),
+            h('small', {}, `${st.xp} / ${toNext} XP`))),
+        h('div', { class: 'pass-stats' },
+          h('span', {}, h('b', {}, String(st.bestCombo)), ' best combo'),
+          h('span', {}, h('b', {}, String(st.days)), st.days === 1 ? ' day played' : ' days played')),
+        st.stickers.length ? h('p', { class: 'stickers' }, st.stickers.join(' ')) : null),
+      h('div', { class: 'switches' },
+        toggle('Mookie mode', 'An easier pace', st.mookie, (v) => { st.mookie = v; dir = makeDirector(st); save(); }),
+        toggle('Use the mic', 'Say your answers too', st.input === 'mic', (v) => { st.input = v ? 'mic' : 'tap'; save(); title(); }),
+        st.input === 'mic' ? micCheck() : null),
+      h('button', { class: 'to-map', onclick: progress },
+        h('span', { class: 'staff-ico' }), 'My progress'))));
 }
 
 /* Say "du du-de du du" and watch the meter: shows whether the mic hears you, and how many
@@ -117,26 +164,140 @@ function micProblem(e) {
   return `The mic didn't start (${e?.message || e}).`;
 }
 
-function progress() {
-  const rows = STEPS.slice(1).map((s) => {
+/* Progress: Unit 1 as one long staff that winds down the page. Each step is a note on it:
+   hollow while locked, filled once open, gold when mastered. Mookie sits on the current one. */
+const STATE_TEXT = { mastered: '★ Mastered', now: 'Learning now', open: 'Practising', locked: 'Locked' };
+
+function stepInfo() {
+  return STEPS.slice(1).map((s) => {
     const p = dir.step(s.n);
     const state = p.mastered ? 'mastered' : s.n === st.frontier ? 'now' : s.n < st.frontier ? 'open' : 'locked';
-    return h('div', { class: `prow ${state}` },
-      h('span', { class: `band ${s.band}` }, BANDS[s.band]),
-      h('span', { class: 'pname' }, `${s.n}. ${s.name}`),
-      h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(p.s)}%` })),
-      h('span', { class: 'pstate' }, { mastered: '★ mastered', now: 'learning now', open: 'practising', locked: 'locked' }[state]),
-      st.test ? h('button', { class: 'mini', onclick: () => startRun({ force: s.n }) }, 'Drill') : null);
+    return { s, p, state };
   });
+}
+
+function progress() {
+  scene('progress');
+  const info = stepInfo();
+  const done = info.filter((i) => i.state === 'mastered').length;
+  const map = h('div', { class: 'map' });
+  const sheet = h('div', { class: 'psheet', role: 'dialog' });
   app.replaceChildren(h('div', { class: 'progress' },
-    h('button', { class: 'link back', onclick: title }, '‹ Back'),
-    h('h2', {}, 'Unit 1 progress'),
-    h('p', { class: 'note' }, 'New steps open as you master the one before. The stream picks what you play.'),
-    ...rows,
+    h('header', { class: 'phead' },
+      h('button', { class: 'back', 'aria-label': 'Back', onclick: () => { title(); } }, '‹'),
+      h('div', {}, h('h2', {}, 'My progress'), h('p', {}, `Unit 1 · ${done} of 12 steps mastered`))),
+    map,
+    h('p', { class: 'note' }, 'Master a step to open the next one. The music picks what you play.'),
     h('div', { class: 'testbox' },
       h('label', {}, 'Test mode (for Kyle): drill any step', seg({ off: 'Off', on: 'On' }, st.test ? 'on' : 'off', (v) => { st.test = v === 'on'; save(); progress(); })),
-      st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); dir = makeDirector(st); progress(); } }, 'Reset all progress') : null)));
+      st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); dir = makeDirector(st); progress(); } }, 'Reset all progress') : null),
+    sheet));
+  drawMap(map, info, sheet);
+  map.querySelector('.pnode.now, .pnode.open')?.scrollIntoView({ block: 'center' });
 }
+
+/* Smooth curve through points (Catmull-Rom as cubic Béziers). */
+function curve(pts) {
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [p0, p1, p2, p3] = [pts[i - 1] || pts[i], pts[i], pts[i + 1], pts[i + 2] || pts[i + 1]];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1.map(Math.round)} ${c2.map(Math.round)} ${p2.map(Math.round)}`;
+  }
+  return d;
+}
+
+function drawMap(map, info, sheet) {
+  const W = Math.max(300, map.clientWidth);
+  const A = Math.min(W * 0.27, 170);
+  const GAP = 104;
+  const BAND_GAP = 46;
+  let y = 168;
+  let band = '';
+  const pos = info.map(({ s }, i) => {
+    if (s.band !== band) { if (band) y += BAND_GAP; band = s.band; }
+    const p = [W / 2 + A * Math.sin(i * Math.PI / 2 + Math.PI), y];
+    y += GAP;
+    return p;
+  });
+  const top = 52;
+  const end = y - 10;
+  const pts = [[14, top], [W * 0.34, top], ...pos, [W * 0.62, end], [W - 18, end]];
+  const H = end + 70;
+  map.style.height = `${H}px`;
+
+  // Staff: five parallel lines along any curve, from stacked strokes of shrinking width.
+  const d = curve(pts);
+  const strokes = [[34, 'ln'], [30, 'bg'], [18, 'ln'], [14, 'bg'], [2, 'ln']]
+    .map(([w, c]) => `<path d="${d}" class="st-${c}" stroke-width="${w}"/>`).join('');
+  const bars = `<rect x="${W - 26}" y="${end - 17}" width="2" height="34" class="st-fill"/><rect x="${W - 21}" y="${end - 17}" width="5" height="34" class="st-fill"/>`;
+  const clef = `<rect x="22" y="${top - 8}" width="4" height="16" class="st-fill"/><rect x="30" y="${top - 8}" width="4" height="16" class="st-fill"/>`;
+  const time = `<text x="52" y="${top - 1}" class="st-time">2</text><text x="52" y="${top + 16}" class="st-time">4</text>`;
+
+  // Soft colour behind each band, with a boxed rehearsal mark.
+  const regions = [];
+  for (const b of Object.keys(BANDS)) {
+    const ys = info.map((it, i) => (it.s.band === b ? pos[i][1] : null)).filter((v) => v != null);
+    regions.push(h('div', { class: `region ${b}`, style: `top:${ys[0] - 76}px;height:${ys.at(-1) - ys[0] + 128}px` },
+      h('span', { class: 'rmark' }, BANDS[b])));
+  }
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'staff');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.innerHTML = strokes + bars + clef + time; // built from numbers only
+
+  const nodes = info.map((it, i) => {
+    const [x, ny] = pos[i];
+    const left = x < W / 2 - 4;
+    const room = left ? W - x - 52 : x - 52;
+    const node = h('button', { class: `pnode ${it.state} ${it.s.band}`, style: `left:${x}px;top:${ny}px`,
+      'aria-label': `${it.s.n}. ${it.s.name}: ${STATE_TEXT[it.state]}`, onclick: () => showStep(sheet, it) },
+    h('span', { class: 'head' }, h('b', {}, it.state === 'mastered' ? '★' : String(it.s.n))));
+    const label = h('div', { class: `plabel ${it.state} ${left ? 'r' : 'l'}`,
+      style: `top:${ny}px;${left ? `left:${x + 46}px` : `right:${W - x + 46}px`};max-width:${room}px` },
+    h('b', {}, it.s.name),
+    h('small', {}, STATE_TEXT[it.state]),
+    it.state !== 'locked' ? h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(it.p.s)}%` })) : null);
+    return [node, label];
+  });
+
+  const cur = info.findIndex((it) => it.state === 'now');
+  const cat = cur >= 0 ? mookie('') : null;
+  if (cat) {
+    // beside the note, on the side away from its label
+    const [x, cy] = pos[cur];
+    cat.classList.add('map-cat');
+    cat.style.cssText = `left:${x < W / 2 - 4 ? x - 58 : x + 58}px;top:${cy + 26}px`;
+  }
+
+  map.replaceChildren(...regions, svg, ...nodes.flat(), cat,
+    h('div', { class: 'next-unit', style: `top:${end + 26}px` }, 'Unit 2 · coming soon'));
+}
+
+function showStep(sheet, { s, p, state }) {
+  sheet.replaceChildren(...[
+    h('button', { class: 'close', 'aria-label': 'Close', onclick: () => sheet.classList.remove('show') }, '×'),
+    h('span', { class: `band ${s.band}` }, BANDS[s.band]),
+    h('h3', {}, `${s.n}. ${s.name}`),
+    h('p', {}, state === 'locked' ? 'Master the step before this one to open it.' : s.say),
+    state !== 'locked' ? h('div', { class: 'sheet-bar' }, h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(p.s)}%` })), h('small', {}, `${Math.round(p.s)}% strong`)) : null,
+    h('p', { class: `sheet-state ${state}` }, STATE_TEXT[state]),
+    st.test ? h('button', { class: 'mini', onclick: () => startRun({ force: s.n }) }, 'Drill this step') : null].filter(Boolean));
+  sheet.classList.add('show');
+}
+
+let resizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const map = document.querySelector('.map');
+    if (map) drawMap(map, stepInfo(), document.querySelector('.psheet'));
+  }, 150);
+});
 
 /* ---------------- the run ---------------- */
 
@@ -148,6 +309,7 @@ function later(t, fn) {
 
 async function startRun(opts = {}) {
   const ctx = snd.ac();
+  scene('run');
   app.replaceChildren(h('div', { class: 'loading' }, mookie(''), h('p', {}, 'Tuning up…')));
   await snd.load();
   let micOn = false;
