@@ -4,6 +4,8 @@
    the page), tail (a chain that sways), collar bell. Expressions swap the eyes and mouth.
      const m = rigMookie();  stage.append(m.el);
      m.mood('hunt');  m.look(1, 0);  m.reach(x, y)  (page px)  m.beat(down, spb, tier)
+   Supper Time adds sleep (with an optional snot bubble: class "snot" on the svg, size --snot),
+   eat (cheeks full) and sad.
    Fixed markup only: nothing a learner types goes in here. Stops itself when removed. */
 
 const CAT = '#17171b';
@@ -41,6 +43,8 @@ const MARKUP = `
     <g class="r-eyes-dizzy" stroke="${EYE}" stroke-width="2.6" fill="none" stroke-linecap="round">
       <path d="M82 75 m-1 0 a1 1 0 1 1 2 0 a3 3 0 1 1 -6 0 a5 5 0 1 1 10 0 a7 7 0 1 1 -14 0"/>
       <path d="M118 75 m-1 0 a1 1 0 1 1 2 0 a3 3 0 1 1 -6 0 a5 5 0 1 1 10 0 a7 7 0 1 1 -14 0"/></g>
+    <g class="r-eyes-sleep" stroke="${EYE}" stroke-width="4" fill="none" stroke-linecap="round">
+      <path d="M71 76 Q82 84 93 76"/><path d="M107 76 Q118 84 129 76"/></g>
     <g class="r-eyes-star" fill="#f2c94c">
       <path d="M82 63 L85 72 L94 72 L87 78 L90 87 L82 81 L74 87 L77 78 L70 72 L79 72 Z"/>
       <path d="M118 63 L121 72 L130 72 L123 78 L126 87 L118 81 L110 87 L113 78 L106 72 L115 72 Z"/></g>
@@ -52,8 +56,11 @@ const MARKUP = `
     <path class="r-mouth m-open" d="M91 99 Q100 114 109 99 Z" fill="${PINK}" stroke="#4a3438" stroke-width="1.2"/>
     <ellipse class="r-mouth m-o" cx="100" cy="104" rx="4.5" ry="6" fill="#4a3438"/>
     <path class="r-mouth m-grin" d="M86 98 Q100 110 114 96" stroke="#6a6a72" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <g class="r-mouth m-chew"><ellipse cx="66" cy="96" rx="12" ry="10" fill="${CAT}" stroke="${EDGE}" stroke-width="1.2"/><ellipse cx="134" cy="96" rx="12" ry="10" fill="${CAT}" stroke="${EDGE}" stroke-width="1.2"/>
+      <path d="M93 101 Q100 105 107 101" stroke="#6a6a72" stroke-width="2" fill="none" stroke-linecap="round"/></g>
     <path class="r-mouth m-wavy" d="M89 103 Q92 99 95 103 T101 103 T107 103 T113 103" stroke="#6a6a72" stroke-width="1.8" fill="none" stroke-linecap="round"/>
     <g class="r-whiskers" stroke="#fff" stroke-opacity=".55" stroke-width="1.3" stroke-linecap="round"><path d="M84 95 L52 89"/><path d="M84 99 L51 101"/><path d="M116 95 L148 89"/><path d="M116 99 L149 101"/></g>
+    <g class="r-snot"><circle cx="111" cy="97" r="8" fill="#d8f0fb" fill-opacity=".55" stroke="#8fc8e6" stroke-width="1.3"/><circle cx="108" cy="94" r="2.2" fill="#fff" opacity=".8"/></g>
     <path class="r-sweat" d="M146 50 Q152 60 146 64 Q140 60 146 50 Z" fill="#9fd3f0" stroke="#5b9ec4" stroke-width="1"/>
   </g>
 </g>`;
@@ -74,6 +81,10 @@ const MOODS = {
   star: { eyes: 'star', mouth: 'open', dil: 1, crouch: 0, tail: 0.7, tailSpeed: 7, ears: 6, arms: 'up', blush: true },
   shock: { eyes: 'open', mouth: 'o', dil: 0.35, crouch: -0.6, tail: 0.1, tailSpeed: 12, ears: 14, big: true, sweat: true },
   dizzy: { eyes: 'dizzy', mouth: 'wavy', dil: 1, crouch: 0.3, tail: 0.15, tailSpeed: 1.5, ears: -12, sweat: true },
+  // Supper Time: fast asleep (with a snot bubble the scene can show), chomping, and robbed.
+  sleep: { eyes: 'sleep', mouth: 'w', dil: 1, crouch: 0.9, tail: 0.08, tailSpeed: 0.8, ears: -5 },
+  eat: { eyes: 'happy', mouth: 'chew', dil: 1, crouch: 0.2, tail: 0.6, tailSpeed: 6, ears: 5, blush: true },
+  sad: { eyes: 'open', mouth: 'wavy', dil: 2.8, crouch: 0.5, tail: 0.04, tailSpeed: 0.8, ears: -16, sweat: true },
 };
 
 export function rigMookie() {
@@ -243,6 +254,7 @@ export function rigMookie() {
     start,
     mood(name) { setMood(name); start(); },
     get moodName() { return moodName; },
+    svg,
     look(x, y = 0) { S.lx.t = Math.max(-1, Math.min(1, x)); S.ly.t = Math.max(-1, Math.min(1, y)); },
     blink,
     /* Rubber-hose reach with the right paw to a page point; back after hold seconds. */
@@ -271,6 +283,13 @@ export function rigMookie() {
     beat(down, spb, tier = 0) {
       svg.classList.toggle('shades', tier >= 4);
       if (still) return;
+      if (moodName === 'sleep') {
+        // Asleep: no grooving, just a big breath on 1 and a small one on 2.
+        S.squash.v -= down ? 1.1 : 0.45;
+        S.hb.v += down ? 40 : 18;
+        S.tilt.t = 0;
+        return;
+      }
       const g = 1 + tier * 0.35;
       S.hb.v += 90 * g;
       beatTilt = -beatTilt;

@@ -11,7 +11,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 ## A run
 
 - **Lap:** three sets of 4 micro-games (3 in Mookie mode) at 92, 108 and 126 bpm, each
-  followed by an 8-beat breather, then a boss (The Big Cheese) and an intermission where the
+  followed by an 8-beat breather, then a boss (The Big Cheese or The Big Fluff, by turns) and an intermission where the
   learner can stop. The next lap starts back at 92. A rung is held when the learner is
   struggling.
 - **Micro-game:** cue (4 beats) · call (4) · response (4 beats; Build and Compose 8) · payoff
@@ -38,7 +38,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   from `/assets/patterns/patterns.js`. Kyle's familiar marks from the recorder
   (`/assets/patterns/units.json`) replace the built-in set once published.
 - `games.js`: the micro-games. A game is a scene and a gesture; it never knows the step.
-  First versions of Mouse Catcher and Supper Time.
+  Mouse Catcher and Supper Time are in their own files. A game with a `bossName` can host
+  the boss; `main.js` takes turns between them by lap.
 - `sound.js`: the groove, calls, cue words, effects. Uses Kyle's recordings where they're on
   the site (takes on "bum" and in syllables, cue words, groove loops per layer and tempo) and
   the site's sampled instruments for anything missing.
@@ -67,16 +68,30 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   Critic (a googly-eyed Roman bust who sings along and tuts), a hopping frog flask, a teacup
   trap, a jousting helmet, a bronze decoy mouse, and for the boss a bell drop and a trophy.
   Styles in `scenes.css`.
+- `scene-supper.js`: Supper Time in full (styles in `scene-supper.css`): a kitchen at sunset
+  (lamp that swings on the beat, rattling pot, chalkboard menu, checkerboard floor), Mookie
+  asleep in her basket with a snot bubble, and her supper in a 200-year-old Japanese gong bowl
+  with its beater. Chef Bastet (an Egyptian bronze cat in a chef's hat, googly eyes) sings the
+  call; Bindi and Rusty tiptoe out from behind the counter one step per note. Each tap rings
+  the bowl: the thieves freeze, Mookie stirs, the bubble shrinks. Wins: Mookie rockets to her
+  bowl, a royal Sevres tureen lands with a fanfare, a porcelain hen tureen squawks the thieves
+  away, a bronze lobster pinches Rusty. Misses: the masked heist, Bindi's yowl, Rusty flops on
+  the bowl, the stone-fish swap. The boss is Rusty, The Big Fluff, on a silver tureen: each hit
+  blows his fur up, the last blasts him off.
+- `cats.js`: Bindi and Rusty, rigged like Mookie (springs, moods, tiptoe steps, rubber-hose
+  reach, fur that poofs, bandit masks). Drawn from Kyle's photos of them, which aren't kept here.
 - `props/`: the photo props, CC0 museum objects cut out with a sticker edge
   (`props/CREDITS.txt`). New props should be CC0 or public domain, transparent PNG, about
   320px on the long side.
 - `rig.js`: rigged Mookie for scenes: springs on body, head, ears, eyes, arms and tail; moods
-  (idle, hunt, happy, smug, star, shock, dizzy); `reach()` to any point on the page.
+  (idle, hunt, happy, smug, star, shock, dizzy, and for Supper Time sleep, eat, sad); `reach()`
+  to any point on the page.
 - `critters.js`: the mouse and The Big Cheese, with props (shades, flag, crown, bandage).
   `photoMouse()` is the mouse as a real photo with the same props and API; Mouse Catcher uses it.
 - `fx/`: cartoon sound effects from Kenney's CC0 packs (`fx/CREDITS.txt`); `toon()` in
   `sound.js` plays them and synthesizes the rest (slide whistle, squeak, raspberry, zip, bike
-  horn, frog croak, gong, choir).
+  horn, frog croak, gong, choir, and for Supper Time the bowl ding, meow, yowl, chomp, burp,
+  cluck, fanfare, hiss, snore and tiptoe).
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 

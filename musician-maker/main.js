@@ -1036,7 +1036,12 @@ function bossSay(item, kind) {
   return h('div', { class: 'say' }, h('span', { class: 'ic' }, kind === 'notation' ? '👀' : '👂'), h('span', {}, how));
 }
 
+/* The boss alternates by lap between the games that have one (The Big Cheese in Mouse
+   Catcher, The Big Fluff in Supper Time). */
+const BOSSES = GAMES.filter((g) => g.bossName);
+
 function boss(B) {
+  const game = BOSSES[R.lap % BOSSES.length];
   const T = (i) => R.clock.timeOf(i);
   const spb = R.clock.spb();
   const rounds = 4;
@@ -1048,15 +1053,15 @@ function boss(B) {
     hud();
     overlay(null);
     const d = R.dom;
-    R.api = mouseCatcher.make(h('div'), { boss: true });
+    R.api = game.make(h('div'), { boss: true });
     TX.play(d.stage.parentElement, TX.BOSS_TX, spb, () => {
       if (!R || R.dom !== d) return;
       d.stage.replaceChildren();
-      R.api = mouseCatcher.make(d.stage, { boss: true });
+      R.api = game.make(d.stage, { boss: true });
     });
     R.dom.cue.textContent = 'BOSS!';
     bump(R.dom.cue, 'slam');
-    R.dom.prompt.replaceChildren(h('div', { class: 'boss-name' }, 'The Big Cheese'), h('div', { class: 'hearts' }, '❤️❤️❤️❤️'));
+    R.dom.prompt.replaceChildren(h('div', { class: 'boss-name' }, game.bossName), h('div', { class: 'hearts' }, '❤️❤️❤️❤️'));
   });
   snd.setGroovePhase(B + 4);
   for (let r = 0; r < rounds; r++) {
@@ -1075,7 +1080,7 @@ function boss(B) {
       R.dom.prompt.append(bossSay(item, kind));
       if (kind === 'notation') R.dom.prompt.append(notes(item.pattern));
       R.item = { item, q: {} };
-      controlsFor(item, mouseCatcher, {}, win);
+      controlsFor(item, game, {}, win);
     });
     for (let k = 0; k < 4; k++) later(T(c0 + k), () => dots(k, 4, 'call'));
     if (kind !== 'notation') {
@@ -1111,11 +1116,11 @@ function boss(B) {
       const gained = addXP(100);
       const sticker = STICKERS.find((s) => !st.stickers.includes(s));
       if (sticker) st.stickers.push(sticker);
-      R.news.push(`Beat The Big Cheese! +${gained} XP${sticker ? ` and a new sticker ${sticker}` : ''}`);
+      R.news.push(`Beat ${game.bossName}! +${gained} XP${sticker ? ` and a new sticker ${sticker}` : ''}`);
     } else {
       R.api.fail();
       addXP(20);
-      R.news.push('The Big Cheese got away. Next lap!');
+      R.news.push(`${game.bossName} got away. Next lap!`);
     }
     save();
     R.dom.controls.replaceChildren();

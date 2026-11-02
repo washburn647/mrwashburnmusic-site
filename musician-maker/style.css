@@ -402,25 +402,6 @@ body[data-screen="progress"] {
 @keyframes bubble { 0% { opacity: 0; transform: translate(-50%, 8px) scale(.7); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
 
 
-.scene-supper { background: #e3eedb; }
-.scene-supper .floor { background: #b6c8a3; }
-.st-cushion { position: absolute; right: 4%; bottom: 14%; width: 38%; max-width: 200px; height: 38px; background: var(--rose); border-radius: 20px; }
-.st-cat { position: absolute; right: 8%; bottom: 18%; width: 28%; max-width: 140px; aspect-ratio: 200 / 222; transition: right .6s ease-in; }
-.st-cat.dash { right: 50%; }
-.st-zzz { position: absolute; right: 12%; top: 12%; font-weight: 600; color: var(--muted); display: flex; gap: 6px; }
-.st-zzz i { font-style: normal; display: inline-block; opacity: .35; }
-.st-zzz i:nth-child(2) { font-size: 1.25em; } .st-zzz i:nth-child(3) { font-size: 1.5em; }
-.st-zzz i.zpop { animation: zpop .5s ease-out; }
-@keyframes zpop { 30% { opacity: 1; transform: translateY(-10px) scale(1.3); } }
-@keyframes float { 50% { transform: translateY(-8px); } }
-.st-bowl { position: absolute; left: 20%; bottom: 20%; font-size: clamp(60px, 15vw, 88px); line-height: 1; transition: opacity .3s .5s; }
-.st-bowl.wobble { animation: wobble .2s ease-out; }
-.st-bowl.gone { opacity: 0; }
-@keyframes wobble { 30% { transform: rotate(-9deg); } 70% { transform: rotate(6deg); } }
-.st-thieves { position: absolute; left: -40%; bottom: 18%; font-size: 56px; line-height: 1; white-space: nowrap; }
-.st-thieves.steal { animation: steal 1.4s ease-in-out forwards; }
-@keyframes steal { 40% { left: 14%; } 60% { left: 14%; } 100% { left: -40%; } }
-.bubble.st-clang { top: 8%; font-size: 15px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
@@ -597,16 +578,6 @@ body[data-screen="progress"] {
 .mookie.flick .mk-tail { animation: flick .3s ease-out; }
 @keyframes flick { 35% { transform: rotate(-14deg); } }
 @keyframes eye-blink { 50% { transform: scaleY(.1); } }
-.st-cat { transform-origin: 50% 100%; }
-.st-cat.breathe { animation: breathe .45s ease-out; }
-.st-cat.breathe-s { animation: breathe-s .4s ease-out; }
-@keyframes breathe { 30% { transform: scale(1.06, .95); } }
-@keyframes breathe-s { 30% { transform: scale(1.025, .98); } }
-.st-cushion { transform-origin: 50% 100%; }
-.st-cushion.squish { animation: squish .4s ease-out; }
-.st-cushion.squish-s { animation: squish-s .35s ease-out; }
-@keyframes squish { 30% { transform: scale(1.04, .85); } }
-@keyframes squish-s { 30% { transform: scale(1.02, .93); } }
 
 /* ---------- feedback effects (effects.js) ---------- */
 .fx-burst { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 4; }
