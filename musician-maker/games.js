@@ -3,10 +3,16 @@
      onCall(i, syl)  a note of the call sounds (syl is set when the call is in syllables)
      onTap()         the learner tapped (or spoke) a note
      win(), fail()   the payoff gag
+     onBeat(down, spb, tier)  every beat of the groove (down: beat 1 of the 2/4 bar; tier:
+                     the combo tier), so the scene shows the pulse and parties with the band
+     hit(), miss()   boss rounds only (optional)
    plus its look for Pick options (pickClass) and Build slots (slotIcon).
    These are first versions of Kyle's ideas; see the design doc's Game ideas. */
 
 import { mookie } from './mookie.js';
+import { mouseCatcher } from './scene-mouse.js';
+
+export { mouseCatcher };
 
 function h(tag, cls, text) {
   const el = document.createElement(tag);
@@ -28,41 +34,6 @@ function bubble(stage, text, cls = '') {
   setTimeout(() => b.remove(), 900);
 }
 
-export const mouseCatcher = {
-  id: 'mouse-catcher',
-  name: 'Mouse Catcher',
-  tap: 'snare',
-  pickClass: 'opt-hole',
-  slotIcon: (c) => (c === 'ee' ? '🧀🧀' : '🧀'),
-  make(stage, { boss = false } = {}) {
-    stage.className = 'stage scene-mouse';
-    const cat = mookie('');
-    cat.classList.add('mc-cat');
-    const paw = h('div', 'mc-paw', '🐾');
-    const hole = h('div', 'mc-hole');
-    const mouse = h('div', boss ? 'mc-mouse boss' : 'mc-mouse', boss ? '🐀' : '🐭');
-    hole.append(mouse);
-    stage.append(h('div', 'floor'), hole, cat, paw);
-    return {
-      onCall(i, syl) {
-        bump(mouse, 'peek');
-        bubble(stage, syl || 'squeak!', 'mc-squeak');
-      },
-      onTap() { bump(paw, 'swipe'); },
-      win() {
-        mouse.classList.add('caught');
-        cat.mood('happy');
-        bubble(stage, 'GOTCHA!', 'big');
-      },
-      fail() {
-        mouse.classList.add('flee');
-        cat.mood('oops');
-        bubble(stage, 'HA HA HA!', 'big bad');
-      },
-    };
-  },
-};
-
 export const supperTime = {
   id: 'supper-time',
   name: 'Supper Time',
@@ -76,7 +47,10 @@ export const supperTime = {
     const zzz = h('div', 'st-zzz', 'z z z');
     const bowl = h('div', 'st-bowl', '🥣');
     const thieves = h('div', 'st-thieves', '🐈 🐈');
-    stage.append(h('div', 'floor'), h('div', 'st-cushion'), cat, zzz, bowl, thieves);
+    zzz.replaceChildren(h('i', '', 'z'), h('i', '', 'z'), h('i', '', 'z'));
+    const cushion = h('div', 'st-cushion');
+    stage.append(h('div', 'floor'), cushion, cat, zzz, bowl, thieves);
+    let n = 0;
     const clang = (text) => {
       bump(bowl, 'wobble');
       bubble(stage, text, 'st-clang');
@@ -84,10 +58,18 @@ export const supperTime = {
     return {
       onCall(i, syl) { clang(syl || 'clang!'); },
       onTap() { clang('CLANG!'); },
+      // Mookie snores on the beat: a big breath on 1, a small one on 2, and one z floats up per beat.
+      onBeat(down) {
+        if (!cat.classList.contains('dash')) {
+          bump(cat, down ? 'breathe' : 'breathe-s');
+          bump(cushion, down ? 'squish' : 'squish-s');
+        }
+        if (zzz.isConnected) bump(zzz.children[n++ % 3], 'zpop');
+      },
       win() {
         zzz.remove();
         cat.mood('happy');
-        cat.classList.add('run');
+        cat.classList.add('dash');
         bubble(stage, 'NOM NOM NOM!', 'big');
       },
       fail() {

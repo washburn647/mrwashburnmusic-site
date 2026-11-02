@@ -1,0 +1,24 @@
+Photo props for the scenes. Every one is CC0 (public domain dedication): free to use, no
+credit required, credited here anyway. Backgrounds were cut away and the images shrunk.
+
+From the Cleveland Museum of Art Open Access collection (https://www.clevelandart.org/open-access):
+  bust.png          Portrait Bust of a Man, Italy, Roman, 27 BCE-14 CE. 1928.860
+                    https://clevelandart.org/art/1928.860
+  frog.png          Frog-Shaped Guttus (Oil Flask), South Italian, Apulian, 300s BCE. 1985.176
+                    https://clevelandart.org/art/1985.176
+  helmet.png        Close Helmet in Maximilian Style, Germany, c. 1520. 1916.1855
+                    https://clevelandart.org/art/1916.1855
+  bronze-mouse.png  Mouse, Italy, Rome, 1-200 CE. 1985.177
+                    https://clevelandart.org/art/1985.177
+  bell.png          Bell (Bo Zhong), China, Eastern Zhou dynasty, early 400s BCE. 1962.44
+                    https://clevelandart.org/art/1962.44
+  trophy.png        Trophy Cup and Cover, England, 1792-1793. 1968.30
+                    https://clevelandart.org/art/1968.30
+
+From iNaturalist, via GBIF (photographer chose CC0):
+  mouse.png         House mouse (Mus musculus), photo by Astrid Osborne.
+                    https://www.inaturalist.org/observations/341355944
+
+From Wikimedia Commons:
+  teacup.png        "Teacup.png", Rijksmuseum, CC0.
+                    https://commons.wikimedia.org/wiki/File:Teacup.png

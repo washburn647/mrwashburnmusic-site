@@ -100,3 +100,22 @@ export function readTaps(beats) {
   }
   return fromCells(cells);
 }
+
+/* What to do, in a few words a young reader can take in at a glance. Shown for the whole
+   game: `how` is the full line, `go` the shout when it's the learner's turn, `look` what
+   the call asks of them (listen or read). */
+export function howTo(stepN, mode) {
+  const s = STEPS[stepN];
+  const look = s.call === 'neutral' || s.call === 'syllables' ? 'listen' : s.call === 'none' ? '' : 'read';
+  const first = look === 'listen' ? 'Listen. Then ' : look === 'read' ? 'Read it. Then ' : '';
+  const say = { 1: 'tap it back', 2: 'say it back and tap', 3: 'say it in du and de', 4: 'say it in du and de', 7: 'say it and tap', 8: 'say it and tap' };
+  const lines = {
+    perform: [`${first}${say[stepN] || 'tap it back'}.`, stepN === 1 ? 'TAP IT!' : 'SAY IT!'],
+    create: ['Listen. Then answer with a different one.', 'YOUR TURN!'],
+    pick: [look === 'read' ? `${first}tap the one that matches.` : 'Listen. Then tap the one you heard.', 'PICK ONE!'],
+    build: [look === 'read' ? `${first}tap the boxes to make these notes.` : 'Listen. Then tap the boxes to write it.', 'BUILD IT!'],
+    compose: ['Tap the boxes to make your own.', 'GO!'],
+  };
+  const [how, go] = lines[mode];
+  return { how, go, look };
+}

@@ -7,10 +7,12 @@
 import * as snd from './sound.js';
 import { makeClock } from './clock.js';
 import * as mic from './mic.js';
-import { STEPS, BANDS, onsets, sylText, options, readTaps, fromCells, loadMarks } from './steps.js';
+import { STEPS, BANDS, onsets, sylText, options, readTaps, fromCells, loadMarks, howTo } from './steps.js';
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import { mookie } from './mookie.js';
+import * as TX from './transitions.js';
+import * as FX from './effects.js';
 import { cueId } from './cues.js';
 import { notation } from '/assets/patterns/notation.js';
 import * as store from './store.js';
@@ -25,6 +27,12 @@ const save = () => store.save(st);
 const today = () => new Date().toLocaleDateString('en-CA');
 const LADDER = () => (st.mookie ? [92, 108, 108] : [92, 108, 126]);
 const TEMPO_XP = { 92: 1, 108: 1.5, 126: 2 };
+const TIER_COLORS = ['#5E7D4F', '#5E7D4F', '#d08a2e', '#C46A5A', '#8a5ac4'];
+// The band joining at each combo tier: bass, drums, horns, everyone.
+const BAND = [[], ['🎸'], ['🥁', '🎸'], ['🎺', '🥁', '🎺'], ['🎷', '🎺', '🥁', '🎸', '🎹']];
+// The band's seats beside the beat lane: each lights up when its layer joins, and bobs on the beat.
+const SEATS = [['🎸', 'Bass', 1], ['🥁', 'Drums', 2], ['🎺', 'Horns', 3], ['🎹', 'Keys', 4]];
+const PRAISE = ['Yes!', 'Nice!', 'Got it!', 'Woo!', 'Yeah!'];
 const STICKERS = ['🧀', '🐭', '🥁', '🎺', '🎻', '🪕', '🎷', '🏆'];
 const GAGS = ['Mookie licks a paw. Coolly.', 'Mookie knocks a pencil off the desk.', 'Mookie does a little stretch.',
   'Mookie stares at nothing for a while.', 'Mookie pretends that was on purpose.', 'Mookie purrs in 2/4.'];
@@ -44,6 +52,14 @@ function h(tag, props = {}, ...kids) {
 }
 
 /* Notation markup comes from VexFlow and the catalogue, never from a learner. */
+/* Syllables with iconic notation above them: a stem over each note, and a beam joining the
+   two eighths of a du-de. */
+function sylIcons(p, cls = '') {
+  return h('span', { class: `syl-ic ${cls}`, 'aria-label': sylText(p) },
+    ...p.cells.map((c) => h('span', { class: `ic-beat ${c}` },
+      ...(c === 'ee' ? ['du', 'de'] : ['du']).map((w) => h('span', { class: 'ic-note' }, h('i', {}), h('b', {}, w))))));
+}
+
 function notes(p) {
   const el = h('div', { class: 'notation' });
   el.innerHTML = notation(p);
@@ -60,20 +76,68 @@ function seg(options, value, change) {
   return wrap;
 }
 
+/* Which screen is showing, for the page background (the title is a stage at night). */
+function scene(name) {
+  document.body.dataset.screen = name;
+}
+
+/* An on/off switch with a label and a short hint under it. */
+function toggle(label, hint, on, change) {
+  const b = h('button', { class: 'switch', role: 'switch', 'aria-checked': String(on), onclick: () => {
+    on = !on;
+    b.setAttribute('aria-checked', String(on));
+    change(on);
+  } }, h('span', { class: 'sw-text' }, h('b', {}, label), h('small', {}, hint)), h('span', { class: 'sw-knob' }));
+  return b;
+}
+
+const NOTE_SVG = {
+  q: '<svg viewBox="0 0 20 40" aria-hidden="true"><ellipse cx="7.5" cy="33" rx="7" ry="5" transform="rotate(-20 7.5 33)"/><rect x="12.6" y="3" width="2.4" height="30"/></svg>',
+  ee: '<svg viewBox="0 0 42 40" aria-hidden="true"><ellipse cx="7.5" cy="33" rx="7" ry="5" transform="rotate(-20 7.5 33)"/><ellipse cx="30.5" cy="33" rx="7" ry="5" transform="rotate(-20 30.5 33)"/><rect x="12.6" y="5" width="2.4" height="28"/><rect x="35.6" y="5" width="2.4" height="28"/><rect x="12.6" y="3" width="25.4" height="6"/></svg>',
+};
+
+function floatNote(kind, i) {
+  const el = h('span', { class: `fnote fn${i}` });
+  el.innerHTML = NOTE_SVG[kind]; // fixed markup above
+  return el;
+}
+
 function title() {
+  scene('title');
   const lv = levelOf(st.xp);
+  const toNext = 150 * lv.n * (lv.n + 1) / 2;
   app.replaceChildren(h('div', { class: 'title' },
-    h('h1', {}, 'Musician Maker'),
-    h('p', { class: 'sub' }, 'Unit 1 · du, du-de'),
-    mookie('happy'),
-    h('button', { class: 'play', onclick: () => startRun() }, 'Play'),
-    h('div', { class: 'opts' },
-      h('label', {}, 'Mookie mode', seg({ off: 'Off', on: 'On' }, st.mookie ? 'on' : 'off', (v) => { st.mookie = v === 'on'; dir = makeDirector(st); save(); })),
-      h('label', {}, 'Answer by', seg({ tap: 'Tapping', mic: 'Mic and tapping' }, st.input, (v) => { st.input = v; save(); title(); })),
-      st.input === 'mic' ? micCheck() : null),
-    h('p', { class: 'stats' }, `Level ${lv.n} ${lv.title} · ${st.xp} XP · best combo ${st.bestCombo} · ${st.days} ${st.days === 1 ? 'day' : 'days'} played`),
-    st.stickers.length ? h('p', { class: 'stickers' }, st.stickers.join(' ')) : null,
-    h('button', { class: 'link', onclick: progress }, 'My progress')));
+    h('div', { class: 'headliner' },
+      h('header', { class: 'marquee' }, h('div', { class: 'marquee-in' },
+        h('small', {}, 'Mookie presents'),
+        h('h1', {}, 'Musician', h('br'), 'Maker'))),
+      h('p', { class: 'unit-tag' }, h('span', {}, 'Unit 1'), ' du · du-de'),
+      h('div', { class: 'hero' },
+        h('div', { class: 'beam' }),
+        ...['q', 'ee', 'q', 'ee', 'q'].map(floatNote),
+        mookie('happy'),
+        h('div', { class: 'rug' })),
+      h('button', { class: 'play big-play', onclick: () => startRun() }, h('span', { class: 'tri' }), 'Play'),
+      h('button', { class: 'link', onclick: howToPlay }, 'How to play')),
+    h('div', { class: 'side' },
+      h('div', { class: 'pass' },
+        h('div', { class: 'pass-top' }, 'Backstage pass'),
+        h('div', { class: 'pass-body' },
+          h('div', { class: 'pass-lv' }, h('small', {}, 'Level'), h('b', {}, String(lv.n))),
+          h('div', { class: 'pass-who' },
+            h('b', {}, lv.title),
+            h('span', { class: 'xpbar' }, h('span', { style: `width:${Math.round(lv.frac * 100)}%` })),
+            h('small', {}, `${st.xp} / ${toNext} XP`))),
+        h('div', { class: 'pass-stats' },
+          h('span', {}, h('b', {}, String(st.bestCombo)), ' best combo'),
+          h('span', {}, h('b', {}, String(st.days)), st.days === 1 ? ' day played' : ' days played')),
+        st.stickers.length ? h('p', { class: 'stickers' }, st.stickers.join(' ')) : null),
+      h('div', { class: 'switches' },
+        toggle('Mookie mode', 'An easier pace', st.mookie, (v) => { st.mookie = v; dir = makeDirector(st); save(); }),
+        toggle('Use the mic', 'Say your answers too', st.input === 'mic', (v) => { st.input = v ? 'mic' : 'tap'; save(); title(); }),
+        st.input === 'mic' ? micCheck() : null),
+      h('button', { class: 'to-map', onclick: progress },
+        h('span', { class: 'staff-ico' }), 'My progress'))));
 }
 
 /* Say "du du-de du du" and watch the meter: shows whether the mic hears you, and how many
@@ -111,31 +175,208 @@ function micCheck() {
   return box;
 }
 
+function howToPlay() {
+  scene('progress');
+  const tip = (icon, text) => h('li', {}, h('span', { class: 'ic' }, icon), text);
+  app.replaceChildren(h('div', { class: 'progress howto' },
+    h('button', { class: 'back', 'aria-label': 'Back', onclick: title }, '‹'),
+    h('h2', {}, 'How to play'),
+    h('ol', { class: 'tips' },
+      tip('👂', 'Listen. Mookie plays a little pattern.'),
+      tip('✨', 'The box glows. Now it\'s your turn!'),
+      tip('🥁', 'Do what the words say: tap it, say it, pick it or build it.'),
+      tip('🔥', 'Get lots right in a row and the band joins in.')),
+    h('p', { class: 'note' }, 'Miss one? No problem. The next one is coming. Press ❚❚ to stop.'),
+    h('button', { class: 'play', onclick: () => startRun() }, 'Play')));
+}
+
 function micProblem(e) {
   if (e?.name === 'NotAllowedError') return 'The mic is blocked. Allow it in the browser\'s site settings (the icon left of the address).';
   if (e?.name === 'NotFoundError') return 'No mic found on this device.';
   return `The mic didn't start (${e?.message || e}).`;
 }
 
-function progress() {
-  const rows = STEPS.slice(1).map((s) => {
+/* Progress: Unit 1 as one long staff that winds down the page. Each step is a note on it:
+   hollow while locked, filled once open, gold when mastered. Mookie sits on the current one. */
+const STATE_TEXT = { mastered: '★ Mastered', now: 'Learning now', open: 'Practising', locked: 'Locked' };
+
+function stepInfo() {
+  return STEPS.slice(1).map((s) => {
     const p = dir.step(s.n);
     const state = p.mastered ? 'mastered' : s.n === st.frontier ? 'now' : s.n < st.frontier ? 'open' : 'locked';
-    return h('div', { class: `prow ${state}` },
-      h('span', { class: `band ${s.band}` }, BANDS[s.band]),
-      h('span', { class: 'pname' }, `${s.n}. ${s.name}`),
-      h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(p.s)}%` })),
-      h('span', { class: 'pstate' }, { mastered: '★ mastered', now: 'learning now', open: 'practising', locked: 'locked' }[state]),
-      st.test ? h('button', { class: 'mini', onclick: () => startRun({ force: s.n }) }, 'Drill') : null);
+    return { s, p, state };
   });
+}
+
+function progress() {
+  scene('progress');
+  const info = stepInfo();
+  const done = info.filter((i) => i.state === 'mastered').length;
+  const map = h('div', { class: 'map' });
+  const sheet = h('div', { class: 'psheet', role: 'dialog' });
   app.replaceChildren(h('div', { class: 'progress' },
-    h('button', { class: 'link back', onclick: title }, '‹ Back'),
-    h('h2', {}, 'Unit 1 progress'),
-    h('p', { class: 'note' }, 'New steps open as you master the one before. The stream picks what you play.'),
-    ...rows,
+    h('header', { class: 'phead' },
+      h('button', { class: 'back', 'aria-label': 'Back', onclick: () => { title(); } }, '‹'),
+      h('div', {}, h('h2', {}, 'My progress'), h('p', {}, `Unit 1 · ${done} of 12 steps mastered`))),
+    map,
+    h('p', { class: 'note' }, 'Master a step to open the next one. The music picks what you play.'),
     h('div', { class: 'testbox' },
       h('label', {}, 'Test mode (for Kyle): drill any step', seg({ off: 'Off', on: 'On' }, st.test ? 'on' : 'off', (v) => { st.test = v === 'on'; save(); progress(); })),
-      st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); dir = makeDirector(st); progress(); } }, 'Reset all progress') : null)));
+      st.test ? h('button', { class: 'mini', onclick: lab }, 'Transitions lab') : null,
+      st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); dir = makeDirector(st); progress(); } }, 'Reset all progress') : null),
+    sheet));
+  drawMap(map, info, sheet);
+  map.querySelector('.pnode.now, .pnode.open')?.scrollIntoView({ block: 'center' });
+}
+
+/* Smooth curve through points (Catmull-Rom as cubic Béziers). */
+function curve(pts) {
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [p0, p1, p2, p3] = [pts[i - 1] || pts[i], pts[i], pts[i + 1], pts[i + 2] || pts[i + 1]];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1.map(Math.round)} ${c2.map(Math.round)} ${p2.map(Math.round)}`;
+  }
+  return d;
+}
+
+function drawMap(map, info, sheet) {
+  const W = Math.max(300, map.clientWidth);
+  const A = Math.min(W * 0.27, 170);
+  const GAP = 104;
+  const BAND_GAP = 46;
+  let y = 168;
+  let band = '';
+  const pos = info.map(({ s }, i) => {
+    if (s.band !== band) { if (band) y += BAND_GAP; band = s.band; }
+    const p = [W / 2 + A * Math.sin(i * Math.PI / 2 + Math.PI), y];
+    y += GAP;
+    return p;
+  });
+  const top = 52;
+  const end = y - 10;
+  const pts = [[14, top], [W * 0.34, top], ...pos, [W * 0.62, end], [W - 18, end]];
+  const H = end + 70;
+  map.style.height = `${H}px`;
+
+  // Staff: five parallel lines along any curve, from stacked strokes of shrinking width.
+  const d = curve(pts);
+  const strokes = [[34, 'ln'], [30, 'bg'], [18, 'ln'], [14, 'bg'], [2, 'ln']]
+    .map(([w, c]) => `<path d="${d}" class="st-${c}" stroke-width="${w}"/>`).join('');
+  const bars = `<rect x="${W - 26}" y="${end - 17}" width="2" height="34" class="st-fill"/><rect x="${W - 21}" y="${end - 17}" width="5" height="34" class="st-fill"/>`;
+  const clef = `<rect x="22" y="${top - 8}" width="4" height="16" class="st-fill"/><rect x="30" y="${top - 8}" width="4" height="16" class="st-fill"/>`;
+  const time = `<text x="52" y="${top - 1}" class="st-time">2</text><text x="52" y="${top + 16}" class="st-time">4</text>`;
+
+  // Soft colour behind each band, with a boxed rehearsal mark.
+  const regions = [];
+  for (const b of Object.keys(BANDS)) {
+    const ys = info.map((it, i) => (it.s.band === b ? pos[i][1] : null)).filter((v) => v != null);
+    regions.push(h('div', { class: `region ${b}`, style: `top:${ys[0] - 76}px;height:${ys.at(-1) - ys[0] + 128}px` },
+      h('span', { class: 'rmark' }, BANDS[b])));
+  }
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'staff');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.innerHTML = strokes + bars + clef + time; // built from numbers only
+
+  const nodes = info.map((it, i) => {
+    const [x, ny] = pos[i];
+    const left = x < W / 2 - 4;
+    const room = left ? W - x - 52 : x - 52;
+    const node = h('button', { class: `pnode ${it.state} ${it.s.band}`, style: `left:${x}px;top:${ny}px`,
+      'aria-label': `${it.s.n}. ${it.s.name}: ${STATE_TEXT[it.state]}`, onclick: () => showStep(sheet, it) },
+    h('span', { class: 'head' }, h('b', {}, it.state === 'mastered' ? '★' : String(it.s.n))));
+    const label = h('div', { class: `plabel ${it.state} ${left ? 'r' : 'l'}`,
+      style: `top:${ny}px;${left ? `left:${x + 46}px` : `right:${W - x + 46}px`};max-width:${room}px` },
+    h('b', {}, it.s.name),
+    h('small', {}, STATE_TEXT[it.state]),
+    it.state !== 'locked' ? h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(it.p.s)}%` })) : null);
+    return [node, label];
+  });
+
+  const cur = info.findIndex((it) => it.state === 'now');
+  const cat = cur >= 0 ? mookie('') : null;
+  if (cat) {
+    // beside the note, on the side away from its label
+    const [x, cy] = pos[cur];
+    cat.classList.add('map-cat');
+    cat.style.cssText = `left:${x < W / 2 - 4 ? x - 58 : x + 58}px;top:${cy + 26}px`;
+  }
+
+  map.replaceChildren(...regions, svg, ...nodes.flat(), cat,
+    h('div', { class: 'next-unit', style: `top:${end + 26}px` }, 'Unit 2 · coming soon'));
+}
+
+function showStep(sheet, { s, p, state }) {
+  sheet.replaceChildren(...[
+    h('button', { class: 'close', 'aria-label': 'Close', onclick: () => sheet.classList.remove('show') }, '×'),
+    h('span', { class: `band ${s.band}` }, BANDS[s.band]),
+    h('h3', {}, `${s.n}. ${s.name}`),
+    h('p', {}, state === 'locked' ? 'Master the step before this one to open it.' : s.say),
+    state !== 'locked' ? h('div', { class: 'sheet-bar' }, h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(p.s)}%` })), h('small', {}, `${Math.round(p.s)}% strong`)) : null,
+    h('p', { class: `sheet-state ${state}` }, STATE_TEXT[state]),
+    st.test ? h('button', { class: 'mini', onclick: () => startRun({ force: s.n }) }, 'Drill this step') : null].filter(Boolean));
+  sheet.classList.add('show');
+}
+
+let resizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const map = document.querySelector('.map');
+    if (map) drawMap(map, stepInfo(), document.querySelector('.psheet'));
+  }, 150);
+});
+
+/* Transitions lab (test mode): play each transition on a demo stage at a game tempo, and
+   choose which ones the stream uses. */
+function lab() {
+  let bpm = 108;
+  let flip = 0;
+  const stage = h('div', { class: 'stage' });
+  const cue = h('div', { class: 'cue' });
+  const wrap = h('div', { class: 'stage-wrap' }, stage, cue);
+  mouseCatcher.make(stage, {});
+  const scenes = [() => GAMES[1].make(stage, {}), () => GAMES[0].make(stage, {})];
+  const cues = ['TAP IT!', 'SAY IT!', 'PICK ONE!', 'BUILD IT!'];
+  const run = async (tx) => {
+    const ctx = snd.ac();
+    await snd.load();
+    const spb = 60 / bpm;
+    const t = ctx.currentTime + 0.1;
+    for (let k = 0; k < 3; k++) snd.hit('claves', t + k * spb, k ? 0.4 : 0.7);
+    snd.fx.cue(t);
+    tx.sound(snd, t, spb);
+    setTimeout(() => TX.play(wrap, tx, spb, () => {
+      stage.replaceChildren();
+      scenes[flip++ % 2]();
+      cue.textContent = cues[flip % cues.length];
+      bump(cue, 'slam');
+    }), Math.max(0, (t - ctx.currentTime + snd.latency()) * 1000));
+  };
+  const list = h('div', { class: 'txlist' });
+  const drawList = () => list.replaceChildren(...[...TX.TRANSITIONS, TX.BOSS_TX].map((tx) =>
+    h('button', { class: `txbtn ${st.tx === tx.id ? 'on' : ''}`, onclick: () => run(tx) },
+      h('b', {}, tx.name), h('small', {}, tx.about))));
+  drawList();
+  const choices = { mix: 'Mix them all', ...Object.fromEntries(TX.TRANSITIONS.map((x) => [x.id, x.name])) };
+  const pickSel = h('select', { onchange: (e) => { st.tx = e.target.value; save(); drawList(); } },
+    ...Object.entries(choices).map(([v, label]) => h('option', { value: v, selected: v === (st.tx || 'mix') }, label)));
+  scene('progress');
+  app.replaceChildren(h('div', { class: 'progress lab' },
+    h('button', { class: 'back', 'aria-label': 'Back', onclick: progress }, '‹'),
+    h('h2', {}, 'Transitions lab'),
+    h('p', { class: 'note' }, 'Tap one to play it. They run on the beat, so try each tempo.'),
+    wrap,
+    h('div', { class: 'opts' },
+      h('label', {}, 'Tempo', seg({ 92: '92', 108: '108', 126: '126' }, String(bpm), (v) => { bpm = Number(v); })),
+      h('label', {}, 'In the game', pickSel)),
+    list,
+    h('button', { class: 'play', onclick: () => startRun() }, 'Play with these')));
 }
 
 /* ---------------- the run ---------------- */
@@ -148,6 +389,7 @@ function later(t, fn) {
 
 async function startRun(opts = {}) {
   const ctx = snd.ac();
+  scene('run');
   app.replaceChildren(h('div', { class: 'loading' }, mookie(''), h('p', {}, 'Tuning up…')));
   await snd.load();
   let micOn = false;
@@ -174,7 +416,7 @@ async function startRun(opts = {}) {
     const g = R.groove;
     const duck = t >= g.duckFrom && t < g.duckUntil;
     snd.groove(i, t, spb, { tier: tierOf(R.combo), mode: g.mode, duck: duck && t >= g.micFrom ? 'mic' : duck });
-    later(t, () => bump(R.dom.pulse, 'beat'));
+    later(t, () => beat(i, spb));
   });
   mic.listen((time) => R?.onInput?.(time, true));
   beginLap();
@@ -240,12 +482,15 @@ function buildRunDom() {
   d.combo = h('div', { class: 'combo' });
   d.tempo = h('div', { class: 'tempo' });
   d.sets = h('div', { class: 'sets' });
-  d.pulse = h('div', { class: 'pulse' });
+  d.pulse = h('div', { class: 'pulse' }, h('i', {}), h('i', {}));
   d.pause = h('button', { class: 'pause', 'aria-label': 'Pause', onclick: askPause }, '❚❚');
   d.stage = h('div', { class: 'stage' });
   d.cue = h('div', { class: 'cue' });
   d.prompt = h('div', { class: 'prompt' });
   d.dots = h('div', { class: 'dots' });
+  d.ball = h('div', { class: 'ball' });
+  d.seats = SEATS.map(([icon, name, tier]) => h('span', { class: 'seat', title: name, 'data-tier': tier }, icon));
+  d.bandTier = -1;
   d.controls = h('div', { class: 'controls' });
   d.overlay = h('div', { class: 'overlay' });
   d.flash = h('div', { class: 'flash' });
@@ -253,7 +498,8 @@ function buildRunDom() {
     h('header', { class: 'hud' }, h('div', { class: 'hud-l' }, d.level, d.xp), d.combo, h('div', { class: 'hud-r' }, d.pulse, d.tempo, d.pause)),
     d.sets,
     h('div', { class: 'stage-wrap' }, d.stage, d.cue, d.flash),
-    d.prompt, d.dots, d.controls, d.overlay));
+    d.prompt, h('div', { class: 'lane' },
+      h('div', { class: 'seats l' }, d.seats[0], d.seats[1]), d.dots, d.ball, h('div', { class: 'seats r' }, d.seats[2], d.seats[3])), d.controls, d.overlay));
   R.dom = d;
   hud();
   document.onkeydown = (e) => {
@@ -268,7 +514,13 @@ function hud() {
   const d = R.dom;
   const lv = levelOf(st.xp);
   d.level.textContent = `Lv ${lv.n} · ${lv.title}`;
-  d.xp.replaceChildren(h('span', { class: 'xpbar' }, h('span', { style: `width:${Math.round(lv.frac * 100)}%` })), ` ${st.xp} XP`);
+  if (!d.xpFill) {
+    d.xpFill = h('span', {});
+    d.xpText = h('span', {});
+    d.xp.replaceChildren(h('span', { class: 'xpbar' }, d.xpFill), d.xpText);
+  }
+  d.xpFill.style.width = `${Math.round(lv.frac * 100)}%`;
+  d.xpText.textContent = ` ${st.xp} XP`;
   const t = tierOf(R.combo);
   d.combo.className = `combo t${t}`;
   d.combo.replaceChildren(h('b', {}, R.combo ? `${R.combo} in a row` : ''), t ? h('span', {}, ` ×${t + 1} ${TIER_NAMES[t]}`) : '');
@@ -316,7 +568,7 @@ function gameSeg(B, seg) {
   const spb = R.clock.spb();
   const T = (i) => R.clock.timeOf(i);
   const callBeats = step.call === 'none' ? 0 : 4;
-  const respBeats = { perform: 4, create: 4, pick: st.mookie ? 6 : 4, build: 8, compose: 8 }[item.mode];
+  const respBeats = { perform: 4, create: 4, pick: 4, build: 8, compose: 8 }[item.mode];
   const payBeats = item.mode === 'compose' ? 6 : 2;
   const c0 = B + 2;
   const r0 = c0 + callBeats;
@@ -325,10 +577,12 @@ function gameSeg(B, seg) {
   const q = question(item, step);
   const win = { tResp: T(r0), spb, from: T(r0) - 0.25 * spb, to: T(p0) - 0.05 * spb, taps: [], usedMic: false, choice: null, slots: [null, null, null, null] };
 
+  const tx = TX.pick(st.tx);
   if (!snd.speak(cueId(step.cue), T(B))) snd.fx.cue(T(B));
+  tx.sound(snd, T(B), spb);
   later(T(B), () => {
     hud();
-    showGame(item, step, game, q, win);
+    showGame(item, step, game, q, win, tx, spb);
   });
   if (callBeats) {
     R.groove.duckFrom = T(c0);
@@ -343,7 +597,7 @@ function gameSeg(B, seg) {
   later(T(r0), () => {
     R.dom.controls.classList.add('live');
     R.dom.stage.parentElement.classList.add('yours');
-    flash(item.mode === 'compose' ? 'GO!' : 'YOUR TURN!', 'turn');
+    flash(howTo(item.step, item.mode).go, 'turn');
   });
   for (let k = 0; k < respBeats; k++) later(T(r0 + k), () => dots(k, respBeats, 'resp'));
   later(T(p0), () => {
@@ -353,7 +607,7 @@ function gameSeg(B, seg) {
     result(item, res, { onWin: () => R.api.win(), onFail: () => R.api.fail(), t: T(p0) });
     if (item.mode === 'compose' && res.got) {
       snd.playBack(res.got, T(p0 + 1), spb);
-      R.dom.prompt.replaceChildren(h('div', { class: 'answer' }, h('span', {}, 'Your pattern'), notes(res.got), h('b', {}, sylText(res.got))));
+      R.dom.prompt.replaceChildren(h('div', { class: 'answer' }, h('span', {}, 'Your pattern'), notes(res.got), sylIcons(res.got)));
     }
     R.win = null;
   });
@@ -369,25 +623,136 @@ function question(item, step) {
 }
 
 function dots(k, n, kind) {
+  if (k === 0 && kind === 'call') clearTicks();
   R.dom.dots.className = `dots ${kind}`;
   R.dom.dots.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < k ? 'past' : i === k ? 'now' : '' })));
+  hop(k, n, kind);
 }
 
-function showGame(item, step, game, q, win) {
+/* Beat cues: every beat of the groove. The run's pulse lights beat 1 or 2 of the bar (2/4),
+   the scene's characters move on the beat (each game's onBeat), and the stage thumps on
+   beat 1, harder as the band grows with the combo. */
+function beat(i, spb) {
+  const d = R.dom;
+  const down = i % 2 === 0;
+  d.pulse.className = `pulse ${down ? 'one' : 'two'}`;
+  bump(d.pulse.children[down ? 0 : 1], 'beat');
+  R.api?.onBeat?.(down, spb, tierOf(R.combo));
+  seats(down);
+  if (down && R.groove.mode === 'play') {
+    const wrap = d.stage.parentElement;
+    wrap.dataset.tier = tierOf(R.combo);
+    bump(wrap, 'thump');
+  }
+}
+
+/* The band beside the lane: seats light up as layers join (a pop when one joins) and the
+   ones playing bob on every beat. */
+function seats(down) {
+  const d = R.dom;
+  const tier = tierOf(R.combo);
+  d.seats.forEach((el) => {
+    const on = Number(el.dataset.tier) <= tier;
+    if (on && !el.classList.contains('on') && d.bandTier >= 0) bump(el, 'join');
+    el.classList.toggle('on', on);
+    if (on) bump(el, down ? 'bob' : 'bob2');
+  });
+  d.bandTier = tier;
+}
+
+/* The bouncing ball: lands on each beat's dot and hops to the next one in one beat. */
+function hop(k, n, kind) {
+  const { dots: row, ball } = R.dom;
+  const spb = R.clock.spb();
+  const x = (j) => {
+    const dot = row.children[j];
+    return dot.offsetLeft + dot.offsetWidth / 2 - ball.offsetWidth / 2;
+  };
+  ball.className = `ball on ${kind}`;
+  ball.getAnimations().forEach((a) => a.cancel());
+  const x0 = x(k);
+  const at = (px, y, sx = 1, sy = 1) => `translate(${px}px, ${y}px) scale(${sx}, ${sy})`;
+  // Last beat of the call: hop back to the start for the response. Last of the response: stay.
+  if (k + 1 >= n && kind !== 'call') {
+    ball.animate([{ transform: at(x0, 0, 1.35, 0.7) }, { transform: at(x0, 0), offset: 0.15 }, { transform: at(x0, 0) }], { duration: spb * 1000, fill: 'forwards' });
+    return;
+  }
+  const x1 = x(k + 1 >= n ? 0 : k + 1);
+  ball.animate([
+    { transform: at(x0, 0, 1.35, 0.7), easing: 'ease-out' },
+    { transform: at(x0, -2, 0.9, 1.15), offset: 0.12, easing: 'cubic-bezier(.2,.6,.4,1)' },
+    { transform: at((x0 + x1) / 2, k + 1 >= n ? -52 : -36), offset: 0.55, easing: 'cubic-bezier(.6,0,.8,.4)' },
+    { transform: at(x1, 0) },
+  ], { duration: spb * 1000, fill: 'forwards' });
+}
+
+function clearDots() {
+  R.dom.dots.replaceChildren();
+  R.dom.ball.className = 'ball';
+  clearTicks();
+}
+
+const clearTicks = () => R.dom.dots.parentElement.querySelectorAll('.tick').forEach((t) => t.remove());
+
+/* A mark on the beat lane where a tap fell (b: beats after the response began). */
+function tick(b, cls) {
+  const row = R.dom.dots;
+  const n = row.children.length;
+  if (!n) return;
+  const cx = (j) => row.children[j].offsetLeft + row.children[j].offsetWidth / 2;
+  const gap = n > 1 ? cx(1) - cx(0) : 22;
+  const k = Math.max(0, Math.min(n - 1, Math.floor(b)));
+  if (b < -0.5) return;
+  const x = cx(k) + (b - k) * gap;
+  const m = h('i', { class: `tick ${cls}` });
+  m.style.left = `${x}px`;
+  row.parentElement.append(m);
+}
+
+function showGame(item, step, game, q, win, tx, spb) {
   const d = R.dom;
   overlay(null);
-  d.stage.replaceChildren();
-  R.api = game.make(d.stage, {});
+  // The new scene goes in once the transition has hidden the old one (transitions.js).
+  R.api = game.make(h('div'), {});
+  TX.play(d.stage.parentElement, tx, spb, () => {
+    if (!R || R.dom !== d) return;
+    d.stage.replaceChildren();
+    R.api = game.make(d.stage, {});
+  });
   d.cue.textContent = step.cue;
   bump(d.cue, 'slam');
-  d.prompt.replaceChildren();
-  if (st.mookie) d.prompt.append(h('div', { class: 'say' }, mookie('happy'), h('span', {}, step.say)));
+  d.prompt.replaceChildren(instruction(item));
+  bigHow(item);
   if (step.call === 'notation') d.prompt.append(notes(item.pattern));
-  if (step.call === 'text') d.prompt.append(h('div', { class: 'syl-card' }, sylText(item.pattern)));
-  d.dots.replaceChildren();
+  if (step.call === 'text') d.prompt.append(h('div', { class: 'syl-card' }, sylIcons(item.pattern)));
+  clearDots();
   R.win = win;
   R.item = { item, q };
   controlsFor(item, game, q, win);
+}
+
+/* The what-to-do line, on screen for the whole game. The first time a kind of game comes
+   up it's marked NEW and stays big. */
+function instruction(item) {
+  const key = `${item.step}-${item.mode}`;
+  const fresh = !st.seen[key];
+  st.seen[key] = 1;
+  const { how, look } = howTo(item.step, item.mode);
+  return h('div', { class: `say${fresh ? ' new' : ''}` },
+    st.mookie ? mookie('happy') : h('span', { class: 'ic' }, look === 'read' ? '👀' : look === 'listen' ? '👂' : '✏️'),
+    fresh ? h('b', { class: 'tag' }, 'NEW') : null,
+    h('span', {}, how));
+}
+
+/* The instruction pops up big over the scene at the start of each game, then shrinks
+   away into the line under it. Held for 4 beats (at least 2.4 s) so it can be read. */
+function bigHow(item) {
+  const wrap = R.dom.stage.parentElement;
+  wrap.querySelector('.how-big')?.remove();
+  const el = h('div', { class: 'how-big' }, h('span', {}, howTo(item.step, item.mode).how));
+  el.style.animationDuration = `${Math.max(2.4, 4 * R.clock.spb())}s`;
+  el.addEventListener('animationend', () => el.remove());
+  wrap.append(el);
 }
 
 function controlsFor(item, game, q, win) {
@@ -396,7 +761,26 @@ function controlsFor(item, game, q, win) {
   R.onInput = null;
   if (item.mode === 'perform' || item.mode === 'create') {
     let tappedAt = -9;
-    const tap = (time, fromMic) => {
+    // Tap feedback: a ripple where the finger landed, coloured by timing when the answer is
+    // known (on time, close, off), and a tick on the beat lane where the tap fell.
+    const expected = item.mode === 'perform' ? onsets(item.pattern).map((o) => win.tResp + o.b * win.spb) : null;
+    const feel = (t, open, ev) => {
+      const r = pad.getBoundingClientRect();
+      const x = ev?.clientX != null ? ev.clientX - r.left : r.width / 2;
+      const y = ev?.clientY != null ? ev.clientY - r.top : r.height / 2;
+      let cls = open ? 'tap' : 'idle';
+      let word = '';
+      if (open && expected) {
+        const e = expected.reduce((best, x) => (Math.abs(t - x) < Math.abs(best) ? t - x : best), Infinity);
+        const a = Math.abs(e);
+        if (a <= 0.08 * win.spb + 0.02) cls = 'on';
+        else if (a <= 0.2 * win.spb + 0.03) { cls = 'close'; word = e < 0 ? 'early' : 'late'; } else { cls = 'off'; word = e < 0 ? 'too early' : 'too late'; }
+      }
+      FX.ripple(pad, x, y, cls);
+      if (word) FX.pop(pad, x, y - 24, word, cls);
+      if (open) tick((t - win.tResp) / win.spb, cls);
+    };
+    const tap = (time, fromMic, ev) => {
       // A tap plays a sound, and the mic hears it: that isn't a syllable.
       if (fromMic && time > tappedAt - 0.05 && time < tappedAt + snd.latency() + 0.12) return;
       if (!fromMic) {
@@ -417,9 +801,11 @@ function controlsFor(item, game, q, win) {
       } else if (fromMic) return;
       R.api.onTap();
       bump(pad, 'hit');
+      feel(t, open, ev);
     };
-    const pad = h('button', { class: 'pad', onpointerdown: (e) => { e.preventDefault(); tap(R.ctx.currentTime, false); } },
-      h('b', {}, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'),
+    const pad = h('button', { class: 'pad', onpointerdown: (e) => { e.preventDefault(); tap(R.ctx.currentTime, false, e); } },
+      h('b', { class: 'wait' }, STEPS[item.step].call === 'notation' ? '👀 Read…' : '👂 Listen…'),
+      h('b', { class: 'now' }, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'),
       R.micOn ? h('span', { class: 'meter' }, h('span', {})) : null);
     if (R.micOn) {
       const fill = pad.querySelector('.meter span');
@@ -440,11 +826,12 @@ function controlsFor(item, game, q, win) {
     const buttons = q.list.map((p, i) => h('button', {
       class: `opt ${game.pickClass}`,
       onclick: () => choose(i),
-    }, q.show === 'notation' ? notes(p) : h('span', { class: 'syl' }, sylText(p))));
+    }, q.show === 'notation' ? notes(p) : sylIcons(p, 'syl')));
     const choose = (i) => {
       if (!R.win || win.choice != null) return;
       win.choice = i;
       buttons[i].classList.add('chosen');
+      bump(buttons[i], 'press');
       snd.hit(game.tap, R.ctx.currentTime, 0.7);
     };
     R.keys = (e) => {
@@ -457,16 +844,18 @@ function controlsFor(item, game, q, win) {
   } else {
     // Build and compose: four beat slots, each ♩ or ♫.
     const slots = win.slots.map((_, i) => h('button', { class: 'slot', onclick: () => cycle(i) }));
+    R.slotButtons = slots;
     const draw = () => slots.forEach((b, i) => {
       const c = win.slots[i];
       b.className = `slot ${c || 'empty'}`;
-      b.replaceChildren(h('b', {}, c === 'ee' ? '♫' : c === 'q' ? '♩' : '?'), h('small', {}, c ? game.slotIcon(c) : `beat ${i + 1}`));
+      b.replaceChildren(h('b', {}, c === 'ee' ? '♫' : c === 'q' ? '♩' : '?'), h('small', {}, c ? game.slotIcon(c) : 'tap me'));
     });
     const cycle = (i) => {
       if (!R.win) return;
       win.slots[i] = win.slots[i] === 'q' ? 'ee' : 'q';
       snd.hit(game.tap, R.ctx.currentTime, 0.6);
       draw();
+      bump(slots[i], 'flip');
     };
     R.keys = (e) => {
       const n = Number(e.key);
@@ -495,11 +884,14 @@ function grade(item, q, win) {
     return { right: !!got && got.id !== p.id, got, why: !got ? 'unclear' : got.id === p.id ? 'same' : '', mic: win.usedMic };
   }
   if (item.mode === 'pick') {
-    R.pickButtons?.forEach((b, i) => b.classList.add(i === q.correct ? 'right' : 'dim'));
+    R.pickButtons?.forEach((b, i) => b.classList.add(i === q.correct ? 'right' : i === win.choice ? 'wrong' : 'dim'));
+    if (win.choice === q.correct) FX.burst(R.pickButtons[q.correct], { kind: 'stars', count: 10, spread: 0.6 });
     return { right: win.choice === q.correct };
   }
   const full = win.slots.every(Boolean);
   if (item.mode === 'compose') return { right: full, got: full ? fromCells(win.slots) : null };
+  // Build: each slot shows whether it was right.
+  R.slotButtons?.forEach((b, i) => b.classList.add(win.slots[i] === p.cells[i] ? 'right' : 'wrong'));
   return { right: full && fromCells(win.slots).id === p.id };
 }
 
@@ -515,13 +907,19 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     const gained = addXP((10 + (res.perfect ? 5 : 0)) * (TEMPO_XP[R.tempo] || 1) * (res.mic ? 1.5 : 1) * (tier + 1));
     onWin();
     snd.fx.win(t);
+    // Right: confetti (stars when perfect) that grows with the combo, and the XP flies to the counter.
+    const wrap = R.dom.stage.parentElement;
+    FX.burst(wrap, { kind: res.perfect ? 'stars' : 'confetti', y: 0.45, count: 14 + tier * 6, spread: 1 + tier * 0.25 });
+    FX.fly(wrap, R.dom.xp, `+${gained}`, res.perfect ? 'gold' : '');
     if (tier > before) {
       snd.fx.tier(t);
       snd.speak(cueId(TIER_NAMES[tier]), t);
       flash(`${TIER_NAMES[tier]}! ×${tier + 1}`, `tier t${tier}`);
+      FX.shockwave(wrap, TIER_COLORS[tier]);
+      FX.parade(wrap, BAND[tier]);
     } else {
       if (res.perfect) snd.speak('perfect', t);
-      if (!quiet) flash(`${res.perfect ? 'PERFECT! ' : ''}+${gained}`, 'plus');
+      if (!quiet) flash(res.perfect ? 'PERFECT!' : PRAISE[Math.floor(Math.random() * PRAISE.length)], res.perfect ? 'plus gold' : 'plus');
     }
   } else {
     const was = R.combo;
@@ -531,17 +929,26 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     onFail();
     if (was >= 3) snd.fx.scratch(t);
     else snd.fx.fail(t);
+    // Miss: the stage wobbles, and a lost combo falls off the counter.
+    bump(R.dom.stage.parentElement, 'fx-miss');
+    if (was >= 3) R.lostCombo = was;
     if (!quiet) {
       const why = { missing: 'Not enough notes', extra: 'Too many notes', same: 'Make it different from mine!', unclear: "Couldn't hear a pattern" }[res.why];
       R.dom.prompt.replaceChildren(h('div', { class: 'answer' },
         h('span', {}, why || (item.mode === 'create' ? '' : 'It was')),
         item.mode === 'create' ? null : notes(item.pattern),
-        item.mode === 'create' ? null : h('b', {}, sylText(item.pattern))));
+        item.mode === 'create' ? null : sylIcons(item.pattern)));
     }
   }
   st.bestCombo = Math.max(st.bestCombo, R.combo);
   save();
   hud();
+  if (res.right) bump(R.dom.combo, 'fx-got');
+  else if (R.lostCombo) {
+    FX.drop(R.dom.combo, `${R.lostCombo} in a row`);
+    bump(R.dom.combo, 'fx-no');
+    R.lostCombo = 0;
+  }
 }
 
 /* ---------------- breather ---------------- */
@@ -576,8 +983,9 @@ function breather(B, seg) {
       R.combo >= 3 ? h('p', {}, `${R.combo} in a row, keep it going!`) : null,
       ...lines.map((l) => h('p', { class: 'news' }, l)),
       h('div', { class: 'gag' }, mookie('happy'), h('span', {}, GAGS[Math.floor(Math.random() * GAGS.length)]))));
-    // XP counts up on the beat.
-    for (let k = 1; k <= 4; k++) later(T(B + k), () => { count.textContent = `+${Math.round(setXP * k / 4)}`; bump(count, 'beat'); });
+    // XP counts up on the beat, with a pop of notes; confetti for no misses or a level up.
+    for (let k = 1; k <= 4; k++) later(T(B + k), () => { count.textContent = `+${Math.round(setXP * k / 4)}`; bump(count, 'beat'); FX.burst(count, { kind: 'notes', count: 5, spread: 0.6 }); });
+    if (lines.some((l) => /No misses|Level up|NEW STEP|complete/.test(l))) later(T(B + 1), () => FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.2, count: 30, spread: 1.6 }));
     hud();
   });
   R.clock.at(B + 8, () => {
@@ -590,6 +998,12 @@ function breather(B, seg) {
 
 const BOSS_CALL = { 1: 'neutral', 2: 'syllables', 3: 'neutral', 4: 'neutral', 5: 'syllables', 6: 'syllables', 7: 'notation', 8: 'notation', 9: 'notation', 10: 'neutral', 11: 'neutral', 12: 'notation' };
 
+function bossSay(item, kind) {
+  const how = item.mode === 'create' ? 'Listen. Then answer with a different one.'
+    : kind === 'notation' ? 'Read it. Then say it and tap.' : 'Listen. Then tap it back.';
+  return h('div', { class: 'say' }, h('span', { class: 'ic' }, kind === 'notation' ? '👀' : '👂'), h('span', {}, how));
+}
+
 function boss(B) {
   const T = (i) => R.clock.timeOf(i);
   const spb = R.clock.spb();
@@ -597,11 +1011,17 @@ function boss(B) {
   let hits = 0;
   snd.fx.boss(T(B));
   snd.speak('boss', T(B));
+  TX.BOSS_TX.sound(snd, T(B), spb);
   later(T(B), () => {
     hud();
     overlay(null);
-    R.dom.stage.replaceChildren();
-    R.api = mouseCatcher.make(R.dom.stage, { boss: true });
+    const d = R.dom;
+    R.api = mouseCatcher.make(h('div'), { boss: true });
+    TX.play(d.stage.parentElement, TX.BOSS_TX, spb, () => {
+      if (!R || R.dom !== d) return;
+      d.stage.replaceChildren();
+      R.api = mouseCatcher.make(d.stage, { boss: true });
+    });
     R.dom.cue.textContent = 'BOSS!';
     bump(R.dom.cue, 'slam');
     R.dom.prompt.replaceChildren(h('div', { class: 'boss-name' }, 'The Big Cheese'), h('div', { class: 'hearts' }, '❤️❤️❤️❤️'));
@@ -618,6 +1038,8 @@ function boss(B) {
     later(T(c0), () => {
       R.win = null;
       R.dom.prompt.querySelector('.notation')?.remove();
+      R.dom.prompt.querySelector('.say')?.remove();
+      R.dom.prompt.append(bossSay(item, kind));
       if (kind === 'notation') R.dom.prompt.append(notes(item.pattern));
       R.item = { item, q: {} };
       controlsFor(item, mouseCatcher, {}, win);
@@ -638,8 +1060,14 @@ function boss(B) {
       result(item, res, {
         t: T(r0 + 4),
         quiet: true,
-        onWin: () => { R.dom.prompt.querySelector('.hearts').textContent = '❤️'.repeat(rounds - hits) + '🖤'.repeat(hits); flash('BAM!', 'plus'); },
-        onFail: () => flash('missed!', 'bad'),
+        onWin: () => {
+          const hearts = R.dom.prompt.querySelector('.hearts');
+          hearts.textContent = '❤️'.repeat(rounds - hits) + '🖤'.repeat(hits);
+          bump(hearts, 'fx-hit');
+          flash('BAM!', 'plus');
+          R.api.hit?.();
+        },
+        onFail: () => { bump(R.dom.prompt.querySelector('.hearts'), 'fx-no'); flash('missed!', 'bad'); R.api.miss?.(); },
       });
     });
   }
@@ -658,7 +1086,7 @@ function boss(B) {
     }
     save();
     R.dom.controls.replaceChildren();
-    R.dom.dots.replaceChildren();
+    clearDots();
     hud();
   });
   R.clock.at(done + 4, () => next(done + 4));
@@ -683,6 +1111,7 @@ function intermission() {
     h('div', { class: 'row' },
       h('button', { class: 'play', onclick: () => { overlay(null); R.lap++; beginLap(); } }, 'Keep going'),
       h('button', { class: 'link', onclick: endRun }, 'Done for today'))));
+  FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.15, count: 36, spread: 1.8 });
 }
 
 function askPause() {

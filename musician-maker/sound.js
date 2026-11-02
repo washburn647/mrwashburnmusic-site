@@ -15,7 +15,7 @@ let kyle = null; // recorded voice, once Kyle's takes are on the site
 let loops = {}; // Kyle's groove loops: layer → bpm → { buffer, start, beats }
 
 const HITS = ['claves', 'log-drum-low', 'log-drum-high', 'bass-drum', 'snare', 'shaker', 'tambourine',
-  'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low'];
+  'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low', 'conga', 'finger-cymbals', 'sleigh-bells'];
 const PITCHED = { bass: [36, 52], horn: [60, 74], marimba: [60, 88], trombone: [40, 55] };
 
 export function ac() {
@@ -48,8 +48,183 @@ export function load() {
       await Promise.allSettled([kyle.prepare(kyle.patterns), kyle.prepareCues()]);
     })(),
     (async () => { loops = await samples.grooveLoops(); })(),
+    ...TOON_FILES.map(loadToon),
   ]);
   return loading;
+}
+
+/* ---------- cartoon effects for the scenes ---------- */
+// Recorded ones are Kenney's CC0 packs (fx/CREDITS.txt); the rest are synthesized.
+const TOON_FILES = ['swish', 'punch', 'thud', 'step-1', 'step-2', 'pot', 'boing', 'creak', 'tin', 'clink', 'wah', 'pep'];
+const toonBuf = {};
+const toonBase = new URL('./fx/', import.meta.url);
+async function loadToon(name) {
+  const r = await fetch(new URL(`${name}.mp3`, toonBase));
+  if (!r.ok) return;
+  const data = await r.arrayBuffer();
+  toonBuf[name] = await new Promise((ok, fail) => ctx.decodeAudioData(data, ok, fail));
+}
+
+function playBuf(buf, t, vol = 0.6, rate = 1) {
+  const src = ctx.createBufferSource();
+  const g = ctx.createGain();
+  src.buffer = buf;
+  src.playbackRate.value = rate;
+  g.gain.value = vol;
+  src.connect(g).connect(master);
+  src.start(Math.max(t, ctx.currentTime));
+}
+
+function noise(t, len, vol, filter, from, to, q = 1) {
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * len), ctx.sampleRate);
+  const x = buf.getChannelData(0);
+  for (let i = 0; i < x.length; i++) x[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const f = ctx.createBiquadFilter();
+  f.type = filter;
+  f.Q.value = q;
+  f.frequency.setValueAtTime(from, t);
+  f.frequency.exponentialRampToValueAtTime(to, t + len);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.01);
+  g.gain.setValueAtTime(vol, t + len * 0.7);
+  g.gain.linearRampToValueAtTime(0, t + len);
+  src.connect(f).connect(g).connect(master);
+  src.start(t);
+}
+
+/* toon(name, t): play a scene effect at audio time t (now if t is left out). */
+export function toon(name, t, opts = {}) {
+  if (!ctx) return;
+  t = Math.max(t ?? ctx.currentTime, ctx.currentTime);
+  const { vol = 1, rate = 1 } = opts;
+  if (toonBuf[name]) { playBuf(toonBuf[name], t, 0.6 * vol, rate); return; }
+  const tone = (f, len, v, type, slide) => synth(t, f, len, v * vol, master, type, slide);
+  switch (name) {
+    case 'whistle-up': tone(500, 0.35, 0.18, 'sine', 3.2); break;
+    case 'whistle-down': tone(1500, 0.45, 0.18, 'sine', 0.3); break;
+    case 'squeak': tone(1900, 0.07, 0.12, 'sine', 1.5); synth(t + 0.08, 2300, 0.06, 0.1 * vol, master, 'sine', 1.3); break;
+    case 'pop': tone(700, 0.06, 0.3, 'sine', 2.2); break;
+    case 'zip': noise(t, 0.22, 0.35 * vol, 'bandpass', 900, 6000, 3); break;
+    case 'raspberry': {
+      // A wobbling buzz: a low sawtooth under a fast tremolo.
+      const o = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lg = ctx.createGain();
+      const g = ctx.createGain();
+      const f = ctx.createBiquadFilter();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(110, t);
+      o.frequency.linearRampToValueAtTime(80, t + 0.45);
+      lfo.frequency.value = 28;
+      lg.gain.value = 0.18 * vol;
+      f.type = 'lowpass';
+      f.frequency.value = 1400;
+      g.gain.setValueAtTime(0.18 * vol, t);
+      g.gain.linearRampToValueAtTime(0, t + 0.5);
+      lfo.connect(lg).connect(g.gain);
+      o.connect(f).connect(g).connect(master);
+      o.start(t); lfo.start(t);
+      o.stop(t + 0.55); lfo.stop(t + 0.55);
+      break;
+    }
+    case 'twinkle': [88, 91, 96].forEach((m, i) => note('marimba', m, t + i * 0.07, 0.2, 0.25)); break;
+    case 'honk': {
+      // A bicycle horn: two buzzy reeds a little out of tune, squeezed twice.
+      [0, 0.16].forEach((d) => {
+        [370, 377].forEach((fq) => {
+          const o = ctx.createOscillator();
+          const f = ctx.createBiquadFilter();
+          const g = ctx.createGain();
+          o.type = 'square';
+          o.frequency.setValueAtTime(fq * rate, t + d);
+          o.frequency.linearRampToValueAtTime(fq * rate * 0.94, t + d + 0.13);
+          f.type = 'bandpass';
+          f.frequency.value = 1100;
+          f.Q.value = 1.4;
+          g.gain.setValueAtTime(0, t + d);
+          g.gain.linearRampToValueAtTime(0.13 * vol, t + d + 0.012);
+          g.gain.setValueAtTime(0.13 * vol, t + d + 0.1);
+          g.gain.linearRampToValueAtTime(0, t + d + 0.14);
+          o.connect(f).connect(g).connect(master);
+          o.start(t + d);
+          o.stop(t + d + 0.16);
+        });
+      });
+      break;
+    }
+    case 'gong': {
+      // A big bronze bell: inharmonic partials that ring for a long time, with a slow beat.
+      [[110, 0.3, 3.2], [111.4, 0.22, 3.2], [264, 0.16, 2.2], [302, 0.1, 1.8], [453, 0.08, 1.2], [701, 0.05, 0.8]].forEach(([fq, v, len]) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = fq * rate;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(v * vol, t + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0005, t + len);
+        o.connect(g).connect(master);
+        o.start(t);
+        o.stop(t + len + 0.05);
+      });
+      noise(t, 0.08, 0.25 * vol, 'bandpass', 2400, 900, 1.5);
+      break;
+    }
+    case 'croak': {
+      // A frog: a low buzzy pulse train, twice.
+      [0, 0.2].forEach((d) => {
+        const o = ctx.createOscillator();
+        const lfo = ctx.createOscillator();
+        const lg = ctx.createGain();
+        const f = ctx.createBiquadFilter();
+        const g = ctx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(95 * rate, t + d);
+        o.frequency.linearRampToValueAtTime(130 * rate, t + d + 0.14);
+        lfo.type = 'square';
+        lfo.frequency.value = 34;
+        lg.gain.value = 0.16 * vol;
+        f.type = 'bandpass';
+        f.frequency.value = 700;
+        f.Q.value = 3;
+        g.gain.setValueAtTime(0.16 * vol, t + d);
+        g.gain.linearRampToValueAtTime(0, t + d + 0.16);
+        lfo.connect(lg).connect(g.gain);
+        o.connect(f).connect(g).connect(master);
+        o.start(t + d); lfo.start(t + d);
+        o.stop(t + d + 0.18); lfo.stop(t + d + 0.18);
+      });
+      break;
+    }
+    case 'choir': {
+      // "Aaah": a major chord of soft vowel-ish voices that swell in.
+      [60, 64, 67, 72].forEach((m) => {
+        [-6, 6].forEach((cents) => {
+          const o = ctx.createOscillator();
+          const f = ctx.createBiquadFilter();
+          const g = ctx.createGain();
+          o.type = 'sawtooth';
+          o.frequency.value = 440 * 2 ** ((m - 69) / 12) * 2 ** (cents / 1200);
+          f.type = 'bandpass';
+          f.frequency.value = 800;
+          f.Q.value = 1.2;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.035 * vol, t + 0.25);
+          g.gain.setValueAtTime(0.035 * vol, t + 0.9);
+          g.gain.linearRampToValueAtTime(0, t + 1.4);
+          o.connect(f).connect(g).connect(master);
+          o.start(t);
+          o.stop(t + 1.45);
+        });
+      });
+      break;
+    }
+    case 'slide-up': tone(300, 0.5, 0.16, 'triangle', 4); break;
+    case 'slide-down': tone(1300, 0.6, 0.16, 'triangle', 0.22); break;
+    default: break;
+  }
 }
 
 /* ---------- basic voices ---------- */
@@ -72,6 +247,7 @@ const FALLBACK = {
   claves: [2500, 0.05], 'log-drum-low': [160, 0.2], 'log-drum-high': [320, 0.15], 'bass-drum': [70, 0.25],
   snare: [220, 0.12], shaker: [6000, 0.03], tambourine: [5000, 0.06], cymbal: [7000, 0.4], triangle: [3000, 0.4],
   cowbell: [800, 0.15], agogo: [900, 0.15], guiro: [1200, 0.1], 'bongo-high': [400, 0.1], 'bongo-low': [250, 0.12],
+  conga: [200, 0.15], 'finger-cymbals': [4000, 0.5], 'sleigh-bells': [6000, 0.3],
 };
 
 export function hit(name, t, vol = 0.8, dest = master) {
