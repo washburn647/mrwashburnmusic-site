@@ -19,7 +19,8 @@ const stop = piano.note(60, t, 0.5, { vol: 0.25, dest });   // same call as soun
 The try-out page is `/studio/sounds/`.
 
 - Pitched: piano, violins, violas, cellos, bass, pizzicato, cello-pizz, harp, flute, oboe,
-  clarinet, bassoon, trumpet, horn, trombone, tuba, glockenspiel, xylophone, marimba
+  clarinet, bassoon, trumpet, horn, trombone, tuba, glockenspiel, xylophone, marimba, guitar
+  (nylon), banjo (GNU GPL: see `CREDITS.txt`)
 - Hits: claves, log-drum-high, log-drum-low, cowbell, agogo, triangle, finger-cymbals,
   tambourine, sleigh-bells, shaker, cabasa, guiro, snare, bass-drum, conga, bongo-high,
   bongo-low, cymbal

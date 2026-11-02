@@ -13,3 +13,15 @@ Drum kit (hits/kit-*.mp3): Salamander Drumkit by Alexander Holm.
 Orchestra, harp, mallets and percussion: VSCO 2: Community Edition by Versilian Studios
   (Sam Gossner) and Ivy Audio (Simon Dalzell), https://vis.versilstudios.net/vsco-community.html
   Licence: CC0 1.0 (public domain). Trimmed, retuned where measured off, converted to mono.
+
+Nylon guitar (guitar/): Spanish Classical Guitar by Roberto, for the FreePats project.
+  Licence: CC0 1.0 (public domain). Source: https://freepats.zenvoid.org/Guitar/acoustic-guitar.html
+  Trimmed, retuned where measured off, converted to mono.
+
+Banjo (banjo/): FS Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edition with
+  cleaned-up samples by S. Christian Collins.
+  Licence: GNU General Public License version 3 or later, https://www.gnu.org/licenses/gpl-3.0.html
+  Source: https://github.com/sfzinstruments/FlameStudios.Kay5StringBanjo (originals archived at
+  https://archive.org/details/flame-studios-gpl-samples). The hard (forte) note of strings 1-4,
+  trimmed, retuned where measured off and converted to mono; these files are shared under the
+  same licence, and tools/build_sounds.py rebuilds them from the source.

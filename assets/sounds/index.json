@@ -1458,12 +1458,434 @@
    "file": "hits/kit-splash.mp3",
    "credit": "salamander-drums",
    "group": "kit"
+  },
+  "guitar": {
+   "label": "Nylon guitar",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 31,
+     "file": "guitar/31.mp3",
+     "tune": 9
+    },
+    {
+     "midi": 32,
+     "file": "guitar/32.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 33,
+     "file": "guitar/33.mp3"
+    },
+    {
+     "midi": 34,
+     "file": "guitar/34.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 35,
+     "file": "guitar/35.mp3"
+    },
+    {
+     "midi": 36,
+     "file": "guitar/36.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 37,
+     "file": "guitar/37.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 38,
+     "file": "guitar/38.mp3",
+     "tune": -4
+    },
+    {
+     "midi": 39,
+     "file": "guitar/39.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 40,
+     "file": "guitar/40.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 41,
+     "file": "guitar/41.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 43,
+     "file": "guitar/43.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 45,
+     "file": "guitar/45.mp3",
+     "tune": 22
+    },
+    {
+     "midi": 47,
+     "file": "guitar/47.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 48,
+     "file": "guitar/48.mp3",
+     "tune": 22
+    },
+    {
+     "midi": 50,
+     "file": "guitar/50.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 52,
+     "file": "guitar/52.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 53,
+     "file": "guitar/53.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 54,
+     "file": "guitar/54.mp3"
+    },
+    {
+     "midi": 55,
+     "file": "guitar/55.mp3",
+     "tune": -13
+    },
+    {
+     "midi": 56,
+     "file": "guitar/56.mp3"
+    },
+    {
+     "midi": 57,
+     "file": "guitar/57.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 58,
+     "file": "guitar/58.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 59,
+     "file": "guitar/59.mp3",
+     "tune": 11
+    },
+    {
+     "midi": 60,
+     "file": "guitar/60.mp3",
+     "tune": 11
+    },
+    {
+     "midi": 61,
+     "file": "guitar/61.mp3",
+     "tune": 18
+    },
+    {
+     "midi": 62,
+     "file": "guitar/62.mp3",
+     "tune": 8
+    },
+    {
+     "midi": 63,
+     "file": "guitar/63.mp3",
+     "tune": 9
+    },
+    {
+     "midi": 64,
+     "file": "guitar/64.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 65,
+     "file": "guitar/65.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 66,
+     "file": "guitar/66.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 67,
+     "file": "guitar/67.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 69,
+     "file": "guitar/69.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 70,
+     "file": "guitar/70.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 71,
+     "file": "guitar/71.mp3",
+     "tune": 14
+    },
+    {
+     "midi": 72,
+     "file": "guitar/72.mp3",
+     "tune": 10
+    },
+    {
+     "midi": 73,
+     "file": "guitar/73.mp3",
+     "tune": 9
+    },
+    {
+     "midi": 74,
+     "file": "guitar/74.mp3",
+     "tune": 10
+    },
+    {
+     "midi": 75,
+     "file": "guitar/75.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 76,
+     "file": "guitar/76.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 77,
+     "file": "guitar/77.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 78,
+     "file": "guitar/78.mp3"
+    },
+    {
+     "midi": 79,
+     "file": "guitar/79.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 80,
+     "file": "guitar/80.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 81,
+     "file": "guitar/81.mp3",
+     "tune": 8
+    },
+    {
+     "midi": 82,
+     "file": "guitar/82.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 83,
+     "file": "guitar/83.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 84,
+     "file": "guitar/84.mp3",
+     "tune": 5
+    }
+   ],
+   "credit": "freepats-guitar"
+  },
+  "banjo": {
+   "label": "Banjo",
+   "kind": "pitched",
+   "release": 0.2,
+   "zones": [
+    {
+     "midi": 50,
+     "file": "banjo/50.mp3",
+     "tune": -8
+    },
+    {
+     "midi": 51,
+     "file": "banjo/51.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 52,
+     "file": "banjo/52.mp3",
+     "tune": 6
+    },
+    {
+     "midi": 53,
+     "file": "banjo/53.mp3",
+     "tune": 22
+    },
+    {
+     "midi": 54,
+     "file": "banjo/54.mp3",
+     "tune": 16
+    },
+    {
+     "midi": 55,
+     "file": "banjo/55.mp3",
+     "tune": 27
+    },
+    {
+     "midi": 56,
+     "file": "banjo/56.mp3"
+    },
+    {
+     "midi": 57,
+     "file": "banjo/57.mp3",
+     "tune": 32
+    },
+    {
+     "midi": 58,
+     "file": "banjo/58.mp3",
+     "tune": 28
+    },
+    {
+     "midi": 59,
+     "file": "banjo/59.mp3",
+     "tune": 20
+    },
+    {
+     "midi": 60,
+     "file": "banjo/60.mp3",
+     "tune": 30
+    },
+    {
+     "midi": 61,
+     "file": "banjo/61.mp3",
+     "tune": 31
+    },
+    {
+     "midi": 62,
+     "file": "banjo/62.mp3",
+     "tune": 32
+    },
+    {
+     "midi": 63,
+     "file": "banjo/63.mp3",
+     "tune": 26
+    },
+    {
+     "midi": 64,
+     "file": "banjo/64.mp3",
+     "tune": 16
+    },
+    {
+     "midi": 65,
+     "file": "banjo/65.mp3",
+     "tune": 11
+    },
+    {
+     "midi": 66,
+     "file": "banjo/66.mp3",
+     "tune": 7
+    },
+    {
+     "midi": 67,
+     "file": "banjo/67.mp3",
+     "tune": -24
+    },
+    {
+     "midi": 68,
+     "file": "banjo/68.mp3",
+     "tune": 16
+    },
+    {
+     "midi": 69,
+     "file": "banjo/69.mp3",
+     "tune": 11
+    },
+    {
+     "midi": 70,
+     "file": "banjo/70.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 71,
+     "file": "banjo/71.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 72,
+     "file": "banjo/72.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 73,
+     "file": "banjo/73.mp3",
+     "tune": 14
+    },
+    {
+     "midi": 74,
+     "file": "banjo/74.mp3",
+     "tune": 18
+    },
+    {
+     "midi": 75,
+     "file": "banjo/75.mp3",
+     "tune": 10
+    },
+    {
+     "midi": 76,
+     "file": "banjo/76.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 77,
+     "file": "banjo/77.mp3",
+     "tune": 8
+    },
+    {
+     "midi": 78,
+     "file": "banjo/78.mp3",
+     "tune": 8
+    },
+    {
+     "midi": 80,
+     "file": "banjo/80.mp3",
+     "tune": 29
+    },
+    {
+     "midi": 81,
+     "file": "banjo/81.mp3",
+     "tune": 22
+    },
+    {
+     "midi": 82,
+     "file": "banjo/82.mp3",
+     "tune": 25
+    },
+    {
+     "midi": 83,
+     "file": "banjo/83.mp3",
+     "tune": 28
+    },
+    {
+     "midi": 84,
+     "file": "banjo/84.mp3",
+     "tune": 20
+    }
+   ],
+   "credit": "flamestudios-banjo"
   }
  },
  "voices": {},
  "credits": {
   "salamander": "Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0",
   "vsco": "VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0",
-  "salamander-drums": "Salamander Drumkit by Alexander Holm, CC BY-SA 3.0"
+  "salamander-drums": "Salamander Drumkit by Alexander Holm, CC BY-SA 3.0",
+  "freepats-guitar": "Spanish Classical Guitar by Roberto (FreePats project), CC0",
+  "flamestudios-banjo": "Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3"
  }
 }

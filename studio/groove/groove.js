@@ -239,7 +239,7 @@ function render() {
     hits.length ? hitCard(g, hits) : null,
     ...pitched.map((tr) => rollCard(g, tr)),
     tracks.length ? null : h('p', { class: 'empty' }, `No sounds in ${LAYER_INFO[layer].label.toLowerCase()} yet. Add one above.`),
-    h('p', { class: 'hint' }, 'Click a step to add a note, drag to make it longer, click a note to remove it. Space plays and stops.'),
+    h('p', { class: 'hint' }, 'Click a step to add a note and drag to make it longer. Drag a note\'s right end to stretch or shorten it, drag the rest of it to move it, click it to remove it. Space plays and stops.'),
     status ? h('p', { class: 'status' }, status) : null,
   ].filter(Boolean));
   requestAnimationFrame(() => { drawAll(); centerRolls(); });
@@ -287,10 +287,11 @@ function cellWidth(g, wrapWidth) {
   return Math.max(12, Math.floor((wrapWidth - GUTTER - 2) / steps(g)));
 }
 
-function makeCanvas(wrap, rows, rowH, draw, onDown) {
+function makeCanvas(wrap, rows, rowH, draw, onDown, onHover) {
   const canvas = h('canvas', { class: 'grid' });
   const item = { canvas, wrap, rows, rowH, draw, cw: 16 };
   canvas.addEventListener('pointerdown', (e) => onDown(e, item));
+  if (onHover) canvas.addEventListener('pointermove', (e) => { if (!e.buttons) onHover(e, item); });
   canvases.push(item);
   return canvas;
 }
@@ -435,10 +436,30 @@ function rollCard(g, tr) {
     const hitNote = (col, mm) => tr.notes.findIndex((n) => n.m === mm && col >= n.s && col < n.s + (n.l || 1));
     const i = hitNote(at.col, m);
     if (i >= 0) {
-      // Erase: this note and any dragged over.
-      tr.notes.splice(i, 1);
-      drawAll();
-      drag(e, item, (a) => { const j = hitNote(a.col, hi - a.row); if (j >= 0) { tr.notes.splice(j, 1); drawAll(); } });
+      // On a note: drag its right end to stretch or shorten it, drag its body to move it,
+      // or click without dragging to remove it.
+      const n = tr.notes[i];
+      const l0 = n.l || 1;
+      const end = atEnd(e, item, n);
+      const grab = at.col - n.s;
+      let moved = false;
+      item.canvas.style.cursor = end ? 'ew-resize' : 'grabbing';
+      drag(e, item, (a) => {
+        moved = true;
+        if (end) {
+          n.l = Math.max(1, Math.min(steps(g) - n.s, a.col - n.s + 1));
+        } else {
+          n.s = Math.max(0, Math.min(steps(g) - l0, a.col - grab));
+          const mm = hi - a.row;
+          if (mm >= lo && mm <= hi && mm !== n.m) { n.m = mm; preview(tr, mm); }
+        }
+        drawAll();
+      }, true, () => {
+        item.canvas.style.cursor = '';
+        if (!moved) tr.notes.splice(tr.notes.indexOf(n), 1);
+        tr.notes.sort((a, b) => a.s - b.s || a.m - b.m);
+        drawAll();
+      });
       return;
     }
     const n = { s: at.col, m, l: Math.min(settings.len, steps(g) - at.col), v: vel() };
@@ -450,6 +471,11 @@ function rollCard(g, tr) {
       const l = Math.max(1, Math.min(steps(g) - n.s, a.col - n.s + 1));
       if (l !== n.l) { n.l = l; drawAll(); }
     }, true);
+  }, (e, item) => {
+    // Hover: a resize cursor over a note's right end, a hand over the rest of it.
+    const at = cellAt(e, item);
+    const n = at && tr.notes.find((x) => x.m === hi - at.row && at.col >= x.s && at.col < x.s + (x.l || 1));
+    item.canvas.style.cursor = !n ? '' : atEnd(e, item, n) ? 'ew-resize' : 'grab';
   }));
   return h('section', { class: 'card' },
     h('div', { class: 'card-top' }, h('h2', {}, label(tr.inst)), h('span', { class: 'grow' }), trackTools(g, tr, 'pitched')),
@@ -467,8 +493,17 @@ function cellAt(e, item) {
   return { col, row };
 }
 
-/* Follows the pointer until it lifts, calling move with each new cell; saves at the end. */
-function drag(e, item, move, anyCell = false) {
+/* Is the pointer on a note's right end (its last third, at least 8 px, or the right half of a
+   one-step note)? There a drag changes its length. */
+function atEnd(e, item, n) {
+  const x = e.clientX - item.canvas.getBoundingClientRect().left - GUTTER;
+  const right = (n.s + (n.l || 1)) * item.cw;
+  const zone = (n.l || 1) === 1 ? item.cw / 2 : Math.max(8, Math.min(item.cw, ((n.l || 1) * item.cw) / 3));
+  return x >= right - zone;
+}
+
+/* Follows the pointer until it lifts, calling move with each new cell, then end; saves. */
+function drag(e, item, move, anyCell = false, end = null) {
   e.preventDefault();
   item.canvas.setPointerCapture(e.pointerId);
   let last = cellAt(e, item);
@@ -485,6 +520,7 @@ function drag(e, item, move, anyCell = false) {
     item.canvas.removeEventListener('pointermove', onMove);
     item.canvas.removeEventListener('pointerup', onUp);
     item.canvas.removeEventListener('pointercancel', onUp);
+    if (end) end();
     changed();
   };
   item.canvas.addEventListener('pointermove', onMove);
@@ -504,21 +540,28 @@ function centerRolls() {
   }
 }
 
-/* A groove's other-meter version, started from this one: each note keeps its beat and its
-   place in the beat as near as the new grid allows (an 8th stays an 8th: 2 of 4 steps ↔ 3 of
-   6), so bars, chords and instruments carry over, ready to reshape. */
+/* A groove's other-meter version, started from this one: each note keeps its beat, and its
+   place in the beat moves to where a player would put it. Two 8ths in 2/4 become a quarter and
+   an 8th in 6/8 (the second 8th moves to the last 8th of the beat, and the first stretches to
+   meet it); four 16ths become 8th, 8th, 16th, 16th. 6/8 to 2/4 does the reverse. Lengths
+   follow the same map, so a quarter becomes a dotted quarter and a half a dotted half. Bars,
+   chords and instruments carry over, ready to reshape. */
+const BEAT_MAP = { '2/4>6/8': [0, 2, 4, 5], '6/8>2/4': [0, 1, 1, 2, 2, 3] };
 function convert(v, meter) {
   const from = per(v);
   const to = meter === '6/8' ? 6 : 4;
+  const map = BEAT_MAP[`${v.meter}>${meter}`] || [...Array(from).keys()].map((i) => Math.round(i * to / from));
+  const at = (p) => Math.floor(p / from) * to + map[p % from];
   const out = structuredClone(v);
   out.meter = meter;
   out.swing = 0;
+  const last = v.beats * to - 1;
   for (const tracks of Object.values(out.layers)) {
     for (const tr of tracks) {
       const seen = new Set();
       tr.notes = tr.notes.map((n) => {
-        const s = Math.floor(n.s / from) * to + Math.round((n.s % from) * to / from);
-        return { ...n, s: Math.min(s, v.beats * to - 1), ...(n.l ? { l: Math.max(1, Math.round(n.l * to / from)) } : {}) };
+        const s = Math.min(at(n.s), last);
+        return { ...n, s, ...(n.l ? { l: Math.max(1, Math.min(at(n.s + n.l), last + 1) - s) } : {}) };
       }).filter((n) => { const k = `${n.s}:${n.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
     }
   }
