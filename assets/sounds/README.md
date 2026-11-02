@@ -40,7 +40,17 @@ kyle.say('tonal/major/so-mi-do', t, { speed: 'slow', key: 50 });
 
 `bpm` picks the takes recorded nearest that tempo and stretches them to it; `key` (sounding
 midi of do, or la in minor) moves a tonal take. Pitch and tempo move together, so stay close
-to how it was recorded.
+to how it was recorded. `{ as: 'bum' }` picks the takes on "bum" (`kyle.has(id, 'bum')`).
+Musician Maker's cue words (`musician-maker/cues.js`) play as recorded:
+`kyle.hasCue('echo') && kyle.cue('echo', t)`.
+
+## Groove loops
+
+Musician Maker's backing band, recorded by Kyle a layer at a time (pulse, bass, drums, horns,
+band, plus breakdown for breathers) at 92, 108 and 126 bpm. `python tools/add_groove.py <folder>`
+takes files named like `bass-108.wav`, checks each is whole bars of 2/4, encodes them to
+`groove/` and lists them under `groove` in `index.json`. `samples.grooveLoops()` loads them;
+`musician-maker/sound.js` plays each on the beat clock, and a stand-in for any layer missing.
 
 ## Rebuild
 

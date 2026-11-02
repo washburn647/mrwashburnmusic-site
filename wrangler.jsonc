@@ -1,11 +1,10 @@
-// Lets Cloudflare Workers serve this folder as a static site, plus the small Worker in
-// worker/ that keeps private students' locked lesson pages (see worker/index.js).
+// Lets Cloudflare Workers serve this folder as a static site. The Worker in
+// worker/ only answers /api/ (the Class app's files, and lesson students' locked boxes,
+// see worker/index.js).
 {
   "name": "mrwashburnmusic-site",
-  "compatibility_date": "2026-10-01",
   "main": "worker/index.js",
-  // ACCESS_TEAM and ACCESS_AUD are set in the Cloudflare dashboard, not here.
-  "keep_vars": true,
+  "compatibility_date": "2026-10-01",
   // Only serve on the real domain, so Cloudflare Access always guards /studio/.
   "workers_dev": false,
   "preview_urls": false,
@@ -21,8 +20,19 @@
     "not_found_handling": "404-page",
     "run_worker_first": ["/api/*", "/studio/api/*"]
   },
+  // The Class app's decks, pictures and plans. Private: no public access, only through the Worker.
+  "r2_buckets": [
+    { "binding": "CLASS_FILES", "bucket_name": "mwm-class-files" }
+  ],
+  // Lesson students' locked boxes: one Durable Object each, holding only encrypted data.
   "durable_objects": {
     "bindings": [{ "name": "BOXES", "class_name": "Box" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Box"] }]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Box"] }],
+  // Which Cloudflare Access login guards /api/class. Not secrets: the Worker checks each login
+  // token's signature against Access's public keys, so knowing these lets no one in.
+  "vars": {
+    "ACCESS_TEAM": "mute-union-7a1d.cloudflareaccess.com",
+    "ACCESS_AUD": "2bd16f1b6cec5e0b7a60223a7176858f37c303534f0a32c9f6fb287a47185aa9"
+  }
 }

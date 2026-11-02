@@ -1,6 +1,8 @@
 /* Draws one slide of a deck as HTML and SVG on a fixed 960 x 540 stage.
    The caller scales the stage to fit (a TV, a thumbnail, the editor). */
 
+import { drawWidget } from './widgets.js';
+
 const PX_PER_PT = 960 / 720;
 const SVG = 'http://www.w3.org/2000/svg';
 let uid = 0;
@@ -23,6 +25,7 @@ export function fontStack(name) {
  * opts.media(hash) -> URL for a picture
  * opts.onLink(link, event) -> called when a linked element is clicked
  * opts.timer() -> text for a song slide's timer box (default 0:00)
+ * opts.live -> widgets work (Present); otherwise they draw as labels
  */
 export function renderSlide(slide, deck, opts = {}) {
   const stage = document.createElement('div');
@@ -41,7 +44,7 @@ export function renderSlide(slide, deck, opts = {}) {
 
 /** One element on its own, for the editor to redraw while it is dragged. */
 export function drawElement(el, opts = {}) {
-  const node = el.t === 'pic' ? drawPicture(el, opts) : drawShape(el, opts);
+  const node = el.t === 'pic' ? drawPicture(el, opts) : el.t === 'wg' ? drawWidget(el, opts) : drawShape(el, opts);
   if (!node) return node;
   if (el.link) makeLink(node, el.link, opts);
   if (el.role) node.dataset.role = el.role;

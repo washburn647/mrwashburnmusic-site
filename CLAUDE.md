@@ -36,3 +36,5 @@ Kyle's classroom slides app, served at `/class/`. Read `class/README.md` first.
   sub view; never publish it on the public site.
 - `render.js` is shared by Present mode and thumbnails: check both after changing it.
 - Bump `CACHE` in `class/sw.js` when the app's file list changes.
+- Sync (`class/sync.js`, `worker/index.js`) keeps Kyle's files in a private R2 bucket behind
+  Cloudflare Access. Never make the bucket public or serve its files without the Access check.

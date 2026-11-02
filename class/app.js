@@ -11,6 +11,11 @@ import * as store from './store.js';
 import { missingIcons, forGrade, GRADES } from './marks.js';
 import { showPlanner } from './planner.js';
 import { gradeHint, indexSongs, playCount, normName } from './plans.js';
+import { makeTemplate } from './builder.js';
+import * as sync from './sync.js';
+
+const CATEGORIES = ['Vocal Warmup', 'Song Fragments', 'Simple Songs', 'Arioso', 'Movement Exploration',
+  'Form and Expression', 'Beat Motions', 'Songtales'];
 
 const LOCK = 'e8a2199e2a0d291cde34b6ad10564b06';     // the lock picture the decks' menus use
 
@@ -32,17 +37,44 @@ async function showLibrary() {
       el('p', {}, el('button', { class: 'btn', onclick: () => picker.click() }, 'Import PowerPoint files'))));
     return;
   }
-  const grid = el('div', { class: 'decks' });
-  for (const rec of decks) {
-    const media = await loadMedia(rec.deck);
-    const first = rec.deck.slides.find((s) => !s.hidden) || rec.deck.slides[0];
-    grid.append(el('button', { class: 'deck-card', onclick: () => { location.hash = '#/deck/' + rec.id; } },
-      first ? thumb(first, rec.deck, media) : el('div', { class: 'thumb' }),
-      el('div', { class: 'meta' },
-        el('div', { class: 'name' }, rec.name),
-        el('div', { class: 'count' }, rec.deck.slides.length + ' slides'))));
+  // Builds take their title and exit slides from a Class template deck, made once from "1 29".
+  const made = makeTemplate(decks);
+  if (made) {
+    const now = Date.now();
+    await store.putDeck({ id: newId(), name: 'Class template', created: now, updated: now, source: 'template', deck: made });
+    return showLibrary();
   }
-  main.replaceChildren(grid);
+  // The category decks first, then classes (built here, the template, imported class decks), then the rest.
+  const years = await store.listPlans().catch(() => []);
+  const cats = new Set((years.length ? years[years.length - 1].categories : CATEGORIES).map(normName));
+  const isCat = (d) => cats.has(normName(d.name));
+  const isClass = (d) => d.deck.built || d.deck.template || /^(PK|K|\d)\s+\d+$/i.test(d.name.trim());
+  const order = (d) => d.deck.template ? [-1, 0] : [['PK', 'K', '1', '2'].indexOf(d.name.split(/\s+/)[0].toUpperCase()), Number(d.name.split(/\s+/)[1]) || 0];
+  const classes = decks.filter((d) => !isCat(d) && isClass(d)).sort((a, b) => {
+    const x = order(a), y = order(b);
+    return x[0] - y[0] || x[1] - y[1];
+  });
+  const sections = [
+    ['Category decks', decks.filter(isCat)],
+    ['Classes', classes],
+    ['Other', decks.filter((d) => !isCat(d) && !isClass(d))]
+  ];
+  const out = [];
+  for (const [title, list] of sections) {
+    if (!list.length) continue;
+    const grid = el('div', { class: 'decks' });
+    for (const rec of list) {
+      const media = await loadMedia(rec.deck);
+      const first = rec.deck.slides.find((s) => !s.hidden) || rec.deck.slides[0];
+      grid.append(el('button', { class: 'deck-card', onclick: () => { location.hash = '#/deck/' + rec.id; } },
+        first ? thumb(first, rec.deck, media) : el('div', { class: 'thumb' }),
+        el('div', { class: 'meta' },
+          el('div', { class: 'name' }, rec.name),
+          el('div', { class: 'count' }, rec.deck.slides.length + ' slides'))));
+    }
+    out.push(el('h2', { class: 'lib-h' }, title), grid);
+  }
+  main.replaceChildren(...out);
 }
 
 // ---- one deck --------------------------------------------------------------
@@ -78,7 +110,7 @@ async function showDeck(id, startPresenting, editAt) {
     el('button', { class: 'btn', onclick: () => run(first()) }, '▶ Present'),
     el('button', { class: 'btn quiet', onclick: () => { location.hash = '#/deck/' + rec.id + '/edit'; } }, 'Edit'),
     el('button', { class: 'btn danger', onclick: async () => {
-      if (!window.confirm('Remove "' + rec.name + '" from this device?')) return;
+      if (!window.confirm('Remove "' + rec.name + '"?')) return;
       await store.deleteDeck(rec.id);
       await store.pruneMedia();
       location.hash = '#/';
@@ -202,7 +234,8 @@ function newId() {
 
 function route() {
   main.classList.toggle('wide', location.hash.startsWith('#/plan'));
-  if (location.hash.startsWith('#/plan')) { showPlanner(main); return; }
+  const plan = location.hash.match(/^#\/plan(?:\/(calendar|lists))?/);
+  if (plan) { showPlanner(main, plan[1] || 'plan'); return; }
   const m = location.hash.match(/^#\/deck\/([\w-]+)(?:\/(present|edit)(?:\/(\d+))?)?/);
   if (m) showDeck(m[1], m[2] === 'present', m[2] === 'edit' ? Math.max(0, (Number(m[3]) || 1) - 1) : null);
   else showLibrary();
@@ -224,11 +257,41 @@ document.addEventListener('drop', (e) => {
   if (e.dataTransfer && e.dataTransfer.files.length) importFiles(e.dataTransfer.files);
 });
 
+// Sync with the website: the cloud in the header shows how it went.
+const cloud = $('#sync');
+const LOOK = { signin: ['Sign in', 'Sign in'], syncing: ['☁', 'Syncing…'], ok: ['☁', 'Synced'],
+  offline: ['☁', 'Offline'], error: ['☁', 'Sync failed'] };
+sync.onStatus((s, detail) => {
+  cloud.hidden = s === 'off';
+  if (s === 'off') return;
+  const [text, title] = LOOK[s];
+  cloud.textContent = text;
+  cloud.title = detail ? title + ': ' + detail : title;
+  cloud.className = 'sync ' + s + (s === 'signin' ? ' btn quiet' : '');
+  if (s === 'signin') cloud.href = '/api/class/login'; else cloud.removeAttribute('href');
+});
+cloud.addEventListener('click', (e) => { if (sync.getStatus() !== 'signin') { e.preventDefault(); sync.syncNow(); } });
+// The deck open in the editor is never swapped out under it.
+sync.holdWhile(() => {
+  const m = location.hash.match(/^#\/deck\/([\w-]+)\/edit/);
+  return m ? [m[1]] : [];
+});
+// Show what came down, unless it would pull the page out from under someone.
+sync.onPulled((list) => {
+  if (/\/(edit|present)/.test(location.hash) || document.querySelector('.present')) return;
+  const a = document.activeElement;
+  if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && main.contains(a)) return;
+  const m = location.hash.match(/^#\/deck\/([\w-]+)/);
+  if (m && !list.some((x) => x.kind === 'decks' && x.id === m[1])) return;
+  if (list.some((x) => x.kind === 'plans')) store.listPlans().then((years) => store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1])));
+  route();
+});
+
+function recall(k) { try { return localStorage.getItem('class.' + k); } catch (e) { return null; } }
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // Song slides take their grades from the plan's Max columns, so load it first.
 store.listPlans().then((years) => {
-  let want = null;
-  try { want = localStorage.getItem('class.year'); } catch (e) { /* private window */ }
-  store.setGradeHint(gradeHint(years.find((y) => y.year === want) || years[years.length - 1]));
-}).catch(() => {}).finally(route);
+  store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1]));
+}).catch(() => {}).finally(() => { route(); sync.syncNow(); });
