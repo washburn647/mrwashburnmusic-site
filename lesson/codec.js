@@ -2,7 +2,7 @@
    sent to or stored on any server. The part after # is the page's JSON,
    deflated and base64url encoded. Pieces (MusicXML) ride along inside it.
 
-   v2: { v: 2, n: first name, i: instrument, d: 'YYYY-MM-DD', m: note,
+   v2: { v: 2, n: first name, i: instrument, d: 'YYYY-MM-DD', x: next lesson date, m: note,
          s: stars 0-3, w: practice minutes a day,
          t: [{ a: title, b: detail, l: link, p: piece index, u: piece setup, c: card deck }],
          p: [MusicXML] }
@@ -25,11 +25,18 @@ const int = (x, lo, hi) => (Number.isInteger(x) && x >= lo && x <= hi ? x : unde
 const ints = (x, lo, hi) => (Array.isArray(x) ? x.filter((n) => int(n, lo, hi) !== undefined).slice(0, 64) : undefined);
 
 /* Only the settings the player knows, as small whole numbers and short names.
-   v: which buttons the student gets (1 listen, 2 sheet music), sp: speed range,
-   sec: sections [name, first bar, last bar], iso: student may turn parts on and off. */
+   v: which buttons the student gets (1 listen, 2 sheet music, 4 lit keyboard, 8 sheet
+   music and keyboard), sp: speed range, sec: sections [name, first bar, last bar],
+   n: names (1 letters, 2 solfege, 3 fingerings), f: fingerings { 'measure.staff.time': '3' }. */
+const FINGER_KEY = /^\d{1,4}\.\d{1,3}\.\d{1,7}$/;
+const FINGER = /^[0-9a-zA-Z,\-/ ]{1,8}$/;
 export function cleanSetup(u) {
   if (!u || typeof u !== 'object') return {};
-  const out = { s: int(u.s, 20, 200), k: int(u.k, -12, 12), n: int(u.n, 0, 2), c: int(u.c, 0, 1), x: int(u.x, 0, 1), ci: int(u.ci, 0, 1), m: ints(u.m, 0, 999), h: ints(u.h, 0, 999), v: int(u.v, 0, 3), iso: int(u.iso, 0, 1) };
+  const out = { s: int(u.s, 20, 200), k: int(u.k, -12, 12), n: int(u.n, 0, 3), c: int(u.c, 0, 1), x: int(u.x, 0, 1), ci: int(u.ci, 0, 1), m: ints(u.m, 0, 999), h: ints(u.h, 0, 999), v: int(u.v, 0, 15) };
+  if (u.f && typeof u.f === 'object') {
+    const f = Object.entries(u.f).filter(([k, v]) => FINGER_KEY.test(k) && typeof v === 'string' && FINGER.test(v)).slice(0, 5000);
+    if (f.length) out.f = Object.fromEntries(f);
+  }
   if (Array.isArray(u.sp) && u.sp.length === 2 && u.sp.every((n) => int(n, 20, 200) !== undefined)) out.sp = [Math.min(...u.sp), Math.max(...u.sp)];
   if (Array.isArray(u.sec)) {
     out.sec = u.sec.filter((x) => Array.isArray(x) && x.length === 3 && int(x[1], -1, 9999) !== undefined && int(x[2], -1, 9999) !== undefined)
@@ -85,7 +92,7 @@ export function cleanPage(page) {
     return it;
   });
   return {
-    n: str(page.n, 100), i: str(page.i, 100), d: str(page.d, 10), m: str(page.m),
+    n: str(page.n, 100), i: str(page.i, 100), d: str(page.d, 10), x: str(page.x, 10), m: str(page.m),
     s: int(page.s, 0, 3) || 0, w: int(page.w, 1, 240) || 0,
     t: items, p: pieces,
   };

@@ -37,7 +37,7 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
   const doneBtn = el('button', { class: 'gdone', hidden: true, onclick: () => finish() }, '✓');
   const root = el('div', { class: 'game' },
     el('div', { class: 'ptop' },
-      el('button', { class: 'close', 'aria-label': 'Close', onclick: () => (s && s.n ? finish() : close()) }, '✕'),
+      el('button', { class: 'close', 'aria-label': 'Close', onclick: () => (s && s.n && !s.ended ? finish() : close()) }, '✕'),
       el('h2', { textContent: title }),
       el('div', { class: 'gstatus' }, streakEl, meter, count, doneBtn)),
     body);
@@ -191,8 +191,8 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
   });
 
   /* A keyboard around the cards' notes. Answers by pitch class, so any octave counts. */
-  function keys(answer, lo, hi, dot, onKey) {
-    const kb = keyboard({ lo, hi, dot, onKey: (m) => { C.playNote(m, undefined, 0.6); onKey(m); } });
+  function keys(answer, lo, hi, dot, onKey, only = null) {
+    const kb = keyboard({ lo, hi, dot, only, onKey: (m) => { C.playNote(m, undefined, 0.6); onKey(m); } });
     answer.replaceChildren(kb.el);
     return kb;
   }
@@ -238,10 +238,12 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
     const home = C.homeMidi(deck);
     const doMidi = C.tonalityOf(deck) === 'minor' ? home + 3 : home;
     const spots = slots(under, notes);
+    // Only the keys the deck's patterns use.
+    const needed = new Set(deck.p.flatMap((p) => C.tonalNotes(deck, p).map((n) => n.midi)));
     let at = 0;
     return new Promise((done) => {
       let kb = null;
-      kb = keys(answer, home - 7, home + 14, doMidi, (m) => {
+      kb = keys(answer, Math.min(...needed) - 1, Math.max(...needed) + 1, doMidi, (m) => {
         if (at >= notes.length) return;
         if (same(m, notes[at].midi)) {
           spots[at].textContent = notes[at].syl;
@@ -255,7 +257,7 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
         const all = reveal(under, notes);
         all[at].classList.add('miss');
         done(false);
-      });
+      }, needed);
     });
   }
 

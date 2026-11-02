@@ -3,7 +3,8 @@
    familiar or unfamiliar ones, and he can leave out single patterns. See /lesson/cards.js. */
 
 import { h } from '../dom.js';
-import { clefRange, inKey, noteAnswer, KEY_NAMES, MODES, KINDS, cardLabel } from '/lesson/cards.js';
+import { clefRange, inKey, noteAnswer, KEY_NAMES, MODES, KINDS, cardLabel, loadVex } from '/lesson/cards.js';
+import { notation } from '/assets/patterns/notation.js';
 import { openPractice } from '/lesson/practice.js';
 import { DEFAULT_UNITS, KEYS, unitPatterns, patternById } from '/assets/patterns/patterns.js';
 
@@ -67,9 +68,9 @@ function seg(options, value, set) {
 }
 
 /* Opens a dialog; resolves with the edited deck, or null when cancelled. */
-export async function editDeck(start, title = '') {
+export async function editDeck(start, title = '', { keys = true } = {}) {
   let d = structuredClone(start || newDeck('n'));
-  const units = await loadUnits();
+  const [units] = await Promise.all([loadUnits(), loadVex()]);
   // Which unit and set the deck came from; the set isn't kept in the deck.
   let set = 'all';
   const dlg = h('dialog', { class: 'deckdlg' });
@@ -127,20 +128,24 @@ export async function editDeck(start, title = '') {
             seg(SETS, set, (v) => { set = v; if (unit) useUnit(unit); draw(); })),
           h('div', { class: 'patpick' }, shown.map((p) => {
             const on = picked.has(p.id);
-            return h('button', { type: 'button', 'aria-pressed': String(on), class: p.mark || '', onclick: () => {
+            const b = h('button', { type: 'button', 'aria-pressed': String(on), class: p.mark || '', onclick: () => {
               d.p = on ? d.p.filter((x) => x !== p.id) : shown.map((x) => x.id).filter((x) => x === p.id || picked.has(x));
               draw();
-            } }, cardLabel(d, p.id));
+            } });
+            // Drawn as notation, with the syllables for a tooltip.
+            b.innerHTML = notation(patternById(p.id), d.k === 't' ? d.y : undefined);
+            b.title = cardLabel(d, p.id);
+            return b;
           })),
           h('div', { class: 'row' },
-            d.k === 't' && h('label', {}, 'Key ', h('select', { onchange: (e) => { d.y = +e.target.value; } },
+            d.k === 't' && h('label', {}, 'Key ', h('select', { onchange: (e) => { d.y = +e.target.value; draw(); } },
               KEYS[tonality].map((k) => h('option', { value: k.midi, selected: k.midi === d.y }, k.name.replace('#', '♯').replace(/b$/, '♭') + (tonality === 'minor' ? 'm' : ''))))),
             h('label', {}, ' ♩ ', h('input', { type: 'number', min: 40, max: 200, value: d.q, class: 'tempo', 'aria-label': 'Tempo', onchange: (e) => { d.q = Math.max(40, Math.min(200, +e.target.value || 80)); } }))),
         );
       }
       // How the student may answer.
       rows.push(
-        h('div', { class: 'row modes' }, MODES[d.k].map(([bit, , icon, label]) => h('label', {},
+        h('div', { class: 'row modes' }, MODES[d.k].filter(([, id]) => keys || id !== 'keys').map(([bit, , icon, label]) => h('label', {},
           h('input', { type: 'checkbox', checked: !!(d.o & bit), onchange: (e) => { d.o = e.target.checked ? d.o | bit : d.o & ~bit; draw(); } }), ` ${icon} ${label}`))),
         h('div', { class: 'row' },
           h('label', {}, h('input', { type: 'checkbox', checked: !!d.w, onchange: (e) => { d.w = e.target.checked ? 1 : 0; } }), d.k === 't' ? ' 🎤 Sing first, then play' : ' 🗣 Say first, then play'),
@@ -150,7 +155,7 @@ export async function editDeck(start, title = '') {
       dlg.replaceChildren(h('form', { method: 'dialog', onsubmit: (e) => e.preventDefault() },
         ...rows,
         h('div', { class: 'bar actions' },
-          h('button', { type: 'button', class: 'primary', disabled: !ok, onclick: () => done(d) }, 'Save'),
+          h('button', { type: 'button', class: 'primary', disabled: !ok, onclick: () => { if (!keys && d.k !== 'r') d.o &= ~2; done(d.o ? d : null); } }, 'Save'),
           h('button', { type: 'button', disabled: !ok, onclick: () => openPractice(dlg, d, { title }) }, 'Try'),
           h('span', { class: 'grow' }),
           h('button', { type: 'button', onclick: () => done(null) }, 'Cancel'))));

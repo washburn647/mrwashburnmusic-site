@@ -10,25 +10,12 @@ header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
 .reward { display: flex; align-items: center; justify-content: center; gap: 14px; background: #fff; border-radius: 22px; padding: 12px 18px; margin-bottom: 16px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
 .rstars { font-size: 38px; color: #F5B800; letter-spacing: 4px; text-shadow: 0 2px 0 #D99A00; }
 
-.practice { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #fff; border-radius: 22px; padding: 14px; margin-bottom: 16px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
-.timer { position: relative; width: 96px; height: 96px; border-radius: 50%; background: #F6F1E4; display: grid; place-items: center; align-content: center; flex: none; }
-.timer .ring { position: absolute; inset: 0; }
-.timer svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.timer circle { fill: none; stroke-width: 8; }
-.timer .track { stroke: #EFE8D6; }
-.timer .fill { stroke: #7DC242; stroke-linecap: round; transition: stroke-dashoffset .5s; }
-.timer .ticon { position: relative; font-size: 22px; line-height: 1; }
-.timer .ttime { position: relative; font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.timer.running { animation: breathe 2s ease-in-out infinite; }
-@keyframes breathe { 50% { box-shadow: 0 0 0 6px rgba(125,194,66,.25); } }
-.goal { font-size: 16px; color: #5B6B5F; }
-.days { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 250px; }
-.days label { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #F6F1E4; cursor: pointer; font-weight: 500; user-select: none; font-size: 16px; transition: transform .15s; }
-.days label.today { box-shadow: 0 0 0 3px #E0A458; }
-.days label small { position: absolute; bottom: -16px; font-size: 12px; color: #5B6B5F; font-weight: 400; }
-.days input { position: absolute; opacity: 0; pointer-events: none; }
-.days label:has(input:checked) { background: #7DC242; color: #fff; transform: scale(1.06); }
-.days label:has(input:focus-visible) { outline: 3px solid #E0A458; }
+.practice { display: flex; flex-direction: column; align-items: center; gap: 10px; background: #fff; border-radius: 22px; padding: 14px; margin-bottom: 16px; box-shadow: 0 3px 0 rgba(47,74,58,.08); text-align: center; }
+.nextlesson { margin: 0; font-size: 20px; }
+.nextlesson b { font-size: 34px; color: #7F4FA3; }
+.done { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.done span { background: #F6F1E4; border-radius: 999px; padding: 6px 14px; font-size: 17px; font-variant-numeric: tabular-nums; }
+.done b { font-weight: 600; }
 
 .items { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 10px; }
 .items li { background: #fff; border-radius: 18px; padding: 14px 16px; display: grid; grid-template-columns: 30px 1fr; gap: 4px 12px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
@@ -54,7 +41,7 @@ header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
 @media print {
   body { background: #fff; font-size: 14px; }
   .reward, .practice, .items li { box-shadow: none; border: 1px solid #ccc; }
-  .timer, .goal, .itools, .print { display: none; }
+  .done, .itools, .print { display: none; }
   .days label { background: #fff; border: 1px solid #999; }
   .days label:has(input:checked) { background: #fff; color: inherit; transform: none; }
   .items li:has(> input:checked) { background: #fff; }

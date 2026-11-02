@@ -12,7 +12,7 @@ import { store, newId, downloadJSON, today } from '../db.js';
 import { h, grow, confirmButton } from '../dom.js';
 import { encodeLesson, safeLink, formatDate, cleanDeck, cleanSetup } from '/lesson/codec.js';
 import { readPieceFile, slimXML, pieceInfo } from '/lesson/score.js';
-import { openPlayer } from '/lesson/player.js';
+import { openPlayer, PIECE_MODES, KEYBOARD_MODES } from '/lesson/player.js';
 import { openPractice } from '/lesson/practice.js';
 import { LESSON_PAGE, LOCAL_PAGE, STUDIO_HOME, API } from '/lesson/paths.js';
 import { newCode, cleanCode, publish, results, unpublish } from '/lesson/locked.js';
@@ -24,6 +24,7 @@ const pieces = store('pieces');
 const library = store('library');
 const app = document.getElementById('app');
 
+const INSTRUMENTS = ['Piano', 'Guitar'];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const newItem = () => ({ id: newId(), title: '', detail: '', link: '', piece: null, setup: {}, deck: null });
 const newLesson = (items = [newItem()]) => ({ id: newId(), date: today(), items, note: '', private: '', stars: 0, minutes: '' });
@@ -283,6 +284,8 @@ async function pageFor(s, lesson) {
     items.push(out);
   }
   const page = { v: 2, n: s.name.trim(), i: s.instrument.trim(), d: lesson.date, t: items };
+  const next = nextLesson(s, lesson.date);
+  if (next) page.x = next;
   if (lesson.note.trim()) page.m = lesson.note.trim();
   if (lesson.stars) page.s = lesson.stars;
   if (Number(lesson.minutes) > 0) page.w = Math.round(Number(lesson.minutes));
@@ -311,6 +314,8 @@ async function showStudent(id, lessonId) {
   const setTitle = () => { document.title = `${student.name || 'New student'} · Lesson pages`; };
   setTitle();
   const pieceMap = Object.fromEntries((await pieces.all()).map((p) => [p.id, p]));
+  // Keyboard tools (lit keyboard, keyboard answers) are for piano students.
+  const playsKeys = () => !/guitar/i.test(student.instrument);
 
   const items = h('ol', { class: 'items' });
 
@@ -320,7 +325,7 @@ async function showStudent(id, lessonId) {
     if (p) return pieceBox(item, p);
     if (item.deck) {
       return h('div', { class: 'attach' }, h('span', { class: 'chip' }, '🃏 ', deckSummary(item.deck),
-        h('button', { class: 'icon', title: 'Edit deck', onclick: async () => { const d = await editDeck(item.deck, item.title); if (d) { item.deck = d; save(); renderItems(); } } }, '✎'),
+        h('button', { class: 'icon', title: 'Edit deck', onclick: async () => { const d = await editDeck(item.deck, item.title, { keys: playsKeys() }); if (d) { item.deck = d; save(); renderItems(); } } }, '✎'),
         h('button', { class: 'icon', title: 'Try', onclick: () => openPractice(document.body, item.deck, { title: item.title }) }, '▶'),
         h('button', { class: 'icon', title: 'Remove deck', onclick: () => { item.deck = null; save(); renderItems(); } }, '×')));
     }
@@ -330,13 +335,13 @@ async function showStudent(id, lessonId) {
         if (!chosen) return;
         pieceMap[chosen.id] = chosen;
         item.piece = chosen.id;
-        item.setup = { v: 3, sp: [50, 100] };
+        item.setup = { v: playsKeys() ? 15 : 3, sp: [50, 100] };
         if (!item.title.trim()) item.title = pieceName(chosen);
         save();
         renderItems();
       } }, '🎼'),
       h('button', { class: 'add', title: 'Add flash cards', onclick: async () => {
-        const d = await editDeck(newDeck('n'), item.title);
+        const d = await editDeck(newDeck('n'), item.title, { keys: playsKeys() });
         if (!d) return;
         item.deck = d;
         if (!item.title.trim()) item.title = deckTitle(d);
@@ -350,40 +355,27 @@ async function showStudent(id, lessonId) {
     const u = item.setup ||= {};
     u.v ??= 3;
     u.sp ??= [50, 100];
+    delete u.iso;
     const changed = () => { save(); };
     const player = (mode) => openPlayer(document.body, {
       xml: p.xml, title: item.title || pieceName(p), setup: cleanSetup(u), mode,
-      ...(mode === 'teach' ? {
-        onSave: (next) => { item.setup = { ...u, ...next }; save(); renderItems(); },
-        onSection: (a, b) => { (u.sec ||= []).push([String.fromCharCode(65 + u.sec.length % 26), a, b]); save(); renderItems(); },
-      } : {}),
+      ...(mode === 'teach' ? { onSave: (next) => { item.setup = { ...next, v: u.v, sp: u.sp }; save(); renderItems(); } } : {}),
     });
-    const toggle = (bit, label) => h('label', {}, h('input', { type: 'checkbox', checked: !!(u.v & bit), onchange: (e) => { u.v = e.target.checked ? u.v | bit : u.v & ~bit; changed(); } }), ` ${label}`);
     const num = (value, set, props) => h('input', { type: 'number', class: 'num', value: value ?? '', ...props, onchange: (e) => { set(e.target.value === '' ? null : Math.round(+e.target.value)); changed(); } });
     const [lo, hi] = u.sp;
-    const secs = h('div', { class: 'secs' });
-    const drawSecs = () => secs.replaceChildren(
-      ...(u.sec || []).map((x, i) => h('span', { class: 'sec' },
-        h('input', { class: 'secname', value: x[0], 'aria-label': 'Section name', maxlength: 30, oninput: (e) => { x[0] = e.target.value; changed(); } }),
-        num(x[1], (v) => { x[1] = v ?? 1; }, { 'aria-label': 'From bar', min: 0 }), '–',
-        num(x[2], (v) => { x[2] = v ?? x[1]; }, { 'aria-label': 'To bar', min: 0 }),
-        h('button', { class: 'icon', title: 'Remove section', onclick: () => { u.sec.splice(i, 1); if (!u.sec.length) delete u.sec; changed(); drawSecs(); } }, '×'))),
-      h('button', { class: 'icon', title: 'Add section', onclick: () => { (u.sec ||= []).push([String.fromCharCode(65 + u.sec.length % 26), 1, p.measures || 1]); changed(); drawSecs(); } }, '＋'));
-    drawSecs();
+    const modes = PIECE_MODES.filter(([bit]) => playsKeys() || !(bit & KEYBOARD_MODES));
     return h('div', { class: 'attach piecebox' },
       h('span', { class: 'chip' }, '🎼 ', pieceName(p),
-        h('button', { class: 'icon', title: 'Playback settings', onclick: () => player('teach') }, '⚙'),
+        h('button', { class: 'icon', title: 'Setup: playback, sections, names and fingerings', onclick: () => player('teach') }, '⚙'),
         setupSummary(u) ? h('small', {}, setupSummary(u)) : null,
         h('button', { class: 'icon', title: 'Remove piece', onclick: () => { item.piece = null; item.setup = {}; save(); renderItems(); } }, '×')),
       h('div', { class: 'sview' }, h('h3', {}, 'Student view'),
-        h('div', { class: 'row' }, toggle(1, '🎹▶'), toggle(2, '🎼▶'), h('label', {}, h('input', { type: 'checkbox', checked: !!u.iso, onchange: (e) => { if (e.target.checked) u.iso = 1; else delete u.iso; changed(); } }), ' Parts')),
+        h('div', { class: 'row' }, modes.map(([bit, mode, icon, label]) => h('span', { class: 'smode' },
+          h('label', { title: label }, h('input', { type: 'checkbox', checked: !!(u.v & bit), onchange: (e) => { u.v = e.target.checked ? u.v | bit : u.v & ~bit; changed(); } }), ` ${icon}`),
+          h('button', { class: 'icon', title: `Try: ${label}`, onclick: () => player(mode) }, '▶')))),
         h('div', { class: 'row' }, '% ',
           num(lo, (v) => { u.sp = [Math.max(20, Math.min(200, v ?? 50)), u.sp[1]]; }, { 'aria-label': 'Slowest speed', min: 20, max: 200, step: 5 }), '–',
-          num(hi, (v) => { u.sp = [u.sp[0], Math.max(20, Math.min(200, v ?? 100))]; }, { 'aria-label': 'Fastest speed', min: 20, max: 200, step: 5 })),
-        secs,
-        h('div', { class: 'row' },
-          h('button', { class: 'icon', title: 'As the student hears it', onclick: () => player('listen') }, '🎹▶'),
-          h('button', { class: 'icon', title: 'As the student sees it', onclick: () => player('sheet') }, '🎼▶'))));
+          num(hi, (v) => { u.sp = [u.sp[0], Math.max(20, Math.min(200, v ?? 100))]; }, { 'aria-label': 'Fastest speed', min: 20, max: 200, step: 5 }))));
   }
 
   function itemEl(item) {
@@ -447,6 +439,10 @@ async function showStudent(id, lessonId) {
     drawStars();
   } }, '★')));
   drawStars();
+  // The instrument decides which tools a student's items offer. Guitar is still to come.
+  const instrumentSel = h('select', { 'aria-label': 'Instrument', onchange: () => { student.instrument = instrumentSel.value; save(); renderItems(); } },
+    h('option', { value: '', selected: !student.instrument }, 'Instrument'),
+    [...new Set([...INSTRUMENTS, student.instrument].filter(Boolean))].map((x) => h('option', { value: x, selected: x === student.instrument }, x)));
   const daySel = h('select', { 'aria-label': 'Lesson day', onchange: () => { student.day = daySel.value === '' ? '' : +daySel.value; save(); } },
     h('option', { value: '', selected: student.day === '' }, 'Day'),
     DAYS.map((d, i) => h('option', { value: i, selected: String(student.day) === String(i) }, d)));
@@ -486,7 +482,7 @@ async function showStudent(id, lessonId) {
         h('span', { class: 'code' }, '🔑 ', student.code.replace(/-/g, ' ')),
         pub, status,
         copyCode,
-        h('button', { disabled: API == null, onclick: () => showResults(student) }, 'Results'),
+        h('button', { disabled: API == null, onclick: () => showResults(student) }, 'Practice'),
         h('span', { class: 'grow' }),
         confirmButton('New code', 'Old code stops working', async () => {
           const old = student.code;
@@ -505,7 +501,7 @@ async function showStudent(id, lessonId) {
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '#/' }, '‹ Lesson pages')),
     h('div', { class: 'who' },
       input(student, 'name', { class: 'title', placeholder: 'First name', 'aria-label': 'First name', autocomplete: 'off' }, setTitle),
-      input(student, 'instrument', { class: 'instrument', placeholder: 'Instrument', 'aria-label': 'Instrument' }),
+      instrumentSel,
       daySel,
       input(student, 'time', { type: 'time', class: 'time', 'aria-label': 'Lesson time' }),
       confirmButton('Remove student', 'Remove for good?', async () => {
@@ -569,6 +565,18 @@ async function showStudent(id, lessonId) {
   renderItems();
 }
 
+/* The next lesson after a date: the student's lesson day in the week after it (a week on
+   when no day is set). */
+function nextLesson(s, date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+  if (!m) return '';
+  const d = new Date(+m[1], m[2] - 1, +m[3]);
+  let add = 7;
+  if (s.day !== '' && s.day != null) add = ((Number(s.day) - d.getDay() + 7) % 7) || 7;
+  d.setDate(d.getDate() + add);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /* Everything a student's code opens: their last 20 lessons, newest first, sharing pieces. */
 async function pagesFor(s) {
   const pool = [];
@@ -578,12 +586,14 @@ async function pagesFor(s) {
     const page = await pageFor(s, lesson);
     const mine = (page.p || []).map((xml) => { const i = pool.indexOf(xml); return i >= 0 ? i : pool.push(xml) - 1; });
     for (const it of page.t) if (it.p !== undefined) it.p = mine[it.p];
-    lessons.push({ d: page.d, t: page.t, ...(page.m ? { m: page.m } : {}), ...(page.s ? { s: page.s } : {}), ...(page.w ? { w: page.w } : {}) });
+    lessons.push({ d: page.d, ...(page.x ? { x: page.x } : {}), t: page.t, ...(page.m ? { m: page.m } : {}), ...(page.s ? { s: page.s } : {}), ...(page.w ? { w: page.w } : {}) });
   }
   return { v: 1, n: s.name.trim(), i: s.instrument.trim(), l: lessons, p: pool };
 }
 
-/* What a student's flash card sessions show: per deck, the cards missed most. */
+/* What a student did with their pages, from the notes their page sends back (encrypted):
+   each lesson's week (days opened, minutes, plays of each piece, cards of each deck),
+   then the cards each deck's sessions missed most. */
 async function showResults(s) {
   const dlg = h('dialog', { class: 'pickdlg results' });
   document.body.append(dlg);
@@ -593,31 +603,60 @@ async function showResults(s) {
   dlg.showModal();
   let list;
   try { list = await results(s.code); } catch (err) { dlg.replaceChildren(h('p', {}, `✗ ${err.message}`), h('button', { onclick: close }, 'Close')); return; }
+  const weeks = new Map();
   const decks = new Map();
+  const week = (d) => {
+    if (!weeks.has(d)) weeks.set(d, { d, days: new Set(), secs: 0, pieces: new Map(), decks: new Map() });
+    return weeks.get(d);
+  };
   for (const r of list) {
-    const name = `${r.a || KINDS[r.k] || ''}`;
-    const d = decks.get(name) || { name, k: r.k, sessions: 0, n: 0, ok: 0, last: '', cards: {} };
-    d.sessions++;
-    d.n += r.n || 0;
-    d.ok += r.ok || 0;
-    if ((r.at || '') > d.last) d.last = r.at || '';
-    for (const [card, [tries, right]] of Object.entries(r.items || {})) {
-      const c = (d.cards[card] ||= [0, 0]);
-      c[0] += tries;
-      c[1] += right;
+    const w = week(r.d || '');
+    const day = r.t ? new Date(r.t).toDateString() : r.at;
+    if (day) w.days.add(day);
+    if (r.y === 'p') {
+      const p = w.pieces.get(r.a) || { opens: 0, plays: 0, secs: 0, modes: {} };
+      p.opens++;
+      p.plays += r.plays || 0;
+      p.secs += r.secs || 0;
+      p.modes[r.mode] = (p.modes[r.mode] || 0) + 1;
+      w.pieces.set(r.a, p);
+      w.secs += r.secs || 0;
+    } else if (r.y !== 'v') {
+      const c = w.decks.get(r.a) || { sessions: 0, n: 0, ok: 0 };
+      c.sessions++;
+      c.n += r.n || 0;
+      c.ok += r.ok || 0;
+      w.decks.set(r.a, c);
+      w.secs += (r.ms || 0) / 1000;
+      const name = r.a || KINDS[r.k] || '';
+      const d = decks.get(name) || { name, k: r.k, cards: {} };
+      for (const [card, [tries, right]] of Object.entries(r.items || {})) {
+        const x = (d.cards[card] ||= [0, 0]);
+        x[0] += tries;
+        x[1] += right;
+      }
+      decks.set(name, d);
     }
-    decks.set(name, d);
   }
   const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '—');
+  const icons = Object.fromEntries(PIECE_MODES.map(([, mode, icon]) => [mode, icon]));
+  const weekEls = [...weeks.values()].sort((a, b) => b.d.localeCompare(a.d)).map((w) => h('section', { class: 'rweek' },
+    h('h3', {}, formatDate(w.d) || '—', h("small", {}, ` · opened ${w.days.size} ${w.days.size === 1 ? "day" : "days"} · ⏱ ${Math.round(w.secs / 60)} min`)),
+    h('ul', { class: 'rlist' },
+      [...w.pieces].map(([name, p]) => h('li', {}, h('span', {}, '🎼 ', name),
+        h('small', {}, `${Object.entries(p.modes).map(([m, n]) => `${icons[m] || m} ${n}`).join('  ')} · 🎵 ${p.plays} · ${Math.round(p.secs / 60)} min`))),
+      [...w.decks].map(([name, c]) => h('li', {}, h('span', {}, '🃏 ', name),
+        h('small', {}, `${c.sessions} × · ${c.n} cards · ${pct(c.ok, c.n)}`))))));
+  const weakEls = [...decks.values()].map((d) => {
+    const weak = Object.entries(d.cards).filter(([, [t, r]]) => r < t).sort((a, b) => a[1][1] / a[1][0] - b[1][1] / b[1][0]).slice(0, 10);
+    return weak.length ? h('section', { class: 'rdeck' }, h('h3', {}, d.name),
+      h('ul', { class: 'weak' }, weak.map(([card, [t, r]]) => h('li', {}, h('span', {}, cardLabel({ k: d.k }, card)), h('small', {}, `${r}/${t}`))))) : null;
+  }).filter(Boolean);
   dlg.replaceChildren(
-    h('div', { class: 'bar' }, h('h2', { class: 'grow' }, s.name || 'Results'), h('button', { onclick: close }, 'Close')),
+    h('div', { class: 'bar' }, h('h2', { class: 'grow' }, s.name || 'Practice'), h('button', { onclick: close }, 'Close')),
     ...(list.length ? [] : [h('p', {}, '—')]),
-    ...[...decks.values()].sort((a, b) => b.last.localeCompare(a.last)).map((d) => {
-      const weak = Object.entries(d.cards).filter(([, [t, r]]) => r < t).sort((a, b) => a[1][1] / a[1][0] - b[1][1] / b[1][0]).slice(0, 10);
-      return h('section', { class: 'rdeck' },
-        h('h3', {}, d.name, h('small', {}, ` · ${d.sessions} × · ${d.n} · ${pct(d.ok, d.n)} · ${d.last}`)),
-        h('ul', { class: 'weak' }, weak.map(([card, [t, r]]) => h('li', {}, h('span', {}, cardLabel({ k: d.k }, card)), h('small', {}, `${r}/${t}`)))));
-    }));
+    ...weekEls,
+    ...(weakEls.length ? [h('h2', {}, 'Missed most'), ...weakEls] : []));
 }
 
 function setupSummary(u) {
@@ -625,7 +664,8 @@ function setupSummary(u) {
   if (u.s && u.s !== 100) out.push(`${u.s}%`);
   if (u.k) out.push(`${u.k > 0 ? '+' : ''}${u.k}`);
   if (u.m?.length) out.push('🔇');
-  if (u.n) out.push(u.n === 1 ? 'ABC' : 'do re mi');
+  if (u.n) out.push(['', 'ABC', 'do re mi', 'fingers'][u.n]);
+  if (u.sec?.length) out.push(u.sec.map((x) => x[0]).join(' '));
   if (u.c) out.push('🎨');
   return out.join(' · ');
 }

@@ -10,7 +10,7 @@ import { cleanCode, openPages, sendResult } from './locked.js';
 import { LOGO, QR_SRC, LESSON_PAGE } from './paths.js';
 import { loadScript } from './score.js';
 import { confetti } from './fun.js';
-import { openPlayer } from './player.js';
+import { openPlayer, PIECE_MODES } from './player.js';
 import { openPractice } from './practice.js';
 import * as snd from './sound.js';
 
@@ -40,14 +40,13 @@ function load(key) {
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-/* Seven practice days, starting the day after the lesson. */
-function practiceDays(date) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  const start = m ? new Date(+m[1], m[2] - 1, +m[3]) : new Date();
-  return Array.from({ length: 7 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1 + i));
+/* Whole days from today to a 'YYYY-MM-DD' date, or null. */
+function daysUntil(date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+  if (!m) return null;
+  const now = new Date();
+  return Math.round((new Date(+m[1], m[2] - 1, +m[3]) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 864e5);
 }
-
-const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec) % 60).padStart(2, '0')}`;
 
 /* ---------- Overlays (piece player, flash cards) close with Back ---------- */
 
@@ -121,12 +120,23 @@ async function showLocked(code, fromLink) {
       key: await keyFor(`${code}/${lessons[index].d}`),
       qr: `${LESSON_PAGE}#${code}`,
       lessons, index, open,
-      onCards: (it, r) => queueResult(code, { d: lessons[index].d, a: it.a, ...r }),
+      onCards: (it, r) => queueResult(code, { y: 'c', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
+      onPiece: (it, r) => queueResult(code, { y: 'p', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
+      onVisit: () => visited(code, lessons[index].d),
       forget: () => { try { localStorage.removeItem(CODE); } catch { /* nothing kept */ } showEntry(); },
     });
     scrollTo(0, 0);
   };
   open(0);
+}
+
+/* Kyle sees the days the page was opened: one note a day. */
+async function visited(code, d) {
+  const key = `${await keyFor(code)}:seen`;
+  const day = iso(new Date());
+  if (load(key).day === day) return;
+  try { localStorage.setItem(key, JSON.stringify({ day })); } catch { /* nothing kept */ }
+  queueResult(code, { y: 'v', t: Date.now(), d });
 }
 
 /* Flash card results go to Kyle, encrypted; ones that can't go yet wait on this device. */
@@ -160,12 +170,11 @@ function stop() { timers.forEach(clearInterval); timers = []; }
 
 /* ---------- The page ---------- */
 
-function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, forget }) {
+function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPiece, onVisit, forget }) {
   stop();
   const header = logo();
   document.title = `${page.n || 'Lesson'} · Mr. Washburn Music`;
   const state = load(key);
-  state.mins = state.mins || {};
   state.cards = state.cards || {};
   state.plays = state.plays || {};
   state.party = state.party || {};
@@ -178,75 +187,29 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, forg
   /* Stars from Mr. W */
   const reward = page.s ? el('div', { class: 'reward' }, el('span', { class: 'rstars', 'aria-label': `${page.s} stars` }, '★'.repeat(page.s))) : null;
 
-  /* Practice timer and days */
-  const days = practiceDays(page.d);
+  /* Days until the next lesson, and what they've done this week */
   const today = iso(new Date());
-  const goal = page.w * 60;
-  const dayDone = (d) => !!state[`day${d}`] || (state.mins[iso(days[d])] || 0) >= (goal || 60);
-
-  const dayEls = days.map((d, i) => {
-    const name = d.toLocaleDateString(undefined, { weekday: 'long' });
-    const box = el('input', { type: 'checkbox', checked: dayDone(i) });
-    box.setAttribute('aria-label', name);
-    box.addEventListener('change', () => { state[`day${i}`] = box.checked; save(); if (box.checked) snd.yes(); });
-    const mins = el('small', {});
-    const lab = el('label', { title: name, class: iso(d) === today ? 'today' : '' }, box, el('span', {}, name.slice(0, 2)), mins);
-    return { lab, box, mins, date: iso(d), i };
-  });
-  const refreshDays = () => dayEls.forEach((d) => {
-    const s = state.mins[d.date] || 0;
-    d.mins.textContent = s >= 60 ? `${Math.floor(s / 60)}′` : '';
-    d.box.checked = dayDone(d.i);
-  });
-
-  const R = 34;
-  const ring = el('div', { class: 'ring' });
-  ring.innerHTML = `<svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="${R}" class="track"/><circle cx="40" cy="40" r="${R}" class="fill"/></svg>`;
-  const fill = ring.querySelector('.fill');
-  const C = 2 * Math.PI * R;
-  fill.style.strokeDasharray = `${C}`;
-  const timeEl = el('span', { class: 'ttime' });
-  const timerBtn = el('button', { class: 'timer', 'aria-label': 'Practice timer' }, ring, el('span', { class: 'ticon' }, '▶'), timeEl);
-  let tick = null;
-  const todaySecs = () => (state.mins[today] || 0) + (state.run ? Math.max(0, (Date.now() - state.run) / 1000) : 0);
-  function drawTimer() {
-    const s = todaySecs();
-    timeEl.textContent = clock(s);
-    timerBtn.querySelector('.ticon').textContent = state.run ? '⏸' : '▶';
-    timerBtn.classList.toggle('running', !!state.run);
-    const frac = goal ? Math.min(1, s / goal) : (s % 60) / 60;
-    fill.style.strokeDashoffset = `${C * (1 - frac)}`;
-    if (goal && s >= goal && !state.party[`goal${today}`]) {
-      state.party[`goal${today}`] = 1;
-      save();
-      refreshDays();
-      snd.fanfare();
-      confetti();
-    }
-  }
-  function stopRun() {
-    if (!state.run) return;
-    // A timer left running for hours counts as 2 hours at most.
-    state.mins[today] = Math.min(4 * 3600, (state.mins[today] || 0) + Math.min(7200, (Date.now() - state.run) / 1000));
-    state.run = null;
-  }
-  timerBtn.addEventListener('click', () => {
-    if (state.run) { stopRun(); clearInterval(tick); } else { state.run = Date.now(); tick = setInterval(drawTimer, 500); timers.push(tick); }
+  const until = daysUntil(page.x);
+  const next = until != null && until >= 0 && el('p', { class: 'nextlesson' },
+    until === 0 ? '🎵 Lesson today!' : el('span', {}, el('b', {}, String(until)), until === 1 ? ' day until your next lesson' : ' days until your next lesson'));
+  const doneEl = el('div', { class: 'done' });
+  const showDone = () => {
+    const mins = Math.round((state.secs || 0) / 60);
+    const plays = Object.values(state.plays).reduce((a, b) => a + b, 0);
+    const cards = Object.values(state.cards).reduce((a, c) => a + (c.n || 0), 0);
+    doneEl.replaceChildren(
+      el('span', { title: 'Minutes', 'aria-label': `${mins} minutes` }, '⏱ ', el('b', {}, String(mins)), page.w ? ` / ${page.w * 7}` : '', ' min'),
+      el('span', { title: 'Times played', 'aria-label': `${plays} plays` }, '🎵 ', el('b', {}, String(plays))),
+      el('span', { title: 'Flash cards', 'aria-label': `${cards} cards` }, '🃏 ', el('b', {}, String(cards))));
+  };
+  const addTime = (secs) => {
+    state.secs = (state.secs || 0) + Math.min(secs, 4 * 3600);
     save();
-    drawTimer();
-    refreshDays();
-  });
-  if (state.run) {
-    if (Date.now() - state.run > 7200e3) { stopRun(); save(); } else { tick = setInterval(drawTimer, 500); timers.push(tick); }
-  }
-  timers.push(setInterval(() => { if (state.run) { stopRun(); state.run = Date.now(); save(); refreshDays(); } }, 30000));
-  refreshDays();
-  drawTimer();
-
-  const practice = el('section', { class: 'practice' },
-    timerBtn,
-    goal ? el('span', { class: 'goal' }, `🎯 ${page.w}′`) : null,
-    el('div', { class: 'days' }, dayEls.map((d) => d.lab)));
+    showDone();
+  };
+  showDone();
+  const practice = el('section', { class: 'practice' }, next, doneEl);
+  if (onVisit) onVisit();
 
   /* The list */
   const boxes = [];
@@ -269,22 +232,27 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, forg
       const plays = el('span', { class: 'plays' });
       const showPlays = () => { plays.textContent = state.plays[i] ? `🔁 ${state.plays[i]}` : ''; };
       showPlays();
-      const open = (mode) => openOverlay(async (done) => openPlayer(document.body, {
-        xml: page.p[it.p], title: it.a, setup: it.u, mode,
-        onClose: done,
-        onFinish: () => { state.plays[i] = (state.plays[i] || 0) + 1; save(); showPlays(); },
-      }));
+      const open = (mode) => {
+        const use = { secs: 0, plays: 0 };
+        openOverlay(async (done) => openPlayer(document.body, {
+          xml: page.p[it.p], title: it.a, setup: it.u, mode,
+          onClose: () => { done(); if (onPiece) onPiece(it, { mode, secs: Math.round(use.secs), plays: use.plays }); },
+          onPlaying: (secs) => { use.secs += secs; addTime(secs); },
+          onFinish: () => { use.plays++; state.plays[i] = (state.plays[i] || 0) + 1; save(); showPlays(); showDone(); },
+        }));
+      };
       const v = it.u?.v ?? 3;
-      if (v & 1) tools.append(el('button', { class: 'go piece', 'aria-label': 'Listen', onclick: () => open('listen') }, '🎹 ▶'));
-      if (v & 2) tools.append(el('button', { class: 'go piece', 'aria-label': 'Sheet music', onclick: () => open('sheet') }, '🎼 ▶'));
+      for (const [bit, mode, icon, label] of PIECE_MODES) {
+        if (v & bit) tools.append(el('button', { class: 'go piece', 'aria-label': label, title: label, onclick: () => open(mode) }, `${icon} ▶`));
+      }
       tools.append(plays);
     }
     if (it.c) {
       // Results per card, over every session: { [card]: [tries, right] }.
       const mine = (state.cards[i] ||= { history: {}, done: 0 });
       const badge = el('span', { class: 'plays' });
-      const showDone = () => { badge.textContent = mine.done ? `⭐ ${mine.done}` : ''; };
-      showDone();
+      const showStars = () => { badge.textContent = mine.done ? `⭐ ${mine.done}` : ''; };
+      showStars();
       tools.append(el('button', { class: 'go cards', 'aria-label': 'Flash cards', onclick: () => openOverlay(async (done) =>
         openPractice(document.body, it.c, { title: it.a, history: mine.history, onClose: done, onEnd: (r) => {
           for (const [card, [tries, right]] of Object.entries(r.items)) {
@@ -293,8 +261,10 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, forg
             h[1] += right;
           }
           mine.done += r.ok;
+          mine.n = (mine.n || 0) + r.n;
           save();
-          showDone();
+          showStars();
+          addTime(r.ms / 1000);
           if (onCards) onCards(it, r);
         } })) }, '🃏'), badge);
     }

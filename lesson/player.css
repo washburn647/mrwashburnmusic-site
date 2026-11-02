@@ -110,15 +110,32 @@ body.playing-piece { overflow: hidden; }
 
 /* On-screen keyboard (keyboard.js) */
 .kbd { position: relative; width: 100%; height: clamp(120px, 26vh, 190px); user-select: none; }
-.game .kb { position: absolute; top: 0; min-width: 0; min-height: 0; padding: 0; border-radius: 0 0 10px 10px; box-shadow: none; display: flex; align-items: flex-end; justify-content: center; }
-.game .kb.white { height: 100%; background: #fff; border: 1px solid #C9BFA8; z-index: 1; }
-.game .kb.black { height: 60%; background: #2F4A3A; z-index: 2; border-radius: 0 0 6px 6px; }
+.kbd .kb { position: absolute; top: 0; min-width: 0; min-height: 0; padding: 0; border-radius: 0 0 10px 10px; box-shadow: none; display: flex; align-items: flex-end; justify-content: center; }
+.kbd .kb.white { height: 100%; background: #fff; border: 1px solid #C9BFA8; z-index: 1; }
+.kbd .kb.black { height: 60%; background: #2F4A3A; z-index: 2; border-radius: 0 0 6px 6px; }
 .kb small { font-size: 13px; color: #8A8270; padding-bottom: 6px; pointer-events: none; }
-.game .kb.do::after { content: ""; position: absolute; bottom: 26px; width: 12px; height: 12px; border-radius: 50%; background: #7F4FA3; }
-.game .kb.down { background: #F5C400; }
-.game .kb.right { background: #7DC242; }
-.game .kb.wrong { background: #E5243B; }
+.kbd .kb.do::after { content: ""; position: absolute; bottom: 26px; width: 12px; height: 12px; border-radius: 50%; background: #7F4FA3; }
+.kbd .kb.down { background: #F5C400; }
+.kbd .kb.right { background: #7DC242; }
+.kbd .kb.wrong { background: #E5243B; }
 .kbd.locked { pointer-events: none; }
+.kbd .kb.off { opacity: .25; }
+.kbd .kb.white.off { background: #EDE7D8; }
+.kbd .kb.lit { background: #F47B20; }
+.kbd .kb.lit2 { background: #11A38B; }
+
+/* The lit keyboard in the player */
+.pkeys { padding: 8px 8px 0; background: #F6F1E4; }
+.player.keys .pkeys { flex: 1; display: flex; align-items: center; }
+.player.keys .kbd { height: min(46vh, 320px); }
+.player.both .kbd { height: clamp(90px, 20vh, 160px); }
+.secmark { position: absolute; font-weight: 600; font-size: 15px; color: #fff; background: #7F4FA3; border-radius: 8px; padding: 1px 8px; white-space: nowrap; }
+.finger { position: absolute; transform: translateX(-10%); font-weight: 600; color: #7F4FA3; line-height: 1; }
+.finger.edit { pointer-events: auto; width: 2.2em; border: 1px dashed #CDB6E0; border-radius: 4px; background: rgba(255,255,255,.85); font-family: inherit; padding: 0 2px; text-align: center; }
+.finger.edit:focus { outline: 2px solid #7F4FA3; background: #fff; }
+.pmore .secs { border-top: 2px solid #F6F1E4; margin-top: 6px; padding-top: 6px; }
+.pmore .secs input { flex: 1; min-width: 0; font: inherit; font-size: 16px; border: 0; border-radius: 8px; background: #F6F1E4; padding: 6px 8px; }
+.pmore .secs .bars { color: #5B6B5F; font-variant-numeric: tabular-nums; }
 
 /* End of a session */
 .gend { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(560px, 100%); }

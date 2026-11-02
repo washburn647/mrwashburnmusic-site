@@ -1,9 +1,11 @@
 /* An on-screen piano keyboard. Keys from lo to hi (midi), starting and ending on
-   white keys. Tapping a key calls onKey(midi). mark(midi, cls) colours a key. */
+   white keys. Tapping a key calls onKey(midi). only: the keys that can be played (the
+   rest are faded). flash(midi, cls) colours a key for a moment; light(map of midi to
+   class) keeps keys coloured, as music plays. */
 
 const BLACK = new Set([1, 3, 6, 8, 10]);
 
-export function keyboard({ lo, hi, onKey, dot = null }) {
+export function keyboard({ lo, hi, onKey, dot = null, only = null }) {
   while (BLACK.has(((lo % 12) + 12) % 12)) lo--;
   while (BLACK.has(((hi % 12) + 12) % 12)) hi++;
   const wrap = document.createElement('div');
@@ -29,7 +31,12 @@ export function keyboard({ lo, hi, onKey, dot = null }) {
     // Every C is labelled, so the keyboard can be found without naming the answer.
     if (m % 12 === 0) k.append(Object.assign(document.createElement('small'), { textContent: 'C' }));
     if (dot != null && (m - dot) % 12 === 0) k.classList.add('do');
-    k.addEventListener('pointerdown', (e) => { e.preventDefault(); onKey(m); flash(m, 'down'); });
+    if (only && !only.has(m)) {
+      k.classList.add('off');
+      k.disabled = true;
+    } else if (onKey) {
+      k.addEventListener('pointerdown', (e) => { e.preventDefault(); onKey(m); flash(m, 'down'); });
+    }
     keys.set(m, k);
     wrap.append(k);
   }
@@ -39,5 +46,11 @@ export function keyboard({ lo, hi, onKey, dot = null }) {
     k.classList.add(cls);
     setTimeout(() => k.classList.remove(cls), ms);
   }
-  return { el: wrap, flash, lo, hi };
+  let lit = new Map();
+  function light(next) {
+    for (const [m, cls] of lit) if (next.get(m) !== cls) keys.get(m)?.classList.remove(cls);
+    for (const [m, cls] of next) if (lit.get(m) !== cls) keys.get(m)?.classList.add(cls);
+    lit = next;
+  }
+  return { el: wrap, flash, light, lo, hi };
 }
