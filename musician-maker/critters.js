@@ -75,3 +75,49 @@ export function critter(kind = 'mouse') {
   };
   return el;
 }
+
+/* The mouse as a real photo (props/mouse.png, CC0, see props/CREDITS.txt) with the same
+   props drawn over it, and the same classes and methods as critter('mouse'). Coordinates are
+   in the photo's pixels (218 x 320): eyes at (26, 202) and (111, 227), nose at (44, 298). */
+const SPIRAL = 'M0 0 m-1 0 a1 1 0 1 1 2 0 a3 3 0 1 1 -6 0 a5 5 0 1 1 10 0 a7 7 0 1 1 -14 0';
+const PHOTO_PROPS = `
+<g class="c-shades" transform="rotate(16 68 214)">
+  <rect x="2" y="190" width="50" height="30" rx="11" fill="#111"/><rect x="86" y="190" width="50" height="30" rx="11" fill="#111"/>
+  <path d="M52 202 H86 M2 200 L-14 192 M136 200 L150 192" stroke="#111" stroke-width="6" stroke-linecap="round"/>
+  <path d="M12 199 L26 199 M96 199 L110 199" stroke="#fff" stroke-opacity=".7" stroke-width="4" stroke-linecap="round"/></g>
+<g class="c-dizzy-eyes" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round">
+  <path transform="translate(26 202)" d="${SPIRAL}"/><path transform="translate(111 227)" d="${SPIRAL}"/></g>
+<g class="c-tongue"><path d="M32 296 Q30 334 46 336 Q62 334 58 296 Z" fill="#e8798c" stroke="#b9566a" stroke-width="2.5"/>
+  <path d="M45 302 V322" stroke="#b9566a" stroke-width="2" stroke-linecap="round"/></g>
+<g class="c-flag"><path d="M200 280 L200 120" stroke="#8a6a3c" stroke-width="7" stroke-linecap="round"/>
+  <path class="c-flag-cloth" d="M200 124 Q226 112 250 126 Q274 140 298 128 L298 186 Q274 198 250 184 Q226 170 200 182 Z" fill="#fff" stroke="#cfcfcf" stroke-width="2"/></g>
+<path class="c-sweat" d="M196 40 Q210 64 196 72 Q182 64 196 40 Z" fill="#9fd3f0" stroke="#5b9ec4" stroke-width="2"/>
+<g class="c-stars" fill="#f2c94c" stroke="#c99a2e" stroke-width="2">
+  <path transform="translate(40 -6) scale(2.4)" d="M0 -6 l2 5 5 0 -4 3 2 5 -5 -3 -5 3 2 -5 -4 -3 5 0 Z"/>
+  <path transform="translate(150 -20) scale(2.4)" d="M0 -6 l2 5 5 0 -4 3 2 5 -5 -3 -5 3 2 -5 -4 -3 5 0 Z"/>
+  <path transform="translate(100 -40) scale(2)" d="M0 -6 l2 5 5 0 -4 3 2 5 -5 -3 -5 3 2 -5 -4 -3 5 0 Z"/></g>`;
+
+export function photoMouse() {
+  const el = document.createElement('div');
+  el.className = 'critter pmouse';
+  const inner = document.createElement('div');
+  inner.className = 'pm-in';
+  const img = document.createElement('img');
+  img.src = new URL('./props/mouse.png', import.meta.url).href;
+  img.alt = '';
+  img.draggable = false;
+  img.className = 'pm-photo';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 218 320');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = PHOTO_PROPS; // fixed markup
+  inner.append(img, svg);
+  el.append(inner);
+  el.set = (cls, on = true) => el.classList.toggle(cls, on);
+  el.say = (ms = 160) => {
+    el.classList.add('talk');
+    clearTimeout(el._talk);
+    el._talk = setTimeout(() => el.classList.remove('talk'), ms);
+  };
+  return el;
+}

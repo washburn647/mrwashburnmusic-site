@@ -14,7 +14,7 @@
    Fixed markup only: nothing a learner types goes in here (call syllables are du/de). */
 
 import { rigMookie } from './rig.js';
-import { critter } from './critters.js';
+import { critter, photoMouse } from './critters.js';
 import { toon } from './sound.js';
 
 function h(tag, cls, text) {
@@ -47,12 +47,6 @@ const CLOCK = `<svg viewBox="0 0 80 150" aria-hidden="true">
 const POSTER = `<svg viewBox="0 0 90 110" aria-hidden="true">
   <path d="M4 4 L86 2 L88 106 L2 108 Z" fill="#f1dfb4" stroke="#c8a96a" stroke-width="2"/>
   <text x="45" y="22" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="700" font-size="17" fill="#6b3d1f">WANTED</text>
-  <g transform="translate(19 26) scale(.43)">
-    <circle cx="36" cy="25" r="17" fill="#a9a2ae"/><circle cx="36" cy="25" r="11" fill="#f0aab6"/>
-    <circle cx="84" cy="25" r="17" fill="#a9a2ae"/><circle cx="84" cy="25" r="11" fill="#f0aab6"/>
-    <ellipse cx="60" cy="47" rx="25" ry="22" fill="#a9a2ae"/><ellipse cx="60" cy="57" rx="13" ry="9" fill="#e2dce4"/>
-    <ellipse cx="50" cy="43" rx="4.4" ry="5.8" fill="#141418"/><ellipse cx="70" cy="43" rx="4.4" ry="5.8" fill="#141418"/>
-    <circle cx="60" cy="52" r="3.6" fill="#e07a8c"/><path d="M54 60 Q60 65 66 60" stroke="#4a3438" stroke-width="1.6" fill="none"/></g>
   <text x="45" y="84" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="9" fill="#6b3d1f">REWARD</text>
   <g transform="translate(22 88)"><path d="M0 12 L22 2 L22 12 Z" fill="#f2c94c"/><circle cx="16" cy="8" r="1.6" fill="#d9a93a"/>
     <path d="M24 12 L46 2 L46 12 Z" fill="#f2c94c"/><circle cx="38" cy="8" r="1.6" fill="#d9a93a"/></g>
@@ -81,7 +75,7 @@ const PLANT = `<svg viewBox="0 0 70 110" aria-hidden="true">
 </svg>`;
 
 /* Real photos, cut out like stickers: CC0 museum objects (props/CREDITS.txt). */
-const PROPS = ['bust', 'frog', 'teacup', 'helmet', 'bronze-mouse', 'bell', 'trophy'];
+const PROPS = ['mouse', 'bust', 'frog', 'teacup', 'helmet', 'bronze-mouse', 'bell', 'trophy'];
 const propUrl = (name) => new URL(`./props/${name}.png`, import.meta.url).href;
 let preloaded = false;
 function preload() {
@@ -142,6 +136,7 @@ export const mouseCatcher = {
     const pend = clock.querySelector('.ms-pend');
     const poster = h('div', 'ms-poster');
     poster.innerHTML = POSTER; // fixed markup
+    poster.append(photo('mouse', 'ms-mugshot'));
     const disco = h('div', 'ms-disco');
     disco.append(h('i', 'ms-disco-ball'));
     const lights = h('div', 'ms-lights');
@@ -155,7 +150,7 @@ export const mouseCatcher = {
     const mask = h('div', 'ms-mask');
     const eyes = h('div', 'ms-eyes');
     eyes.append(h('i'), h('i'));
-    const mouse = critter('mouse');
+    const mouse = photoMouse();
     mouse.classList.add('ms-mouse');
     mask.append(eyes, mouse);
     hole.append(mask, h('div', 'ms-hole-rim'));
@@ -273,7 +268,7 @@ export const mouseCatcher = {
         cut.append(big.el);
         later(ms * 0.4, () => big.mood('star'));
       } else {
-        const big = critter(who === 'rat' ? 'boss' : 'mouse');
+        const big = who === 'rat' ? critter('boss') : photoMouse();
         big.classList.add('ms-cut-face', 'shades', 'tongue');
         cut.append(big);
       }
@@ -490,7 +485,7 @@ export const mouseCatcher = {
           toon('punch', undefined, { vol: 0.8 });
           mouse.classList.add('gone');
           // The yanked mouse, flying from the hole to above Mookie's head.
-          const flyer = critter('mouse');
+          const flyer = photoMouse();
           flyer.classList.add('ms-flyer', 'dizzy');
           let lid = null;
           if (gag === 'helmet') {
@@ -620,7 +615,7 @@ export const mouseCatcher = {
         cat.mood('shock');
         toon('zip');
         // The runner: out of the hole, across the floor, raspberry, and home again.
-        const run = critter('mouse');
+        const run = photoMouse();
         run.classList.add('ms-runner', 'shades');
         fx.append(run);
         const from = local(centre(hole, 0.75));

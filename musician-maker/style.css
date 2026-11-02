@@ -676,3 +676,37 @@ body[data-screen="progress"] {
 .meter.blip { animation: blip .2s; }
 @keyframes blip { 50% { box-shadow: 0 0 0 3px var(--wheat); } }
 .pad .meter { width: 50%; height: 6px; margin-top: 4px; }
+
+/* Syllables with iconic notation: a stem over each note, a beam over each du-de pair. */
+.syl-ic { display: inline-flex; align-items: flex-end; gap: 14px; font-weight: 600; word-spacing: 0; }
+.ic-beat { position: relative; display: inline-flex; gap: 6px; padding-top: 22px; }
+.ic-note { position: relative; display: inline-flex; flex-direction: column; align-items: center; }
+.ic-note i { position: absolute; left: 50%; bottom: 100%; width: 3px; height: 18px; margin: 0 0 3px -1.5px; border-radius: 2px; background: currentColor; }
+.ic-note b { font-weight: inherit; }
+.ic-beat.ee::before { content: ''; position: absolute; top: 2px; height: 4px; border-radius: 2px; background: currentColor;
+  left: .6em; right: .6em; }
+.opt { min-width: 0; }
+.opt .syl-ic { font-size: 15px; gap: 4px 9px; flex-wrap: wrap; justify-content: center; }
+.opt .ic-beat { padding-top: 18px; gap: 3px; }
+.opt .ic-note i { height: 14px; }
+.answer .syl-ic { font-size: 18px; }
+
+/* The band's seats either side of the bouncing ball: grey until that layer joins. */
+.lane .seats { position: absolute; top: 50%; display: flex; gap: 2px; transform: translateY(-40%); pointer-events: none; }
+.lane .seats.l { left: 2px; }
+.lane .seats.r { right: 2px; }
+.seat { display: inline-grid; place-items: center; width: 24px; height: 28px; font-size: 20px; line-height: 1; filter: grayscale(1); opacity: .28; transition: opacity .3s, filter .3s; transform-origin: 50% 100%; }
+.seat.on { filter: none; opacity: 1; }
+.seat.bob { animation: seat-bob .28s ease-out; }
+.seat.bob2 { animation: seat-bob2 .28s ease-out; }
+.seat.join { animation: seat-join .6s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes seat-bob { 35% { transform: translateY(-5px) scale(1.06, .96); } }
+@keyframes seat-bob2 { 35% { transform: translateY(-2px) rotate(-6deg); } }
+@keyframes seat-join { 0% { transform: scale(.2); } 50% { transform: scale(1.6) rotate(10deg); } }
+@media (min-width: 560px) {
+  .lane .seats { gap: 8px; }
+  .lane .seats.l { left: 10px; }
+  .lane .seats.r { right: 10px; }
+  .seat { width: 34px; height: 36px; font-size: 28px; }
+}
+@media (prefers-reduced-motion: reduce) { .seat.bob, .seat.bob2, .seat.join { animation: none; } }

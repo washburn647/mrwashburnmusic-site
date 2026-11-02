@@ -110,10 +110,13 @@
 @keyframes peek2 { 0% { transform: translateY(105%); } 35%, 70% { transform: translateY(18%); } 100% { transform: translateY(105%); } }
 .ms-mouse.duck { animation: none; transform: translateY(105%); }
 .ms-mouse.gone { display: none; }
-.ms-rug { position: absolute; left: 0; bottom: 3%; height: 12%; aspect-ratio: 260 / 70; border-radius: 50%;
+.ms-rug { position: absolute; right: calc(var(--cat-r) - 2cqh); bottom: 3%; height: 12%; aspect-ratio: 260 / 70; border-radius: 50%;
   background: repeating-radial-gradient(ellipse at center, #c46a5a 0 8px, #d9b26f 8px 14px, #5e7d4f 14px 18px); box-shadow: 0 4px 0 rgba(0, 0, 0, .15); transition: box-shadow .3s; }
 .ms-rug.glow { box-shadow: 0 0 24px rgba(255, 210, 120, .9); }
-.ms-cat { left: 2%; bottom: 6%; height: 46%; z-index: 2; }
+.ms-cat { right: var(--cat-r); bottom: 6%; height: 46%; z-index: 2; }
+/* Mookie sits just left of the hole, so her arm never has to stretch across the room. The
+   hole is 7cqw from the right and 24cqh wide; she is about 41cqh wide. */
+.scene-ms { --cat-r: min(calc(9cqw + 24cqh), calc(98cqw - 41cqh)); }
 
 .ms-fx { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .ms-comic { position: absolute; transform: translate(-50%, -50%) rotate(var(--rot)); white-space: nowrap; font-weight: 700; font-size: clamp(22px, 6vw, 34px); color: #fff3c4; letter-spacing: 1px;
@@ -173,7 +176,7 @@
 @keyframes bonked { 20% { transform: scale(1.1, .82); } 50% { transform: scale(.95, 1.06) rotate(-4deg); } }
 @keyframes laugh { 50% { transform: translateY(-4px) rotate(2deg); } }
 @keyframes moonwalk { 100% { transform: translateX(160%); } }
-.ms-cheese { position: absolute; right: 34%; bottom: 6%; height: 12%; aspect-ratio: 60 / 40; z-index: 1; }
+.ms-cheese { position: absolute; right: calc(var(--cat-r) + 40cqh); bottom: 6%; height: 12%; aspect-ratio: 60 / 40; z-index: 1; }
 .ms-cheese svg { width: 100%; height: 100%; display: block; }
 .ms-cheese.taken { animation: moonwalk .9s ease-in forwards; }
 
@@ -190,7 +193,7 @@
 @keyframes sway2 { 40% { transform: rotate(4deg); } }
 .scene-ms { container-type: size; }
 @container (min-aspect-ratio: 3 / 2) {
-  .ms-plant { display: block; }
+  .ms-plant { display: block; left: 24%; }
   .ms-window { height: 34%; left: 7%; }
   .ms-disco { left: 30%; }
   .ms-cut-face { width: auto; height: 190%; top: 86%; }
@@ -268,9 +271,29 @@
 @keyframes trophy { 0% { transform: translate(-50%, -100%) translateY(-120%) scale(.6); opacity: 0; } 30% { opacity: 1; } 60% { transform: translate(-50%, -100%) rotate(-6deg); }
   80% { transform: translate(-50%, -100%) rotate(5deg); } 100% { transform: translate(-50%, -100%); } }
 @container (min-aspect-ratio: 3 / 2) {
-  .ms-bust { left: 34%; height: 44%; }
+  .ms-bust { left: 12%; height: 44%; }
   .ms-frog { height: 18%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ms-bust .b-in, .ms-frog, .ms-frog .f-in, .ms-teacup.rattle, .ms-bell.land, .scene-ms.ms-quake .ms-cam { animation: none; }
 }
+
+/* The photo mouse (critters.js photoMouse): a real mouse with drawn props over it. */
+.critter.pmouse { aspect-ratio: 218 / 320; }
+.pmouse .pm-in { position: absolute; inset: 0; transform-origin: 50% 100%; transition: transform .06s; }
+.pmouse .pm-photo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none;
+  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 3px 2px rgba(0, 0, 0, .3)); }
+.pmouse svg { position: absolute; inset: 0; overflow: visible; }
+.pmouse.talk .pm-in { transform: scale(1.04, .93); }
+.pmouse.tongue .pm-in { animation: tongue-shake .12s linear infinite alternate; }
+.pmouse .c-dizzy-eyes path { transform-box: fill-box; transform-origin: center; animation: spin .6s linear infinite; }
+.pmouse.dizzy .c-dizzy-eyes { display: inline; }
+
+.ms-mouse.pmouse { left: 20%; width: 60%; }
+.ms-poster { overflow: visible; }
+.ms-poster .ms-mugshot { position: absolute; left: 28%; top: 22%; width: 44%; filter: sepia(.5) contrast(1.1); }
+.ms-flyer.dangle.pmouse svg { transform: none; }
+.ms-flyer.dangle.pmouse .pm-in { transform: rotate(180deg); transform-origin: 50% 50%; }
+.ms-mouse.pmouse { left: 16%; width: 68%; bottom: -2%; }
+.ms-mouse.pmouse.peek { animation: peek3 .42s cubic-bezier(.2, 1.6, .5, 1); }
+@keyframes peek3 { 0% { transform: translateY(105%); } 35%, 70% { transform: translateY(0); } 100% { transform: translateY(105%); } }

@@ -14,9 +14,11 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   followed by an 8-beat breather, then a boss (The Big Cheese) and an intermission where the
   learner can stop. The next lap starts back at 92. A rung is held when the learner is
   struggling.
-- **Micro-game:** cue (2 beats) · call (4) · response (4 beats; Pick 6 in Mookie mode, Build
-  and Compose 8) · payoff (2). The call is "bum" (neutral), syllables, notation or text,
-  depending on the step.
+- **Micro-game:** cue (2 beats) · call (4) · response (4 beats; Build and Compose 8) · payoff
+  (2). The call is "bum" (neutral), syllables, notation or text, depending on the step.
+  Syllables on screen carry iconic notation: a stem over each note, a beam over each du-de.
+- **Band seats:** either side of the bouncing ball, one seat per layer (bass, drums, horns,
+  keys). Each lights up when its layer joins at a combo tier and bobs on the beat.
 - **Answer modes:** Perform (tap or speak in time), Pick (1 of 2–4), Build (four ♩/♫ slots),
   Create (answer with a different pattern), Compose (any pattern, played back).
 - **Combo:** 3, 6, 10 and 15 in a row add bass, drums, horns and the full band to the groove
@@ -51,7 +53,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `effects.js`: feedback effects. Taps ripple and leave a tick on the beat lane, coloured by
   timing (on time, early or late); right answers burst confetti (stars when perfect) and fly
   the XP to the counter; misses wobble the stage; combo tiers send a shockwave and the band in.
-- `scene-mouse.js`: Mouse Catcher in full: the room (pendulum clock on the beat, WANTED poster,
+- `scene-mouse.js`: Mouse Catcher in full (Mookie sits right beside the hole, so her reach stays short): the room (pendulum clock on the beat, WANTED poster,
   window, mouse hole), rigged Mookie's rubber-hose swipes, the win and miss gags, close-up
   cutaways, a party that grows with the combo, and The Big Cheese for the boss. Win and fail
   gags are picked at random (never the same twice running). Real photo props join in: the
@@ -64,6 +66,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `rig.js`: rigged Mookie for scenes: springs on body, head, ears, eyes, arms and tail; moods
   (idle, hunt, happy, smug, star, shock, dizzy); `reach()` to any point on the page.
 - `critters.js`: the mouse and The Big Cheese, with props (shades, flag, crown, bandage).
+  `photoMouse()` is the mouse as a real photo with the same props and API; Mouse Catcher uses it.
 - `fx/`: cartoon sound effects from Kenney's CC0 packs (`fx/CREDITS.txt`); `toon()` in
   `sound.js` plays them and synthesizes the rest (slide whistle, squeak, raspberry, zip, bike
   horn, frog croak, gong, choir).

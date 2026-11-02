@@ -30,6 +30,8 @@ const TEMPO_XP = { 92: 1, 108: 1.5, 126: 2 };
 const TIER_COLORS = ['#5E7D4F', '#5E7D4F', '#d08a2e', '#C46A5A', '#8a5ac4'];
 // The band joining at each combo tier: bass, drums, horns, everyone.
 const BAND = [[], ['🎸'], ['🥁', '🎸'], ['🎺', '🥁', '🎺'], ['🎷', '🎺', '🥁', '🎸', '🎹']];
+// The band's seats beside the beat lane: each lights up when its layer joins, and bobs on the beat.
+const SEATS = [['🎸', 'Bass', 1], ['🥁', 'Drums', 2], ['🎺', 'Horns', 3], ['🎹', 'Keys', 4]];
 const PRAISE = ['Yes!', 'Nice!', 'Got it!', 'Woo!', 'Yeah!'];
 const STICKERS = ['🧀', '🐭', '🥁', '🎺', '🎻', '🪕', '🎷', '🏆'];
 const GAGS = ['Mookie licks a paw. Coolly.', 'Mookie knocks a pencil off the desk.', 'Mookie does a little stretch.',
@@ -50,6 +52,14 @@ function h(tag, props = {}, ...kids) {
 }
 
 /* Notation markup comes from VexFlow and the catalogue, never from a learner. */
+/* Syllables with iconic notation above them: a stem over each note, and a beam joining the
+   two eighths of a du-de. */
+function sylIcons(p, cls = '') {
+  return h('span', { class: `syl-ic ${cls}`, 'aria-label': sylText(p) },
+    ...p.cells.map((c) => h('span', { class: `ic-beat ${c}` },
+      ...(c === 'ee' ? ['du', 'de'] : ['du']).map((w) => h('span', { class: 'ic-note' }, h('i', {}), h('b', {}, w))))));
+}
+
 function notes(p) {
   const el = h('div', { class: 'notation' });
   el.innerHTML = notation(p);
@@ -463,6 +473,8 @@ function buildRunDom() {
   d.prompt = h('div', { class: 'prompt' });
   d.dots = h('div', { class: 'dots' });
   d.ball = h('div', { class: 'ball' });
+  d.seats = SEATS.map(([icon, name, tier]) => h('span', { class: 'seat', title: name, 'data-tier': tier }, icon));
+  d.bandTier = -1;
   d.controls = h('div', { class: 'controls' });
   d.overlay = h('div', { class: 'overlay' });
   d.flash = h('div', { class: 'flash' });
@@ -470,7 +482,8 @@ function buildRunDom() {
     h('header', { class: 'hud' }, h('div', { class: 'hud-l' }, d.level, d.xp), d.combo, h('div', { class: 'hud-r' }, d.pulse, d.tempo, d.pause)),
     d.sets,
     h('div', { class: 'stage-wrap' }, d.stage, d.cue, d.flash),
-    d.prompt, h('div', { class: 'lane' }, d.dots, d.ball), d.controls, d.overlay));
+    d.prompt, h('div', { class: 'lane' },
+      h('div', { class: 'seats l' }, d.seats[0], d.seats[1]), d.dots, d.ball, h('div', { class: 'seats r' }, d.seats[2], d.seats[3])), d.controls, d.overlay));
   R.dom = d;
   hud();
   document.onkeydown = (e) => {
@@ -539,7 +552,7 @@ function gameSeg(B, seg) {
   const spb = R.clock.spb();
   const T = (i) => R.clock.timeOf(i);
   const callBeats = step.call === 'none' ? 0 : 4;
-  const respBeats = { perform: 4, create: 4, pick: st.mookie ? 6 : 4, build: 8, compose: 8 }[item.mode];
+  const respBeats = { perform: 4, create: 4, pick: 4, build: 8, compose: 8 }[item.mode];
   const payBeats = item.mode === 'compose' ? 6 : 2;
   const c0 = B + 2;
   const r0 = c0 + callBeats;
@@ -578,7 +591,7 @@ function gameSeg(B, seg) {
     result(item, res, { onWin: () => R.api.win(), onFail: () => R.api.fail(), t: T(p0) });
     if (item.mode === 'compose' && res.got) {
       snd.playBack(res.got, T(p0 + 1), spb);
-      R.dom.prompt.replaceChildren(h('div', { class: 'answer' }, h('span', {}, 'Your pattern'), notes(res.got), h('b', {}, sylText(res.got))));
+      R.dom.prompt.replaceChildren(h('div', { class: 'answer' }, h('span', {}, 'Your pattern'), notes(res.got), sylIcons(res.got)));
     }
     R.win = null;
   });
@@ -609,11 +622,26 @@ function beat(i, spb) {
   d.pulse.className = `pulse ${down ? 'one' : 'two'}`;
   bump(d.pulse.children[down ? 0 : 1], 'beat');
   R.api?.onBeat?.(down, spb, tierOf(R.combo));
+  seats(down);
   if (down && R.groove.mode === 'play') {
     const wrap = d.stage.parentElement;
     wrap.dataset.tier = tierOf(R.combo);
     bump(wrap, 'thump');
   }
+}
+
+/* The band beside the lane: seats light up as layers join (a pop when one joins) and the
+   ones playing bob on every beat. */
+function seats(down) {
+  const d = R.dom;
+  const tier = tierOf(R.combo);
+  d.seats.forEach((el) => {
+    const on = Number(el.dataset.tier) <= tier;
+    if (on && !el.classList.contains('on') && d.bandTier >= 0) bump(el, 'join');
+    el.classList.toggle('on', on);
+    if (on) bump(el, down ? 'bob' : 'bob2');
+  });
+  d.bandTier = tier;
 }
 
 /* The bouncing ball: lands on each beat's dot and hops to the next one in one beat. */
@@ -680,7 +708,7 @@ function showGame(item, step, game, q, win, tx, spb) {
   d.prompt.replaceChildren();
   if (st.mookie) d.prompt.append(h('div', { class: 'say' }, mookie('happy'), h('span', {}, step.say)));
   if (step.call === 'notation') d.prompt.append(notes(item.pattern));
-  if (step.call === 'text') d.prompt.append(h('div', { class: 'syl-card' }, sylText(item.pattern)));
+  if (step.call === 'text') d.prompt.append(h('div', { class: 'syl-card' }, sylIcons(item.pattern)));
   clearDots();
   R.win = win;
   R.item = { item, q };
@@ -757,7 +785,7 @@ function controlsFor(item, game, q, win) {
     const buttons = q.list.map((p, i) => h('button', {
       class: `opt ${game.pickClass}`,
       onclick: () => choose(i),
-    }, q.show === 'notation' ? notes(p) : h('span', { class: 'syl' }, sylText(p))));
+    }, q.show === 'notation' ? notes(p) : sylIcons(p, 'syl')));
     const choose = (i) => {
       if (!R.win || win.choice != null) return;
       win.choice = i;
@@ -868,7 +896,7 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
       R.dom.prompt.replaceChildren(h('div', { class: 'answer' },
         h('span', {}, why || (item.mode === 'create' ? '' : 'It was')),
         item.mode === 'create' ? null : notes(item.pattern),
-        item.mode === 'create' ? null : h('b', {}, sylText(item.pattern))));
+        item.mode === 'create' ? null : sylIcons(item.pattern)));
     }
   }
   st.bestCombo = Math.max(st.bestCombo, R.combo);
