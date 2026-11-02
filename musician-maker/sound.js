@@ -367,7 +367,9 @@ export const fx = {
 // place of the Basic groove's layers at their tempo.
 export const LAYERS = ['pulse', 'bass', 'drums', 'horns', 'band'];
 export const ALL_LAYERS = [...LAYERS, 'breakdown'];
-export const STEPS_PER_BEAT = 4;
+export const METERS = { '2/4': 'Simple 2/4', '6/8': 'Compound 6/8' };
+// Grid steps in a beat: 16ths of a quarter in 2/4, of a dotted quarter in 6/8.
+export const stepsPerBeat = (g) => (g.meter === '6/8' ? 6 : 4);
 const ROOTS = [41, 46, 48, 41]; // F Bb C F, one per bar of 2/4 (stand-in when grooves.json is missing)
 const CHORD = { 41: [65, 69, 72], 46: [65, 70, 74], 48: [64, 67, 72] };
 
@@ -377,6 +379,7 @@ export function checkGrooves(list) {
   return list.filter((g) => g && typeof g.id === 'string' && Number.isInteger(g.beats) && g.beats > 0 && g.layers).map((g) => ({
     id: g.id,
     name: String(g.name || g.id),
+    meter: g.meter === '6/8' ? '6/8' : '2/4',
     beats: g.beats,
     swing: Math.max(0, Math.min(1, Number(g.swing) || 0)),
     key: Number.isInteger(g.key) ? g.key : 0,
@@ -385,30 +388,31 @@ export function checkGrooves(list) {
       .map((tr) => ({
         inst: tr.inst,
         vol: Math.max(0, Math.min(1.5, Number(tr.vol ?? 1))),
-        notes: tr.notes.filter((n) => Number.isInteger(n.s) && n.s >= 0 && n.s < g.beats * STEPS_PER_BEAT),
+        notes: tr.notes.filter((n) => Number.isInteger(n.s) && n.s >= 0 && n.s < g.beats * (g.meter === '6/8' ? 6 : 4)),
       }))])),
   }));
 }
 
-export const grooveList = () => grooves;
+export const grooveList = (meter = null) => (meter ? grooves.filter((g) => g.meter === meter) : grooves);
 export const grooveNow = () => G;
 export function setGroove(id) {
   G = grooves.find((g) => g.id === id) || G || grooves[0] || null;
   return G;
 }
 
-/* One beat (i) of a groove's layers, at t. Swing moves the off-beat 8th toward a triplet
-   (1 = full triplet) and the 16ths with it. */
+/* One beat (i) of a groove's layers, at t. In 2/4, swing moves the off-beat 8th toward a
+   triplet (1 = full triplet) and the 16ths with it; 6/8 is already in threes. */
 export function playGrooveBeat(g, i, t, spb, { layers, level = 1, dest = grooveBus }) {
   const pos = i % g.beats;
-  const d = g.swing / 6;
+  const per = stepsPerBeat(g);
+  const d = g.meter === '6/8' ? 0 : g.swing / 6;
   const warp = (x) => (x < 0.5 ? x * (0.5 + d) / 0.5 : 0.5 + d + (x - 0.5) * (0.5 - d) / 0.5);
-  const step = spb / STEPS_PER_BEAT;
+  const step = spb / per;
   for (const name of layers) {
     for (const tr of g.layers[name] || []) {
       for (const n of tr.notes) {
-        if (Math.floor(n.s / STEPS_PER_BEAT) !== pos) continue;
-        const at = t + warp((n.s % STEPS_PER_BEAT) / STEPS_PER_BEAT) * spb;
+        if (Math.floor(n.s / per) !== pos) continue;
+        const at = t + warp((n.s % per) / per) * spb;
         const vol = tr.vol * (n.v ?? 0.8) * level;
         if (n.m == null) hit(tr.inst, at, vol, dest);
         else note(tr.inst, n.m, at, Math.max(1, n.l || 1) * step * 0.95, vol * 0.5, dest);

@@ -7,7 +7,7 @@
 import * as snd from './sound.js';
 import { makeClock } from './clock.js';
 import * as mic from './mic.js';
-import { STEPS, BANDS, onsets, sylText, options, readTaps, fromCells, loadMarks, howTo } from './steps.js';
+import { STEPS, BANDS, UNIT, onsets, sylText, options, readTaps, fromCells, loadMarks, howTo } from './steps.js';
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import { mookie } from './mookie.js';
@@ -84,10 +84,10 @@ function scene(name) {
 /* Which groove plays: Mix (a different one each lap) or one the learner picks. Each tap
    moves to the next. The list loads with the sounds, so it fills in once they have. */
 function groovePick() {
-  const label = () => (st.groove === 'mix' ? 'Mix: a new one each lap' : snd.grooveList().find((g) => g.id === st.groove)?.name || 'Mix: a new one each lap');
+  const label = () => (st.groove === 'mix' ? 'Mix: a new one each lap' : snd.grooveList(UNIT.meter).find((g) => g.id === st.groove)?.name || 'Mix: a new one each lap');
   const small = h('small', {}, label());
   const b = h('button', { class: 'switch groove-pick', onclick: () => {
-    const ids = ['mix', ...snd.grooveList().map((g) => g.id)];
+    const ids = ['mix', ...snd.grooveList(UNIT.meter).map((g) => g.id)];
     st.groove = ids[(ids.indexOf(st.groove) + 1) % ids.length] || 'mix';
     save();
     small.textContent = label();
@@ -98,7 +98,7 @@ function groovePick() {
 
 /* The groove for a new lap. */
 function pickGroove() {
-  const list = snd.grooveList();
+  const list = snd.grooveList(UNIT.meter);
   if (st.groove !== 'mix' && list.some((g) => g.id === st.groove)) return snd.setGroove(st.groove);
   const others = list.filter((g) => g !== snd.grooveNow());
   const pool = others.length ? others : list;
@@ -462,7 +462,7 @@ function beginLap() {
   R.plan = lapPlan();
   R.idx = 0;
   const g = pickGroove();
-  if (g && snd.grooveList().length > 1) R.news.push(`Groove: ${g.name}`);
+  if (g && snd.grooveList(UNIT.meter).length > 1) R.news.push(`Groove: ${g.name}`);
   countIn();
 }
 

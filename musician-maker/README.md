@@ -43,9 +43,9 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   the site's sampled instruments for anything missing.
 - `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
 - `grooves.json`: the grooves, made in the studio's Groove Lab (`/studio/groove/`, added with
-  `tools/add_grooves.py`). Notes on a 16th-note grid in six layers, so they play at any tempo;
+  `tools/add_grooves.py`). Notes on a 16th-note grid in six layers, in 2/4 or 6/8, so they play at any tempo;
   `sound.js` plays them with the same code as the Lab. The title's Groove button picks one, or
-  Mix: a different groove each lap.
+  Mix: a different groove each lap, from the grooves in the unit's meter.
 - `clock.js`: the beat clock everything is scheduled on.
 - `mic.js`, `mic-worklet.js`: syllable onsets from the mic, found on the audio thread, analysed
   live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.

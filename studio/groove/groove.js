@@ -1,5 +1,6 @@
 /* Groove Lab: Musician Maker's backing grooves, made here on the site's sampled instruments.
-   A groove is a loop of 8 or 16 beats in 2/4 on a 16th-note grid, in six layers: pulse, bass,
+   A groove is a loop of 8 or 16 beats on a 16th-note grid, in 2/4 (4 steps a beat) or 6/8
+   (6 steps a dotted-quarter beat; the game plays these in compound units), in six layers: pulse, bass,
    drums, horns and band join as the combo grows (0, 3, 6, 10, 15 in a row), and breakdown
    plays alone in the breathers. Each layer holds tracks: a percussion sound (one row of steps)
    or a pitched instrument (a piano roll). The game plays grooves with the same code as here
@@ -14,7 +15,6 @@ import { h, confirmButton } from '../dom.js';
 
 const app = document.getElementById('app');
 const KEY = 'mwm-groove-lab-1';
-const SPB = snd.STEPS_PER_BEAT;
 const LAYER_INFO = {
   pulse: { label: 'Pulse', when: 'Always playing' },
   bass: { label: 'Bass', when: 'Joins at combo 3' },
@@ -26,7 +26,7 @@ const LAYER_INFO = {
 const HEAR = {
   pulse: 'Combo 0', bass: '3', drums: '6', horns: '10', band: '15', breakdown: 'Breather', solo: 'This layer',
 };
-const LENGTHS = { 1: '16th', 2: '8th', 4: 'Quarter', 8: 'Half' };
+const LENGTHS = { '2/4': { 1: '16th', 2: '8th', 4: 'Quarter', 8: 'Half' }, '6/8': { 1: '16th', 2: '8th', 4: 'Quarter', 6: 'Dotted quarter' } };
 const VELS = { soft: 'Soft', normal: 'Normal', loud: 'Loud' };
 const VEL = { soft: 0.45, normal: 0.8, loud: 1 };
 const KEYS = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
@@ -48,7 +48,8 @@ let status = '';
 const now = () => grooves.find((g) => g.id === settings.groove) || grooves[0];
 const isHit = (name) => index?.instruments[name]?.kind === 'hit';
 const label = (name) => index?.instruments[name]?.label || name;
-const steps = (g) => g.beats * SPB;
+const per = (g) => snd.stepsPerBeat(g);
+const steps = (g) => g.beats * per(g);
 
 function store() {
   try { localStorage.setItem(KEY, JSON.stringify({ grooves, settings })); } catch { /* not kept */ }
@@ -94,6 +95,7 @@ function blank(name) {
   return {
     id: `g-${Date.now().toString(36)}`,
     name,
+    meter: settings.meter || '2/4',
     beats: 8,
     swing: 0,
     key: 5,
@@ -146,7 +148,7 @@ function tick() {
   if (!playing) { head = -1; drawAll(); return; }
   const beats = (ctx.currentTime - snd.latency() - startT) / (60 / settings.bpm);
   const g = now();
-  const step = beats < 0 ? -1 : Math.floor(beats * SPB) % steps(g);
+  const step = beats < 0 ? -1 : Math.floor(beats * per(g)) % steps(g);
   if (step !== head) { head = step; drawAll(); }
   requestAnimationFrame(tick);
 }
@@ -189,7 +191,7 @@ function render() {
     ),
     h('div', { class: 'bar' },
       h('select', { class: 'pick', onchange: (e) => { settings.groove = e.target.value; store(); render(); } },
-        grooves.map((x) => h('option', { value: x.id, selected: x.id === g.id }, x.name))),
+        grooves.map((x) => h('option', { value: x.id, selected: x.id === g.id }, `${x.name} · ${x.meter}`))),
       h('input', { class: 'name', value: g.name, 'aria-label': 'Groove name', onchange: (e) => { snapshot(); g.name = e.target.value.trim() || g.name; changed(); } }),
       h('button', { onclick: () => { snapshot(); const x = blank('New groove'); grooves.push(x); settings.groove = x.id; changed(); } }, 'New'),
       h('button', { onclick: () => { snapshot(); const x = { ...structuredClone(g), id: `g-${Date.now().toString(36)}`, name: `${g.name} copy` }; grooves.push(x); settings.groove = x.id; changed(); } }, 'Copy'),
@@ -207,9 +209,11 @@ function render() {
         { pulse: 'Pulse only, like the start of a run', bass: 'Pulse and bass', drums: 'Up to drums', horns: 'Up to horns', band: 'Every layer: the full band', breakdown: 'The breakdown, as in a breather', solo: 'Only the layer you are editing' }),
     ),
     h('div', { class: 'bar' },
+      h('span', { class: 'label' }, 'Meter'),
+      seg(snd.METERS, g.meter, (v) => setMeter(g, v)),
       h('span', { class: 'label' }, 'Length'),
       seg({ 8: '8 beats', 16: '16 beats' }, g.beats, (v) => setLength(g, Number(v))),
-      h('label', {}, 'Swing', h('input', { type: 'range', min: 0, max: 100, value: Math.round(g.swing * 100), onchange: (e) => { snapshot(); g.swing = Number(e.target.value) / 100; changed(); } }),
+      g.meter === '6/8' ? null : h('label', {}, 'Swing', h('input', { type: 'range', min: 0, max: 100, value: Math.round(g.swing * 100), onchange: (e) => { snapshot(); g.swing = Number(e.target.value) / 100; changed(); } }),
         h('span', { class: 'total' }, `${Math.round(g.swing * 100)}%`)),
       h('label', {}, 'Key', h('select', { onchange: (e) => { snapshot(); g.key = Number(e.target.value); changed(); } },
         KEYS.map((k, i) => h('option', { value: i, selected: i === g.key }, `${k} major`)))),
@@ -220,7 +224,7 @@ function render() {
     }, h('b', {}, LAYER_INFO[l].label), h('small', {}, `${LAYER_INFO[l].when} · ${count(l)} notes`)))),
     h('div', { class: 'bar brush' },
       h('span', { class: 'label' }, 'Note'),
-      seg(LENGTHS, settings.len, (v) => { settings.len = Number(v); store(); render(); }),
+      seg(LENGTHS[g.meter], settings.len, (v) => { settings.len = Number(v); store(); render(); }),
       seg(VELS, settings.vel, (v) => { settings.vel = v; store(); render(); }),
       h('span', { class: 'grow' }),
       addSound(g, layer),
@@ -313,13 +317,14 @@ function columns(c, item, g, hgt) {
   const n = steps(g);
   for (let s = 0; s < n; s++) {
     const x = GUTTER + s * item.cw;
-    c.fillStyle = Math.floor(s / (SPB * 2)) % 2 ? '#F3EEE1' : '#FFFFFF';
+    c.fillStyle = Math.floor(s / (per(g) * 2)) % 2 ? '#F3EEE1' : '#FFFFFF';
     if (s === head) c.fillStyle = '#E3EEDC';
     c.fillRect(x, 0, item.cw, hgt);
   }
   for (let s = 0; s <= n; s++) {
     const x = GUTTER + s * item.cw + 0.5;
-    c.strokeStyle = s % (SPB * 2) === 0 ? '#9AA79C' : s % SPB === 0 ? '#C9CFC4' : '#EAE6DA';
+    // Bar, beat, then the 8ths of a 6/8 beat, then 16ths.
+    c.strokeStyle = s % (per(g) * 2) === 0 ? '#9AA79C' : s % per(g) === 0 ? '#C9CFC4' : g.meter === '6/8' && s % 2 === 0 ? '#DCD8CB' : '#EFEBE0';
     c.beginPath();
     c.moveTo(x, 0);
     c.lineTo(x, hgt);
@@ -492,15 +497,37 @@ function centerRolls() {
   }
 }
 
+/* 2/4 ↔ 6/8 changes the grid under the notes: each keeps its beat and its place in the beat
+   as near as the new grid allows (an 8th stays an 8th: 2 of 4 steps ↔ 3 of 6). */
+function setMeter(g, meter) {
+  if (meter === g.meter) return;
+  snapshot();
+  const from = per(g);
+  const to = meter === '6/8' ? 6 : 4;
+  for (const tracks of Object.values(g.layers)) {
+    for (const tr of tracks) {
+      const seen = new Set();
+      tr.notes = tr.notes.map((n) => {
+        const s = Math.floor(n.s / from) * to + Math.round((n.s % from) * to / from);
+        return { ...n, s: Math.min(s, g.beats * to - 1), ...(n.l ? { l: Math.max(1, Math.round(n.l * to / from)) } : {}) };
+      }).filter((n) => { const k = `${n.s}:${n.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
+    }
+  }
+  g.meter = meter;
+  settings.meter = meter;
+  if (!LENGTHS[meter][settings.len]) settings.len = 1;
+  changed();
+}
+
 /* 8 → 16 beats repeats the loop into the new half; 16 → 8 keeps the first half. */
 function setLength(g, beats) {
   if (beats === g.beats) return;
   snapshot();
-  const n = beats * SPB;
+  const n = beats * per(g);
   for (const tracks of Object.values(g.layers)) {
     for (const tr of tracks) {
       if (beats > g.beats) {
-        const old = g.beats * SPB;
+        const old = g.beats * per(g);
         const copies = [];
         for (let k = 1; k * old < n; k++) copies.push(...tr.notes.map((x) => ({ ...x, s: x.s + k * old })));
         tr.notes.push(...copies.filter((x) => x.s < n));
