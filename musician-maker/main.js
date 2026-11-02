@@ -342,7 +342,7 @@ function lab() {
     ...Object.entries(choices).map(([v, label]) => h('option', { value: v, selected: v === (st.tx || 'mix') }, label)));
   scene('progress');
   app.replaceChildren(h('div', { class: 'progress lab' },
-    h('button', { class: 'link back', onclick: progress }, '‹ Back'),
+    h('button', { class: 'back', 'aria-label': 'Back', onclick: progress }, '‹'),
     h('h2', {}, 'Transitions lab'),
     h('p', { class: 'note' }, 'Tap one to play it. They run on the beat, so try each tempo.'),
     wrap,
