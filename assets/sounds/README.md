@@ -20,7 +20,7 @@ The try-out page is `/studio/sounds/`.
 
 - Pitched: piano, violins, violas, cellos, bass, pizzicato, cello-pizz, harp, flute, oboe,
   clarinet, bassoon, trumpet, horn, trombone, tuba, glockenspiel, xylophone, marimba, guitar
-  (nylon), banjo (GNU GPL: see `CREDITS.txt`)
+  (nylon), banjo, electric-bass (banjo and electric bass are GNU GPL: see `CREDITS.txt`)
 - Hits: claves, log-drum-high, log-drum-low, cowbell, agogo, triangle, finger-cymbals,
   tambourine, sleigh-bells, shaker, cabasa, guiro, snare, bass-drum, conga, bongo-high,
   bongo-low, cymbal

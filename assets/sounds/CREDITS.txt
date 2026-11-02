@@ -25,3 +25,10 @@ Banjo (banjo/): FS Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ editio
   https://archive.org/details/flame-studios-gpl-samples). The hard (forte) note of strings 1-4,
   trimmed, retuned where measured off and converted to mono; these files are shared under the
   same licence, and tools/build_sounds.py rebuilds them from the source.
+
+Electric bass (electric-bass/): FS Ibanez Electric Bass Guitar by FlameStudios (Gary Campion).
+  Licence: GNU General Public License version 3 or later, https://www.gnu.org/licenses/gpl-3.0.html
+  Source: FS_Ibanez_Electric_Bass_GuitarSF.tar.bz2 at https://archive.org/details/flame-studios-gpl-samples
+  The loudest velocity layer of each note, trimmed, retuned where measured off and converted
+  to mono; these files are shared under the same licence, and tools/build_sounds.py rebuilds
+  them from the source.

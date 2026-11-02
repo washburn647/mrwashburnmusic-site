@@ -1,6 +1,6 @@
 """Build the shared instrument samples in assets/sounds/ from the source libraries.
 
-  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--only NAME,NAME]
+  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--ebass SF2] [--only NAME,NAME]
 
 VSCO_DIR   a clone of https://github.com/sgossner/VSCO-2-CE (CC0)
 PIANO_DIR  the audio/ folder of the npm package @audio-samples/piano-mp3-velocity10
@@ -13,6 +13,9 @@ DRUMS_DIR  salamanderDrumkit.tar.bz2 unpacked, from https://archive.org/details/
 --banjo    the samples/ folder of the FlameStudios Kay 5-String Banjo SFZ, from
            https://github.com/sfzinstruments/FlameStudios.Kay5StringBanjo (GNU GPL v3 or later);
            only the hard_* files of strings 1-4 are used, so those are all it needs
+--ebass    FS Ibanez Electric Bass Guitar.sf2, from FS_Ibanez_Electric_Bass_GuitarSF.tar.bz2 at
+           https://archive.org/details/flame-studios-gpl-samples (FlameStudios, GNU GPL v3 or
+           later); the loudest velocity layer of each note is used
 
 Needs ffmpeg and numpy. Every sample is checked with a pitch detector: the file name's
 octave is corrected when the source counts octaves differently, and the measured tuning
@@ -58,12 +61,15 @@ PITCHED = {
     'marimba': ('Marimba', 'vsco', 'Percussion/Marimba/*.wav', [''], 2.5, 0.3, True),
     'guitar': ('Nylon guitar', 'guitar', '*.flac', [''], 3, 0.3, True),
     'banjo': ('Banjo', 'banjo', 'string*/hard_*.wav', [''], 2, 0.2, True),
+    'electric-bass': ('Electric bass', 'ebass', '*.wav', [''], 2, 0.2, True),
 }
 
 # Sources that don't name their files by note: file name to MIDI note.
 NOTE_FROM = {
     # Kay banjo: hard_40.wav is MIDI 64 (the number is the note counted from C1).
     'banjo': lambda base: int(re.search(r'hard_(\d+)', base).group(1)) + 24,
+    # Notes taken out of the bass soundfont by sf2_notes(), named by their MIDI note.
+    'ebass': lambda base: int(base.split('.')[0]),
 }
 
 # name: label, file in VSCO_DIR, seconds kept
@@ -109,7 +115,50 @@ CREDITS = {
     'piano': 'salamander',
     'guitar': 'freepats-guitar',
     'banjo': 'flamestudios-banjo',
+    'electric-bass': 'flamestudios-bass',
 }
+
+
+def sf2_notes(path, out):
+    """Writes the loudest velocity layer of each note in a SoundFont to out/<midi>.wav.
+    Sample headers name the layer (Lv1 to Lv4) and give the note; the build's pitch
+    detector then corrects the octave and tuning like any other source."""
+    import struct
+    import wave
+    b = open(path, 'rb').read()
+
+    def chunks(off, end):
+        while off < end:
+            cid, size = struct.unpack('<4sI', b[off:off + 8])
+            yield cid, off + 8, size
+            off += 8 + size + (size & 1)
+    smpl = shdr = None
+    for cid, o, size in chunks(12, len(b)):
+        if cid == b'LIST':
+            for c2, o2, s2 in chunks(o + 4, o + size):
+                if c2 == b'smpl':
+                    smpl = o2
+                elif c2 == b'shdr':
+                    shdr = (o2, s2)
+    best = {}
+    o, size = shdr
+    for i in range(size // 46):
+        r = b[o + i * 46:o + (i + 1) * 46]
+        name = r[:20].split(b'\0')[0].decode('latin1')
+        start, end, _, _, rate, note, _, _, _ = struct.unpack('<IIIIIBbHH', r[20:])
+        layer = re.match(r'Lv(\d)', name)
+        if not layer or end <= start or not rate:
+            continue
+        if note not in best or int(layer.group(1)) > best[note][0]:
+            best[note] = (int(layer.group(1)), start, end, rate)
+    os.makedirs(out, exist_ok=True)
+    for note, (_, start, end, rate) in best.items():
+        with wave.open(os.path.join(out, f'{note}.wav'), 'wb') as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(rate)
+            w.writeframes(b[smpl + start * 2:smpl + end * 2])
+    return out
 
 
 def decode(path):
@@ -258,7 +307,7 @@ def build_hit(name, spec, src, source='vsco'):
 def main():
     argv = sys.argv[1:]
     opts = {}
-    for flag in ('--only', '--guitar', '--banjo'):
+    for flag in ('--only', '--guitar', '--banjo', '--ebass'):
         if flag in argv:
             i = argv.index(flag)
             opts[flag] = argv[i + 1]
@@ -266,12 +315,15 @@ def main():
     args = argv
     only = set(opts['--only'].split(',')) if '--only' in opts else None
     src = {'vsco': args[0], 'piano': args[1], 'drums': args[2] if len(args) > 2 else None,
-           'guitar': opts.get('--guitar'), 'banjo': opts.get('--banjo')}
+           'guitar': opts.get('--guitar'), 'banjo': opts.get('--banjo'), 'ebass': None}
+    if opts.get('--ebass'):
+        import tempfile
+        src['ebass'] = sf2_notes(opts['--ebass'], tempfile.mkdtemp())
     index_path = os.path.join(OUT, 'index.json')
     index = json.load(open(index_path)) if os.path.exists(index_path) else {}
     instruments = index.get('instruments', {})
     for name, spec in PITCHED.items():
-        if spec[1] in ('guitar', 'banjo') and not src[spec[1]]:
+        if spec[1] in ('guitar', 'banjo', 'ebass') and not src[spec[1]]:
             continue
         if not only or name in only:
             instruments[name] = build_pitched(name, spec, src)
@@ -289,6 +341,7 @@ def main():
         'vsco': 'VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0',
         'salamander-drums': 'Salamander Drumkit by Alexander Holm, CC BY-SA 3.0',
         'freepats-guitar': 'Spanish Classical Guitar by Roberto (FreePats project), CC0',
+        'flamestudios-bass': 'Ibanez Electric Bass Guitar by FlameStudios (Gary Campion), GNU GPL v3',
         'flamestudios-banjo': 'Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3',
     }
     with open(index_path, 'w') as f:
