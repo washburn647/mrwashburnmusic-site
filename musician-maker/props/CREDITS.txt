@@ -31,6 +31,14 @@ From the Cleveland Museum of Art Open Access collection (https://www.clevelandar
   silver-tureen.png Covered Tureen on Stand, England, London, 1812. 1968.242
                     https://clevelandart.org/art/1968.242
 
+  For Brushing Time:
+  head-stylist.png  Head of Amenhotep III Wearing the Round Wig, Egypt, New Kingdom, c. 1391-1353 BCE.
+                    1961.417 (the Head Stylist)  https://clevelandart.org/art/1961.417
+  lion.png          Lion Aquamanile, Germany, Lower Saxony, 1200-1250. 1972.167
+                    https://clevelandart.org/art/1972.167
+  egg.png           Vessel in the Form of an Ostrich Egg, Egypt, New Kingdom, c. 1540-1296 BCE. 1914.620
+                    https://clevelandart.org/art/1914.620
+
 From iNaturalist, via GBIF (photographer chose CC0):
   mouse.png         House mouse (Mus musculus), photo by Astrid Osborne.
                     https://www.inaturalist.org/observations/341355944

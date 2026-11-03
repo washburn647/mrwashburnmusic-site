@@ -345,6 +345,50 @@ export function toon(name, t, opts = {}) {
     case 'hiss': noise(t, 0.45, 0.22 * vol, 'highpass', 3500, 5000, 0.7); break;
     case 'snore': noise(t, 0.6, 0.18 * vol, 'lowpass', 250, 700, 2); synth(t, 70, 0.55, 0.12 * vol, master, 'sawtooth', 1.3); break;
     case 'tiptoe': synth(t, 1100 * rate, 0.05, 0.1 * vol, master, 'triangle', 0.7); break;
+    /* Brushing Time (scene-brush.js) */
+    case 'brush': noise(t, 0.13, 0.32 * vol, 'bandpass', 1800 * rate, 5200 * rate, 1.2); break;
+    case 'sproing': tone(240 * rate, 0.16, 0.14, 'triangle', 2.6); synth(t + 0.05, 420 * rate, 0.14, 0.08 * vol, master, 'sine', 0.7); break;
+    case 'ting': [2637, 3951, 5274].forEach((fq, i) => synth(t + i * 0.05, fq * rate, 0.35, 0.07 * vol, master, 'sine')); break;
+    case 'spritz': [0, 0.11].forEach((d) => noise(t + d, 0.09, 0.3 * vol, 'highpass', 4000, 7000, 0.8)); break;
+    case 'zap':
+      // Static: a fistful of crackles.
+      for (let k = 0; k < 7; k++) noise(t + k * 0.035 + Math.random() * 0.02, 0.025, 0.35 * vol, 'highpass', 2500 + Math.random() * 3000, 6000, 1);
+      synth(t, 1800, 0.12, 0.05 * vol, master, 'square', 0.4);
+      break;
+    case 'purr': {
+      // A low motor that flutters 24 times a second.
+      const o = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lg = ctx.createGain();
+      const f = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.value = 52 * rate;
+      lfo.frequency.value = 24;
+      lg.gain.value = 0.14 * vol;
+      f.type = 'lowpass';
+      f.frequency.value = 600;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.14 * vol, t + 0.08);
+      g.gain.linearRampToValueAtTime(0, t + 0.7);
+      lfo.connect(lg).connect(g.gain);
+      o.connect(f).connect(g).connect(master);
+      o.start(t); lfo.start(t);
+      o.stop(t + 0.75); lfo.stop(t + 0.75);
+      break;
+    }
+    case 'roar':
+      // An 800-year-old bronze lion clears his throat.
+      noise(t, 0.7, 0.3 * vol, 'lowpass', 500, 180, 3);
+      synth(t, 110 * rate, 0.7, 0.16 * vol, master, 'sawtooth', 0.6);
+      synth(t, 82 * rate, 0.7, 0.12 * vol, master, 'square', 0.7);
+      break;
+    case 'sneeze':
+      // "Ah..." (a rising buzzy vowel) "...CHOO!" (a burst of noise).
+      synth(t, 300 * rate, 0.32, 0.08 * vol, master, 'sawtooth', 1.6);
+      noise(t + 0.34, 0.16, 0.5 * vol, 'bandpass', 3000, 1200, 1.2);
+      synth(t + 0.34, 520 * rate, 0.1, 0.12 * vol, master, 'square', 0.5);
+      break;
     default: break;
   }
 }

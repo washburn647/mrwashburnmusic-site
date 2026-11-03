@@ -6,7 +6,12 @@
      m.mood('hunt');  m.look(1, 0);  m.reach(x, y)  (page px)  m.beat(down, spb, tier)
    Supper Time adds sleep (with an optional snot bubble: class "snot" on the svg, size --snot),
    eat (cheeks full) and sad.
+   Brushing Time gives him a coat (classes on the svg): "furry" (a fluffy outline, size from
+   m.fluff(n), and tufts that sproing out with m.tuft(i)), "tangled" (knots) and "sleek"
+   (gloss, sparkles and a slicked-back quiff).
    Fixed markup only: nothing a learner types goes in here. Stops itself when removed. */
+
+import { fur } from './cats.js';
 
 const CAT = '#17171b';
 const EDGE = '#34343d';
@@ -14,10 +19,24 @@ const EYE = '#cde374';
 const PINK = '#c98a93';
 const NS = 'http://www.w3.org/2000/svg';
 
+/* Brushing Time's coat: a fluffy outline behind the body and head, knots, gloss, and tufts
+   that stick out (x, y, angle: 0 points up). The first four are on the head. */
+const FLUFF_BODY = fur(100, 154, 46, 52, { tufts: 22, amp: 8, seed: 41, flat: 204, top: 0.8 });
+const FLUFF_HEAD = fur(100, 78, 45, 39, { tufts: 26, amp: 7, seed: 43, bottom: 1.1 });
+const TUFTS = [[100, 41, 0], [58, 82, -80], [142, 82, 80], [80, 44, -30], [60, 146, -100], [140, 146, 100], [63, 178, -112], [137, 178, 112]];
+const TUFT = 'M-7 2 Q-9 -10 -4 -18 Q-3 -10 0 -24 Q3 -10 5 -18 Q9 -9 7 2 Z';
+const tufts = (list) => list.map(([x, y, a]) => `<g transform="translate(${x} ${y}) rotate(${a})"><path class="r-tuft" d="${TUFT}" fill="${CAT}" stroke="${EDGE}" stroke-width="1.2"/></g>`).join('');
+const knots = (list) => list.map(([x, y]) => `<path d="M${x} ${y} c6 -6 12 2 6 6 c-6 4 -11 -6 -2 -8 c9 -2 11 9 1 11 c-7 1 -9 -5 -4 -7"/>`).join('');
+const SPARK = (x, y, s) => `<path transform="translate(${x} ${y}) scale(${s})" d="M0 -10 Q1.5 -1.5 10 0 Q1.5 1.5 0 10 Q-1.5 1.5 -10 0 Q-1.5 -1.5 0 -10 Z"/>`;
+
 const MARKUP = `
 <g class="r-root">
   <path class="r-tail" fill="none" stroke="${CAT}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="r-fluff" d="${FLUFF_BODY}" fill="${CAT}" stroke="${EDGE}" stroke-width="1.2"/>
   <path d="M100 100 C62 104 52 150 58 188 C61 204 139 204 142 188 C148 150 138 104 100 100 Z" fill="${CAT}"/>
+  <g class="r-tufts">${tufts(TUFTS.slice(4))}</g>
+  <g class="r-knots" stroke="#5c5c6a" stroke-width="2.2" fill="none" stroke-linecap="round">${knots([[72, 136], [118, 146], [80, 172], [114, 180], [96, 158]])}</g>
+  <g class="r-gloss" stroke="#fff" stroke-linecap="round" fill="none"><path d="M68 132 Q63 160 71 186" stroke-width="4" opacity=".4"/><path d="M132 134 Q138 156 132 176" stroke-width="3" opacity=".3"/></g>
   <ellipse cx="80" cy="200" rx="15" ry="8" fill="${CAT}"/><ellipse cx="120" cy="200" rx="15" ry="8" fill="${CAT}"/>
   <g class="r-arm-l"><path class="r-arm" fill="none" stroke="${CAT}" stroke-width="15" stroke-linecap="round"/>
     <g class="r-paw"><circle r="10" fill="${CAT}" stroke="${EDGE}" stroke-width="1.5"/>
@@ -31,7 +50,12 @@ const MARKUP = `
   <g class="r-head">
     <g class="r-ear-l"><path d="M61 64 L56 16 L94 44 Z" fill="${CAT}"/><path d="M66 57 L63 29 L87 46 Z" fill="${PINK}"/></g>
     <g class="r-ear-r"><path d="M139 64 L144 16 L106 44 Z" fill="${CAT}"/><path d="M134 57 L137 29 L113 46 Z" fill="${PINK}"/></g>
+    <path class="r-fluff r-fluff-head" d="${FLUFF_HEAD}" fill="${CAT}" stroke="${EDGE}" stroke-width="1.2"/>
+    <g class="r-tufts">${tufts(TUFTS.slice(0, 4))}</g>
     <path d="M57 79 C57 52 77 39 100 39 C123 39 143 52 143 79 C143 103 124 115 100 115 C76 115 57 103 57 79 Z" fill="${CAT}"/>
+    <g class="r-knots" stroke="#5c5c6a" stroke-width="2.2" fill="none" stroke-linecap="round">${knots([[74, 48], [118, 50], [60, 94], [134, 96]])}</g>
+    <path class="r-quiff" d="M74 50 Q76 12 116 12 Q140 12 146 26 Q134 20 122 24 Q136 30 134 44 Q116 34 98 40 Q84 44 80 54 Z" fill="${CAT}" stroke="${EDGE}" stroke-width="1.2"/>
+    <g class="r-gloss" stroke="#fff" stroke-linecap="round" fill="none"><path d="M68 62 Q80 46 100 45" stroke-width="4" opacity=".5"/><path d="M84 28 Q98 16 124 17" stroke-width="3.5" opacity=".6"/></g>
     <g class="r-eyes-open">
       <g class="r-eye" data-x="82"><ellipse class="r-white" cx="82" cy="75" rx="11.5" ry="12.5" fill="${EYE}"/>
         <ellipse class="r-pupil" cx="80" cy="76" rx="2.6" ry="9" fill="#0b0b0d"/><circle class="r-shine" cx="83.5" cy="71" r="2.2" fill="#fff" opacity=".85"/></g>
@@ -63,6 +87,7 @@ const MARKUP = `
     <g class="r-snot"><circle cx="111" cy="97" r="8" fill="#d8f0fb" fill-opacity=".55" stroke="#8fc8e6" stroke-width="1.3"/><circle cx="108" cy="94" r="2.2" fill="#fff" opacity=".8"/></g>
     <path class="r-sweat" d="M146 50 Q152 60 146 64 Q140 60 146 50 Z" fill="#9fd3f0" stroke="#5b9ec4" stroke-width="1"/>
   </g>
+  <g class="r-sparkles" fill="#fff">${SPARK(50, 40, 1.5)}${SPARK(154, 116, 1.2)}${SPARK(60, 168, 1)}${SPARK(150, 54, 0.9)}</g>
 </g>`;
 
 /* A damped spring toward a target. */
@@ -302,6 +327,14 @@ export function rigMookie() {
         S.earL.v += 260;
         S.earR.v -= 260;
       }
+    },
+    /* Brushing Time: how fluffy the coat is (1 is his usual fluff), and a tuft sticking out. */
+    fluff(n) { svg.style.setProperty('--fluff', n.toFixed(2)); },
+    tuft(i, on = true) {
+      const all = svg.querySelectorAll('.r-tuft');
+      const t = all[((i % all.length) + all.length) % all.length];
+      t.classList.toggle('up', on);
+      return t;
     },
     /* A quick hop (on a win, say). */
     hop(power = 1) { S.bob.v -= 260 * power; S.squash.v += 2 * power; S.bell.v += 500; },

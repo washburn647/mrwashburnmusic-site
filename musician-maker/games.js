@@ -11,8 +11,9 @@
 
 import { mouseCatcher } from './scene-mouse.js';
 import { supperTime } from './scene-supper.js';
+import { brushingTime } from './scene-brush.js';
 
-export { mouseCatcher, supperTime };
+export { mouseCatcher, supperTime, brushingTime };
 
 /* Restart a CSS animation class. */
 export function bump(el, cls) {
@@ -21,4 +22,4 @@ export function bump(el, cls) {
   el.classList.add(cls);
 }
 
-export const GAMES = [mouseCatcher, supperTime];
+export const GAMES = [mouseCatcher, supperTime, brushingTime];

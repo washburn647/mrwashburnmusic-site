@@ -18,6 +18,8 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes twinkle-eye { to { transform: scale(1.18) rotate(12deg); } }
 @keyframes sweat { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(14px); opacity: 0; } }
+/* Brushing Time's coat (scene-brush.css shows it). */
+.rig .r-fluff, .rig .r-tufts, .rig .r-knots, .rig .r-gloss, .rig .r-quiff, .rig .r-sparkles { display: none; }
 
 /* ---------- critters ---------- */
 .critter { position: absolute; aspect-ratio: 120 / 130; }
