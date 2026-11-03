@@ -21,6 +21,7 @@
 import { rigMookie } from './rig.js';
 import { rigCat } from './cats.js';
 import { toon } from './sound.js';
+import { gagDeck } from './gags.js';
 
 function h(tag, cls, text) {
   const el = document.createElement(tag);
@@ -154,16 +155,12 @@ function jiggle(root) {
     p.style.setProperty('--py', `${Math.round(Math.random() * 90 - 45)}%`);
   });
 }
-function deck(list) {
-  let last = null;
-  return () => {
-    const pool = list.filter((x) => x !== last);
-    last = pool[Math.floor(Math.random() * pool.length)];
-    return last;
-  };
-}
-const winGag = deck(['rocket', 'rocket', 'tureen', 'hen', 'lobster']);
-const failGag = deck(['heist', 'heist', 'yowl', 'flop', 'decoy']);
+const GAGS = {
+  win: { rocket: 'Mookie rockets to her bowl', tureen: 'Royal tureen fanfare', hen: 'Hen tureen squawk', lobster: 'Bronze lobster pinch' },
+  fail: { heist: 'Masked heist', yowl: "Bindi's yowl", flop: 'Rusty flops on the bowl', decoy: 'Stone fish swap' },
+};
+const winGag = gagDeck(['rocket', 'rocket', 'tureen', 'hen', 'lobster'], () => supperTime.gagsOn?.win);
+const failGag = gagDeck(['heist', 'heist', 'yowl', 'flop', 'decoy'], () => supperTime.gagsOn?.fail);
 
 /* Where the thieves stand, as % of the stage width: they start at the left edge and gain
    one step per note of the call, up to a little short of the bowl. */
@@ -178,6 +175,7 @@ export const supperTime = {
   pickClass: 'opt-bowl',
   slotIcon: (c) => (c === 'ee' ? '🐟🐟' : '🐟'),
   bossName: 'The Big Fluff',
+  gags: GAGS,
   make(stage, { boss = false } = {}) {
     stage.className = `stage scene-sp${boss ? ' boss' : ''}`;
     const theme = nextTheme();
@@ -520,20 +518,20 @@ export const supperTime = {
         cat.mood('shock');
         later(650, () => cat.mood('hunt'));
       },
-      win() {
+      win(force) {
         busy = true;
         clearTimeout(unfreeze);
         if (boss) return bossKO();
-        const gag = winGag();
+        const gag = winGag(force);
         if (gag === 'tureen' || gag === 'hen') return winTureen(gag);
         if (gag === 'lobster') return winLobster();
         return winRocket();
       },
-      fail() {
+      fail(force) {
         busy = true;
         clearTimeout(unfreeze);
         if (boss) return bossLose();
-        const gag = failGag();
+        const gag = failGag(force);
         if (gag === 'yowl') return failYowl();
         if (gag === 'flop') return failFlop();
         if (gag === 'decoy') return failDecoy();
