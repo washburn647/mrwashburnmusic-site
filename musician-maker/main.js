@@ -29,10 +29,13 @@ const today = () => new Date().toLocaleDateString('en-CA');
 const LADDER = () => (st.mookie ? [92, 108, 108] : [92, 108, 126]);
 const TEMPO_XP = { 92: 1, 108: 1.5, 126: 2 };
 const TIER_COLORS = ['#5E7D4F', '#5E7D4F', '#d08a2e', '#C46A5A', '#8a5ac4'];
-// The band joining at each combo tier: bass, drums, horns, everyone.
-const BAND = [[], ['🎸'], ['🥁', '🎸'], ['🎺', '🥁', '🎺'], ['🎷', '🎺', '🥁', '🎸', '🎹']];
-// The band's seats beside the beat lane: each lights up when its layer joins, and bobs on the beat.
-const SEATS = [['🎸', 'Bass', 1], ['🥁', 'Drums', 2], ['🎺', 'Horns', 3], ['🎹', 'Keys', 4]];
+// The band's seats beside the beat lane, one per layer that joins (bass, drums, horns, band at
+// combo tiers 1 to 4): each lights up when its layer joins and bobs on the beat. The icons and
+// names are the groove's own (Groove Lab), so they change with the groove.
+const SEATS = [['bass', 1], ['drums', 2], ['horns', 3], ['band', 4]];
+const seatInfo = (layer) => snd.layerInfo(snd.grooveNow(), layer);
+// The band parading in at a new tier: the layers that have joined so far, newest first.
+const bandAt = (tier) => SEATS.filter(([, t]) => t <= tier).map(([layer]) => seatInfo(layer).icon).reverse();
 const PRAISE = ['Yes!', 'Nice!', 'Got it!', 'Woo!', 'Yeah!'];
 const STICKERS = ['🧀', '🐭', '🥁', '🎺', '🎻', '🪕', '🎷', '🏆'];
 const GAGS = ['Mookie licks a paw. Coolly.', 'Mookie knocks a pencil off the desk.', 'Mookie does a little stretch.',
@@ -522,7 +525,7 @@ function buildRunDom() {
   d.prompt = h('div', { class: 'prompt' });
   d.dots = h('div', { class: 'dots' });
   d.ball = h('div', { class: 'ball' });
-  d.seats = SEATS.map(([icon, name, tier]) => h('span', { class: 'seat', title: name, 'data-tier': tier }, icon));
+  d.seats = SEATS.map(([layer, tier]) => h('span', { class: 'seat', title: seatInfo(layer).name, 'data-tier': tier, 'data-layer': layer }, seatInfo(layer).icon));
   d.bandTier = -1;
   d.controls = h('div', { class: 'controls' });
   d.overlay = h('div', { class: 'overlay' });
@@ -687,6 +690,10 @@ function seats(down) {
   const d = R.dom;
   const tier = tierOf(R.combo);
   d.seats.forEach((el) => {
+    // The groove can change between laps: keep each seat's icon and name its own.
+    const info = seatInfo(el.dataset.layer);
+    if (el.textContent !== info.icon) el.textContent = info.icon;
+    if (el.title !== info.name) el.title = info.name;
     const on = Number(el.dataset.tier) <= tier;
     if (on && !el.classList.contains('on') && d.bandTier >= 0) bump(el, 'join');
     el.classList.toggle('on', on);
@@ -951,7 +958,7 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
       snd.speak(cueId(TIER_NAMES[tier]), t);
       flash(`${TIER_NAMES[tier]}! ×${tier + 1}`, `tier t${tier}`);
       FX.shockwave(wrap, TIER_COLORS[tier]);
-      FX.parade(wrap, BAND[tier]);
+      FX.parade(wrap, bandAt(tier));
     } else {
       if (res.perfect) snd.speak('perfect', t);
       if (!quiet) flash(res.perfect ? 'PERFECT!' : PRAISE[Math.floor(Math.random() * PRAISE.length)], res.perfect ? 'plus gold' : 'plus');

@@ -74,7 +74,8 @@ export function loadGrooves() {
 export async function useInstruments(list) {
   const want = {};
   const versions = list.flatMap((g) => (g.versions ? Object.values(g.versions) : [g]));
-  for (const g of versions) for (const tracks of Object.values(g.layers)) for (const tr of tracks) {
+  const sets = versions.flatMap((g) => [...Object.values(g.layers), ...Object.values(g.variants || {}).flat().map((v) => v.tracks)]);
+  for (const tracks of sets) for (const tr of tracks) {
     const w = (want[tr.inst] ||= { lo: 127, hi: 0 });
     for (const n of tr.notes) if (n.m != null) { w.lo = Math.min(w.lo, n.m); w.hi = Math.max(w.hi, n.m); }
   }
@@ -458,32 +459,65 @@ export const fx = {
 export const LAYERS = ['pulse', 'bass', 'drums', 'horns', 'band'];
 export const ALL_LAYERS = [...LAYERS, 'breakdown'];
 export const METERS = { '2/4': 'Simple 2/4', '6/8': 'Compound 6/8' };
+// Each groove can rename its layers and give them their own icon for the game's band seats.
+export const LAYER_DEFAULTS = {
+  pulse: { name: 'Pulse', icon: '🥢' },
+  bass: { name: 'Bass', icon: '🎸' },
+  drums: { name: 'Drums', icon: '🥁' },
+  horns: { name: 'Horns', icon: '🎺' },
+  band: { name: 'Band', icon: '🎹' },
+  breakdown: { name: 'Breakdown', icon: '🌙' },
+};
+export const layerInfo = (g, name) => ({ ...LAYER_DEFAULTS[name], ...(g?.layerInfo?.[name] || {}) });
 // Grid steps in a beat: 16ths of a quarter in 2/4, of a dotted quarter in 6/8.
 export const stepsPerBeat = (g) => (g.meter === '6/8' ? 6 : 4);
 const ROOTS = [41, 41, 46, 48]; // F F Bb C, one per bar of 2/4 (stand-in when grooves.json is missing)
 const CHORD = { 41: [65, 69, 72], 46: [65, 70, 74], 48: [64, 67, 72] };
 
-/* Grooves as the game trusts them. A groove has a name, a key and up to two versions, one
-   per meter (2/4 and 6/8), meant to share instruments and chords so the game can switch
-   between them: { id, name, key, versions: { '2/4': { meter, beats, swing, layers }, … } }.
+/* Grooves as the game trusts them. A groove has a name, a key, its layers' names and icons
+   (layerInfo, optional) and up to two versions, one per meter (2/4 and 6/8), meant to share
+   instruments and chords so the game can switch between them:
+   { id, name, key, layerInfo: { bass: { name, icon }, … }, versions: { '2/4': { meter, beats,
+   swing, layers, variants }, … } }. A version's variants are other takes on a layer, each with
+   its own chance of playing in place of the main one on each time round the loop:
+   variants: { bass: [{ chance: 0.1, tracks }] }.
    (A first-format groove, with meter, beats and layers at the top, becomes one version.) */
 export function checkGrooves(list) {
   if (!Array.isArray(list)) return [];
   const version = (v, meter) => {
     if (!v || !Number.isInteger(v.beats) || v.beats <= 0 || !v.layers) return null;
     const steps = v.beats * (meter === '6/8' ? 6 : 4);
-    return {
+    const tracks = (list) => (Array.isArray(list) ? list : [])
+      .filter((tr) => tr && typeof tr.inst === 'string' && Array.isArray(tr.notes))
+      .map((tr) => ({
+        inst: tr.inst,
+        vol: Math.max(0, Math.min(1.5, Number(tr.vol ?? 1))),
+        notes: tr.notes.filter((n) => Number.isInteger(n.s) && n.s >= 0 && n.s < steps),
+      }));
+    const out = {
       meter,
       beats: v.beats,
       swing: meter === '6/8' ? 0 : Math.max(0, Math.min(1, Number(v.swing) || 0)),
-      layers: Object.fromEntries(ALL_LAYERS.map((name) => [name, (Array.isArray(v.layers[name]) ? v.layers[name] : [])
-        .filter((tr) => tr && typeof tr.inst === 'string' && Array.isArray(tr.notes))
-        .map((tr) => ({
-          inst: tr.inst,
-          vol: Math.max(0, Math.min(1.5, Number(tr.vol ?? 1))),
-          notes: tr.notes.filter((n) => Number.isInteger(n.s) && n.s >= 0 && n.s < steps),
-        }))])),
+      layers: Object.fromEntries(ALL_LAYERS.map((name) => [name, tracks(v.layers[name])])),
     };
+    const variants = ALL_LAYERS.map((name) => [name, (Array.isArray(v.variants?.[name]) ? v.variants[name] : [])
+      .filter((x) => x && Array.isArray(x.tracks))
+      .map((x) => ({ chance: Math.max(0, Math.min(1, Number(x.chance) || 0)), tracks: tracks(x.tracks) }))])
+      .filter(([, list]) => list.length);
+    if (variants.length) out.variants = Object.fromEntries(variants);
+    return out;
+  };
+  const info = (x) => {
+    const out = {};
+    for (const name of ALL_LAYERS) {
+      const name2 = String(x?.[name]?.name ?? '').trim().slice(0, 24);
+      const icon = String(x?.[name]?.icon ?? '').trim().slice(0, 8);
+      const d = LAYER_DEFAULTS[name];
+      if ((name2 && name2 !== d.name) || (icon && icon !== d.icon)) {
+        out[name] = { ...(name2 && name2 !== d.name ? { name: name2 } : {}), ...(icon && icon !== d.icon ? { icon } : {}) };
+      }
+    }
+    return Object.keys(out).length ? out : null;
   };
   return list.filter((g) => g && typeof g.id === 'string').map((g) => {
     const given = g.versions || (g.layers ? { [g.meter === '6/8' ? '6/8' : '2/4']: g } : {});
@@ -492,7 +526,8 @@ export function checkGrooves(list) {
       const v = version(given[meter], meter);
       if (v) versions[meter] = v;
     }
-    return { id: g.id, name: String(g.name || g.id), key: Number.isInteger(g.key) ? g.key : 0, versions };
+    const layerInfo2 = info(g.layerInfo);
+    return { id: g.id, name: String(g.name || g.id), key: Number.isInteger(g.key) ? g.key : 0, ...(layerInfo2 ? { layerInfo: layerInfo2 } : {}), versions };
   }).filter((g) => Object.keys(g.versions).length);
 }
 
@@ -515,17 +550,36 @@ export const grooveMeter = () => M;
 export function setGrooveMeter(meter) { M = meter === '6/8' ? '6/8' : '2/4'; }
 const versionNow = () => (G ? G.versions[M] || Object.values(G.versions)[0] : null);
 
+/* The tracks a layer plays this time round the loop: each variant gets its own roll of the dice
+   (its chance) once per repetition, and the first that comes up plays in place of the main
+   take; if none does, the main one plays. force picks one instead: { bass: 0 } is the first
+   variant, -1 the main take (the Groove Lab, when you hear the one you are editing). */
+const rolls = new WeakMap(); // version → { layer: { rep, tracks } }
+function tracksFor(g, name, i, force) {
+  const vars = g.variants?.[name] || [];
+  if (force && name in force) return force[name] >= 0 && vars[force[name]] ? vars[force[name]].tracks : g.layers[name] || [];
+  if (!vars.length) return g.layers[name] || [];
+  const rep = Math.floor((i - phase) / g.beats);
+  let r = rolls.get(g);
+  if (!r) rolls.set(g, (r = {}));
+  if (r[name]?.rep !== rep) {
+    const won = vars.find((v) => Math.random() < v.chance);
+    r[name] = { rep, tracks: won ? won.tracks : g.layers[name] || [] };
+  }
+  return r[name].tracks;
+}
+
 /* One beat (i) of a groove version's layers, at t. In 2/4, swing moves the off-beat 8th toward a
    triplet (1 = full triplet) and the 16ths with it; 6/8 is already in threes. */
 let openHat = null; // stops the open hi-hat ringing now
-export function playGrooveBeat(g, i, t, spb, { layers, level = 1, dest = grooveBus }) {
+export function playGrooveBeat(g, i, t, spb, { layers, level = 1, dest = grooveBus, force = null }) {
   const pos = loopPos(i, g.beats);
   const per = stepsPerBeat(g);
   const d = g.meter === '6/8' ? 0 : g.swing / 6;
   const warp = (x) => (x < 0.5 ? x * (0.5 + d) / 0.5 : 0.5 + d + (x - 0.5) * (0.5 - d) / 0.5);
   const step = spb / per;
   for (const name of layers) {
-    for (const tr of g.layers[name] || []) {
+    for (const tr of tracksFor(g, name, i, force)) {
       for (const n of tr.notes) {
         if (Math.floor(n.s / per) !== pos) continue;
         const at = t + warp((n.s % per) / per) * spb;
@@ -608,7 +662,7 @@ export function groove(i, t, spb, { tier, mode, duck }) {
   // While the mic listens, only the pulse keeps the beat, softly: the mic hears everything else.
   if (duck === 'mic') { playGrooveBeat(V, i, t, spb, { layers: ['pulse'], level: 0.45 }); return; }
   let layers;
-  if (mode === 'breakdown') layers = V.layers.breakdown.some((tr) => tr.notes.length) ? ['breakdown'] : ['pulse'];
+  if (mode === 'breakdown') layers = [V.layers.breakdown, ...(V.variants?.breakdown || []).map((x) => x.tracks)].some((ts) => ts.some((tr) => tr.notes.length)) ? ['breakdown'] : ['pulse'];
   else layers = LAYERS.filter((name, n) => n <= tier && !(duck && (name === 'horns' || name === 'band')));
   playGrooveBeat(V, i, t, spb, { layers: layers.filter((name) => !rec[name]), level: duck ? 0.35 : 1 });
 }

@@ -13,11 +13,26 @@ button:disabled { opacity: .4; cursor: default; }
 .transport .play { min-width: 96px; }
 .transport .play.on { background: #A33B2B; }
 
-.layers { gap: 8px; }
-.layers button { display: flex; flex-direction: column; align-items: flex-start; padding: 8px 14px; }
+/* The six layers side by side, each with its variations below. */
+.layers { display: grid; grid-template-columns: repeat(6, minmax(128px, 1fr)); gap: 8px; margin-bottom: 12px; overflow-x: auto; padding: 3px; }
+.layer-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.layer-tab { display: grid; grid-template-columns: auto 1fr; column-gap: 7px; align-items: center; text-align: left; padding: 8px 10px; }
+.layer-tab .ic { grid-row: span 2; font-size: 22px; line-height: 1; }
+.layer-tab b { font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-tab small { font-size: 11px; color: #8A968C; line-height: 1.2; }
 .layers button.on { box-shadow: inset 0 0 0 3px #2F4A3A; }
-.layers b { font-weight: 600; font-size: 17px; }
-.layers small { font-size: 12px; color: #8A968C; }
+.variant { padding: 5px 10px; font-size: 14px; text-align: left; background: #FBF8F0; }
+.variant small { font-size: 12px; color: #8A968C; }
+.variant.add-var { background: transparent; box-shadow: inset 0 0 0 1px #D9D1BC; color: #5B6B5F; }
+.layer-set { gap: 12px; }
+input.name.small { font-size: 15px; min-width: 0; width: 160px; padding: 6px 10px; }
+.hint.inline { margin: 0; font-size: 14px; }
+details.icons summary { padding: 6px 12px; }
+.picker.icon-picker { width: 320px; grid-template-columns: 1fr; left: 0; right: auto; }
+.pick-grid.icon-grid { grid-template-columns: repeat(8, 1fr); }
+.icon-grid button { padding: 4px 0; font-size: 20px; text-align: center; }
+.icon-grid button.on { box-shadow: inset 0 0 0 2px #2F4A3A; }
+input.emoji { width: 60px; font-size: 18px; border: 0; border-radius: 10px; padding: 4px 8px; background: #fff; }
 
 .card { background: #fff; border-radius: 16px; padding: 12px; margin-bottom: 14px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
 .card-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -49,6 +64,7 @@ details.add summary:hover, details.add summary:focus-visible, details.add[open] 
 .pick-grid button { padding: 7px 10px; font-size: 15px; text-align: left; line-height: 1.2; }
 @media (max-width: 640px) {
   details.add[open] { flex-basis: 100%; }
+  .picker.icon-picker { width: auto; }
   .picker { position: static; width: auto; max-height: none; margin-top: 8px; grid-template-columns: 1fr; }
   .pick-group.wide { grid-column: auto; }
   .pick-group.wide .pick-grid { grid-template-columns: repeat(2, 1fr); }

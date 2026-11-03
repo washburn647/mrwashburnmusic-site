@@ -3,7 +3,9 @@
    (6 steps a dotted-quarter beat; the game plays these in compound units), in six layers: pulse, bass,
    drums, horns and band join as the combo grows (0, 3, 6, 10, 15 in a row), and breakdown
    plays alone in the breathers. Each layer holds tracks: a percussion sound (one row of steps)
-   or a pitched instrument (a piano roll). The game plays grooves with the same code as here
+   or a pitched instrument (a piano roll). Each groove names its layers and picks their icons
+   (the game's band seats show them), and a layer can have variations: other takes, each with
+   its own chance of playing in place of the main one each time round the loop. The game plays grooves with the same code as here
    (musician-maker/sound.js), so what you hear is what the kids hear, at any tempo.
    Grooves are kept on this device (localStorage) with undo. "Save for site" downloads
    grooves.json for musician-maker/grooves.json (tools/add_grooves.py). */
@@ -15,14 +17,14 @@ import { h, confirmButton } from '../dom.js';
 
 const app = document.getElementById('app');
 const KEY = 'mwm-groove-lab-1';
-const LAYER_INFO = {
-  pulse: { label: 'Pulse', when: 'Always playing' },
-  bass: { label: 'Bass', when: 'Joins at combo 3' },
-  drums: { label: 'Drums', when: 'Joins at combo 6' },
-  horns: { label: 'Horns', when: 'Joins at combo 10' },
-  band: { label: 'Band', when: 'Joins at combo 15' },
-  breakdown: { label: 'Breakdown', when: 'Plays alone in the breathers' },
+// When each layer plays. Its name and icon are the groove's own (snd.layerInfo).
+const WHEN = {
+  pulse: 'Always playing', bass: 'Joins at combo 3', drums: 'Joins at combo 6',
+  horns: 'Joins at combo 10', band: 'Joins at combo 15', breakdown: 'Plays alone in breathers',
 };
+// Icons to pick from for a layer's seat in the game (any emoji can be typed in too).
+const ICONS = ['🎸', '🪕', '🎻', '🥁', '🪘', '🪇', '🎺', '🎷', '🪈', '🎹', '🪗', '🎤', '🔔', '🥢', '👏', '🎵',
+  '🎶', '🌙', '⭐', '🔥', '🐭', '🐱', '🧀', '🦁', '🐸', '🐦', '🚀', '🌊', '🌵', '🍕', '👑', '💎'];
 const HEAR = {
   pulse: 'Combo 0', bass: '3', drums: '6', horns: '10', band: '15', breakdown: 'Breather', solo: 'This layer',
 };
@@ -39,7 +41,7 @@ const DEFAULT_TRACKS = { pulse: ['claves'], bass: ['bass'], drums: ['bass-drum',
 
 let grooves = [];
 let index = null; // samples index.json: instruments and their ranges
-const settings = { groove: 'basic', layer: 'pulse', bpm: 108, hear: 'band', len: 1, vel: 'normal' };
+const settings = { groove: 'basic', layer: 'pulse', variant: -1, roll: false, bpm: 108, hear: 'band', len: 1, vel: 'normal' };
 const vel = () => VEL[settings.vel] || 0.8;
 let past = [];
 let future = [];
@@ -51,6 +53,13 @@ const now = () => whole()?.versions[settings.meter || '2/4'];
 const isHit = (name) => index?.instruments[name]?.kind === 'hit';
 const label = (name) => index?.instruments[name]?.label || name;
 const per = (g) => snd.stepsPerBeat(g);
+// The variations of a layer in a version, and the tracks being edited: the main take, or the
+// variation picked under the layer's tab.
+const variantsOf = (g, layer) => g.variants?.[layer] || [];
+const editing = (g) => variantsOf(g, settings.layer)[settings.variant] || null;
+const editTracks = (g) => editing(g)?.tracks || g.layers[settings.layer];
+// Every track list in a version: main takes and variations (for length and meter changes).
+const allTracks = (g) => [...Object.values(g.layers), ...Object.values(g.variants || {}).flat().map((v) => v.tracks)];
 const steps = (g) => g.beats * per(g);
 
 function store() {
@@ -130,7 +139,14 @@ async function play() {
   await audio();
   if (!clock) {
     clock = makeClock(ctx);
-    clock.onBeat((i, t, spb) => { const g = now(); if (g) snd.playGrooveBeat(g, i, t, spb, { layers: hearLayers() }); });
+    clock.onBeat((i, t, spb) => {
+      const g = now();
+      if (!g) return;
+      // The layer being edited plays the take being edited; with "Roll variations" on, every
+      // layer rolls its variations as in the game.
+      const force = settings.roll ? null : Object.fromEntries(snd.ALL_LAYERS.map((l) => [l, l === settings.layer ? settings.variant : -1]));
+      snd.playGrooveBeat(g, i, t, spb, { layers: hearLayers(), force });
+    });
   }
   await snd.useInstruments([now()]);
   startT = ctx.currentTime + 0.1;
@@ -182,7 +198,9 @@ function render() {
   canvases.length = 0;
   const restore = h('input', { type: 'file', accept: '.json,application/json', hidden: true, onchange: () => { restoreFile(restore.files[0]); restore.value = ''; } });
   const layer = settings.layer;
-  const tracks = g.layers[layer];
+  if (!editing(g)) settings.variant = -1;
+  const tracks = editTracks(g);
+  const info = (l) => snd.layerInfo(G, l);
   const hits = tracks.filter((tr) => isHit(tr.inst));
   const pitched = tracks.filter((tr) => !isHit(tr.inst));
   const count = (l) => g.layers[l].reduce((n, tr) => n + tr.notes.length, 0);
@@ -213,6 +231,8 @@ function render() {
       h('span', { class: 'label' }, 'Hear'),
       seg(HEAR, settings.hear, (v) => { settings.hear = v; store(); render(); },
         { pulse: 'Pulse only, like the start of a run', bass: 'Pulse and bass', drums: 'Up to drums', horns: 'Up to horns', band: 'Every layer: the full band', breakdown: 'The breakdown, as in a breather', solo: 'Only the layer you are editing' }),
+      h('label', { title: 'Off: the layer you are editing plays the take you picked. On: every layer rolls its variations each time round, as in the game.' },
+        h('input', { type: 'checkbox', checked: settings.roll, onchange: (e) => { settings.roll = e.target.checked; store(); } }), 'Roll variations'),
     ),
     h('div', { class: 'bar' },
       h('span', { class: 'label' }, 'Meter'),
@@ -224,10 +244,8 @@ function render() {
         h('span', { class: 'total' }, `${Math.round(g.swing * 100)}%`)),
       keySelect(G),
     ),
-    h('div', { class: 'bar layers' }, snd.ALL_LAYERS.map((l) => h('button', {
-      class: l === layer ? 'on' : '',
-      onclick: () => { settings.layer = l; store(); render(); },
-    }, h('b', {}, LAYER_INFO[l].label), h('small', {}, `${LAYER_INFO[l].when} · ${count(l)} notes`)))),
+    layerColumns(G, g, count),
+    layerSettings(G, g),
     h('div', { class: 'bar brush' },
       h('span', { class: 'label' }, 'Note'),
       seg(LENGTHS[g.meter], settings.len, (v) => { settings.len = Number(v); store(); render(); }),
@@ -238,11 +256,74 @@ function render() {
     ),
     hits.length ? hitCard(g, hits) : null,
     ...pitched.map((tr) => rollCard(g, tr)),
-    tracks.length ? null : h('p', { class: 'empty' }, `No sounds in ${LAYER_INFO[layer].label.toLowerCase()} yet. Add one above.`),
+    tracks.length ? null : h('p', { class: 'empty' }, `No sounds in ${info(layer).name}${editing(g) ? ` variation ${settings.variant + 1}` : ''} yet. Add one above.`),
     h('p', { class: 'hint' }, 'Click a step to add a note and drag to make it longer. Drag a note\'s right end to stretch or shorten it, drag the rest of it to move it, click it to remove it. Space plays and stops.'),
     status ? h('p', { class: 'status' }, status) : null,
   ].filter(Boolean));
   requestAnimationFrame(() => { drawAll(); centerRolls(); });
+}
+
+/* The six layers side by side: each column is the layer's tab (its main take) with its
+   variations below it and a button to add one. */
+function layerColumns(G, g, count) {
+  const pick = (l, v) => { settings.layer = l; settings.variant = v; store(); render(); };
+  const notes = (tracks) => tracks.reduce((n, tr) => n + tr.notes.length, 0);
+  return h('div', { class: 'layers' }, snd.ALL_LAYERS.map((l) => {
+    const info = snd.layerInfo(G, l);
+    const vars = variantsOf(g, l);
+    return h('div', { class: 'layer-col' },
+      h('button', { class: `layer-tab${l === settings.layer && settings.variant < 0 ? ' on' : ''}`, onclick: () => pick(l, -1) },
+        h('span', { class: 'ic' }, info.icon), h('b', {}, info.name), h('small', {}, `${WHEN[l]} · ${count(l)} notes`)),
+      ...vars.map((v, k) => h('button', {
+        class: `variant${l === settings.layer && settings.variant === k ? ' on' : ''}`,
+        title: `Plays in place of the main ${info.name} ${Math.round(v.chance * 100)}% of the times round the loop`,
+        onclick: () => pick(l, k),
+      }, `Variation ${k + 1}`, h('small', {}, ` · ${Math.round(v.chance * 100)}% · ${notes(v.tracks)} notes`))),
+      h('button', { class: 'variant add-var', title: `Another take on ${info.name}, starting as a copy of the main one`, onclick: () => {
+        snapshot();
+        g.variants ||= {};
+        (g.variants[l] ||= []).push({ chance: 0.25, tracks: structuredClone(g.layers[l]) });
+        settings.layer = l;
+        settings.variant = g.variants[l].length - 1;
+        changed();
+      } }, '+ Variation'));
+  }));
+}
+
+/* The picked layer's name and game icon (the groove's own), and the picked variation's chance. */
+function layerSettings(G, g) {
+  const l = settings.layer;
+  const info = snd.layerInfo(G, l);
+  const setInfo = (key, value) => {
+    snapshot();
+    G.layerInfo ||= {};
+    G.layerInfo[l] = { ...(G.layerInfo[l] || {}), [key]: value };
+    changed();
+  };
+  const v = editing(g);
+  const icons = h('details', { class: 'add icons' },
+    h('summary', { title: 'The icon for this layer\'s seat in the game' }, info.icon, ' Icon'),
+    h('div', { class: 'picker icon-picker' },
+      h('div', { class: 'pick-grid icon-grid' }, ICONS.map((ic) => h('button', { class: ic === info.icon ? 'on' : '', onclick: () => setInfo('icon', ic) }, ic))),
+      h('label', {}, 'Or type one', h('input', { class: 'emoji', maxlength: 8, value: info.icon, onchange: (e) => { if (e.target.value.trim()) setInfo('icon', e.target.value.trim()); } }))));
+  return h('div', { class: 'bar layer-set' },
+    h('label', {}, 'Layer name', h('input', { class: 'name small', maxlength: 24, value: info.name, 'aria-label': 'Layer name',
+      onchange: (e) => setInfo('name', e.target.value.trim() || snd.LAYER_DEFAULTS[l].name) })),
+    icons,
+    v ? h('label', { title: 'Each time round the loop, this variation gets this chance of playing in place of the main take. If two come up, the first in the list plays.' },
+      `Variation ${settings.variant + 1} plays`,
+      h('input', { type: 'range', min: 0, max: 100, step: 5, value: Math.round(v.chance * 100),
+        oninput: (e) => { e.target.nextSibling.textContent = `${e.target.value}% of the time`; },
+        onchange: (e) => { snapshot(); v.chance = Number(e.target.value) / 100; changed(); } }),
+      h('span', { class: 'total' }, `${Math.round(v.chance * 100)}% of the time`)) : null,
+    v ? confirmButton(`Delete variation ${settings.variant + 1}`, 'Delete?', () => {
+      snapshot();
+      g.variants[l].splice(settings.variant, 1);
+      if (!g.variants[l].length) delete g.variants[l];
+      if (!Object.keys(g.variants).length) delete g.variants;
+      settings.variant = -1;
+      changed();
+    }) : h('span', { class: 'hint inline' }, variantsOf(g, l).length ? 'Main take: plays when no variation comes up.' : 'Add a variation for a different take that comes up now and then.'));
 }
 
 /* The sound picker's sections, in order. A sound not listed goes under Other. */
@@ -278,7 +359,7 @@ function addSound(g, layer) {
         title: index.instruments[id].kind === 'hit' ? 'Percussion row' : 'Piano roll',
         onclick: () => {
           snapshot();
-          g.layers[layer].push({ inst: id, vol: 1, notes: [] });
+          editTracks(g).push({ inst: id, vol: 1, notes: [] });
           snd.useInstruments([g]);
           changed();
         },
@@ -303,7 +384,7 @@ function trackTools(g, tr, kind) {
       onchange: (e) => { snapshot(); tr.vol = Number(e.target.value) / 100; changed(); } }),
     h('button', { class: 'icon', title: 'Remove this sound', onclick: () => {
       snapshot();
-      const list2 = g.layers[settings.layer];
+      const list2 = editTracks(g);
       list2.splice(list2.indexOf(tr), 1);
       changed();
     } }, '×'),
@@ -589,7 +670,7 @@ function convert(v, meter) {
   out.meter = meter;
   out.swing = 0;
   const last = v.beats * to - 1;
-  for (const tracks of Object.values(out.layers)) {
+  for (const tracks of allTracks(out)) {
     for (const tr of tracks) {
       const seen = new Set();
       tr.notes = tr.notes.map((n) => {
@@ -644,7 +725,7 @@ function setLength(g, beats) {
   if (beats === g.beats) return;
   snapshot();
   const n = beats * per(g);
-  for (const tracks of Object.values(g.layers)) {
+  for (const tracks of allTracks(g)) {
     for (const tr of tracks) {
       if (beats > g.beats) {
         const old = g.beats * per(g);
