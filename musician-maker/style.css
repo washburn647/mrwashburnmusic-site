@@ -708,3 +708,9 @@ body[data-screen="progress"] {
   15%, 80% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: translateY(45%) scale(.5); }
 }
+
+/* ---------- workshop test run (from the studio's game workshop) ---------- */
+a.back { display: grid; place-items: center; text-decoration: none; color: inherit; }
+.test-title { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.test-title .back { align-self: flex-start; }
+.test-title p { margin: 0; }

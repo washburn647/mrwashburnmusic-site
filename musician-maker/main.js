@@ -11,6 +11,7 @@ import * as mic from './mic.js';
 import { STEPS, BANDS, UNIT, onsets, sylText, options, readTaps, fromCells, loadMarks, howTo } from './steps.js';
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
+import * as OPT from './options.js';
 import { mookie } from './mookie.js';
 import * as TX from './transitions.js';
 import * as FX from './effects.js';
@@ -19,14 +20,33 @@ import { notation } from '/assets/patterns/notation.js';
 import * as store from './store.js';
 
 const app = document.getElementById('app');
+const Q = new URLSearchParams(location.search);
+/* A test run from the studio's game workshop (?test=<game id>): only that game (and its boss),
+   with the workshop's draft options and test settings, and nothing saved. */
+const TEST = GAMES.some((g) => g.id === Q.get('test')) ? {
+  game: GAMES.find((g) => g.id === Q.get('test')),
+  step: Number(Q.get('step')) || null,
+  tempo: [92, 108, 126].includes(Number(Q.get('tempo'))) ? Number(Q.get('tempo')) : null,
+  boss: Q.get('start') === 'boss',
+  groove: Q.get('groove') || null,
+  mookie: Q.get('pace') === 'mookie',
+} : null;
+const WORKSHOP = '/studio/games/';
 let st = store.load();
+if (TEST) {
+  st.mookie = TEST.mookie;
+  if (TEST.groove) st.groove = TEST.groove;
+}
 let dir = makeDirector(st);
 let R = null; // the run being played
 loadMarks();
+// Which games play, and their options: games.json for learners, the workshop's draft in a test.
+let LINEUP = OPT.apply(TEST ? OPT.loadDraft().games || OPT.complete() : OPT.complete(), TEST?.game.id);
+if (!TEST) OPT.siteOptions().then((o) => { LINEUP = OPT.apply(o); });
 
-const save = () => store.save(st);
+const save = () => { if (!TEST) store.save(st); };
 const today = () => new Date().toLocaleDateString('en-CA');
-const LADDER = () => (st.mookie ? [92, 108, 108] : [92, 108, 126]);
+const LADDER = () => (TEST?.tempo ? [TEST.tempo, TEST.tempo, TEST.tempo] : st.mookie ? [92, 108, 108] : [92, 108, 126]);
 const TEMPO_XP = { 92: 1, 108: 1.5, 126: 2 };
 const TIER_COLORS = ['#5E7D4F', '#5E7D4F', '#d08a2e', '#C46A5A', '#8a5ac4'];
 // The band's seats beside the beat lane, one per layer that joins (bass, drums, horns, band at
@@ -402,7 +422,7 @@ function lab() {
     ...Object.entries(choices).map(([v, label]) => h('option', { value: v, selected: v === (st.tx || 'mix') }, label)));
   scene('progress');
   app.replaceChildren(h('div', { class: 'progress lab' },
-    h('button', { class: 'back', 'aria-label': 'Back', onclick: progress }, '‹'),
+    h('button', { class: 'back', 'aria-label': 'Back', onclick: Q.has('lab') ? () => { location.href = WORKSHOP; } : progress }, '‹'),
     h('h2', {}, 'Transitions lab'),
     h('p', { class: 'note' }, 'Tap one to play it. They run on the beat, so try each tempo.'),
     wrap,
@@ -426,20 +446,22 @@ async function startRun(opts = {}) {
   scene('run');
   app.replaceChildren(h('div', { class: 'loading' }, mookie(''), h('p', {}, 'Tuning up…')));
   await snd.load();
+  if (!TEST) LINEUP = OPT.apply(await OPT.siteOptions());
   let micOn = false;
   let micError = '';
   if (st.input === 'mic') {
     try { await mic.start(ctx); micOn = true; } catch (e) { micError = `${micProblem(e)} Tapping still works.`; }
   }
   R = {
-    ctx, clock: makeClock(ctx), force: opts.force || null, lap: 0, plan: [], idx: 0,
-    combo: 0, runCombo: 0, runXP: 0, setXP: 0, setMisses: 0, setGames: 0, tempo: 92,
+    ctx, clock: makeClock(ctx), force: opts.force || TEST?.step || null, lap: 0, plan: [], idx: 0,
+    combo: 0, runCombo: 0, runXP: 0, setXP: 0, setMisses: 0, setGames: 0, tempo: LADDER()[0],
     lastGame: null, micOn, paused: false, ended: false, win: null, api: null,
     groove: { mode: 'play', duckFrom: 0, duckUntil: 0, micFrom: Infinity },
     before: Object.fromEntries(STEPS.slice(1).map((s) => [s.n, dir.step(s.n).s])),
     news: micError ? [micError] : [],
   };
-  if (st.lastDay !== today()) {
+  if (TEST) R.news.push('Workshop test: progress isn\'t saved');
+  else if (st.lastDay !== today()) {
     st.days++;
     st.lastDay = today();
     addXP(50);
@@ -457,13 +479,16 @@ async function startRun(opts = {}) {
 }
 
 function lapPlan() {
+  const boss = LINEUP.bosses.length ? [{ type: 'boss' }] : [];
+  // A workshop test can go straight to the boss.
+  if (TEST?.boss && boss.length) return [...boss, { type: 'intermission' }];
   const per = st.mookie ? 3 : 4;
   const plan = [];
   for (let s = 0; s < 3; s++) {
     for (let g = 0; g < per; g++) plan.push({ type: 'game', set: s, first: g === 0, n: g });
     plan.push({ type: 'breather', set: s });
   }
-  plan.push({ type: 'boss' }, { type: 'intermission' });
+  plan.push(...boss, { type: 'intermission' });
   return plan;
 }
 
@@ -588,7 +613,8 @@ function addXP(n) {
 }
 
 function pickGame() {
-  const list = GAMES.filter((g) => g !== R.lastGame);
+  const others = LINEUP.stream.filter((g) => g !== R.lastGame);
+  const list = others.length ? others : LINEUP.stream;
   const g = list[Math.floor(Math.random() * list.length)];
   R.lastGame = g;
   return g;
@@ -1046,12 +1072,10 @@ function bossSay(item, kind) {
   return h('div', { class: 'say' }, h('span', { class: 'ic' }, kind === 'notation' ? '👀' : '👂'), h('span', {}, how));
 }
 
-/* The boss alternates by lap between the games that have one (The Big Cheese in Mouse
-   Catcher, The Big Fluff in Supper Time). */
-const BOSSES = GAMES.filter((g) => g.bossName);
-
+/* The boss alternates by lap between the games that host one (The Big Cheese in Mouse
+   Catcher, The Big Fluff in Supper Time; the workshop's options choose which do). */
 function boss(B) {
-  const game = BOSSES[R.lap % BOSSES.length];
+  const game = LINEUP.bosses[R.lap % LINEUP.bosses.length];
   const T = (i) => R.clock.timeOf(i);
   const spb = R.clock.spb();
   const rounds = 4;
@@ -1188,11 +1212,31 @@ function endRun() {
   document.onkeydown = null;
   R = null;
   save();
-  if (new URLSearchParams(location.search).has('debug')) window.mmDebug = () => R;
-
-title();
+  if (TEST) testTitle();
+  else title();
 }
 
-if (new URLSearchParams(location.search).has('debug')) window.mmDebug = () => R;
+/* The start of a workshop test run: what's being tested, Play, and the way back. */
+function testTitle() {
+  scene('progress');
+  const g = TEST.game;
+  const bits = [
+    TEST.step ? `Step ${TEST.step}: ${STEPS[TEST.step].name}` : 'Steps from my progress',
+    TEST.tempo ? `${TEST.tempo} bpm` : `${LADDER().join(' · ')} bpm`,
+    TEST.boss && LINEUP.bosses.length ? `straight to ${g.bossName}` : null,
+    TEST.mookie ? 'Mookie mode' : null,
+  ].filter(Boolean);
+  app.replaceChildren(h('div', { class: 'progress howto test-title' },
+    h('a', { class: 'back', 'aria-label': 'Back to the workshop', href: WORKSHOP }, '‹'),
+    h('h2', {}, `Test: ${g.name}`),
+    h('p', {}, bits.join(' · ')),
+    h('p', { class: 'note' }, 'Only this game comes up, with the workshop\'s options. Progress isn\'t saved.'),
+    h('button', { class: 'play', onclick: () => startRun() }, 'Play'),
+    h('a', { class: 'link', href: WORKSHOP }, 'Back to the workshop')));
+}
 
-title();
+if (Q.has('debug')) window.mmDebug = () => R;
+
+if (TEST) testTitle();
+else if (Q.has('lab')) lab();
+else title();

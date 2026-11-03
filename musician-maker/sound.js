@@ -16,7 +16,7 @@ let loops = {}; // Kyle's groove loops: layer → bpm → { buffer, start, beats
 let grooves = []; // grooves.json, made in the studio's Groove Lab
 let G = null; // the groove playing
 
-const HITS = ['claves', 'log-drum-low', 'log-drum-high', 'bass-drum', 'snare', 'shaker', 'tambourine',
+export const HITS = ['claves', 'log-drum-low', 'log-drum-high', 'bass-drum', 'snare', 'shaker', 'tambourine',
   'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low', 'conga', 'finger-cymbals', 'sleigh-bells'];
 const PITCHED = { bass: [36, 52], horn: [60, 74], marimba: [60, 88], trombone: [40, 55] };
 

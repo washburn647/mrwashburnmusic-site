@@ -50,6 +50,14 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   between them mid-loop (for review items from a unit in the other meter);
   `sound.js` plays them with the same code as the Lab. The title's Groove button picks one, or
   Mix: a different groove each lap, from the grooves in the unit's meter.
+- `options.js`, `games.json`: game options from the studio's Musician Maker game workshop
+  (`/studio/games/`): per game, whether it's in the stream, whether it hosts the boss, which win
+  and fail gags can come up, and its tap sound. The workshop keeps drafts on Kyle's device;
+  "Save for site" downloads `games.json`, which `tools/add_games.py` checks and puts here.
+  Learners get `games.json`; a workshop test run (`?test=<game id>`, plus `step`, `tempo`,
+  `start=boss`, `pace=mookie`, `groove`) plays only that game, with the drafts, and saves nothing.
+- `gags.js`: picks a game's win and fail gags from the ones that are on. Each game lists its gags
+  with names (`gags`), and `win(gag)` / `fail(gag)` can force one (the workshop's Try it).
 - `clock.js`: the beat clock everything is scheduled on.
 - `mic.js`, `mic-worklet.js`: syllable onsets from the mic, found on the audio thread, analysed
   live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.
@@ -107,6 +115,12 @@ Private preview: `python tools/mm_preview.py` copies the app and the assets it u
 
 Test mode (My progress → Test mode) adds a Drill button to every step, for trying any step's
 games without earning your way there.
+
+**Game workshop** (`/studio/games/`, private): each game's scene on the groove at any combo
+tier, with its call, taps, every gag and its boss; its options; and Test play, which opens the
+game with only that game in it. `?lab` opens the Transitions lab. A new game goes in `GAMES`
+(`games.js`) with an `id`, `gags` and `win(gag)`/`fail(gag)`, and its stylesheet goes in
+`studio/games/index.html` as well as `index.html`.
 
 ## Next
 

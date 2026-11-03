@@ -16,6 +16,7 @@
 import { rigMookie } from './rig.js';
 import { critter, photoMouse } from './critters.js';
 import { toon } from './sound.js';
+import { gagDeck } from './gags.js';
 
 function h(tag, cls, text) {
   const el = document.createElement(tag);
@@ -106,17 +107,12 @@ function jiggle(root) {
     p.style.setProperty('--py', `${Math.round(Math.random() * 90 - 45)}%`);
   });
 }
-/* Pick from a list, never the same one twice in a row. */
-function deck(list) {
-  let last = null;
-  return () => {
-    const pool = list.filter((x) => x !== last);
-    last = pool[Math.floor(Math.random() * pool.length)];
-    return last;
-  };
-}
-const winGag = deck(['yank', 'yank', 'teacup', 'helmet']);
-const failGag = deck(['runner', 'runner', 'decoy', 'frog']);
+const GAGS = {
+  win: { yank: 'Yanked out by the tail', teacup: 'Teacup trap', helmet: 'Mouse in a jousting helmet' },
+  fail: { runner: 'Zips out in shades', decoy: 'Bronze decoy', frog: 'Frog honks out of the hole' },
+};
+const winGag = gagDeck(['yank', 'yank', 'teacup', 'helmet'], () => mouseCatcher.gagsOn?.win);
+const failGag = gagDeck(['runner', 'runner', 'decoy', 'frog'], () => mouseCatcher.gagsOn?.fail);
 
 const CHEESE = `<svg viewBox="0 0 60 40" aria-hidden="true"><path d="M2 36 L56 8 L58 36 Z" fill="#f2c94c" stroke="#c99a2e" stroke-width="2" stroke-linejoin="round"/><path d="M56 8 Q40 4 2 36" fill="#ffe28a" opacity=".6"/><circle cx="40" cy="26" r="4" fill="#d9a93a"/><circle cx="26" cy="31" r="2.5" fill="#d9a93a"/><circle cx="50" cy="19" r="2.2" fill="#d9a93a"/></svg>`;
 
@@ -127,6 +123,7 @@ export const mouseCatcher = {
   pickClass: 'opt-hole',
   slotIcon: (c) => (c === 'ee' ? '🧀🧀' : '🧀'),
   bossName: 'The Big Cheese',
+  gags: GAGS,
   make(stage, { boss = false } = {}) {
     stage.className = `stage scene-ms${boss ? ' boss' : ''}`;
     preload();
@@ -403,7 +400,7 @@ export const mouseCatcher = {
         if (Math.random() < 0.4) later(250, () => critic('tsk.', 'tsk', 800));
         later(650, () => { rat.set('tongue', false); cat.mood('hunt'); });
       },
-      win() {
+      win(force) {
         busy = true;
         if (rat) {
           // KO: a Chinese bronze bell (400s BCE) drops on him. DONNNG. Then a trophy for Mookie.
@@ -446,7 +443,7 @@ export const mouseCatcher = {
           });
           return;
         }
-        const gag = winGag();
+        const gag = winGag(force);
         const at = centre(hole, 0.6);
         if (gag === 'teacup') {
           // A porcelain teacup from the Rijksmuseum drops over the hole. Clink. Trapped.
@@ -535,7 +532,7 @@ export const mouseCatcher = {
           later(300, go);
         } else go();
       },
-      fail() {
+      fail(force) {
         busy = true;
         if (rat) {
           // He grabs the cheese and moonwalks off.
@@ -549,7 +546,7 @@ export const mouseCatcher = {
           later(700, () => critic('tsk tsk.', 'tsk', 1000));
           return;
         }
-        const gag = failGag();
+        const gag = failGag(force);
         const b = box();
         const hr = hole.getBoundingClientRect();
         if (gag === 'decoy') {
