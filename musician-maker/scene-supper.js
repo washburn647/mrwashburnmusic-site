@@ -1,10 +1,11 @@
 /* Supper Time, the full production. A kitchen at sunset: a lamp that swings on the beat, a
-   pot that rattles its lid, a chalkboard menu (fish, fish, more fish), a checkerboard floor.
+   pot that rattles its lid, a menu board (fish, fish, more fish), a checkerboard floor, in one
+   of five kitchens that take turns (THEMES).
    Mookie (rig.js) is fast asleep in her basket, snot bubble and all. Her supper sits in her
    bowl: a 200-year-old Japanese gong bowl, with its own gilded beater.
    The call: Chef Bastet, a 2,500-year-old Egyptian bronze cat in a chef's hat and googly
-   eyes, sings it from the counter. While she sings, Bindi and Rusty (cats.js) tiptoe out
-   from behind the counter, one step per note. The response: every tap rings the bowl. The
+   eyes, sings it from the counter. While she sings, Bindi and Rusty (cats.js) tiptoe in
+   from the left, one step per note. The response: every tap rings the bowl. The
    thieves freeze mid-sneak, Mookie stirs, the snot bubble shrinks.
    Win (random, never twice running): Mookie pops her bubble and rockets to her bowl; a royal
    Sèvres tureen lands with a fanfare; a porcelain hen tureen squawks the thieves away; or a
@@ -51,17 +52,35 @@ const WINDOW = `<svg viewBox="0 0 100 110" aria-hidden="true">
   <rect x="2" y="96" width="96" height="8" rx="2" fill="#fff7e6"/>
 </svg>`;
 
-const MENU = `<svg viewBox="0 0 100 120" aria-hidden="true">
-  <rect x="2" y="2" width="96" height="116" rx="6" fill="#8a5a32"/><rect x="8" y="8" width="84" height="104" rx="3" fill="#2f3b33"/>
-  <g fill="#f4efe4" font-family="Fredoka, sans-serif" text-anchor="middle">
-    <text x="50" y="28" font-size="15" font-weight="700" letter-spacing="1">MENU</text>
-    <text x="50" y="48" font-size="10">fish</text><text x="50" y="64" font-size="10">fish</text>
-    <text x="50" y="80" font-size="10">more fish</text>
-    <text x="50" y="98" font-size="8" opacity=".8">(no Rusty)</text></g>
-  <path d="M20 33 H80" stroke="#f4efe4" stroke-width="1" opacity=".6"/>
-  <g stroke="#f4efe4" stroke-width="1.2" fill="none" opacity=".75"><path d="M14 58 q6 -6 12 0 q-6 6 -12 0 Z M26 58 l4 -3 v6 Z"/><path d="M74 74 q6 -6 12 0 q-6 6 -12 0 Z M86 74 l4 -3 v6 Z"/></g>
-  <rect x="30" y="112" width="40" height="5" rx="2" fill="#6e4526"/><rect x="56" y="109" width="10" height="4" rx="1" fill="#f4efe4"/>
+/* Five kitchens, one per game in turn: wallpaper, floor tiles, counter, lamp, sky and menu
+   board change together (scene-supper.css, [data-theme]). Strings here are fixed markup. */
+const THEMES = [
+  { id: 'diner', title: 'MENU', lines: ['fish', 'fish', 'more fish'], note: '(no Rusty)', font: 'Fredoka, sans-serif' },
+  { id: 'bistro', title: 'Le Menu', lines: ['poisson', 'poisson', 'encore poisson'], note: '(pas de Rusty)', font: 'Georgia, serif' },
+  { id: 'atomic', title: 'TODAY!', lines: ['tuna melt', 'sardine shake', 'fish fries'], note: 'no cats on the counter', font: 'Fredoka, sans-serif' },
+  { id: 'farm', title: 'Soup of the Day', lines: ['FISH'], note: 'yesterday: also fish', font: 'Georgia, serif' },
+  { id: 'space', title: 'MENU', lines: ['moon fish', 'star fish', 'fish (in space)'], note: 'Rusty: banned on 3 planets', font: 'Fredoka, sans-serif' },
+];
+let themeAt = Math.floor(Math.random() * THEMES.length);
+let skyId = 0;
+const nextTheme = () => THEMES[themeAt++ % THEMES.length];
+
+function menuSvg(t) {
+  const n = t.lines.length;
+  const big = n === 1;
+  const ys = big ? [72] : t.lines.map((_, i) => 48 + i * 16);
+  const titleSize = t.title.length > 10 ? 10 : 15;
+  return `<svg viewBox="0 0 100 120" aria-hidden="true">
+  <rect class="mb-frame" x="2" y="2" width="96" height="116" rx="6"/><rect class="mb-board" x="8" y="8" width="84" height="104" rx="3"/>
+  <g class="mb-ink" font-family="${t.font}" text-anchor="middle">
+    <text x="50" y="28" font-size="${titleSize}" font-weight="700" letter-spacing="1">${t.title}</text>
+    ${t.lines.map((l, i) => `<text x="50" y="${ys[i]}" font-size="${big ? 22 : l.length > 11 ? 8 : 10}" font-weight="${big ? 700 : 400}">${l}</text>`).join('')}
+    <text x="50" y="${big ? 98 : 100}" font-size="${t.note.length > 14 ? 5.6 : 8}" opacity=".8">${t.note}</text></g>
+  <path class="mb-line" d="M20 33 H80" stroke-width="1" opacity=".6"/>
+  <g class="mb-line" stroke-width="1.2" fill="none" opacity=".75"><path d="M14 ${big ? 50 : 58} q6 -6 12 0 q-6 6 -12 0 Z M26 ${big ? 50 : 58} l4 -3 v6 Z"/><path d="M74 ${big ? 86 : 74} q6 -6 12 0 q-6 6 -12 0 Z M86 ${big ? 86 : 74} l4 -3 v6 Z"/></g>
+  <rect class="mb-frame" x="30" y="112" width="40" height="5" rx="2"/><rect class="mb-chalk" x="56" y="109" width="10" height="4" rx="1"/>
 </svg>`;
+}
 
 const LAMP = `<svg viewBox="0 0 80 120" aria-hidden="true">
   <path d="M40 0 V52" stroke="#4a3a2a" stroke-width="2"/>
@@ -79,12 +98,12 @@ const POT = `<svg viewBox="0 0 80 70" aria-hidden="true">
 </svg>`;
 
 const COUNTER = `<svg viewBox="0 0 120 130" preserveAspectRatio="none" aria-hidden="true">
-  <rect x="0" y="10" width="120" height="120" fill="#e9dcc0"/>
-  <rect x="-4" y="0" width="128" height="12" rx="2" fill="#c9b79a" stroke="#9c8a6c" stroke-width="1.5"/>
-  <rect x="8" y="22" width="104" height="26" rx="3" fill="#f5ecd8" stroke="#bfae8c" stroke-width="2"/>
-  <rect x="8" y="56" width="48" height="66" rx="3" fill="#f5ecd8" stroke="#bfae8c" stroke-width="2"/>
-  <rect x="64" y="56" width="48" height="66" rx="3" fill="#f5ecd8" stroke="#bfae8c" stroke-width="2"/>
-  <rect x="48" y="33" width="24" height="5" rx="2.5" fill="#b07a3a"/><circle cx="48" cy="88" r="3.5" fill="#b07a3a"/><circle cx="72" cy="88" r="3.5" fill="#b07a3a"/>
+  <rect class="ct-body" x="0" y="10" width="120" height="120"/>
+  <rect class="ct-top" x="-4" y="0" width="128" height="12" rx="2" stroke-width="1.5"/>
+  <rect class="ct-door" x="8" y="22" width="104" height="26" rx="3" stroke-width="2"/>
+  <rect class="ct-door" x="8" y="56" width="48" height="66" rx="3" stroke-width="2"/>
+  <rect class="ct-door" x="64" y="56" width="48" height="66" rx="3" stroke-width="2"/>
+  <rect class="ct-knob" x="48" y="33" width="24" height="5" rx="2.5"/><circle class="ct-knob" cx="48" cy="88" r="3.5"/><circle class="ct-knob" cx="72" cy="88" r="3.5"/>
 </svg>`;
 
 const BED_BACK = `<svg viewBox="0 0 200 90" preserveAspectRatio="none" aria-hidden="true">
@@ -146,7 +165,7 @@ function deck(list) {
 const winGag = deck(['rocket', 'rocket', 'tureen', 'hen', 'lobster']);
 const failGag = deck(['heist', 'heist', 'yowl', 'flop', 'decoy']);
 
-/* Where the thieves stand, as % of the stage width: they start behind the counter and gain
+/* Where the thieves stand, as % of the stage width: they start at the left edge and gain
    one step per note of the call, up to a little short of the bowl. */
 const START = { bindi: 7, rusty: -3 };
 const STEP = 4.2;
@@ -161,13 +180,15 @@ export const supperTime = {
   bossName: 'The Big Fluff',
   make(stage, { boss = false } = {}) {
     stage.className = `stage scene-sp${boss ? ' boss' : ''}`;
+    const theme = nextTheme();
+    stage.dataset.theme = theme.id;
     preload();
     const cam = h('div', 'sp-cam');
     const wall = h('div', 'sp-wall');
     const win = h('div', 'sp-window');
-    win.innerHTML = WINDOW; // fixed markup
+    win.innerHTML = WINDOW.replace(/sp-sky/g, `sp-sky${++skyId}`); // fixed markup
     const menu = h('div', 'sp-menu');
-    menu.innerHTML = MENU; // fixed markup
+    menu.innerHTML = menuSvg(theme); // fixed markup
     const lamp = h('div', 'sp-lamp');
     lamp.innerHTML = LAMP; // fixed markup
     lamp.append(h('i', 'sp-cone'));
@@ -233,7 +254,7 @@ export const supperTime = {
       prize.append(photo('silver-tureen'));
       cam.append(wall, lights, floor, base, counter, chefMask, bindi.el, mat, bowl, beater, rings, cat.el, prize, rusty.el);
     } else {
-      cam.append(wall, lights, floor, base, chefMask, bindi.el, rusty.el, counter, mat, bowl, beater, rings, bed, zzz);
+      cam.append(wall, lights, floor, base, counter, chefMask, rusty.el, bindi.el, mat, bowl, beater, rings, bed, zzz);
     }
     stage.append(cam, speed, fx);
 
