@@ -1,19 +1,24 @@
 /* A grade's menu, built when it is asked for: every song in the deck that is
-   for that grade, as its icon, each one jumping to its song. It takes the
-   look (background and title box) of the deck's own menu slides.
+   for that grade or an earlier one (a 1st grade menu holds the PK and K songs
+   too), as its icon, each one jumping to its song. The icons are as big as the
+   page allows. It takes the look (background and title box) of the deck's own
+   menu slides, with the title shrunk to fit its box.
 
    opts.locked: slide indexes of songs not unlocked yet. They show under a
    lock (opts.lock, the decks' lock picture, or a grey veil) and don't jump. */
 
-import { forGrade, textOf } from './marks.js';
+import { forGradeOrEarlier, textOf } from './marks.js';
+import { fontStack } from './render.js';
 
 const GAP = 14;
-const MAX_ICON = 124;
+const PX_PER_PT = 960 / 720;
 
 export function buildMenu(deck, grade, name, opts = {}) {
   const songs = deck.slides
     .map((s, i) => ({ s, i }))
-    .filter(({ s }) => s.song && s.song.kind === 'song' && s.song.icon && !s.hidden && forGrade(s, grade));
+    .filter(({ s }) => s.song && s.song.kind === 'song' && s.song.icon && !s.hidden && forGradeOrEarlier(s, grade))
+    // A song over several slides shows once, jumping to its first.
+    .filter(({ s }, k, all) => all.findIndex((x) => x.s.song.icon === s.song.icon) === k);
   const menus = deck.slides.filter((s) => s.menu);
   // The deck's plain menu (no grade in its title) is the best look to borrow.
   const template = menus.find((s) => !/^(PK|K|1)\s/i.test(s.title || '')) || menus[0];
@@ -27,7 +32,8 @@ export function buildMenu(deck, grade, name, opts = {}) {
     const t = structuredClone(head);
     delete t.link;
     const run = t.text.paras.flatMap((p) => p.runs).find((r) => r.t) || {};
-    t.text.paras = [{ ...t.text.paras[0], runs: [{ ...run, t: title }] }];
+    const sz = fitText(title, run, t);
+    t.text.paras = [{ ...t.text.paras[0], sz, runs: [{ ...run, sz, t: title }] }];
     els.push(t);
     top = t.y + t.h + GAP;
   } else {
@@ -42,7 +48,7 @@ export function buildMenu(deck, grade, name, opts = {}) {
   let best = { size: 0, cols: 1 };
   for (let cols = 1; cols <= Math.max(n, 1); cols++) {
     const rows = Math.ceil(n / cols);
-    const size = Math.min(MAX_ICON, (W - GAP * (cols - 1)) / cols, (H - GAP * (rows - 1)) / rows);
+    const size = Math.min((W - GAP * (cols - 1)) / cols, (H - GAP * (rows - 1)) / rows);
     if (size > best.size) best = { size, cols };
   }
   const { size, cols } = best;
@@ -61,4 +67,24 @@ export function buildMenu(deck, grade, name, opts = {}) {
       fill: { type: 'solid', color: '#55555599' } });
   });
   return { els, bg: template ? template.bg : null, title, generated: true };
+}
+
+let ruler = null;
+
+/** The run's size, or smaller, so the title fits its box on one line. */
+function fitText(text, run, box) {
+  const want = run.sz || 36;
+  const ins = (box.text && box.text.ins) || [10, 5, 10, 5];
+  const w = box.w - ins[0] - ins[2], h = box.h - ins[1] - ins[3];
+  try {
+    ruler = ruler || document.createElement('canvas').getContext('2d');
+    ruler.font = (run.b ? 'bold ' : '') + want * PX_PER_PT + 'px ' + fontStack(run.font);
+    const wide = ruler.measureText(text).width;
+    // Room to spare: the deck's font may not have loaded when this is measured.
+    const byWidth = wide ? want * (w * 0.92) / wide : want;
+    const byHeight = h / (1.2 * PX_PER_PT);
+    return Math.max(8, Math.floor(Math.min(want, byWidth, byHeight)));
+  } catch (e) {
+    return want;
+  }
 }

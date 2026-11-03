@@ -333,3 +333,37 @@ export function classDates(rec, grade) {
   }
   return out;
 }
+
+/** The last class a grade has reached by `iso` (today), from the calendar: 0 before the
+    first, null when the year has no calendar. A class counts from its first day. */
+export function classAsOf(rec, grade, iso) {
+  if (!(rec.calendar || []).length) return null;
+  let no = 0;
+  if (grade === 'PK') {
+    for (const [mon, n] of Object.entries(rec.pkWeeks || {})) if (mon <= iso) no = Math.max(no, n);
+    return no;
+  }
+  for (const d of rec.calendar) {
+    const m = d.date <= iso && ROTATION.exec(d.code);
+    if (m) no = Math.max(no, Number(m[2]));
+  }
+  return no;
+}
+
+/** Slides of a category deck to lock in a grade's menu: songs no class of this grade has
+    reached by class `through`. Songs an earlier grade has (a Max there) were learned in an
+    earlier year and stay open. */
+export function lockedSlides(rec, grade, deck, deckName, through) {
+  const out = new Set();
+  const category = rec.categories.find((c) => normName(c) === normName(deckName));
+  if (!category || !rec.grades.includes(grade)) return out;
+  const earlier = rec.grades.slice(0, rec.grades.indexOf(grade));
+  const list = rec.catalog[category] || [];
+  const index = indexSongs(deck, list.map((s) => s.name));
+  for (const s of list) {
+    if (earlier.some((g) => s.max[g] > 0)) continue;
+    if (playCount(rec, grade, category, s.name, through) > 0) continue;
+    for (const i of index.get(normName(s.name)) || []) out.add(i);
+  }
+  return out;
+}

@@ -10,7 +10,7 @@ import { el, thumb, loadMedia } from './ui.js';
 import * as store from './store.js';
 import { missingIcons, forGrade, GRADES } from './marks.js';
 import { showPlanner } from './planner.js';
-import { gradeHint, indexSongs, playCount, normName } from './plans.js';
+import { gradeHint, normName, classAsOf, lockedSlides } from './plans.js';
 import { makeTemplate } from './builder.js';
 import * as sync from './sync.js';
 
@@ -90,10 +90,11 @@ async function showDeck(id, startPresenting, editAt) {
   }
   const grade = gradePick;
   const built = rec.deck.built;
-  const run = (i, menu) => present(rec, menu ? MENU : i, media, (at) => {
+  const menu = grade ? await gradeMenu(rec, grade, media) : null;
+  const run = (i, wantMenu) => present(rec, wantMenu ? MENU : i, media, (at) => {
     const card = main.querySelector('.slide-card[data-n="' + at + '"]');
     if (card) card.scrollIntoView({ block: 'center' });
-  }, findGoogle, { grade: grade || (built && built.grade), menu: grade ? buildMenu(rec.deck, grade, rec.name) : null,
+  }, findGoogle, { grade: grade || (built && built.grade), menu,
                    openDeck: (link) => openDeck(link, built, grade) });
   const first = () => Math.max(0, rec.deck.slides.findIndex((s) => !s.hidden && forGrade(s, grade) && !(grade && s.menu)));
 
@@ -152,20 +153,25 @@ async function openDeck(link, built, pick) {
   if (!link.menu) return hit;
   const grade = (built && built.grade) || pick;
   if (!grade) return hit;
-  const locked = new Set();
-  const plan = built && await store.getPlan(built.year);
-  const category = plan && plan.categories.find((c) => normName(c) === normName(rec.name));
-  if (category) {
-    const names = plan.catalog[category].map((s) => s.name);
-    const index = indexSongs(rec.deck, names);
-    for (const name of names) {
-      if (playCount(plan, grade, category, name, built.no) > 0) continue;
-      for (const i of index.get(normName(name)) || []) locked.add(i);
-    }
-  }
-  const lock = media(LOCK) ? LOCK : null;
-  hit.menu = buildMenu(rec.deck, grade, rec.name, { locked, lock });
+  hit.menu = await gradeMenu(rec, grade, media, built);
   return hit;
+}
+
+/** A category deck's menu for a grade, with songs not reached yet locked: by a built class,
+    the plan up to that class; otherwise the plan up to today's class on the calendar. */
+async function gradeMenu(rec, grade, media, built) {
+  const years = await store.listPlans().catch(() => []);
+  const plan = built ? years.find((y) => y.year === built.year)
+    : years.find((y) => y.year === recall('year')) || years[years.length - 1];
+  const through = !plan ? null : built ? built.no : classAsOf(plan, grade, today());
+  const locked = through == null ? new Set() : lockedSlides(plan, grade, rec.deck, rec.name, through);
+  const lock = media(LOCK) ? LOCK : null;
+  return buildMenu(rec.deck, grade, rec.name, { locked, lock });
+}
+
+function today() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
 /** The imported copy of a Google deck (and slide), for links between decks. */

@@ -57,6 +57,7 @@ export function markDeck(deck, hint) {
     if (jumps.length >= 4) slide.menu = true; else delete slide.menu;
   });
   if (!deck.gradesSet) guessGrades(deck, hint);
+  else if (!deck.built && hint) planGradesOnly(deck, hint);
   return deck;
 }
 
@@ -81,6 +82,15 @@ function guessGrades(deck, hint) {
   }
 }
 
+/* Grades set by hand in the editor stay, except on songs the year plan has:
+   those always follow their Max columns. */
+function planGradesOnly(deck, hint) {
+  for (const slide of deck.slides) {
+    const planned = slide.song && slide.song.kind === 'song' && planGrades(slide, hint);
+    if (planned) slide.grades = planned;
+  }
+}
+
 function planGrades(slide, hint) {
   for (const el of slide.els) {
     if (!el.text) continue;
@@ -96,6 +106,13 @@ function planGrades(slide, hint) {
 // The same as normName in plans.js.
 const norm = (s) => String(s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
   .replace(/[^a-z0-9']+/g, ' ').trim();
+
+/** True when a slide is for this grade or an earlier one: a grade's menu holds both. */
+export function forGradeOrEarlier(slide, grade) {
+  if (!grade || !slide.grades || !slide.grades.length) return true;
+  const at = GRADES.indexOf(grade);
+  return slide.grades.some((g) => GRADES.indexOf(g) <= at);
+}
 
 /** True when a slide belongs in a grade's run of slides. Slides with no grade go everywhere. */
 export function forGrade(slide, grade) {
