@@ -1,10 +1,10 @@
 /* Mouse Catcher, the full production: a room with a pendulum clock that swings on the beat,
-   a WANTED poster, a mouse hole in the baseboard, and rigged Mookie (rig.js) on her rug.
+   a WANTED poster, a mouse hole in the baseboard, and rigged Mookie (rig.js) on his rug.
    The mouse squeaks the call from the hole; every tap is a rubber-hose paw swipe at it.
-   Win: she yanks the mouse out by the tail and it waves a white flag. Miss: it zips out in
+   Win: he yanks the mouse out by the tail and it waves a white flag. Miss: it zips out in
    sunglasses, blows a raspberry and zips home. Now and then a WarioWare-style close-up cuts
    in. The room gets a party as the combo grows: the poster bops, a disco ball drops, the
-   spotlights swing, and at full band the floor lights up and Mookie puts on her shades.
+   spotlights swing, and at full band the floor lights up and Mookie puts on his shades.
    Real photos join in, cut out like stickers (props/, CC0 museum objects): a Roman bronze bust
    with googly eyes (the Critic) sings along and tuts, a frog flask hops through at big combos,
    and the win and fail gags are picked at random (a teacup trap, a mouse in a jousting helmet,

@@ -1,13 +1,13 @@
 /* Supper Time, the full production. A kitchen at sunset: a lamp that swings on the beat, a
    pot that rattles its lid, a menu board (fish, fish, more fish), a checkerboard floor, in one
    of five kitchens that take turns (THEMES).
-   Mookie (rig.js) is fast asleep in her basket, snot bubble and all. Her supper sits in her
+   Mookie (rig.js) is fast asleep in his basket, snot bubble and all. His supper sits in his
    bowl: a 200-year-old Japanese gong bowl, with its own gilded beater.
    The call: Chef Bastet, a 2,500-year-old Egyptian bronze cat in a chef's hat and googly
    eyes, sings it from the counter. While she sings, Bindi and Rusty (cats.js) tiptoe in
    from the left, one step per note. The response: every tap rings the bowl. The
    thieves freeze mid-sneak, Mookie stirs, the snot bubble shrinks.
-   Win (random, never twice running): Mookie pops her bubble and rockets to her bowl; a royal
+   Win (random, never twice running): Mookie pops his bubble and rockets to his bowl; a royal
    Sèvres tureen lands with a fanfare; a porcelain hen tureen squawks the thieves away; or a
    500-year-old bronze lobster pinches Rusty. Miss: the masked heist; Bindi's yowl blows
    Mookie out of bed; Rusty flops belly-up on the bowl; or the cats swap supper for a stone fish.
@@ -156,7 +156,7 @@ function jiggle(root) {
   });
 }
 const GAGS = {
-  win: { rocket: 'Mookie rockets to her bowl', tureen: 'Royal tureen fanfare', hen: 'Hen tureen squawk', lobster: 'Bronze lobster pinch' },
+  win: { rocket: 'Mookie rockets to his bowl', tureen: 'Royal tureen fanfare', hen: 'Hen tureen squawk', lobster: 'Bronze lobster pinch' },
   fail: { heist: 'Masked heist', yowl: "Bindi's yowl", flop: 'Rusty flops on the bowl', decoy: 'Stone fish swap' },
 };
 const winGag = gagDeck(['rocket', 'rocket', 'tureen', 'hen', 'lobster'], () => supperTime.gagsOn?.win);
@@ -541,7 +541,7 @@ export const supperTime = {
 
     /* ---------------- wins ---------------- */
 
-    /* Mookie wakes (pop!), rockets out of her basket to the bowl and eats. */
+    /* Mookie wakes (pop!), rockets out of his basket to the bowl and eats. */
     function wakeAndEat(delay = 0, { big = false } = {}) {
       later(delay, () => {
         cat.svg.classList.remove('snot');
@@ -707,7 +707,7 @@ export const supperTime = {
 
     /* ---------------- misses ---------------- */
 
-    /* Mookie sleeps through it. Bubble swells and pops; she wakes to an empty mat. */
+    /* Mookie sleeps through it. Bubble swells and pops; he wakes to an empty mat. */
     function wakeSad(delay) {
       later(delay, () => {
         cat.svg.style.setProperty('--snot', '2.4');
@@ -764,7 +764,7 @@ export const supperTime = {
       later(1250, () => chefSay('tsk tsk.', 'tsk', 900));
     }
     function failYowl() {
-      // Bindi lets rip. The blast flips Mookie out of her basket; Rusty eats in the confusion.
+      // Bindi lets rip. The blast flips Mookie out of his basket; Rusty eats in the confusion.
       steps = MAX_STEPS;
       place(220);
       later(120, () => {

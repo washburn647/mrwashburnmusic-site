@@ -55,7 +55,7 @@ export const TRANSITIONS = [
   {
     id: 'iris',
     name: 'Mookie Iris',
-    about: 'The screen closes to a circle around Mookie, she grins, it shuts and opens on the new game.',
+    about: 'The screen closes to a circle around Mookie, he grins, it shuts and opens on the new game.',
     cover: 1,
     reveal: 0.75,
     build(layer) {

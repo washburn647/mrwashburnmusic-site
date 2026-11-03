@@ -1,0 +1,187 @@
+/* Brushing Time (scene-brush.js) and Mookie's coat (rig.js). Shares the comic lettering, dust,
+   bubbles, speed lines, cutaways, googly eyes and sticker photos of Mouse Catcher (scenes.css,
+   the ms- classes) and Rusty from Supper Time (scene-supper.css, the .kat classes). */
+
+/* ---------- Mookie's coat (rig.js): furry, tangled, sleek ---------- */
+.rig svg.furry .r-fluff, .rig svg.furry .r-tufts { display: inline; }
+.rig svg.furry .r-fluff { transform-box: fill-box; transform-origin: 50% 75%; transform: scale(var(--fluff, 1)); transition: transform .22s cubic-bezier(.3, 1.6, .5, 1); }
+.rig svg.furry .r-fluff-head { transform-origin: 50% 50%; transform: scale(calc(1 + (var(--fluff, 1) - 1) * .7)); }
+.rig .r-tuft { transform-box: fill-box; transform-origin: 50% 100%; transform: scale(0); transition: transform .16s ease-in; }
+.rig .r-tuft.up { transform: scale(1); transition: transform .22s cubic-bezier(.3, 2, .5, 1); }
+.rig .r-tuft.up.sproing { animation: sproing .4s ease-out; }
+@keyframes sproing { 0% { transform: scale(.2, 1.6); } 40% { transform: scale(1.2, .8) rotate(-10deg); } 70% { transform: scale(.95, 1.1) rotate(6deg); } }
+.rig svg.tangled .r-knots { display: inline; }
+.rig svg.static .r-fluff { stroke: #ffe45c; stroke-width: 2; filter: drop-shadow(0 0 3px rgba(255, 228, 92, .8)); }
+.rig svg.sleek .r-gloss, .rig svg.sleek .r-quiff, .rig svg.sleek .r-sparkles { display: inline; }
+.rig svg.sleek .r-fluff, .rig svg.sleek .r-tufts { display: none; }
+.rig .r-sparkles path { transform-box: fill-box; transform-origin: center; animation: sparkle .6s ease-in-out infinite alternate; }
+.rig .r-sparkles path:nth-child(2n) { animation-delay: -.3s; }
+@keyframes sparkle { from { transform: scale(.3) rotate(0); opacity: .4; } to { transform: scale(1.15) rotate(45deg); opacity: 1; } }
+
+/* ---------- the salon ---------- */
+.scene-bt { container-type: size; background: #fbe3ea; overflow: hidden; isolation: isolate; --u: min(1cqh, .9cqw); --seat-x: 50%; }
+.bt-cam { position: absolute; inset: 0; }
+.bt-wall { position: absolute; inset: 0 0 30% 0;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, .6), transparent 60%),
+    repeating-linear-gradient(90deg, #fbe3ea 0 26px, #f6cdd9 26px 30px, #fbe3ea 30px 52px, #cdeee3 52px 58px); }
+.bt-wall::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 10%;
+  background: repeating-linear-gradient(90deg, #fff 0 20px, #f3e6ea 20px 22px); border-top: 4px solid #e58aa6; }
+.bt-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; overflow: hidden; background: #f08aa8; }
+.bt-floor::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(80, 20, 40, .22), transparent 40%); pointer-events: none; }
+.bt-tiles { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(4, 1fr); }
+.bt-tiles i { background: #fff6f8; transition: background .12s; }
+.bt-tiles i.d { background: #f08aa8; }
+.scene-bt[data-tier="4"] .bt-tiles i.lit:nth-child(3n) { background: #ffd84a; }
+.scene-bt[data-tier="4"] .bt-tiles i.lit:nth-child(3n+1) { background: #7fe3d2; }
+.scene-bt[data-tier="4"] .bt-tiles i.lit:nth-child(3n+2) { background: #9b7bff; }
+.bt-base { position: absolute; left: 0; right: 0; bottom: 30%; height: 10px; transform: translateY(100%); background: linear-gradient(180deg, #fff, #e3c3cd); }
+
+/* Barber pole: the stripes move one step a beat. */
+.bt-pole { position: absolute; left: 4%; top: 9%; height: calc(36 * var(--u)); width: calc(7 * var(--u)); display: flex; flex-direction: column; align-items: center; }
+.bt-stripes { display: block; flex: 1; width: 100%; border-radius: 6px; border: 2px solid #6b5b60;
+  background: repeating-linear-gradient(-35deg, #e23a4a 0 6px, #fff 6px 10px, #2d6fd0 10px 16px, #fff 16px 20px) 0 0 / 100% 20px;
+  box-shadow: inset -6px 0 8px rgba(0, 0, 0, .18), inset 4px 0 6px rgba(255, 255, 255, .5); }
+.bt-cap { display: block; width: 130%; height: calc(4 * var(--u)); background: linear-gradient(90deg, #8a8f96, #e7ebef 40%, #8a8f96); border: 2px solid #5f666d; }
+.bt-cap.top { border-radius: 50% 50% 4px 4px; }
+.bt-cap.bottom { border-radius: 4px 4px 50% 50%; }
+
+/* The mirror, with bulbs that chase with the band. */
+.bt-mirror { position: absolute; left: calc(var(--seat-x) - 21 * var(--u)); top: 6%; width: calc(42 * var(--u)); height: calc(46 * var(--u));
+  border-radius: 50% 50% 8px 8px / 40% 40% 8px 8px; background: #d9a62c; padding: calc(2.4 * var(--u)); box-sizing: border-box;
+  box-shadow: 0 4px 0 rgba(120, 40, 70, .2), inset 0 0 0 3px #a87b16; }
+.bt-glass { position: absolute; inset: calc(2.6 * var(--u)); border-radius: inherit;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .55) 33%, transparent 38%, transparent 46%, rgba(255, 255, 255, .35) 48%, transparent 52%),
+    linear-gradient(180deg, #cfe9f2, #9cc9d9); }
+.scene-bt[data-tier="2"] .bt-glass, .scene-bt[data-tier="3"] .bt-glass, .scene-bt[data-tier="4"] .bt-glass { animation: disco-glass 1.2s linear infinite; }
+@keyframes disco-glass { to { filter: hue-rotate(360deg) saturate(1.8); } }
+.bt-bulb { position: absolute; width: calc(3.2 * var(--u)); aspect-ratio: 1; margin: calc(-1.6 * var(--u)) 0 0 calc(-1.6 * var(--u)); border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, #ffe9a6 60%); box-shadow: 0 0 4px rgba(255, 230, 150, .7); transition: box-shadow .1s, background .1s; }
+.bt-mirror[data-chase="a"] .bt-bulb:nth-child(2n), .bt-mirror[data-chase="b"] .bt-bulb:nth-child(2n+1) {
+  background: radial-gradient(circle at 35% 35%, #fff, #ffd84a 60%); box-shadow: 0 0 14px 4px rgba(255, 216, 74, .9); }
+
+.bt-sign { position: absolute; right: 4%; top: 7%; height: calc(30 * var(--u)); aspect-ratio: 100 / 120; transform: rotate(3deg); transform-origin: 50% 0;
+  filter: drop-shadow(0 3px 0 rgba(120, 40, 70, .2)); }
+.bt-sign svg, .bt-stool svg, .bt-pile svg, .bt-brush svg, .bt-clump svg, .bt-coat svg, .bt-zap svg, .bt-onehair svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.bt-sign-frame { fill: #e58aa6; }
+.bt-sign.bop { animation: bop .3s ease-out; }
+.bt-sign.bop2 { animation: bop2 .3s ease-out; }
+
+/* The Head Stylist on his wig stand; the jaw is the lower part of the same photo. */
+.bt-stylist { position: absolute; left: calc(var(--seat-x) - 44 * var(--u)); bottom: 6%; height: calc(26 * var(--u)); width: calc(17 * var(--u)); z-index: 1; }
+.bt-stylist .s-in { position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 303 / 320; transform-origin: 50% 100%; z-index: 1; }
+.bt-stylist .ms-photo { position: absolute; left: 0; top: 0; }
+.bt-stylist .s-top { clip-path: inset(0 0 21% 0); }
+.bt-stylist .s-jaw { clip-path: inset(79% 0 0 0); transition: transform .06s; }
+.bt-stylist .s-mouth { position: absolute; left: 38%; top: 78%; width: 26%; height: 5%; border-radius: 40%; background: #1a0d0d; }
+.bt-stylist.talk .s-jaw { transform: translateY(5%); }
+.bt-stylist.sing .s-in { animation: sing .4s ease-in-out; }
+.bt-stylist.nod .s-in { animation: nod .35s ease-in-out 2; }
+.bt-stylist.tsk .s-in { animation: tsk .5s ease-in-out 2; }
+.bt-stylist.bob .s-in { animation: bob-head .25s ease-out; }
+.bt-stylist.bob2 .s-in { animation: bob-head2 .25s ease-out; }
+@keyframes bob-head { 40% { transform: translateY(3%) rotate(-3deg); } }
+@keyframes bob-head2 { 40% { transform: translateY(3%) rotate(3deg); } }
+.bt-stand { position: absolute; left: 40%; width: 20%; top: 60%; bottom: 14%; background: linear-gradient(90deg, #8a8f96, #e7ebef 45%, #8a8f96); border: 2px solid #5f666d; border-top: 0; }
+.bt-plate { position: absolute; left: -10%; right: -10%; bottom: 0; height: 16%; display: grid; place-items: center; border-radius: 6px; background: #d9a62c; border: 2px solid #a87b16;
+  color: #4a2e0c; font-size: clamp(7px, 2.1 * var(--u), 12px); letter-spacing: .5px; white-space: nowrap; }
+
+/* The stool and the pile of brushed-out hair. */
+.bt-stool { position: absolute; left: calc(var(--seat-x) - 15 * var(--u)); bottom: 3%; height: calc(17 * var(--u)); width: calc(30 * var(--u)); z-index: 2; }
+.bt-mookie { left: calc(var(--seat-x) - 19.8 * var(--u)); bottom: calc(3% + 12.5 * var(--u)); height: calc(44 * var(--u)); z-index: 3; }
+.bt-mookie.frazzle { animation: frazzle .35s linear; }
+@keyframes frazzle { 20% { transform: translate(-2%, 0) rotate(-3deg); } 40% { transform: translate(2%, 0) rotate(3deg); } 60% { transform: translate(-1%, 0) rotate(-2deg); } 80% { transform: translate(1%, 0) rotate(1deg); } }
+.bt-pile { position: absolute; left: calc(var(--seat-x) - 46 * var(--u)); bottom: 2%; width: calc(26 * var(--u)); height: calc(12 * var(--u)); z-index: 2;
+  transform-origin: 50% 100%; transform: scale(var(--pile, .3)); transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+.bt-pile.plop svg { animation: plop .3s ease-out; transform-origin: 50% 100%; }
+.bt-pile.jig svg { animation: jig .25s ease-out; transform-origin: 50% 100%; }
+.bt-pile.gone { transition: transform .15s ease-in; transform: scale(.05); }
+@keyframes plop { 30% { transform: scale(1.12, .86); } 70% { transform: scale(.96, 1.06); } }
+@keyframes jig { 40% { transform: scale(1.04, .95); } }
+
+/* The brush, in its gloved hand on a long pink-striped sleeve. Its tilt matches REST in scene-brush.js. */
+.bt-brush { position: absolute; left: calc(var(--seat-x) + 12 * var(--u)); bottom: calc(3% + 46 * var(--u)); width: calc(30 * var(--u)); aspect-ratio: 240 / 90; z-index: 4;
+  transform-origin: 25% 72%; transform: rotate(-28deg); }
+.bt-brush.letgo .bt-glove, .bt-brush.letgo .bt-sleeve { display: none; }
+.bt-hat { bottom: auto; z-index: 6; transform: rotate(-4deg); animation: hat-wobble .5s ease-in-out infinite alternate; }
+.bt-hat .bt-glove, .bt-hat svg > path:nth-child(-n+2) { display: none; }
+@keyframes hat-wobble { to { transform: rotate(6deg); } }
+.bt-onehair { position: absolute; left: 22%; top: 72%; width: 10%; aspect-ratio: 40 / 60; transform-origin: 50% 0; animation: dangle .4s ease-in-out infinite alternate; }
+
+/* Gags. */
+.bt-fx .ms-dust.fur { background: #17171b; border-radius: 40% 60% 50% 50%; box-shadow: none; }
+.bt-fx .ms-dust.fur.rusty { background: #a98458; }
+.bt-clump { position: absolute; width: calc(7 * var(--u)); aspect-ratio: 60 / 44; z-index: 5; }
+.bt-clump.big { width: calc(16 * var(--u)); }
+.bt-clump.blown { transition: opacity .3s, translate .3s; opacity: 0; translate: 0 -40px; }
+.bt-drop { position: absolute; width: calc(1.8 * var(--u)); aspect-ratio: 2 / 3; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #7cc8f0; border: 1.5px solid #2f86b8; z-index: 6; }
+.bt-lion { position: absolute; height: calc(30 * var(--u)); aspect-ratio: 338 / 360; z-index: 5; transform: translate(110cqw, -78%); transition: transform .3s cubic-bezier(.3, 1.2, .5, 1); }
+.bt-lion .ms-photo { position: absolute; inset: 0; }
+.bt-lion.in { transform: translate(4%, -78%); animation: strut .15s linear 2; }
+.bt-lion.out { transform: translate(110cqw, -78%); transition-timing-function: ease-in; }
+@keyframes strut { 50% { rotate: -3deg; } }
+.bt-twin { position: absolute; height: calc(30 * var(--u)); aspect-ratio: 200 / 222; z-index: 5; transform: translate(-50%, -100%); animation: twin-up .3s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes twin-up { from { transform: translate(-50%, -100%) scale(1, .1); } }
+.bt-twin.leave { transition: transform .9s ease-in; transform: translate(-60cqw, -100%); animation: flee-legs .14s linear infinite; }
+.bt-hen { position: absolute; aspect-ratio: 320 / 191; z-index: 6; transform: translate(-50%, -85%) translateY(-120cqh); }
+.bt-hen .ms-photo { position: absolute; inset: 0; }
+.bt-hen.sit { transform: translate(-50%, -85%); transition: transform .3s cubic-bezier(.5, 0, .9, .6); }
+.bt-hen.lay { animation: lay .3s ease-out; }
+@keyframes lay { 40% { scale: 1.08 .9; } }
+.bt-egg.ms-photo { position: absolute; width: calc(8 * var(--u)); z-index: 6; }
+.bt-egg.wobble { animation: egg-wobble .18s ease-in-out 4 alternate; }
+@keyframes egg-wobble { from { rotate: -10deg; } to { rotate: 10deg; } }
+.bt-zap { position: absolute; width: calc(6 * var(--u)); aspect-ratio: 40 / 80; z-index: 6; transform: translate(-50%, -50%) rotate(var(--r)); animation: zap .12s steps(2) 5; }
+@keyframes zap { 50% { opacity: 0; } }
+.bt-coat { position: absolute; aspect-ratio: 200 / 160; z-index: 6; transform: translate(-50%, -60%); transition: transform .5s cubic-bezier(.5, -0.3, .9, .7); }
+.bt-coat.off { transform: translate(-150%, 30%) rotate(-30deg) scale(1.05, .5); }
+.bt-drift { position: absolute; left: -10%; right: -10%; bottom: 0; height: 42%; z-index: 6; transform: translateY(100%); transition: transform .6s cubic-bezier(.3, 1.3, .5, 1); }
+.bt-drift.up { transform: translateY(10%); }
+.bt-drift svg { width: 100%; height: 100%; display: block; }
+.scene-bt.bt-quake .bt-cam { animation: quake .4s linear; }
+.bt-cut { background: #ffb3cb; }
+
+/* ---------- boss: The Mane Event ---------- */
+.scene-bt.boss { --seat-x: 60%; }
+.scene-bt.boss .bt-wall { background:
+    radial-gradient(ellipse at 60% 30%, rgba(255, 240, 200, .5), transparent 60%),
+    repeating-linear-gradient(90deg, #f6d9a8 0 26px, #eec58a 26px 30px, #f6d9a8 30px 52px, #e7a86b 52px 58px); }
+.scene-bt.boss .bt-mookie { left: calc(var(--seat-x) - 52 * var(--u)); bottom: 4%; height: calc(36 * var(--u)); z-index: 4; }
+.scene-bt.boss .bt-pile { left: 2%; }
+.scene-bt.boss .bt-stylist { left: auto; right: 6%; bottom: 8%; }
+.scene-bt.boss .bt-sign { display: none; }
+.bt-rusty { left: calc(var(--seat-x) - 25 * var(--u)); bottom: calc(3% + 12.5 * var(--u)); height: calc(50 * var(--u)); z-index: 3; transform-origin: 50% 100%; transition: scale .4s cubic-bezier(.3, 1.6, .5, 1); }
+.scene-bt.boss .bt-brush { left: calc(var(--seat-x) + 16 * var(--u)); bottom: calc(3% + 54 * var(--u)); }
+.bt-rusty.taunt { animation: taunt .3s ease-out; }
+.bt-rusty.flinch { animation: flinch .2s ease-out; }
+.bt-rusty.brushed { animation: brushed .45s ease-out; }
+@keyframes brushed { 25% { transform: skewX(-8deg) scale(1.04, .96); } 60% { transform: skewX(4deg); } }
+.bt-rusty.shake { animation: wet-dog .1s linear 5; }
+.bt-rusty.shaking { animation: wet-dog .08s linear infinite; }
+@keyframes wet-dog { 25% { transform: rotate(-5deg) translateX(-2%); } 75% { transform: rotate(5deg) translateX(2%); } }
+.bt-rusty.tiny { scale: .42; }
+
+@container (min-aspect-ratio: 3 / 2) {
+  .bt-pole { left: 7%; height: calc(40 * var(--u)); }
+  .bt-sign { right: 7%; }
+  .ms-cut .rig.ms-cut-face { width: auto; height: 190%; top: 86%; }
+}
+/* A tall, narrow stage (a phone held upright): bigger Mookie, no barber pole. */
+@container (max-aspect-ratio: 4 / 5) {
+  .scene-bt { --u: min(1cqh, 1.2cqw); --seat-x: 56%; }
+  .bt-pole { display: none; }
+  .bt-sign { right: 3%; height: calc(24 * var(--u)); }
+  .bt-stylist { left: 2%; }
+  .bt-pile { left: calc(var(--seat-x) - 40 * var(--u)); }
+  .bt-brush { left: auto; right: -4%; }
+  .scene-bt.boss { --seat-x: 62%; }
+  .scene-bt.boss .bt-mookie { left: 1%; }
+  .scene-bt.boss .bt-stylist { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bt-glass, .rig .r-sparkles path, .bt-hat, .bt-onehair, .bt-rusty.shaking, .scene-bt.bt-quake .bt-cam { animation: none !important; }
+}
+
+.bt-fx .ms-comic { font-size: clamp(18px, 6.5cqw, 34px); }
+.bt-fx .ms-comic.big { font-size: clamp(24px, 8.5cqw, 58px); }
+.bt-fx .ms-comic.hit { font-size: clamp(20px, 7cqw, 40px); }

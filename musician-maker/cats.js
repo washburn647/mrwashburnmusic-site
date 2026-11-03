@@ -34,8 +34,9 @@ function rng(seed) {
 const f1 = (n) => n.toFixed(1);
 
 /* A furry outline: an egg with tufts that all sweep the same way. top/bottom widen or narrow
-   the upper and lower halves; flat cuts the bottom off at a floor line. */
-function fur(cx, cy, rx, ry, { tufts = 20, amp = 5, seed = 1, flat = null, top = 1, bottom = 1 } = {}) {
+   the upper and lower halves; flat cuts the bottom off at a floor line. Mookie's coat in
+   Brushing Time (rig.js) and Rusty's shed coat use it too. */
+export function fur(cx, cy, rx, ry, { tufts = 20, amp = 5, seed = 1, flat = null, top = 1, bottom = 1 } = {}) {
   const r = rng(seed);
   const n = tufts * 2;
   const pts = [];
