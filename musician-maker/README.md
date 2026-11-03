@@ -69,7 +69,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `effects.js`: feedback effects. Taps ripple and leave a tick on the beat lane, coloured by
   timing (on time, early or late); right answers burst confetti (stars when perfect) and fly
   the XP to the counter; misses wobble the stage; combo tiers send a shockwave and the band in.
-- `scene-mouse.js`: Mouse Catcher in full (Mookie sits right beside the hole, so her reach stays short): the room (pendulum clock on the beat, WANTED poster,
+- `scene-mouse.js`: Mouse Catcher in full (Mookie sits right beside the hole, so his reach stays short): the room (pendulum clock on the beat, WANTED poster,
   window, mouse hole), rigged Mookie's rubber-hose swipes, the win and miss gags, close-up
   cutaways, a party that grows with the combo, and The Big Cheese for the boss. Win and fail
   gags are picked at random (never the same twice running). Real photo props join in: the
@@ -81,10 +81,10 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   take turns game by game (`THEMES`: sunset diner, French bistro, 1950s atomic, farmhouse,
   space diner; wallpaper, tiles, counter, lamp, window sky and menu change together through
   CSS variables under `[data-theme]`). The counter stands against the back wall in the middle, behind the cats. Mookie
-  asleep in her basket with a snot bubble, and her supper in a 200-year-old Japanese gong bowl
+  asleep in his basket with a snot bubble, and his supper in a 200-year-old Japanese gong bowl
   with its beater. Chef Bastet (an Egyptian bronze cat in a chef's hat, googly eyes) sings the
   call; Bindi and Rusty tiptoe in from the left one step per note. Each tap rings
-  the bowl: the thieves freeze, Mookie stirs, the bubble shrinks. Wins: Mookie rockets to her
+  the bowl: the thieves freeze, Mookie stirs, the bubble shrinks. Wins: Mookie rockets to his
   bowl, a royal Sevres tureen lands with a fanfare, a porcelain hen tureen squawks the thieves
   away, a bronze lobster pinches Rusty. Misses: the masked heist, Bindi's yowl, Rusty flops on
   the bowl, the stone-fish swap. The boss is Rusty, The Big Fluff, on a silver tureen: each hit

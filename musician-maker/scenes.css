@@ -114,8 +114,8 @@
   background: repeating-radial-gradient(ellipse at center, #c46a5a 0 8px, #d9b26f 8px 14px, #5e7d4f 14px 18px); box-shadow: 0 4px 0 rgba(0, 0, 0, .15); transition: box-shadow .3s; }
 .ms-rug.glow { box-shadow: 0 0 24px rgba(255, 210, 120, .9); }
 .ms-cat { right: var(--cat-r); bottom: 6%; height: 46%; z-index: 2; }
-/* Mookie sits just left of the hole, so her arm never has to stretch across the room. The
-   hole is 7cqw from the right and 24cqh wide; she is about 41cqh wide. */
+/* Mookie sits just left of the hole, so his arm never has to stretch across the room. The
+   hole is 7cqw from the right and 24cqh wide; he is about 41cqh wide. */
 .scene-ms { --cat-r: min(calc(9cqw + 24cqh), calc(98cqw - 41cqh)); }
 
 .ms-fx { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
