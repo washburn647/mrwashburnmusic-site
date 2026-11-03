@@ -437,9 +437,14 @@ function spotify(d, el) {
 }
 
 // ---- drawing box ---------------------------------------------------------------
-// What's drawn stays for this sitting only, unless 💾 saves a copy to the device.
+// A board to draw on, and to put pictures on: 🔎 looks for see-through pictures
+// in a Google Images tab (SafeSearch on), and a copied picture comes back in by
+// pasting (Ctrl+V or 📋), or a picture file by dropping it. ✋ moves and sizes
+// pictures. It all lasts for this sitting only, unless 💾 saves a copy (PNG) to
+// the device. Nothing goes to the website.
 
-const drawn = new WeakMap();               // widget -> data URL
+const boards = new WeakMap();              // widget -> { ink: data URL, pics: [{ img, x, y, w, h }], look: data URL }
+const CW = 1600;                           // the board's width in canvas pixels
 
 function draw(d, el) {
   d.classList.add('wg-draw');
@@ -450,7 +455,8 @@ function draw(d, el) {
   face.append(h('span', 'wg-icon', ICONS.draw), h('span', 'wg-label', label(el)));
   d.append(preview, face);
   const paintPreview = () => {
-    const url = drawn.get(el);
+    const b = boards.get(el);
+    const url = b && b.look;
     preview.hidden = !url;
     face.hidden = !!url;
     if (url) preview.src = url;
@@ -459,52 +465,179 @@ function draw(d, el) {
   let p = null;
   d.addEventListener('click', () => {
     if (p) return;
-    p = panel(d, 'wg-panel-draw', (me) => {
-      drawn.set(el, canvas.toDataURL());
-      me.shade.remove();
-      p = null;
-      paintPreview();
-    });
-    // The canvas keeps the box's shape, as big as the screen allows.
-    const cw = 1600, ch = Math.round(1600 * el.h / el.w);
+    const cw = CW, ch = Math.round(CW * el.h / el.w);
+    const state = boards.get(el) || { ink: null, pics: [], look: null };
+    const k = Math.min(window.innerWidth * 0.92 / cw, (window.innerHeight * 0.92 - 64) / ch);
+    const board = h('div', 'wg-board');
+    Object.assign(board.style, { width: cw * k + 'px', height: ch * k + 'px', background: el.bg || '#FFFFFF' });
+    const layer = h('div', 'wg-pics');
     const canvas = h('canvas', 'wg-canvas');
     canvas.width = cw;
     canvas.height = ch;
-    const k = Math.min(window.innerWidth * 0.92 / cw, (window.innerHeight * 0.92 - 64) / ch);
-    canvas.style.width = cw * k + 'px';
-    canvas.style.height = ch * k + 'px';
-    canvas.style.background = el.bg || '#FFFFFF';
+    board.append(layer, canvas);
     const g = canvas.getContext('2d');
-    const had = drawn.get(el);
-    if (had) { const img = new Image(); img.onload = () => g.drawImage(img, 0, 0); img.src = had; }
-    let pen = INK[0], erase = false;
-    const tools = h('div', 'wg-drawbar');
-    const pick = (b) => tools.querySelectorAll('.ink, .wg-erase').forEach((x) => x.classList.toggle('on', x === b));
-    INK.forEach((c, i) => {
-      const b = h('button', 'ink' + (i === 0 ? ' on' : ''));
-      b.style.background = c;
-      b.title = 'Pen';
-      b.addEventListener('click', () => { pen = c; erase = false; pick(b); });
-      tools.append(b);
-    });
-    const rub = h('button', 'wg-erase', '⌫');
-    rub.title = 'Eraser';
-    rub.addEventListener('click', () => { erase = true; pick(rub); });
-    const wipe = h('button', 'wg-wipe', '🗑');
-    wipe.title = 'Clear';
-    wipe.addEventListener('click', () => g.clearRect(0, 0, cw, ch));
-    const keep = h('button', 'wg-save', '💾');
-    keep.title = 'Save a copy';
-    keep.addEventListener('click', () => {
-      // A PNG to this device's downloads, on the box's background.
+    if (state.ink) { const img = new Image(); img.onload = () => g.drawImage(img, 0, 0); img.src = state.ink; }
+
+    // Everything on the board as one picture.
+    const flat = () => {
       const out = h('canvas');
       out.width = cw;
       out.height = ch;
       const o = out.getContext('2d');
       o.fillStyle = el.bg || '#FFFFFF';
       o.fillRect(0, 0, cw, ch);
+      for (const q of state.pics) if (q.img.complete) o.drawImage(q.img, q.x, q.y, q.w, q.h);
       o.drawImage(canvas, 0, 0);
-      out.toBlob((blob) => {
+      return out;
+    };
+
+    p = panel(d, 'wg-panel-draw', (me) => {
+      window.removeEventListener('paste', onPaste, true);
+      state.ink = canvas.toDataURL();
+      state.look = state.pics.length || !blank(g, cw, ch) ? flat().toDataURL('image/jpeg', 0.8) : null;
+      boards.set(el, state);
+      me.shade.remove();
+      p = null;
+      paintPreview();
+    });
+
+    // ---- pictures: placed, moved and sized in board pixels
+    let chosen = null;
+    const place = (q) => {
+      Object.assign(q.node.style, { left: q.x * k + 'px', top: q.y * k + 'px', width: q.w * k + 'px', height: q.h * k + 'px' });
+    };
+    const choose = (q) => {
+      chosen = q;
+      for (const x of state.pics) x.node.classList.toggle('on', x === q);
+    };
+    const showPic = (q) => {
+      const node = h('div', 'wg-pic');
+      const grip = h('div', 'wg-grip');
+      const drop = h('button', 'wg-drop', '✕');
+      drop.title = 'Take off';
+      node.append(q.img, grip, drop);
+      q.node = node;
+      layer.append(node);
+      place(q);
+      drop.addEventListener('pointerdown', (e) => e.stopPropagation());
+      drop.addEventListener('click', () => {
+        state.pics.splice(state.pics.indexOf(q), 1);
+        node.remove();
+        if (chosen === q) chosen = null;
+      });
+      node.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        choose(q);
+        const sizing = e.target === grip;
+        const x0 = e.clientX, y0 = e.clientY, start = { ...q };
+        node.setPointerCapture(e.pointerId);
+        const move = (ev) => {
+          const dx = (ev.clientX - x0) / k, dy = (ev.clientY - y0) / k;
+          if (sizing) {
+            const s = Math.max(40 / start.w, (start.w + Math.max(dx, dy * start.w / start.h)) / start.w);
+            q.w = start.w * s;
+            q.h = start.h * s;
+          } else {
+            q.x = start.x + dx;
+            q.y = start.y + dy;
+          }
+          place(q);
+        };
+        const up = () => {
+          node.removeEventListener('pointermove', move);
+          node.removeEventListener('pointerup', up);
+          node.removeEventListener('pointercancel', up);
+        };
+        node.addEventListener('pointermove', move);
+        node.addEventListener('pointerup', up);
+        node.addEventListener('pointercancel', up);
+      });
+    };
+    const addPicture = (blob) => {
+      if (!blob || !/^image\//.test(blob.type)) return;
+      const img = new Image();
+      img.draggable = false;
+      img.alt = '';
+      img.onload = () => {
+        const s = Math.min(1, cw * 0.4 / img.naturalWidth, ch * 0.6 / img.naturalHeight);
+        const w = img.naturalWidth * s, hh = img.naturalHeight * s;
+        const q = { img, x: (cw - w) / 2, y: (ch - hh) / 2, w, h: hh };
+        state.pics.push(q);
+        showPic(q);
+        setMode('move');
+        choose(q);
+      };
+      img.src = URL.createObjectURL(blob);
+    };
+    state.pics.forEach(showPic);
+    const onPaste = (e) => {
+      const items = [...((e.clipboardData && e.clipboardData.items) || [])].filter((i) => /^image\//.test(i.type));
+      if (!items.length) return;
+      e.preventDefault();
+      for (const i of items) addPicture(i.getAsFile());
+    };
+    window.addEventListener('paste', onPaste, true);
+    board.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+    board.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      for (const f of (e.dataTransfer && e.dataTransfer.files) || []) addPicture(f);
+    });
+
+    // ---- tools
+    let pen = INK[0], mode = 'pen';
+    const tools = h('div', 'wg-drawbar');
+    let handBtn = null;
+    const setMode = (m, b) => {
+      mode = m;
+      board.classList.toggle('moving', m === 'move');
+      if (m !== 'move') choose(null);
+      const on = b || (m === 'move' ? handBtn : null);
+      tools.querySelectorAll('.ink, .wg-erase, .wg-hand').forEach((x) => x.classList.toggle('on', x === on));
+    };
+    const tool = (cls, text, title, fn) => {
+      const b = h('button', cls, text);
+      b.title = title;
+      b.addEventListener('click', () => fn(b));
+      tools.append(b);
+      return b;
+    };
+    INK.forEach((c, i) => {
+      const b = tool('ink' + (i === 0 ? ' on' : ''), '', 'Pen', (me) => { pen = c; setMode('pen', me); });
+      b.style.background = c;
+    });
+    tool('wg-erase', '⌫', 'Eraser', (b) => setMode('erase', b));
+    handBtn = tool('wg-hand', '✋', 'Move pictures', (b) => setMode('move', b));
+    tool('wg-wipe', '🗑', 'Clear', () => {
+      g.clearRect(0, 0, cw, ch);
+      state.pics.forEach((q) => q.node.remove());
+      state.pics.length = 0;
+      chosen = null;
+    });
+    const find = h('input', 'wg-find');
+    find.type = 'search';
+    find.placeholder = 'Picture of…';
+    find.hidden = true;
+    find.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { find.hidden = true; return; }
+      if (e.key !== 'Enter' || !find.value.trim()) return;
+      // See-through pictures only, SafeSearch on. Copy one there, paste it here.
+      window.open('https://www.google.com/search?udm=2&safe=active&tbs=ic:trans&q=' +
+        encodeURIComponent(find.value.trim()), '_blank', 'noopener');
+      find.hidden = true;
+    });
+    tool('wg-search', '🔎', 'Find a picture', () => { find.hidden = !find.hidden; if (!find.hidden) find.focus(); });
+    tools.append(find);
+    tool('wg-paste', '📋', 'Paste a picture', async () => {
+      try {
+        for (const item of await navigator.clipboard.read()) {
+          const type = item.types.find((t) => /^image\//.test(t));
+          if (type) { addPicture(await item.getType(type)); return; }
+        }
+      } catch (e) { /* nothing to paste, or not allowed */ }
+    });
+    tool('wg-save', '💾', 'Save a copy', () => {
+      flat().toBlob((blob) => {
         if (!blob) return;
         const a = h('a');
         a.href = URL.createObjectURL(blob);
@@ -515,12 +648,13 @@ function draw(d, el) {
         setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       }, 'image/png');
     });
-    tools.append(rub, wipe, keep);
-    p.box.append(canvas, tools);
+    p.box.append(board, tools);
 
     canvas.addEventListener('pointerdown', (e) => {
+      if (mode === 'move') return;
       const r = canvas.getBoundingClientRect();
       const at = (ev) => [(ev.clientX - r.left) * cw / r.width, (ev.clientY - r.top) * ch / r.height];
+      const erase = mode === 'erase';
       g.strokeStyle = pen;
       g.lineWidth = erase ? 60 : 10;
       g.lineCap = g.lineJoin = 'round';
@@ -543,6 +677,13 @@ function draw(d, el) {
     });
   });
   every(d, 500, () => {}, () => { if (p) p.close(); });
+}
+
+/** True when nothing has been drawn. */
+function blank(g, w, h) {
+  const px = g.getImageData(0, 0, w, h).data;
+  for (let i = 3; i < px.length; i += 64) if (px[i]) return false;
+  return true;
 }
 
 function sound(d, el, opts) {

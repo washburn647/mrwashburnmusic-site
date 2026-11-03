@@ -72,7 +72,10 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   it. Elsewhere they draw as labels. Video, Spotify and the drawing box sit on the slide as a
   small titled box (`name`) and open big over the slide when tapped, outside the slide's scaling
   so they stay sharp: video starts playing, Spotify shows its player (closing tucks it away still
-  playing; the box's ■ stops it), the drawing box gives a canvas with pens, eraser and clear.
+  playing; the box's ■ stops it), the drawing box gives a canvas with pens, eraser and clear,
+  and takes pictures: 🔎 opens a Google Images tab for see-through pictures (SafeSearch on);
+  a copied picture pastes in (Ctrl+V or 📋), a picture file drops in, and ✋ moves and sizes
+  them (✕ takes one off). Pictures stay under the ink and are never saved to the deck.
   Escape closes an open one; leaving the slide closes it. Drawings last for the sitting only,
   unless 💾 saves a PNG to the device's downloads. The spinner's class lists live only in this browser's localStorage
   (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
