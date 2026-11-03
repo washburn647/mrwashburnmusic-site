@@ -203,6 +203,7 @@ function micCheck() {
   const box = h('div', { class: 'miccheck' },
     h('button', { class: 'mini', onclick: async () => {
       try {
+        mic.setEcho(st.echo !== false);
         if (!holding) await mic.start(snd.ac());
         holding = true;
         heard.textContent = 'Say "du du-de du du"…';
@@ -276,6 +277,8 @@ function progress() {
     h('p', { class: 'note' }, 'Master a step to open the next one. The music picks what you play.'),
     h('div', { class: 'testbox' },
       h('label', {}, 'Test mode (for Kyle): drill any step', seg({ off: 'Off', on: 'On' }, st.test ? 'on' : 'off', (v) => { st.test = v === 'on'; save(); progress(); })),
+      st.test ? h('label', {}, 'Record the mic in runs (saves a file for Claude)', seg({ off: 'Off', on: 'On' }, st.recMic ? 'on' : 'off', (v) => { st.recMic = v === 'on'; save(); })) : null,
+      st.test ? h('label', {}, 'Mic echo cancelling', seg({ on: 'On', off: 'Off' }, st.echo === false ? 'off' : 'on', (v) => { st.echo = v === 'on'; save(); })) : null,
       st.test ? h('button', { class: 'mini', onclick: lab }, 'Transitions lab') : null,
       st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); dir = makeDirector(st); progress(); } }, 'Reset all progress') : null),
     sheet));
@@ -450,8 +453,11 @@ async function startRun(opts = {}) {
   let micOn = false;
   let micError = '';
   if (st.input === 'mic') {
+    mic.setEcho(st.echo !== false);
     try { await mic.start(ctx); micOn = true; } catch (e) { micError = `${micProblem(e)} Tapping still works.`; }
   }
+  const recording = micOn && st.test && st.recMic;
+  if (recording) mic.recordStart();
   R = {
     ctx, clock: makeClock(ctx), force: opts.force || TEST?.step || null, lap: 0, plan: [], idx: 0,
     combo: 0, runCombo: 0, runXP: 0, setXP: 0, setMisses: 0, setGames: 0, tempo: LADDER()[0],
@@ -459,6 +465,7 @@ async function startRun(opts = {}) {
     groove: { mode: 'play', duckFrom: 0, duckUntil: 0, micFrom: Infinity },
     before: Object.fromEntries(STEPS.slice(1).map((s) => [s.n, dir.step(s.n).s])),
     news: micError ? [micError] : [],
+    log: recording ? [] : null, // Test mode: every turn, saved with the mic recording
   };
   if (TEST) R.news.push('Workshop test: progress isn\'t saved');
   else if (st.lastDay !== today()) {
@@ -936,6 +943,16 @@ function controlsFor(item, game, q, win) {
 }
 
 function grade(item, q, win) {
+  const res = gradeTurn(item, q, win);
+  R.log?.push({
+    step: item.step, mode: item.mode, cells: item.pattern.cells, bpm: R.tempo,
+    tResp: win.tResp, spb: win.spb, from: win.from, to: win.to,
+    inputs: win.taps.slice(), right: res.right, why: res.why || '',
+  });
+  return res;
+}
+
+function gradeTurn(item, q, win) {
   const p = item.pattern;
   if (item.mode === 'perform') {
     const expected = onsets(p).map((o) => win.tResp + o.b * win.spb);
@@ -1208,12 +1225,51 @@ function endRun() {
   R.ended = true;
   R.clock.stop();
   snd.grooveStop();
-  mic.stop();
+  if (R.log) saveRecording(R.log, R.ctx);
+  else mic.stop();
   document.onkeydown = null;
   R = null;
   save();
   if (TEST) testTitle();
   else title();
+}
+
+/* Test mode: the run's mic recording as a .wav file, with every turn (beat times, pattern,
+   what was counted) in a JSON chunk inside it, so the two stay together. It only goes
+   where the learner saves it. */
+async function saveRecording(log, ctx) {
+  const r = await mic.recordStop();
+  mic.stop();
+  if (!r) return;
+  const step = r.rate > 30000 ? 2 : 1; // 48 kHz → 24 kHz is plenty for speech
+  const n = Math.floor(r.samples.length / step);
+  const pcm = new Int16Array(n);
+  for (let i = 0; i < n; i++) {
+    let v = 0;
+    for (let k = 0; k < step; k++) v += r.samples[i * step + k];
+    pcm[i] = Math.max(-32768, Math.min(32767, Math.round((v / step) * 32767)));
+  }
+  const info = new TextEncoder().encode(JSON.stringify({
+    v: 1, rate: r.rate / step, t0: r.t0, onsets: r.onsets, turns: log,
+    outputLatency: snd.latency(), inputLag: mic.inputLag(), echo: st.echo !== false,
+    sampleRate: ctx.sampleRate, settings: r.settings, ua: navigator.userAgent,
+  }));
+  const pad = info.length % 2;
+  const size = 4 + (8 + 16) + (8 + info.length + pad) + (8 + pcm.byteLength);
+  const buf = new ArrayBuffer(8 + size);
+  const dv = new DataView(buf);
+  let o = 0;
+  const tag = (s) => { for (let i = 0; i < 4; i++) dv.setUint8(o++, s.charCodeAt(i)); };
+  const u32 = (x) => { dv.setUint32(o, x, true); o += 4; };
+  const u16 = (x) => { dv.setUint16(o, x, true); o += 2; };
+  tag('RIFF'); u32(size); tag('WAVE');
+  tag('fmt '); u32(16); u16(1); u16(1); u32(r.rate / step); u32(r.rate / step * 2); u16(2); u16(16);
+  tag('mmlg'); u32(info.length); new Uint8Array(buf, o, info.length).set(info); o += info.length + pad;
+  tag('data'); u32(pcm.byteLength); new Int16Array(buf, o, n).set(pcm);
+  const a = h('a', { href: URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })), download: `musician-maker-mic-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.wav` });
+  document.body.append(a);
+  a.click();
+  a.remove();
 }
 
 /* The start of a workshop test run: what's being tested, Play, and the way back. */
