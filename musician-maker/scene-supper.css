@@ -29,8 +29,9 @@
 .rig .m-chew { animation: chew .16s steps(2) infinite; }
 
 /* ---------- the kitchen ---------- */
-/* --u is 1% of the stage height, or less on a tall narrow stage, so the room still fits across. */
-.scene-sp { container-type: size; background: #f5e3b3; overflow: hidden; --bowl-x: 47%; --u: min(1cqh, .9cqw); }
+/* isolation keeps the scene's layers under the big instruction that pops up over the stage.
+   --u is 1% of the stage height, or less on a tall narrow stage, so the room still fits across. */
+.scene-sp { container-type: size; background: #f5e3b3; overflow: hidden; isolation: isolate; --bowl-x: 47%; --u: min(1cqh, .9cqw); }
 .sp-cam { position: absolute; inset: 0; }
 .sp-wall { position: absolute; inset: 0 0 30% 0;
   background:
@@ -39,19 +40,19 @@
     repeating-linear-gradient(90deg, transparent 0 18px, rgba(255, 255, 255, .45) 18px 21px, transparent 21px 40px),
     linear-gradient(180deg, #f8e7b4, #efd38f); }
 .sp-wall::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 9%;
-  background: repeating-linear-gradient(90deg, #fffaf0 0 22px, #e7dcc4 22px 24px); border-top: 3px solid #d8c8a4; }
+  background: repeating-linear-gradient(90deg, var(--wain-a, #fffaf0) 0 22px, var(--wain-b, #e7dcc4) 22px 24px); border-top: 3px solid var(--wain-line, #d8c8a4); }
 .sp-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; overflow: hidden; background: #2f6f6b; }
 .sp-floor::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .25), transparent 35%); pointer-events: none; }
 .sp-checks { position: absolute; left: -45%; right: -45%; top: 0; height: 190%; display: grid;
   grid-template-columns: repeat(13, 1fr); grid-template-rows: repeat(5, 1fr);
   transform-origin: 50% 0; transform: perspective(300px) rotateX(52deg); }
-.sp-checks i { background: #f1e8d4; transition: background .12s; }
-.sp-checks i:nth-child(2n) { background: #3f8f8a; }
+.sp-checks i { background: var(--tile-a, #f1e8d4); transition: background .12s; }
+.sp-checks i:nth-child(2n) { background: var(--tile-b, #3f8f8a); }
 .scene-sp[data-tier="4"] .sp-checks i.lit:nth-child(3n) { background: #ffd84a; }
 .scene-sp[data-tier="4"] .sp-checks i.lit:nth-child(3n+1) { background: #ff8fa3; }
 .scene-sp[data-tier="4"] .sp-checks i.lit:nth-child(3n+2) { background: #9b7bff; }
 .sp-base { position: absolute; left: 0; right: 0; bottom: 30%; height: 10px; transform: translateY(100%);
-  background: linear-gradient(180deg, #fdf4e0, #d9c39a); box-shadow: 0 2px 0 rgba(0, 0, 0, .12); }
+  background: linear-gradient(180deg, var(--base-a, #fdf4e0), var(--base-b, #d9c39a)); box-shadow: 0 2px 0 rgba(0, 0, 0, .12); }
 
 .sp-window { position: absolute; left: 4%; top: 7%; height: calc(27 * var(--u)); aspect-ratio: 100 / 110; }
 .sp-window svg, .sp-menu svg, .sp-lamp svg, .sp-counter svg, .sp-pot svg, .sp-bed svg, .sp-toque svg { width: 100%; height: 100%; display: block; overflow: visible; }
@@ -88,7 +89,8 @@
 .sp-lights i.r { background: conic-gradient(from 172deg at 90% 0, transparent 0deg, rgba(255, 143, 163, .5) 10deg, transparent 28deg); }
 
 /* The counter, the pot on it, and Chef Bastet behind it. */
-.sp-counter { position: absolute; left: 0; bottom: 3%; height: calc(59 * var(--u)); width: calc(30 * var(--u)); z-index: 3; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, .12)); }
+/* The counter stands at the back (z-index 0), so the cats walk in front of it and stay in view. */
+.sp-counter { position: absolute; left: 0; bottom: 3%; height: calc(59 * var(--u)); width: calc(30 * var(--u)); z-index: 0; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, .12)); }
 .sp-pot { position: absolute; right: 4%; bottom: 99%; width: 42%; aspect-ratio: 80 / 70; }
 .sp-lid { transform-box: fill-box; transform-origin: 50% 100%; }
 .sp-pot.rattle .sp-lid { animation: lid .22s ease-out; }
@@ -102,7 +104,7 @@
 .sp-steam.puff i:nth-child(2) { animation-delay: .1s; } .sp-steam.puff i:nth-child(3) { animation-delay: .2s; }
 @keyframes steam { 0% { opacity: .9; transform: translateY(0) scale(.5); } 100% { opacity: 0; transform: translateY(-160%) scale(1.6); } }
 
-.sp-chef-mask { position: absolute; left: var(--u); bottom: calc(3% + 59 * var(--u)); height: calc(38 * var(--u)); width: calc(17 * var(--u)); overflow: hidden; z-index: 2; }
+.sp-chef-mask { position: absolute; left: var(--u); bottom: calc(3% + 59 * var(--u)); height: calc(38 * var(--u)); width: calc(17 * var(--u)); overflow: hidden; z-index: 0; }
 .sp-chef { position: absolute; left: 22%; bottom: -1%; height: 70%; aspect-ratio: 141 / 320; transform: translateY(140%); transition: transform .2s cubic-bezier(.2, 1.5, .5, 1); }
 .sp-chef.up { transform: translateY(0); }
 .sp-chef .c-in { position: absolute; inset: 0; transform-origin: 50% 100%; }
@@ -251,3 +253,77 @@
 .sp-fx .ms-comic { font-size: clamp(18px, 6.5cqw, 34px); }
 .sp-fx .ms-comic.big { font-size: clamp(24px, 8.5cqw, 58px); }
 .sp-fx .ms-comic.hit { font-size: clamp(20px, 7cqw, 40px); }
+
+/* ---------- five kitchens (THEMES in scene-supper.js), one per game in turn ---------- */
+.sp-counter .ct-body { fill: var(--ct-body, #e9dcc0); }
+.sp-counter .ct-top { fill: var(--ct-top, #c9b79a); stroke: var(--ct-top-line, #9c8a6c); }
+.sp-counter .ct-door { fill: var(--ct-door, #f5ecd8); stroke: var(--ct-door-line, #bfae8c); }
+.sp-counter .ct-knob { fill: var(--ct-knob, #b07a3a); }
+.sp-menu .mb-frame { fill: var(--mb-frame, #8a5a32); }
+.sp-menu .mb-board { fill: var(--mb-board, #2f3b33); }
+.sp-menu .mb-ink { fill: var(--mb-ink, #f4efe4); }
+.sp-menu .mb-line { stroke: var(--mb-ink, #f4efe4); }
+.sp-menu .mb-chalk { fill: var(--mb-chalk, #f4efe4); }
+.sp-lamp .sp-shade { fill: var(--shade, #e05a4f); stroke: var(--shade-line, #a83f36); }
+.sp-window stop:nth-child(1) { stop-color: var(--sky1, #5a4a8a); } .sp-window stop:nth-child(2) { stop-color: var(--sky2, #e2768a); }
+.sp-window stop:nth-child(3) { stop-color: var(--sky3, #f6b25e); } .sp-window stop:nth-child(4) { stop-color: var(--sky4, #ffd98a); }
+.sp-window .sp-sun { fill: var(--sun, #fff1b8); }
+.sp-window path[fill="#6b4a6e"] { fill: var(--hill1, #6b4a6e); } .sp-window path[fill="#4e3657"] { fill: var(--hill2, #4e3657); }
+.sp-window path[fill="#e8bd3f"] { fill: var(--curt, #e8bd3f); } .sp-window path[stroke="#d9a62c"] { stroke: var(--curt-line, #d9a62c); }
+.sp-window path[stroke="#b5562f"] { stroke: var(--rod, #b5562f); }
+
+/* Bistro: green damask trellis, black and white marble floor, a gilt menu in French. */
+.scene-sp[data-theme="bistro"] { background: #2f5d4a;
+  --tile-a: #f2efe6; --tile-b: #3b4a45; --wain-a: #6b4428; --wain-b: #4a2d18; --wain-line: #c9a043; --base-a: #8a5a36; --base-b: #4a2d18;
+  --ct-body: #6b4428; --ct-top: #ece8df; --ct-top-line: #b8b2a6; --ct-door: #7d5434; --ct-door-line: #4a2d18; --ct-knob: #d9b04e;
+  --mb-frame: #c9a043; --mb-board: #18181c; --mb-ink: #f6e7b8; --mb-chalk: #f6e7b8; --shade: #2f7a52; --shade-line: #1d4d33;
+  --sky1: #2b3a6b; --sky2: #8d5b8f; --sky3: #e99a7a; --sky4: #f6cf9a; --hill1: #3d3b5e; --hill2: #2a2944; --curt: #8e2b3a; --curt-line: #6a1e2a; --rod: #c9a043; }
+.scene-sp[data-theme="bistro"] .sp-wall { background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 230, 160, .35), transparent 62%),
+    radial-gradient(circle, rgba(232, 196, 100, .55) 2px, transparent 2.6px) 0 0 / 36px 36px,
+    repeating-linear-gradient(45deg, transparent 0 24px, rgba(232, 196, 100, .28) 24px 25.5px),
+    repeating-linear-gradient(-45deg, transparent 0 24px, rgba(232, 196, 100, .28) 24px 25.5px),
+    linear-gradient(180deg, #2f5d4a, #22473a); }
+
+/* Atomic: 1950s pink with turquoise starbursts, cherry-red checks, a diner sign. */
+.scene-sp[data-theme="atomic"] { background: #f7c6cf;
+  --tile-a: #fbf6ee; --tile-b: #d83a3a; --wain-a: #5cc6c0; --wain-b: #3fa7a1; --wain-line: #e8eef0; --base-a: #f2f5f7; --base-b: #aab3bb;
+  --ct-body: #a8e0d2; --ct-top: #dfe3e8; --ct-top-line: #9aa3ad; --ct-door: #cdf2e8; --ct-door-line: #7cc4b4; --ct-knob: #d83a3a;
+  --mb-frame: #d83a3a; --mb-board: #fff6e0; --mb-ink: #c42f2f; --mb-chalk: #5cc6c0; --shade: #3fb6b0; --shade-line: #23807b;
+  --sky1: #3d8fe0; --sky2: #7cc0f2; --sky3: #bfe6ff; --sky4: #e8f7ff; --sun: #ffe45c; --hill1: #6cbf6a; --hill2: #4b9a4e; --curt: #fbf6ee; --curt-line: #d83a3a; --rod: #d83a3a; }
+.scene-sp[data-theme="atomic"] .sp-wall { background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 255, 255, .5), transparent 62%),
+    conic-gradient(from 0deg at 50% 50%, transparent 0 20deg, rgba(40, 150, 145, .3) 20deg 25deg, transparent 25deg 65deg, rgba(40, 150, 145, .3) 65deg 70deg, transparent 70deg 110deg, rgba(40, 150, 145, .3) 110deg 115deg, transparent 115deg 155deg, rgba(40, 150, 145, .3) 155deg 160deg, transparent 160deg 200deg, rgba(40, 150, 145, .3) 200deg 205deg, transparent 205deg 245deg, rgba(40, 150, 145, .3) 245deg 250deg, transparent 250deg 290deg, rgba(40, 150, 145, .3) 290deg 295deg, transparent 295deg 335deg, rgba(40, 150, 145, .3) 335deg 340deg, transparent 340deg) 0 0 / 70px 70px,
+    radial-gradient(circle at 50% 50%, #f7c6cf 20px, transparent 21px) 0 0 / 70px 70px,
+    radial-gradient(circle, rgba(216, 58, 58, .55) 3px, transparent 3.6px) 35px 35px / 70px 70px,
+    radial-gradient(ellipse 9px 4px, rgba(30, 30, 40, .35) 90%, transparent) 12px 50px / 70px 70px,
+    linear-gradient(180deg, #f9d0d8, #f2b3bf); }
+
+/* Farmhouse: blue gingham, terracotta tiles, a carved wooden board. */
+.scene-sp[data-theme="farm"] { background: #fbf8f0;
+  --tile-a: #e9b98e; --tile-b: #c4613a; --wain-a: #fbf8f0; --wain-b: #d9d2c2; --wain-line: #b9ae98; --base-a: #d9a96c; --base-b: #9a6a3a;
+  --ct-body: #9db08a; --ct-top: #cf9d5c; --ct-top-line: #94683a; --ct-door: #b7c8a4; --ct-door-line: #7a8d68; --ct-knob: #3a3a3a;
+  --mb-frame: #7a5230; --mb-board: #d8b27c; --mb-ink: #4a2e18; --mb-chalk: #7a5230; --shade: #f2ead8; --shade-line: #b8ab90;
+  --sky1: #8fc3ea; --sky2: #bfe0f2; --sky3: #f4ecc0; --sky4: #fff6d8; --sun: #fff3a8; --hill1: #7fae5a; --hill2: #5d8f3e; --curt: #e05a4f; --curt-line: #b5433a; --rod: #7a5230; }
+.scene-sp[data-theme="farm"] .sp-wall { background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 250, 225, .6), transparent 62%),
+    repeating-linear-gradient(0deg, rgba(80, 125, 200, .28) 0 14px, transparent 14px 28px),
+    repeating-linear-gradient(90deg, rgba(80, 125, 200, .28) 0 14px, transparent 14px 28px),
+    #fbf8f0; }
+
+/* Space diner: midnight wallpaper full of stars, purple checks, a glowing menu. */
+.scene-sp[data-theme="space"] { background: #1c1f4a;
+  --tile-a: #2e2c5c; --tile-b: #7a5be0; --wain-a: #a6b0c6; --wain-b: #6f7a93; --wain-line: #4fe3ff; --base-a: #c9d1de; --base-b: #6f7a93;
+  --ct-body: #c2cad8; --ct-top: #7a86a0; --ct-top-line: #4fe3ff; --ct-door: #e3e8f0; --ct-door-line: #8a96ae; --ct-knob: #4fe3ff;
+  --mb-frame: #4fe3ff; --mb-board: #0d1030; --mb-ink: #8ffbff; --mb-chalk: #ff7ad9; --shade: #b9c3d6; --shade-line: #6f7a93;
+  --sky1: #07071f; --sky2: #1e1650; --sky3: #4a2a7a; --sky4: #8a4a9a; --sun: #f4f1ff; --hill1: #2a2350; --hill2: #17132f; --curt: #7b5cff; --curt-line: #5338d0; --rod: #4fe3ff; }
+.scene-sp[data-theme="space"] .sp-wall { background:
+    radial-gradient(ellipse at 50% 18%, rgba(140, 120, 255, .35), transparent 62%),
+    radial-gradient(circle, #fff 1.2px, transparent 1.8px) 0 0 / 47px 53px,
+    radial-gradient(circle, rgba(255, 255, 255, .7) 1px, transparent 1.6px) 19px 31px / 61px 43px,
+    radial-gradient(circle, rgba(143, 251, 255, .9) 1.6px, transparent 2.4px) 33px 7px / 89px 71px,
+    radial-gradient(circle at 30% 30%, #ffb35c 6px, #d9743a 9px, transparent 9.5px) 60px 20px / 260px 190px,
+    linear-gradient(180deg, #14163a, #262a66); }
+.scene-sp[data-theme="space"] .sp-menu { filter: drop-shadow(0 0 6px rgba(79, 227, 255, .7)); }
+.scene-sp[data-theme="space"] .sp-cone { filter: hue-rotate(160deg); }
+.scene-sp[data-theme="space"] .sp-floor::after { background: linear-gradient(180deg, rgba(0, 0, 0, .45), transparent 45%); }
