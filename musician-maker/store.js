@@ -15,6 +15,7 @@ const DEFAULTS = {
   feat: {}, // pattern feature: strength
   stickers: [],
   seen: {}, // step-mode: 1 once that kind of game has been played (its instruction stops saying NEW)
+  intro: {}, // step-mode: 1 once its skill intro has been shown (intro.js)
   test: false,
   recMic: false, // Test mode: record the mic in runs, saved as a file for Claude
   echo: true, // the mic's echo cancelling (Test mode can turn it off)

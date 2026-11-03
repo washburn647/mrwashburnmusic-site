@@ -715,3 +715,25 @@ a.back { display: grid; place-items: center; text-decoration: none; color: inher
 .test-title { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .test-title .back { align-self: flex-start; }
 .test-title p { margin: 0; }
+
+/* ---------- skill intro (intro.js) ---------- */
+.card.intro { max-width: 520px; max-height: calc(100dvh - 32px); overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.card.intro .tag { background: var(--rose); color: var(--paper); font-size: 13px; padding: 2px 10px; border-radius: 999px; }
+.intro-lines { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 18px; }
+.intro-media { width: 100%; max-height: 260px; border-radius: 14px; background: #000; }
+audio.intro-media { background: none; }
+.intro-try { width: 100%; display: grid; gap: 10px; background: var(--cream); border-radius: 18px; padding: 12px; }
+.intro-shown:empty, .intro-area:empty { display: none; }
+.intro-shown .notation { max-width: 260px; margin: 0 auto; }
+.intro-pad { min-height: 96px; width: 100%; background: var(--paper); border-radius: 18px; box-shadow: 0 4px 0 rgba(47, 74, 58, .18); display: grid; place-items: center; align-content: center; }
+.intro-pad b { font-size: 28px; }
+.intro-slots .slot { min-height: 72px; }
+.intro-area { display: grid; gap: 8px; justify-items: center; }
+.intro-area .opts, .intro-area .slots { width: 100%; }
+.intro-said { min-height: 1.4em; font-weight: 600; margin: 0; }
+.intro-said.right { color: var(--moss); }
+.intro-said.wrong { color: var(--rose); }
+.card.intro .row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+.card.intro .play:disabled { opacity: .45; }
+.card.intro .mini { font-size: 16px; padding: 8px 16px; }
+.intro-preview { display: grid; place-items: center; padding-top: 8px; }

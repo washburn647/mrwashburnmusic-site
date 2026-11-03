@@ -58,6 +58,14 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   `start=boss`, `pace=mookie`, `groove`) plays only that game, with the drafts, and saves nothing.
 - `gags.js`: picks a game's win and fail gags from the ones that are on. Each game lists its gags
   with names (`gags`), and `win(gag)` / `fail(gag)` can force one (the workshop's Try it).
+- `intro.js`: skill intros. The first time a kind of game comes up (step and answer mode), the
+  stream stops for a pop-up: a title, what to do, Kyle's recorded message when there is one
+  (audio or video in `intros/`), and a slow practice try with no score. "Let's play" counts back
+  in to that game. Written intros go in `INTROS`; any skill without one uses its step's lines.
+  Seen ones are kept in `st.intro`. The workshop previews each one (`?intro=<step>-<mode>`), and
+  a test run can show them all again (`intros=all`).
+- `speech.js`: the call in syllables, built up in one speech bubble a syllable at a time and left
+  up a moment so the whole pattern shows. Every game's singer uses it.
 - `clock.js`: the beat clock everything is scheduled on.
 - `mic.js`, `mic-worklet.js`: syllable onsets from the mic, found on the audio thread, analysed
   live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.

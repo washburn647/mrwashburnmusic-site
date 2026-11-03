@@ -299,3 +299,9 @@
 .ms-mouse.pmouse { left: 16%; width: 68%; bottom: -2%; }
 .ms-mouse.pmouse.peek { animation: peek3 .42s cubic-bezier(.2, 1.6, .5, 1); }
 @keyframes peek3 { 0% { transform: translateY(105%); } 35%, 70% { transform: translateY(0); } 100% { transform: translateY(105%); } }
+/* The call in syllables, built up one at a time in one bubble (speech.js). */
+.ms-bubble.call-bubble { animation: cb-in .2s ease-out; font-size: 19px; padding: 4px 14px; z-index: 3; transition: opacity .3s; }
+.ms-bubble.call-bubble.out { opacity: 0; }
+.cb-syl { display: inline-block; white-space: pre; animation: cb-syl .25s ease-out; }
+@keyframes cb-in { from { opacity: 0; transform: translate(-50%, -80%) scale(.6); } }
+@keyframes cb-syl { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); } }
