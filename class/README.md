@@ -15,9 +15,13 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only
   the slides it touches. Slide links follow their slide when slides move. Saves as it goes.
 - `ui.js`: helpers the pages share (thumbnails, picture URLs).
-- `menus.js`: builds a grade's menu on demand: the icon of every song for that grade, each one
-  jumping to its song, in the look of the deck's own menu slides. The deck page's grade chips
-  (All, PK, K, 1) filter the slides, Present skips other grades, and Menu opens the built menu.
+- `menus.js`: builds a grade's menu on demand: the icon of every song for that grade or an
+  earlier one (a 1st grade menu has the PK and K songs too), once per song, as big as the page
+  allows, in the look of the deck's own menu slides with the title shrunk to fit its box. The
+  deck page's grade chips (All, PK, K, 1) filter the slides, Present skips other grades, and Menu
+  opens the built menu. Songs this grade hasn't reached yet are locked (`lockedSlides`): up to
+  today's class on the calendar (`classAsOf`), or a built class's number when opened from it.
+  Songs with a Max in an earlier grade are from an earlier year and never locked.
 - Pictures from the web: the editor's search button opens Google Images (SafeSearch on) in its
   own tab; a copied picture pastes in with Ctrl+V, and "Use as background" turns a picture into
   the slide background. In-app search would need an API key on a server, which this site
@@ -32,7 +36,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   Catalog categories start folded. Saves run in order, and each checks the stored plan is the
   one on screen: if another tab or a sync changed it, nothing is overwritten and it reloads.
   Build waits for saves. A song's Max per grade also sets which grades
-  its slides are for, until grades are set by hand in the editor. Timed minutes from Present
+  its slides are for (any number above 0), even after grades are set by hand in the editor:
+  the editor only decides songs the plan doesn't have. Timed minutes from Present
   show on the catalog chips' tooltips.
 - `calendar.js` (`#/plan/calendar`): the workbook's Calendar sheet a month at a time: each school
   day's rotation code (A12 = group A, class 12, for K and 1) or what it is instead, PK's week
