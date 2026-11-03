@@ -98,7 +98,7 @@ class SyllableDetector {
       } else {
         if (env < this.valley) { this.valley = env; this.stir = t; }
         if (env < this.valley + 2) this.stir = t;
-        if (env > this.valley + 7) {
+        if (env > this.valley + 5) {
           this.pend = { start: this.stir, at: t, ref: this.peak };
           this.dipped = false;
           this.peak = env;
