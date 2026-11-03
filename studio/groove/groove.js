@@ -328,8 +328,9 @@ function layerSettings(G, g) {
 
 /* The sound picker's sections, in order. A sound not listed goes under Other. */
 const SECTIONS = [
-  ['Keys and mallets', ['piano', 'marimba', 'xylophone', 'glockenspiel', 'harp']],
-  ['Guitars and bass', ['guitar', 'banjo', 'electric-bass', 'bass']],
+  ['Keys and mallets', ['piano', 'electric-piano', 'organ', 'marimba', 'xylophone', 'glockenspiel', 'kalimba', 'harp']],
+  ['Guitars and bass', ['guitar', 'electric-guitar', 'ukulele', 'banjo', 'electric-bass', 'bass']],
+  ['Synths', ['synth-lead', 'synth-pad', 'synth-bass']],
   ['Strings', ['violins', 'violas', 'cellos', 'pizzicato', 'cello-pizz']],
   ['Woodwinds', ['flute', 'oboe', 'clarinet', 'bassoon']],
   ['Brass', ['trumpet', 'horn', 'trombone', 'tuba']],
