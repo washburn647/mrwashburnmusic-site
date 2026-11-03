@@ -15,7 +15,12 @@ class SyllableDetector {
     this.floor = -60; // noise floor, dB
     this.env = DB_MIN;
     this.state = 'quiet'; // quiet | rising | voiced
-    this.riseStart = 0;
+    this.riseStart = 0; // where the syllable began (dated back to where the level left the floor)
+    this.riseAt = 0; // when the level crossed into voice
+    this.lastPeak = DB_MIN; // the last syllable's loudest point
+    this.endAt = -9; // when the last syllable went quiet
+    this.echoDrop = 10; // dB: a much quieter sound just after a syllable is its tail or echo
+    this.pend = null; // a rise after a dip, waiting to show it's a new syllable
     this.risePeak = DB_MIN;
     this.peak = DB_MIN; // highest point since the last onset or valley
     this.valley = 0; // lowest point of the current dip
@@ -56,30 +61,45 @@ class SyllableDetector {
       if (env < this.floor + 6) this.stir = t + dt;
       if (env > on) {
         this.state = 'rising';
+        this.riseAt = t;
         this.riseStart = Math.max(this.stir, t - 0.03);
         this.risePeak = env;
       }
     } else if (this.state === 'rising') {
       this.risePeak = Math.max(this.risePeak, env);
       if (env < off) this.state = 'quiet';
-      else if (t - this.riseStart >= 0.03) {
+      else if (t - this.riseAt >= 0.03) {
         // Up for 30 ms and clearly loud: a syllable, dated to where it began.
-        if (this.risePeak > on + 3 && this.riseStart - this.last >= this.minGap) onset = this.riseStart;
+        // Just after a syllable, a much quieter sound is that syllable's tail coming back
+        // (the room, or the echo canceller letting go), not a new one.
+        const tail = this.riseStart - this.endAt < 0.25 && this.risePeak < this.lastPeak - this.echoDrop;
+        if (this.risePeak > on + 3 && this.riseStart - this.last >= this.minGap && !tail) onset = this.riseStart;
+        if (!tail) this.lastPeak = this.risePeak;
         this.state = 'voiced';
         this.peak = this.risePeak;
         this.dipped = false;
       }
     } else {
+      if (env > this.lastPeak) this.lastPeak = env;
       if (env < off) {
         this.state = 'quiet';
+        this.endAt = t;
+        this.pend = null;
       } else if (!this.dipped) {
         this.peak = Math.max(this.peak, env);
+        // A rise after a dip is a new syllable once it gets near the last one's level;
+        // one that stays well below it is that syllable's tail, not a "de".
+        const p = this.pend;
+        if (p && env >= p.ref - this.echoDrop) {
+          if (p.start - this.last >= this.minGap) onset = p.start;
+          this.pend = null;
+        } else if (p && t - p.at > 0.05) this.pend = null;
         if (env < this.peak - 9) { this.dipped = true; this.valley = env; this.stir = t; }
       } else {
         if (env < this.valley) { this.valley = env; this.stir = t; }
         if (env < this.valley + 2) this.stir = t;
         if (env > this.valley + 7) {
-          if (this.stir - this.last >= this.minGap) onset = this.stir;
+          this.pend = { start: this.stir, at: t, ref: this.peak };
           this.dipped = false;
           this.peak = env;
         }
