@@ -13,7 +13,7 @@
 
 import { renderSlide } from './render.js';
 import { logTiming } from './store.js';
-import { forGrade } from './marks.js';
+import { forGrade, taggedFor, GRADES } from './marks.js';
 import { spinnerOverlay } from './widgets.js';
 
 const SPINNER_URL = /spinthewheel\.app|wheelofnames\.com|pickerwheel\.com|classtools\.net\/random-name/i;
@@ -23,9 +23,11 @@ export const MENU = -1;                    // the index Present gives a grade's 
 
 /** opts.grade: show only that grade's slides. opts.menu: a built menu slide (see menus.js).
     opts.openDeck(link): another library deck for a { deck } link, as { deck, media, deckId,
-    deckName, index } or with menu (a built menu) to open on. */
+    deckName, index } or with menu (a built menu) to open on. opts.menuFor(deckId, grade, { only,
+    title }): a built menu, for links to a deck's own menu slides. opts.strict: a grade shows
+    only the slides tagged for it. */
 export function present(record, startAt, media, onClose, findGoogle, opts = {}) {
-  const { grade, menu, openDeck } = opts;
+  const { grade, menu, openDeck, menuFor, strict } = opts;
   let deck = record.deck;
   let deckId = record.id;
   let deckName = record.name;
@@ -208,7 +210,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
 
   // Sequential moves skip hidden slides, as in Google Slides, and slides for
   // other grades (and the old menu slides) when showing one grade.
-  const skip = (s) => s.hidden || !forGrade(s, grade) || (grade && s.menu);
+  const skip = (s) => s.hidden || !(strict ? taggedFor : forGrade)(s, grade) || (grade && s.menu);
   function step(dir) {
     if (index === MENU && dir < 0) return;
     let i = index + dir;
@@ -229,7 +231,12 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
         return;
       }
     }
-    if (link.slide != null) { trail.push({ deck, media, index, deckId, deckName }); show(link.slide); return; }
+    if (link.slide != null) {
+      const m = await ownMenu(deck.slides[link.slide]);
+      trail.push({ deck, media, index, deckId, deckName });
+      if (m) { menus.set(deckId, m); show(MENU); } else show(link.slide);
+      return;
+    }
     if (link.gdoc && findGoogle) {
       // A link into another Google deck: open our copy of it if we have one.
       const hit = await findGoogle(link.gdoc, link.gslide);
@@ -247,6 +254,18 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     else if (link.jump === 'last') show(deck.slides.length - 1);
     else if (link.url && SPINNER_URL.test(link.url)) spinnerOverlay(root);
     else if (link.url) window.open(link.url, '_blank', 'noopener');
+  }
+
+  /* A deck's own menu slide, built fresh from the plan: one titled for a grade
+     ("K Mvmt. ...") is that grade's menu; another (its dances, say) keeps its
+     songs, those for the grade showing. */
+  async function ownMenu(target) {
+    if (!target || !target.menu || !menuFor) return null;
+    const named = /^(PK|K|1)\b/i.exec((target.title || '').trim());
+    if (named) return menuFor(deckId, GRADES.find((g) => g === named[1].toUpperCase()));
+    if (!grade) return null;
+    const only = new Set(target.els.filter((e) => e.link && e.link.slide != null).map((e) => e.link.slide));
+    return menuFor(deckId, grade, { only, title: (target.title || '').trim() });
   }
 
   function back() {

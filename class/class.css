@@ -76,6 +76,9 @@ main.lib { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
 .grades { display: inline-flex; gap: 4px; background: #EFE8D6; border-radius: 999px; padding: 3px; }
 .chip { border: 0; background: transparent; border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 15px; }
 .chip.on { background: var(--moss); color: var(--cream); }
+.deck-head .sort { height: 34px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; font-size: 14px; padding: 0 6px; }
+.slide-card[draggable="true"] { cursor: grab; }
+.slide-card.dragging { opacity: .4; }
 .slide-card .cap .cap-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .slide-card .cap .cap-g { flex: none; font-size: 11px; font-weight: 600; color: var(--moss); }
 .slide-card.hidden-slide .thumb { opacity: .45; }

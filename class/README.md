@@ -18,10 +18,17 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 - `menus.js`: builds a grade's menu on demand: the icon of every song for that grade or an
   earlier one (a 1st grade menu has the PK and K songs too), once per song, as big as the page
   allows, in the look of the deck's own menu slides with the title shrunk to fit its box. The
-  deck page's grade chips (All, PK, K, 1) filter the slides, Present skips other grades, and Menu
-  opens the built menu. Songs this grade hasn't reached yet are locked (`lockedSlides`): up to
+  deck page's grade chips (All, PK, K, 1) show only the slides tagged for that grade (a class
+  deck's untagged slides show for every grade), Present skips the rest, and Menu opens the built
+  menu. A link to one of the deck's own menu slides opens a built one too: "PK/K/1 ..." menus
+  become that grade's menu, others (its dances) keep their songs for the grade on show. Songs this grade hasn't reached yet are locked (`lockedSlides`): up to
   today's class on the calendar (`classAsOf`), or a built class's number when opened from it.
   Songs with a Max in an earlier grade are from an earlier year and never locked.
+  The deck page sorts a category deck's songs (deck order, A–Z, Z–A, class order either way,
+  custom); the menus follow the same order. Class order is the first class that slates a song
+  for the grade (any grade under All); songs no class slates come last. Custom order is set by
+  dragging songs, saved with the deck (`deck.songOrder`, song keys). The sort is remembered on
+  the device (`class.sort`).
 - Pictures from the web: the editor's search button opens Google Images (SafeSearch on) in its
   own tab; a copied picture pastes in with Ctrl+V, and "Use as background" turns a picture into
   the slide background. In-app search would need an API key on a server, which this site
@@ -36,8 +43,9 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   Catalog categories start folded. Saves run in order, and each checks the stored plan is the
   one on screen: if another tab or a sync changed it, nothing is overwritten and it reloads.
   Build waits for saves. A song's Max per grade also sets which grades
-  its slides are for (any number above 0), even after grades are set by hand in the editor:
-  the editor only decides songs the plan doesn't have. Timed minutes from Present
+  its slides are for (any number above 0), even after grades are set by hand in the editor.
+  A song slide the plan doesn't have (or has only below SUMMARY) is for no grade; a song's
+  later slides (same icon) go with it. The editor decides only slides that aren't songs. Timed minutes from Present
   show on the catalog chips' tooltips.
 - `calendar.js` (`#/plan/calendar`): the workbook's Calendar sheet a month at a time: each school
   day's rotation code (A12 = group A, class 12, for K and 1) or what it is instead, PK's week
@@ -91,7 +99,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   arrow: later). On any slide, a shape linking to a name spinner. A mark set in the editor
   (`el.mark`) wins over the rules. Also marks menu slides (`slide.menu`), and until grades are
   set by hand (`deck.gradesSet`, set when the editor opens) guesses each slide's grades from the
-  deck's PK / K / 1 / EXTRA sections: a song is for its section's grade and the ones after it.
+  deck's PK / K / 1 / EXTRA sections: a song is for its section's grade and the ones after it
+  (only with no year plan; with one, songs go by the plan).
   Runs on import and on every load.
 - `store.js`: IndexedDB. Decks and pictures live on the device they were imported on.
   `timings` gets a row each time a slide is on screen for 2 seconds or more
@@ -103,7 +112,7 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 ## Deck format
 
 ```
-deck = { w: 960, h: 540, googleId, gradesSet, warnings: [], slides: [slide] }
+deck = { w: 960, h: 540, googleId, gradesSet, songOrder: [key], warnings: [], slides: [slide] }
 slide = { bg: fill, els: [element], notes, title, gid, hidden, spinner, menu, grades: ['PK', 'K', '1'],
           song: { kind: 'song' | 'kidsChoice', name, icon, minutes, position, returns, spinner } }
 element = { t: 'sp' | 'pic', x, y, w, h, rot, flipH, flipV, geom, adj,
