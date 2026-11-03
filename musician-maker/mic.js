@@ -10,6 +10,32 @@ let level = 0; // 0-1, for meters
 let lag = 0.01; // mic input delay, s
 let users = 0; // the mic check and the run each hold the mic; it stops when neither does
 let opening = null;
+let echo = true; // echo cancelling; Test mode can turn it off
+let rec = null; // Test mode recording: { rate, chunks, onsets }
+
+/* Test mode: record what the mic hears, and every syllable it finds, until recordStop(). */
+export function recordStart() {
+  rec = { chunks: [], onsets: [] };
+  node?.port.postMessage({ rec: true });
+}
+
+/* The recording so far: { rate, t0, samples, onsets }, all times on the audio clock. */
+export async function recordStop() {
+  if (!rec) return null;
+  node?.port.postMessage({ rec: false });
+  await new Promise((r) => setTimeout(r, 100)); // the last chunk
+  const { chunks, onsets } = rec;
+  rec = null;
+  if (!chunks.length) return null;
+  const n = chunks.reduce((a, c) => a + c.pcm.length, 0);
+  const samples = new Float32Array(n);
+  let at = 0;
+  for (const c of chunks) { samples.set(c.pcm, at); at += c.pcm.length; }
+  return { rate: node?.context.sampleRate || 48000, t0: chunks[0].t, samples, onsets, settings: lastSettings };
+}
+
+export function setEcho(on) { echo = on; }
+let lastSettings = {};
 
 export const on = () => !!stream;
 export const getLevel = () => level;
@@ -36,15 +62,20 @@ async function open(ctx) {
   // Auto gain pumps the room noise up between syllables, which reads as more syllables:
   // leave it off, the detector measures against the room's own noise level instead.
   stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false },
+    audio: { echoCancellation: echo, noiseSuppression: false, autoGainControl: false },
   });
   const set = stream.getAudioTracks()[0]?.getSettings?.() || {};
+  lastSettings = { ...set, deviceId: undefined, groupId: undefined };
   if (set.latency > 0 && set.latency < 0.2) lag = set.latency;
   src = ctx.createMediaStreamSource(stream);
   node = new AudioWorkletNode(ctx, 'syllables', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
   node.port.onmessage = (e) => {
     if (e.data.level != null) level = e.data.level;
-    if (e.data.onset != null) listener?.(e.data.onset - lag);
+    if (e.data.pcm) rec?.chunks.push(e.data);
+    if (e.data.onset != null) {
+      rec?.onsets.push(e.data.onset);
+      listener?.(e.data.onset - lag);
+    }
   };
   // Some browsers (Safari) only run nodes that lead to the speakers: a silent path does.
   const mute = ctx.createGain();

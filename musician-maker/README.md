@@ -129,6 +129,11 @@ Private preview: `python tools/mm_preview.py` copies the app and the assets it u
 Test mode (My progress → Test mode) adds a Drill button to every step, for trying any step's
 games without earning your way there.
 
+Test mode can also record the mic in runs: when the run ends, the browser saves a .wav of what
+the mic heard, with every turn (beat times, pattern, what was counted) in a JSON chunk inside
+it. It stays on the device unless it's uploaded by hand. Test mode can turn off the mic's echo
+cancelling too, to compare.
+
 **Game workshop** (`/studio/games/`, private): each game's scene on the groove at any combo
 tier, with its call, taps, every gag and its boss; its options; and Test play, which opens the
 game with only that game in it. `?lab` opens the Transitions lab. A new game goes in `GAMES`

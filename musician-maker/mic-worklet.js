@@ -96,7 +96,19 @@ if (typeof registerProcessor === 'function') {
       super();
       this.d = new SyllableDetector(sampleRate);
       this.sent = 0;
-      this.port.onmessage = (e) => { if (e.data?.minGap) this.d.minGap = e.data.minGap; };
+      this.rec = null; // Test mode: the mic's samples, sent in chunks with their start time
+      this.port.onmessage = (e) => {
+        if (e.data?.minGap) this.d.minGap = e.data.minGap;
+        if (e.data?.rec === true) this.rec = { buf: new Float32Array(8192), n: 0, t: 0 };
+        if (e.data?.rec === false) { this.flush(); this.rec = null; }
+      };
+    }
+
+    flush() {
+      const r = this.rec;
+      if (!r?.n) return;
+      this.port.postMessage({ pcm: r.buf.slice(0, r.n), t: r.t });
+      r.n = 0;
     }
 
     process(inputs) {
@@ -104,6 +116,13 @@ if (typeof registerProcessor === 'function') {
       if (ch) {
         const t = currentTime;
         const onset = this.d.block(ch, t);
+        const r = this.rec;
+        if (r) {
+          if (!r.n) r.t = t;
+          r.buf.set(ch, r.n);
+          r.n += ch.length;
+          if (r.n + ch.length > r.buf.length) this.flush();
+        }
         if (onset != null) this.port.postMessage({ onset });
         if (t - this.sent > 0.03) { this.sent = t; this.port.postMessage({ level: this.d.level }); }
       }
