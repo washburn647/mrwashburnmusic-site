@@ -72,10 +72,10 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   swings on the beat, rattling pot, menu board, checkerboard floor) in one of five looks that
   take turns game by game (`THEMES`: sunset diner, French bistro, 1950s atomic, farmhouse,
   space diner; wallpaper, tiles, counter, lamp, window sky and menu change together through
-  CSS variables under `[data-theme]`). The counter stands behind the cats. Mookie
+  CSS variables under `[data-theme]`). The counter stands against the back wall in the middle, behind the cats. Mookie
   asleep in her basket with a snot bubble, and her supper in a 200-year-old Japanese gong bowl
   with its beater. Chef Bastet (an Egyptian bronze cat in a chef's hat, googly eyes) sings the
-  call; Bindi and Rusty tiptoe out from the counter one step per note. Each tap rings
+  call; Bindi and Rusty tiptoe in from the left one step per note. Each tap rings
   the bowl: the thieves freeze, Mookie stirs, the bubble shrinks. Wins: Mookie rockets to her
   bowl, a royal Sevres tureen lands with a fanfare, a porcelain hen tureen squawks the thieves
   away, a bronze lobster pinches Rusty. Misses: the masked heist, Bindi's yowl, Rusty flops on

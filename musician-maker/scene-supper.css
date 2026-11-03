@@ -31,7 +31,8 @@
 /* ---------- the kitchen ---------- */
 /* isolation keeps the scene's layers under the big instruction that pops up over the stage.
    --u is 1% of the stage height, or less on a tall narrow stage, so the room still fits across. */
-.scene-sp { container-type: size; background: #f5e3b3; overflow: hidden; isolation: isolate; --bowl-x: 47%; --u: min(1cqh, .9cqw); }
+.scene-sp { container-type: size; background: #f5e3b3; overflow: hidden; isolation: isolate; --bowl-x: 47%; --u: min(1cqh, .9cqw);
+  --ct-h: 30; --ct-y: 27%; --ct-x: calc(56% - 17 * var(--u)); }
 .sp-cam { position: absolute; inset: 0; }
 .sp-wall { position: absolute; inset: 0 0 30% 0;
   background:
@@ -89,8 +90,9 @@
 .sp-lights i.r { background: conic-gradient(from 172deg at 90% 0, transparent 0deg, rgba(255, 143, 163, .5) 10deg, transparent 28deg); }
 
 /* The counter, the pot on it, and Chef Bastet behind it. */
-/* The counter stands at the back (z-index 0), so the cats walk in front of it and stay in view. */
-.sp-counter { position: absolute; left: 0; bottom: 3%; height: calc(59 * var(--u)); width: calc(30 * var(--u)); z-index: 0; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, .12)); }
+/* The counter stands against the back wall in the middle (z-index 0): the cats walk on the
+   floor in front of it and stay in full view. */
+.sp-counter { position: absolute; left: var(--ct-x); bottom: var(--ct-y); height: calc(var(--ct-h) * var(--u)); width: calc(34 * var(--u)); z-index: 0; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, .12)); }
 .sp-pot { position: absolute; right: 4%; bottom: 99%; width: 42%; aspect-ratio: 80 / 70; }
 .sp-lid { transform-box: fill-box; transform-origin: 50% 100%; }
 .sp-pot.rattle .sp-lid { animation: lid .22s ease-out; }
@@ -104,7 +106,7 @@
 .sp-steam.puff i:nth-child(2) { animation-delay: .1s; } .sp-steam.puff i:nth-child(3) { animation-delay: .2s; }
 @keyframes steam { 0% { opacity: .9; transform: translateY(0) scale(.5); } 100% { opacity: 0; transform: translateY(-160%) scale(1.6); } }
 
-.sp-chef-mask { position: absolute; left: var(--u); bottom: calc(3% + 59 * var(--u)); height: calc(38 * var(--u)); width: calc(17 * var(--u)); overflow: hidden; z-index: 0; }
+.sp-chef-mask { position: absolute; left: calc(var(--ct-x) + var(--u)); bottom: calc(var(--ct-y) + var(--ct-h) * var(--u)); height: calc(38 * var(--u)); width: calc(17 * var(--u)); overflow: hidden; z-index: 0; }
 .sp-chef { position: absolute; left: 22%; bottom: -1%; height: 70%; aspect-ratio: 141 / 320; transform: translateY(140%); transition: transform .2s cubic-bezier(.2, 1.5, .5, 1); }
 .sp-chef.up { transform: translateY(0); }
 .sp-chef .c-in { position: absolute; inset: 0; transform-origin: 50% 100%; }
@@ -236,7 +238,7 @@
 /* A tall, narrow stage (a phone held upright): bigger cats, and the basket sits further back
    so the bowl can stand in front of it. */
 @container (max-aspect-ratio: 4 / 5) {
-  .scene-sp { --u: min(1cqh, 1.2cqw); --bowl-x: 42%; }
+  .scene-sp { --u: min(1cqh, 1.2cqw); --bowl-x: 42%; --ct-x: calc(47% - 17 * var(--u)); --ct-y: 26%; }
   .sp-bed { right: -2%; bottom: 13%; }
   .sp-zzz { bottom: calc(13% + 42 * var(--u)); }
   .sp-rusty { bottom: 15%; }

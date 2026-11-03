@@ -4,8 +4,8 @@
    Mookie (rig.js) is fast asleep in her basket, snot bubble and all. Her supper sits in her
    bowl: a 200-year-old Japanese gong bowl, with its own gilded beater.
    The call: Chef Bastet, a 2,500-year-old Egyptian bronze cat in a chef's hat and googly
-   eyes, sings it from the counter. While she sings, Bindi and Rusty (cats.js) tiptoe out
-   from behind the counter, one step per note. The response: every tap rings the bowl. The
+   eyes, sings it from the counter. While she sings, Bindi and Rusty (cats.js) tiptoe in
+   from the left, one step per note. The response: every tap rings the bowl. The
    thieves freeze mid-sneak, Mookie stirs, the snot bubble shrinks.
    Win (random, never twice running): Mookie pops her bubble and rockets to her bowl; a royal
    Sèvres tureen lands with a fanfare; a porcelain hen tureen squawks the thieves away; or a
@@ -165,8 +165,7 @@ function deck(list) {
 const winGag = deck(['rocket', 'rocket', 'tureen', 'hen', 'lobster']);
 const failGag = deck(['heist', 'heist', 'yowl', 'flop', 'decoy']);
 
-/* Where the thieves stand, as % of the stage width: they start by the counter (in front of it,
-   so they're easy to see) and gain
+/* Where the thieves stand, as % of the stage width: they start at the left edge and gain
    one step per note of the call, up to a little short of the bowl. */
 const START = { bindi: 7, rusty: -3 };
 const STEP = 4.2;
