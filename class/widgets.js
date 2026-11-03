@@ -3,13 +3,18 @@
    - timer:   secs (counts down from it; 0 counts up). Tap to start or pause.
    - spinner: picks a student. Names stay on this device (see names below),
               never in a deck, so they never leave it.
-   - video:   url (YouTube) or media (a video file kept on the device)
+   - video:   url (YouTube) or media (a video file kept on the device), name
    - sound:   media (a sound file kept on the device), name
-   - spotify: url (an open.spotify.com track, album or playlist)
+   - spotify: url (an open.spotify.com track, album or playlist), name
+   - draw:    a box to draw on, bg (its color)
+   Video, Spotify and the drawing box sit on the slide as a small labeled box;
+   tapped, they open big over the slide (OPENS), clear of the slide's scaling.
    Elsewhere (thumbnails, the editor) a widget draws as a quiet label. */
 
-export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify' };
-const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵' };
+export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify', draw: 'Drawing box' };
+const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵', draw: '✏' };
+const OPENS = ['video', 'spotify', 'draw'];
+const INK = ['#000000', '#D04B4B', '#3B83C0', '#4A9C5C', '#E8A33D', '#9257BD'];
 const COLORS = ['#E8A33D', '#5E7D4F', '#3B83C0', '#D04B4B', '#9257BD', '#C9A41F', '#4A9C5C', '#DD8033'];
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -24,13 +29,15 @@ const h = (tag, cls, text) => {
 export function drawWidget(el, opts = {}) {
   const d = h('div', 'el wg wg-' + el.kind);
   Object.assign(d.style, { left: el.x + 'px', top: el.y + 'px', width: el.w + 'px', height: el.h + 'px' });
-  d.style.fontSize = Math.max(12, Math.min(el.w, el.h) / 6) + 'px';
+  d.style.fontSize = (OPENS.includes(el.kind) ? Math.max(12, Math.min(el.h / 2.6, el.w / 8))
+    : Math.max(12, Math.min(el.w, el.h) / 6)) + 'px';
   if (!opts.live) {
     d.classList.add('wg-face');
+    if (OPENS.includes(el.kind)) d.classList.add('wg-tile');
     d.append(h('span', 'wg-icon', ICONS[el.kind] || '?'), h('span', 'wg-label', label(el)));
     return d;
   }
-  const make = { timer, spinner, video, sound, spotify }[el.kind];
+  const make = { timer, spinner, video, sound, spotify, draw }[el.kind];
   if (make) make(d, el, opts);
   // A widget is for using: clicks on it are not "show the controls" clicks.
   d.addEventListener('click', (e) => e.stopPropagation());
@@ -39,7 +46,7 @@ export function drawWidget(el, opts = {}) {
 
 export function label(el) {
   if (el.kind === 'timer') return el.secs ? clock(el.secs) : '0:00 +';
-  if (el.kind === 'sound') return el.name || 'Sound';
+  if (['sound', 'video', 'spotify'].includes(el.kind)) return el.name || KINDS[el.kind];
   return KINDS[el.kind] || '';
 }
 
@@ -325,22 +332,195 @@ function frame(d, src, title) {
   d.append(f);
 }
 
-function video(d, el, opts) {
-  const id = youtubeId(el.url);
-  if (id) { frame(d, 'https://www.youtube-nocookie.com/embed/' + id + '?rel=0&modestbranding=1', 'Video'); return; }
-  if (el.media && opts.media) {
-    const v = h('video', 'wg-media');
-    v.src = opts.media(el.media);
-    v.controls = true;
-    v.playsInline = true;
-    d.append(v);
-    every(d, 500, () => {}, () => v.pause());
-  }
+// ---- opening big over the slide -----------------------------------------------
+
+/** The small box on the slide: an icon and the widget's name. */
+function tile(d, el) {
+  d.classList.add('wg-tile');
+  d.append(h('span', 'wg-icon', ICONS[el.kind]), h('span', 'wg-label', label(el)));
 }
 
+let openPanel = null;                      // { close } of the panel showing now
+
+/** A panel over the whole slide, for a widget that opened. Keys go to it, not to
+    Present: Escape closes it. Closes by itself when its slide goes away. */
+function panel(d, cls, onClose) {
+  if (openPanel) openPanel.close();
+  const host = d.closest('.present') || document.body;
+  const shade = h('div', 'wg-shade');
+  const box = h('div', 'wg-panel ' + cls);
+  const x = h('button', 'wg-btn wg-close', '✕');
+  x.title = 'Close';
+  shade.append(box, x);
+  host.append(shade);
+  const keys = (e) => {
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); me.close(); }
+  };
+  const me = {
+    box, shade,
+    close() {
+      window.removeEventListener('keydown', keys, true);
+      if (openPanel === me) openPanel = null;
+      onClose(me);
+    },
+    /** Shows a tucked-away panel again. */
+    reopen() {
+      if (openPanel && openPanel !== me) openPanel.close();
+      window.addEventListener('keydown', keys, true);
+      openPanel = me;
+      shade.classList.remove('wg-tucked');
+    }
+  };
+  window.addEventListener('keydown', keys, true);
+  shade.addEventListener('click', (e) => { e.stopPropagation(); if (e.target === shade) me.close(); });
+  // Drawing and tapping in here aren't swipes to another slide.
+  for (const t of ['touchstart', 'touchend']) shade.addEventListener(t, (e) => e.stopPropagation(), { passive: true });
+  x.addEventListener('click', () => me.close());
+  openPanel = me;
+  return me;
+}
+
+function video(d, el, opts) {
+  tile(d, el);
+  let p = null;
+  const shut = () => { if (p) { const q = p; p = null; q.close(); } };
+  d.addEventListener('click', () => {
+    if (p) return;
+    p = panel(d, 'wg-panel-video', (me) => { me.shade.remove(); if (p === me) p = null; });
+    const id = youtubeId(el.url);
+    if (id) frame(p.box, 'https://www.youtube-nocookie.com/embed/' + id + '?rel=0&modestbranding=1&autoplay=1', label(el));
+    else if (el.media && opts.media) {
+      const v = h('video', 'wg-media');
+      v.src = opts.media(el.media);
+      v.controls = true;
+      v.playsInline = true;
+      v.autoplay = true;
+      p.box.append(v);
+    }
+  });
+  every(d, 500, () => {}, shut);
+}
+
+/* Spotify plays only from its own player, so the box opens it; closing tucks it
+   away still playing, and the box's ■ stops it. */
 function spotify(d, el) {
-  const p = spotifyPath(el.url);
-  if (p) frame(d, 'https://open.spotify.com/embed/' + p, 'Spotify');
+  tile(d, el);
+  const path = spotifyPath(el.url);
+  const stop = h('button', 'wg-btn wg-stop', '■');
+  stop.title = 'Stop';
+  stop.hidden = true;
+  d.append(stop);
+  let p = null;
+  const end = () => {
+    if (!p) return;
+    const q = p;
+    p = null;
+    q.close();
+    q.shade.remove();
+    stop.hidden = true;
+    d.classList.remove('wg-on');
+  };
+  d.addEventListener('click', () => {
+    if (!path) return;
+    if (p) { p.reopen(); return; }
+    p = panel(d, 'wg-panel-spotify', (me) => {
+      if (me === p) me.shade.classList.add('wg-tucked'); else me.shade.remove();
+    });
+    frame(p.box, 'https://open.spotify.com/embed/' + path + '?utm_source=generator', label(el));
+    stop.hidden = false;
+    d.classList.add('wg-on');
+  });
+  stop.addEventListener('click', (e) => { e.stopPropagation(); end(); });
+  every(d, 500, () => {}, end);
+}
+
+// ---- drawing box ---------------------------------------------------------------
+// What's drawn stays for this sitting only; it is never saved.
+
+const drawn = new WeakMap();               // widget -> data URL
+
+function draw(d, el) {
+  d.classList.add('wg-draw');
+  d.style.background = el.bg || '#FFFFFF';
+  const preview = h('img', 'wg-preview');
+  preview.alt = '';
+  const face = h('div', 'wg-tile');
+  face.append(h('span', 'wg-icon', ICONS.draw), h('span', 'wg-label', label(el)));
+  d.append(preview, face);
+  const paintPreview = () => {
+    const url = drawn.get(el);
+    preview.hidden = !url;
+    face.hidden = !!url;
+    if (url) preview.src = url;
+  };
+  paintPreview();
+  let p = null;
+  d.addEventListener('click', () => {
+    if (p) return;
+    p = panel(d, 'wg-panel-draw', (me) => {
+      drawn.set(el, canvas.toDataURL());
+      me.shade.remove();
+      p = null;
+      paintPreview();
+    });
+    // The canvas keeps the box's shape, as big as the screen allows.
+    const cw = 1600, ch = Math.round(1600 * el.h / el.w);
+    const canvas = h('canvas', 'wg-canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    const k = Math.min(window.innerWidth * 0.92 / cw, (window.innerHeight * 0.92 - 64) / ch);
+    canvas.style.width = cw * k + 'px';
+    canvas.style.height = ch * k + 'px';
+    canvas.style.background = el.bg || '#FFFFFF';
+    const g = canvas.getContext('2d');
+    const had = drawn.get(el);
+    if (had) { const img = new Image(); img.onload = () => g.drawImage(img, 0, 0); img.src = had; }
+    let pen = INK[0], erase = false;
+    const tools = h('div', 'wg-drawbar');
+    const pick = (b) => tools.querySelectorAll('.ink, .wg-erase').forEach((x) => x.classList.toggle('on', x === b));
+    INK.forEach((c, i) => {
+      const b = h('button', 'ink' + (i === 0 ? ' on' : ''));
+      b.style.background = c;
+      b.title = 'Pen';
+      b.addEventListener('click', () => { pen = c; erase = false; pick(b); });
+      tools.append(b);
+    });
+    const rub = h('button', 'wg-erase', '⌫');
+    rub.title = 'Eraser';
+    rub.addEventListener('click', () => { erase = true; pick(rub); });
+    const wipe = h('button', 'wg-wipe', '🗑');
+    wipe.title = 'Clear';
+    wipe.addEventListener('click', () => g.clearRect(0, 0, cw, ch));
+    tools.append(rub, wipe);
+    p.box.append(canvas, tools);
+
+    canvas.addEventListener('pointerdown', (e) => {
+      const r = canvas.getBoundingClientRect();
+      const at = (ev) => [(ev.clientX - r.left) * cw / r.width, (ev.clientY - r.top) * ch / r.height];
+      g.strokeStyle = pen;
+      g.lineWidth = erase ? 60 : 10;
+      g.lineCap = g.lineJoin = 'round';
+      g.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
+      let [x, y] = at(e);
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + 0.1, y);
+      g.stroke();
+      canvas.setPointerCapture(e.pointerId);
+      const move = (ev) => { [x, y] = at(ev); g.lineTo(x, y); g.stroke(); };
+      const up = () => {
+        canvas.removeEventListener('pointermove', move);
+        canvas.removeEventListener('pointerup', up);
+        canvas.removeEventListener('pointercancel', up);
+      };
+      canvas.addEventListener('pointermove', move);
+      canvas.addEventListener('pointerup', up);
+      canvas.addEventListener('pointercancel', up);
+    });
+  });
+  every(d, 500, () => {}, () => { if (p) p.close(); });
 }
 
 function sound(d, el, opts) {

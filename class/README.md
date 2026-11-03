@@ -25,7 +25,9 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   today's class on the calendar (`classAsOf`), or a built class's number when opened from it.
   Songs with a Max in an earlier grade are from an earlier year and never locked.
   The deck page sorts a category deck's songs (deck order, A–Z, Z–A, class order either way,
-  custom); the menus follow the same order. Class order is the first class that slates a song
+  custom); the menus follow the same order. Sorted views and menus keep a deck's usual songs
+  first, then its Move Its (titled "Move It ..."; in menus each carries its number, since they
+  share an icon), then its dances (a DANCE banner), each section on its own rows in a menu. Class order is the first class that slates a song
   for the grade (any grade under All); songs no class slates come last. Custom order is set by
   dragging songs, saved with the deck (`deck.songOrder`, song keys). The sort is remembered on
   the device (`class.sort`).
@@ -65,11 +67,15 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   grade's built menu with songs the plan hasn't reached yet locked.
 - `widgets.js`: slide elements that work in Present (`{ t: 'wg', kind }`): timer (counts down
   and chimes, or up), spinner, video (YouTube, through the no-cookie player, or a video file),
-  sound file, Spotify. Added from the editor's 🧩 menu; double-click one to change it. Elsewhere
-  they draw as labels. The spinner's class lists live only in this browser's localStorage
+  sound file, Spotify, drawing box. Added from the editor's 🧩 menu; double-click one to change
+  it. Elsewhere they draw as labels. Video, Spotify and the drawing box sit on the slide as a
+  small titled box (`name`) and open big over the slide when tapped, outside the slide's scaling
+  so they stay sharp: video starts playing, Spotify shows its player (closing tucks it away still
+  playing; the box's ■ stops it), the drawing box gives a canvas with pens, eraser and clear.
+  Escape closes an open one; leaving the slide closes it. Drawings last for the sitting only and
+  are never saved. The spinner's class lists live only in this browser's localStorage
   (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
-  an online name spinner opens this spinner instead. Present also has a pen (D) that draws over
-  the slide for the sitting; nothing is saved.
+  an online name spinner opens this spinner instead.
 - `sync.js`: keeps decks, pictures, plans and timings in step with the website's copy
   (`/api/class/`, `worker/index.js`), so home and school share one library. Signing in goes
   through Cloudflare Access (Kyle's login). Sync runs when the app opens, comes online or back

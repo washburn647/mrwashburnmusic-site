@@ -316,12 +316,32 @@ main.lib.wide { max-width: none; padding: 0; }
   align-items: center; justify-content: center; cursor: pointer; }
 .wg-sound .wg-play { font-size: 2.4em; line-height: 1; }
 .wg-sound .wg-label { font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 .3em; }
-.present .ink-layer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
-.present .ink-layer.on { pointer-events: auto; cursor: crosshair; touch-action: none; }
-.present .bar .inks { display: inline-flex; gap: 4px; align-items: center; }
-.present .bar .ink { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .5); }
-.present .bar .ink.on { border-color: #fff; box-shadow: 0 0 0 2px var(--wheat); }
-.present .bar button.on { background: rgba(255, 255, 255, .25); }
+/* Video, Spotify, drawing box: a small labeled box on the slide, big when open. */
+.slide-stage .wg-tile:not(.wg-face) { background: var(--card); border: 3px solid var(--forest); cursor: pointer; }
+.wg-tile { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; align-content: center; gap: .1em .35em;
+  text-align: center; line-height: 1.15; }
+.wg-tile .wg-icon { font-size: 1.15em; }
+.slide-stage .wg-face.wg-tile { flex-direction: row; }
+.wg-face.wg-tile .wg-icon { font-size: 1.15em; }
+.wg-tile .wg-label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.slide-stage .wg-on { border-color: var(--moss); box-shadow: 0 0 0 3px var(--wheat); }
+.wg-stop { right: 4px; top: 50%; transform: translateY(-50%); width: 1.8em; height: 1.8em; font-size: .8em; }
+.slide-stage .wg-draw:not(.wg-face) { border: 3px solid var(--forest); cursor: pointer; }
+.slide-stage .wg-draw .wg-tile { position: absolute; inset: 0; border: 0; background: none; }
+.wg-tile[hidden] { display: none; }
+.wg-draw .wg-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.wg-shade { position: absolute; inset: 0; z-index: 50; cursor: auto; background: rgba(20, 30, 24, .72); display: grid; place-items: center; }
+.wg-shade.wg-tucked { opacity: 0; pointer-events: none; transform: translateX(-300vw); }
+.wg-shade > .wg-close { top: 14px; right: 14px; background: rgba(255, 255, 255, .9); }
+.wg-panel { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.wg-panel-video { width: min(92vw, calc(85vh * 16 / 9)); aspect-ratio: 16 / 9; background: #000; }
+.wg-panel-spotify { width: min(560px, 92vw); height: 352px; }
+.wg-panel-spotify .wg-frame { border-radius: 12px; }
+.wg-canvas { border-radius: 10px; touch-action: none; cursor: crosshair; box-shadow: 0 6px 30px rgba(0, 0, 0, .35); }
+.wg-drawbar { display: flex; gap: 8px; align-items: center; background: rgba(255, 255, 255, .92); border-radius: 999px; padding: 6px 12px; }
+.wg-drawbar button { width: 36px; height: 36px; border-radius: 50%; border: 3px solid transparent; padding: 0; font-size: 18px;
+  background: rgba(47, 74, 58, .1); cursor: pointer; }
+.wg-drawbar button.on { border-color: var(--forest); box-shadow: 0 0 0 2px var(--wheat); }
 .ed-wmenu { display: flex; flex-direction: column; min-width: 140px; }
 .ed-btn.ed-wide { justify-content: flex-start; text-align: left; width: 100%; }
 

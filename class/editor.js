@@ -481,7 +481,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
       fill: { type: 'solid', color: '#9DB58C' }, line: { color: '#2F4A3A', width: 2 } }]);
   }
 
-  const WIDGET_SIZE = { timer: [240, 120], spinner: [300, 300], video: [480, 270], sound: [160, 160], spotify: [400, 152] };
+  const WIDGET_SIZE = { timer: [240, 120], spinner: [300, 300], video: [220, 70], sound: [160, 160], spotify: [220, 70],
+    draw: [240, 160] };
 
   async function addWidget(kind) {
     commitText();
@@ -509,6 +510,9 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
         if (!ok) { window.alert('That link does not look like a ' + (e.kind === 'video' ? 'YouTube' : 'Spotify') + ' link.'); return false; }
         e.url = v.trim();
         delete e.media;
+        const name = window.prompt('Title', e.name || '');
+        if (name != null) e.name = name.trim();
+        if (!e.name) delete e.name;
         return true;
       }
       if (e.kind === 'spotify') return false;
