@@ -32,3 +32,14 @@ Electric bass (electric-bass/): FS Ibanez Electric Bass Guitar by FlameStudios (
   The loudest velocity layer of each note, trimmed, retuned where measured off and converted
   to mono; these files are shared under the same licence, and tools/build_sounds.py rebuilds
   them from the source.
+
+Electric guitar, electric piano, organ, ukulele, kalimba and the synths (electric-guitar/,
+  electric-piano/, organ/, ukulele/, kalimba/, synth-lead/, synth-pad/, synth-bass/): sound
+  banks from the FreePats project, https://freepats.zenvoid.org/
+  - Electric guitar: FSBS Electric Guitar Clean #1 (bridge pickups, small)
+  - Electric piano: FM Synthesized Piano #1 (DX7 "E. Piano 1", recorded from Hexter)
+  - Organ: Drawbar organ emulation by Roberto (recorded from setBfree)
+  - Ukulele: recorded by Mateusz Dąbrowski
+  - Kalimba: recorded by Xavimart, Gonzalo and Roberto
+  - Synth lead: Synth Square; synth pad: Sweep Pad; synth bass: Lately Bass by Yingchun Soul
+  Licence: CC0 1.0 (public domain). Trimmed, retuned where measured off, converted to mono.

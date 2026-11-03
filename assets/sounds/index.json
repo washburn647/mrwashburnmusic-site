@@ -1985,6 +1985,568 @@
     }
    ],
    "credit": "flamestudios-bass"
+  },
+  "electric-guitar": {
+   "label": "Electric guitar",
+   "kind": "pitched",
+   "release": 0.25,
+   "zones": [
+    {
+     "midi": 36,
+     "file": "electric-guitar/36.mp3",
+     "tune": -4
+    },
+    {
+     "midi": 41,
+     "file": "electric-guitar/41.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 45,
+     "file": "electric-guitar/45.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 48,
+     "file": "electric-guitar/48.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 52,
+     "file": "electric-guitar/52.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 55,
+     "file": "electric-guitar/55.mp3",
+     "tune": -9
+    },
+    {
+     "midi": 59,
+     "file": "electric-guitar/59.mp3"
+    },
+    {
+     "midi": 64,
+     "file": "electric-guitar/64.mp3"
+    },
+    {
+     "midi": 67,
+     "file": "electric-guitar/67.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 71,
+     "file": "electric-guitar/71.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 74,
+     "file": "electric-guitar/74.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 80,
+     "file": "electric-guitar/80.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 85,
+     "file": "electric-guitar/85.mp3",
+     "tune": -2
+    }
+   ],
+   "credit": "freepats"
+  },
+  "electric-piano": {
+   "label": "Electric piano",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 30,
+     "file": "electric-piano/30.mp3"
+    },
+    {
+     "midi": 36,
+     "file": "electric-piano/36.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 42,
+     "file": "electric-piano/42.mp3"
+    },
+    {
+     "midi": 48,
+     "file": "electric-piano/48.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 54,
+     "file": "electric-piano/54.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 60,
+     "file": "electric-piano/60.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 66,
+     "file": "electric-piano/66.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 72,
+     "file": "electric-piano/72.mp3"
+    },
+    {
+     "midi": 78,
+     "file": "electric-piano/78.mp3"
+    },
+    {
+     "midi": 84,
+     "file": "electric-piano/84.mp3"
+    },
+    {
+     "midi": 90,
+     "file": "electric-piano/90.mp3"
+    },
+    {
+     "midi": 96,
+     "file": "electric-piano/96.mp3"
+    }
+   ],
+   "credit": "freepats"
+  },
+  "synth-pad": {
+   "label": "Synth pad",
+   "kind": "pitched",
+   "release": 0.8,
+   "zones": [
+    {
+     "midi": 36,
+     "file": "synth-pad/36.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 40,
+     "file": "synth-pad/40.mp3",
+     "tune": 12
+    },
+    {
+     "midi": 44,
+     "file": "synth-pad/44.mp3",
+     "tune": -8
+    },
+    {
+     "midi": 48,
+     "file": "synth-pad/48.mp3",
+     "tune": -24
+    },
+    {
+     "midi": 52,
+     "file": "synth-pad/52.mp3",
+     "tune": 15
+    },
+    {
+     "midi": 56,
+     "file": "synth-pad/56.mp3",
+     "tune": -8
+    },
+    {
+     "midi": 60,
+     "file": "synth-pad/60.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 64,
+     "file": "synth-pad/64.mp3",
+     "tune": 9
+    },
+    {
+     "midi": 68,
+     "file": "synth-pad/68.mp3",
+     "tune": -22
+    },
+    {
+     "midi": 72,
+     "file": "synth-pad/72.mp3",
+     "tune": 14
+    },
+    {
+     "midi": 76,
+     "file": "synth-pad/76.mp3",
+     "tune": -11
+    },
+    {
+     "midi": 80,
+     "file": "synth-pad/80.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 84,
+     "file": "synth-pad/84.mp3",
+     "tune": 3
+    }
+   ],
+   "credit": "freepats"
+  },
+  "synth-lead": {
+   "label": "Synth lead",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 28,
+     "file": "synth-lead/28.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 32,
+     "file": "synth-lead/32.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 36,
+     "file": "synth-lead/36.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 40,
+     "file": "synth-lead/40.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 44,
+     "file": "synth-lead/44.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 48,
+     "file": "synth-lead/48.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 52,
+     "file": "synth-lead/52.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 56,
+     "file": "synth-lead/56.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 60,
+     "file": "synth-lead/60.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 64,
+     "file": "synth-lead/64.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 68,
+     "file": "synth-lead/68.mp3",
+     "tune": -11
+    },
+    {
+     "midi": 72,
+     "file": "synth-lead/72.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 76,
+     "file": "synth-lead/76.mp3",
+     "tune": -4
+    },
+    {
+     "midi": 80,
+     "file": "synth-lead/80.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 84,
+     "file": "synth-lead/84.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 88,
+     "file": "synth-lead/88.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 92,
+     "file": "synth-lead/92.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 96,
+     "file": "synth-lead/96.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 100,
+     "file": "synth-lead/100.mp3",
+     "tune": -5
+    }
+   ],
+   "credit": "freepats"
+  },
+  "synth-bass": {
+   "label": "Synth bass",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 24,
+     "file": "synth-bass/24.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 30,
+     "file": "synth-bass/30.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 36,
+     "file": "synth-bass/36.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 42,
+     "file": "synth-bass/42.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 48,
+     "file": "synth-bass/48.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 54,
+     "file": "synth-bass/54.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 60,
+     "file": "synth-bass/60.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 66,
+     "file": "synth-bass/66.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 72,
+     "file": "synth-bass/72.mp3"
+    },
+    {
+     "midi": 78,
+     "file": "synth-bass/78.mp3"
+    },
+    {
+     "midi": 84,
+     "file": "synth-bass/84.mp3"
+    }
+   ],
+   "credit": "freepats"
+  },
+  "organ": {
+   "label": "Organ",
+   "kind": "pitched",
+   "release": 0.1,
+   "zones": [
+    {
+     "midi": 36,
+     "file": "organ/36.mp3"
+    },
+    {
+     "midi": 40,
+     "file": "organ/40.mp3"
+    },
+    {
+     "midi": 44,
+     "file": "organ/44.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 48,
+     "file": "organ/48.mp3"
+    },
+    {
+     "midi": 52,
+     "file": "organ/52.mp3"
+    },
+    {
+     "midi": 56,
+     "file": "organ/56.mp3"
+    },
+    {
+     "midi": 60,
+     "file": "organ/60.mp3"
+    },
+    {
+     "midi": 64,
+     "file": "organ/64.mp3"
+    },
+    {
+     "midi": 68,
+     "file": "organ/68.mp3"
+    },
+    {
+     "midi": 72,
+     "file": "organ/72.mp3"
+    },
+    {
+     "midi": 76,
+     "file": "organ/76.mp3"
+    },
+    {
+     "midi": 80,
+     "file": "organ/80.mp3"
+    },
+    {
+     "midi": 84,
+     "file": "organ/84.mp3"
+    },
+    {
+     "midi": 88,
+     "file": "organ/88.mp3"
+    },
+    {
+     "midi": 92,
+     "file": "organ/92.mp3"
+    },
+    {
+     "midi": 96,
+     "file": "organ/96.mp3"
+    }
+   ],
+   "credit": "freepats"
+  },
+  "ukulele": {
+   "label": "Ukulele",
+   "kind": "pitched",
+   "release": 0.2,
+   "zones": [
+    {
+     "midi": 60,
+     "file": "ukulele/60.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 62,
+     "file": "ukulele/62.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 64,
+     "file": "ukulele/64.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 66,
+     "file": "ukulele/66.mp3",
+     "tune": 11
+    },
+    {
+     "midi": 67,
+     "file": "ukulele/67.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 69,
+     "file": "ukulele/69.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 71,
+     "file": "ukulele/71.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 73,
+     "file": "ukulele/73.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 75,
+     "file": "ukulele/75.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 77,
+     "file": "ukulele/77.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 79,
+     "file": "ukulele/79.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 81,
+     "file": "ukulele/81.mp3",
+     "tune": -9
+    },
+    {
+     "midi": 84,
+     "file": "ukulele/84.mp3",
+     "tune": -3
+    }
+   ],
+   "credit": "freepats"
+  },
+  "kalimba": {
+   "label": "Kalimba",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 53,
+     "file": "kalimba/53.mp3",
+     "tune": -15
+    },
+    {
+     "midi": 60,
+     "file": "kalimba/60.mp3",
+     "tune": -36
+    },
+    {
+     "midi": 63,
+     "file": "kalimba/63.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 64,
+     "file": "kalimba/64.mp3",
+     "tune": 41
+    },
+    {
+     "midi": 67,
+     "file": "kalimba/67.mp3",
+     "tune": -15
+    },
+    {
+     "midi": 68,
+     "file": "kalimba/68.mp3",
+     "tune": -15
+    },
+    {
+     "midi": 72,
+     "file": "kalimba/72.mp3",
+     "tune": -25
+    },
+    {
+     "midi": 73,
+     "file": "kalimba/73.mp3",
+     "tune": 17
+    }
+   ],
+   "credit": "freepats"
   }
  },
  "voices": {},
@@ -1993,6 +2555,7 @@
   "vsco": "VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0",
   "salamander-drums": "Salamander Drumkit by Alexander Holm, CC BY-SA 3.0",
   "freepats-guitar": "Spanish Classical Guitar by Roberto (FreePats project), CC0",
+  "freepats": "FreePats project (freepats.zenvoid.org) sound banks, CC0",
   "flamestudios-bass": "Ibanez Electric Bass Guitar by FlameStudios (Gary Campion), GNU GPL v3",
   "flamestudios-banjo": "Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3"
  }

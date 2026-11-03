@@ -1,6 +1,6 @@
 """Build the shared instrument samples in assets/sounds/ from the source libraries.
 
-  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--ebass SF2] [--only NAME,NAME]
+  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--ebass SF2] [--freepats DIR] [--only NAME,NAME]
 
 VSCO_DIR   a clone of https://github.com/sgossner/VSCO-2-CE (CC0)
 PIANO_DIR  the audio/ folder of the npm package @audio-samples/piano-mp3-velocity10
@@ -16,6 +16,10 @@ DRUMS_DIR  salamanderDrumkit.tar.bz2 unpacked, from https://archive.org/details/
 --ebass    FS Ibanez Electric Bass Guitar.sf2, from FS_Ibanez_Electric_Bass_GuitarSF.tar.bz2 at
            https://archive.org/details/flame-studios-gpl-samples (FlameStudios, GNU GPL v3 or
            later); the loudest velocity layer of each note is used
+--freepats a folder holding these FreePats sound banks (all CC0), unpacked, from
+           https://freepats.zenvoid.org/: EGuitarFSBS-clean bridge small (SFZ+FLAC), FM-Piano1
+           (SFZ+FLAC), SweepPad, SynthSquare, LatelyBass (SFZ+FLAC), DrawbarOrganEmulation (SFZ),
+           Ukulele (SFZ+FLAC) and Kalimba (SFZ)
 
 Needs ffmpeg and numpy. Every sample is checked with a pitch detector: the file name's
 octave is corrected when the source counts octaves differently, and the measured tuning
@@ -62,7 +66,19 @@ PITCHED = {
     'guitar': ('Nylon guitar', 'guitar', '*.flac', [''], 3, 0.3, True),
     'banjo': ('Banjo', 'banjo', 'string*/hard_*.wav', [''], 2, 0.2, True),
     'electric-bass': ('Electric bass', 'ebass', '*.wav', [''], 2, 0.2, True),
+    'electric-guitar': ('Electric guitar', 'freepats', 'EGuitarFSBS-clean*/samples/bridge/small/*.flac', [''], 3, 0.25, True),
+    'electric-piano': ('Electric piano', 'freepats', 'FM-Piano1*/samples/*v80.flac', [''], 3.5, 0.3, True),
+    'synth-pad': ('Synth pad', 'freepats', 'SweepPad*/samples/*.flac', [''], 5, 0.8, True),
+    'synth-lead': ('Synth lead', 'freepats', 'SynthSquare*/samples/*.flac', [''], 3, 0.15, True),
+    'synth-bass': ('Synth bass', 'freepats', 'LatelyBass*/samples/*.flac', [''], 2.5, 0.15, True),
+    'organ': ('Organ', 'freepats', 'DrawbarOrganEmulation*/samples/*.wav', [''], 3, 0.1, True),
+    'ukulele': ('Ukulele', 'freepats', 'Ukulele*/samples/*.flac', [''], 2.5, 0.2, True),
+    'kalimba': ('Kalimba', 'freepats', 'Kalimba*/samples/*_01.wav', [''], 3, 0.3, True),
 }
+
+# The organ's 16' drawbar sounds an octave under the note played: the detector hears that
+# one, so the names' octave is kept.
+TRUST_OCTAVE = {'organ'}
 
 # Sources that don't name their files by note: file name to MIDI note.
 NOTE_FROM = {
@@ -70,6 +86,8 @@ NOTE_FROM = {
     'banjo': lambda base: int(re.search(r'hard_(\d+)', base).group(1)) + 24,
     # Notes taken out of the bass soundfont by sf2_notes(), named by their MIDI note.
     'ebass': lambda base: int(base.split('.')[0]),
+    # Kalimba: tines named by scale step (the FreePats SFZ gives their notes).
+    'kalimba': lambda base: {'F3': 53, '1': 60, '2': 63, '3': 64, '4': 67, '5': 68, '6': 72, '7': 73}.get(base.split('_')[0]),
 }
 
 # name: label, file in VSCO_DIR, seconds kept
@@ -116,6 +134,7 @@ CREDITS = {
     'guitar': 'freepats-guitar',
     'banjo': 'flamestudios-banjo',
     'electric-bass': 'flamestudios-bass',
+    **{n: 'freepats' for n in ('electric-guitar', 'electric-piano', 'synth-pad', 'synth-lead', 'synth-bass', 'organ', 'ukulele', 'kalimba')},
 }
 
 
@@ -236,7 +255,8 @@ def build_pitched(name, spec, src):
     by_note = {}
     for f in files:
         base = os.path.basename(f)
-        m = NOTE_FROM[source](base) if source in NOTE_FROM else label_midi(base)
+        how = NOTE_FROM.get(name) or NOTE_FROM.get(source)
+        m = how(base) if how else label_midi(base)
         if m is None:
             continue
         rank = next((i for i, l in enumerate(layers) if not l or re.search(rf'_{l}(_|\.|$)', base)), None)
@@ -251,6 +271,8 @@ def build_pitched(name, spec, src):
     # The octave shift that fits most notes: some sources call middle C "C3".
     shifts = [round((z['measured'] - z['labelled']) / 12) for z in zones if z['measured'] is not None]
     shift = max(set(shifts), key=shifts.count) * 12 if shifts else 0
+    if name in TRUST_OCTAVE:
+        shift = 0
     out = []
     for z in zones:
         root = z['labelled'] + shift
@@ -307,7 +329,7 @@ def build_hit(name, spec, src, source='vsco'):
 def main():
     argv = sys.argv[1:]
     opts = {}
-    for flag in ('--only', '--guitar', '--banjo', '--ebass'):
+    for flag in ('--only', '--guitar', '--banjo', '--ebass', '--freepats'):
         if flag in argv:
             i = argv.index(flag)
             opts[flag] = argv[i + 1]
@@ -315,7 +337,8 @@ def main():
     args = argv
     only = set(opts['--only'].split(',')) if '--only' in opts else None
     src = {'vsco': args[0], 'piano': args[1], 'drums': args[2] if len(args) > 2 else None,
-           'guitar': opts.get('--guitar'), 'banjo': opts.get('--banjo'), 'ebass': None}
+           'guitar': opts.get('--guitar'), 'banjo': opts.get('--banjo'), 'ebass': None,
+           'freepats': opts.get('--freepats')}
     if opts.get('--ebass'):
         import tempfile
         src['ebass'] = sf2_notes(opts['--ebass'], tempfile.mkdtemp())
@@ -323,7 +346,7 @@ def main():
     index = json.load(open(index_path)) if os.path.exists(index_path) else {}
     instruments = index.get('instruments', {})
     for name, spec in PITCHED.items():
-        if spec[1] in ('guitar', 'banjo', 'ebass') and not src[spec[1]]:
+        if spec[1] in ('guitar', 'banjo', 'ebass', 'freepats') and not src[spec[1]]:
             continue
         if not only or name in only:
             instruments[name] = build_pitched(name, spec, src)
@@ -341,6 +364,7 @@ def main():
         'vsco': 'VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0',
         'salamander-drums': 'Salamander Drumkit by Alexander Holm, CC BY-SA 3.0',
         'freepats-guitar': 'Spanish Classical Guitar by Roberto (FreePats project), CC0',
+        'freepats': 'FreePats project (freepats.zenvoid.org) sound banks, CC0',
         'flamestudios-bass': 'Ibanez Electric Bass Guitar by FlameStudios (Gary Campion), GNU GPL v3',
         'flamestudios-banjo': 'Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3',
     }
