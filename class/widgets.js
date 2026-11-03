@@ -437,7 +437,7 @@ function spotify(d, el) {
 }
 
 // ---- drawing box ---------------------------------------------------------------
-// What's drawn stays for this sitting only; it is never saved.
+// What's drawn stays for this sitting only, unless 💾 saves a copy to the device.
 
 const drawn = new WeakMap();               // widget -> data URL
 
@@ -493,7 +493,29 @@ function draw(d, el) {
     const wipe = h('button', 'wg-wipe', '🗑');
     wipe.title = 'Clear';
     wipe.addEventListener('click', () => g.clearRect(0, 0, cw, ch));
-    tools.append(rub, wipe);
+    const keep = h('button', 'wg-save', '💾');
+    keep.title = 'Save a copy';
+    keep.addEventListener('click', () => {
+      // A PNG to this device's downloads, on the box's background.
+      const out = h('canvas');
+      out.width = cw;
+      out.height = ch;
+      const o = out.getContext('2d');
+      o.fillStyle = el.bg || '#FFFFFF';
+      o.fillRect(0, 0, cw, ch);
+      o.drawImage(canvas, 0, 0);
+      out.toBlob((blob) => {
+        if (!blob) return;
+        const a = h('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'drawing ' + new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-') + '.png';
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }, 'image/png');
+    });
+    tools.append(rub, wipe, keep);
     p.box.append(canvas, tools);
 
     canvas.addEventListener('pointerdown', (e) => {

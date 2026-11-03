@@ -155,6 +155,12 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
         return;
       }
     }
+    if (link.submenu && menuFor) {
+      const g = curMenu() && curMenu().grade || grade;
+      const m = g && await menuFor(deckId, g, { part: link.submenu });
+      if (m) { trail.push({ deck, media, index, deckId, deckName, menu: curMenu() }); menus.set(deckId, m); show(MENU); }
+      return;
+    }
     if (link.slide != null) {
       const m = await ownMenu(deck.slides[link.slide]);
       trail.push({ deck, media, index, deckId, deckName });
@@ -197,6 +203,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     const t = trail.pop();
     pause();
     ({ deck, media, deckId, deckName } = t);
+    if (t.menu) menus.set(deckId, t.menu);
     show(t.index);
   }
 

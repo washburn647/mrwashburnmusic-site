@@ -9,8 +9,10 @@
    opts.order: slide indexes in the order the songs should show (others after).
    opts.only: just these slide indexes (a menu of the deck's own, such as its
    dances), with opts.title in place of the deck's name.
-   The songs come in sections, each starting a new row: the usual ones, then
-   the Move Its, then the dances. */
+   A deck's Move Its and dances have menus of their own (opts.part: 'moveIt'
+   or 'dance'): its main menu holds its usual songs, then one icon for each of
+   those menus (a { submenu } link). A menu from opts.only keeps its songs in
+   sections, each starting a new row: the usual ones, Move Its, dances. */
 
 import { forGradeOrEarlier, textOf, songSection, SECTIONS } from './marks.js';
 import { fontStack } from './render.js';
@@ -31,6 +33,15 @@ export function buildMenu(deck, grade, name, opts = {}) {
   const rank = new Map((opts.order || []).map((i, k) => [i, k]));
   const at = ({ i }) => rank.has(i) ? rank.get(i) : 1e9;
   songs.sort((a, b) => SECTIONS.indexOf(a.part) - SECTIONS.indexOf(b.part) || at(a) - at(b));
+  let items = songs;
+  if (opts.part) items = songs.filter((x) => x.part === opts.part);
+  else if (!opts.only) {
+    items = songs.filter((x) => x.part === 'main');
+    for (const part of SECTIONS.slice(1)) {
+      const first = songs.find((x) => x.part === part);
+      if (first) items.push({ part: 'main', submenu: part, media: sectionIcon(deck, part) || first.s.song.icon });
+    }
+  }
   const menus = deck.slides.filter((s) => s.menu);
   // The deck's plain menu (no grade in its title) is the best look to borrow.
   const template = menus.find((s) => !/^(PK|K|1)\s/i.test(s.title || '')) || menus[0];
@@ -39,7 +50,7 @@ export function buildMenu(deck, grade, name, opts = {}) {
   const head = template && template.els
     .filter((e) => e.text && textOf(e) && e.y < 120)
     .sort((a, b) => b.w * b.h - a.w * a.h)[0];
-  const title = (grade ? grade + ' ' : '') + (opts.title || name);
+  const title = (grade ? grade + ' ' : '') + (opts.title || (opts.part ? PART_NAMES[opts.part] : name));
   if (head) {
     const t = structuredClone(head);
     delete t.link;
@@ -56,7 +67,7 @@ export function buildMenu(deck, grade, name, opts = {}) {
     top = 14 + 70 + GAP;
   }
   // The biggest icons that fit every song in the space left, each section on rows of its own.
-  const parts = SECTIONS.map((p) => songs.filter((x) => x.part === p)).filter((l) => l.length);
+  const parts = SECTIONS.map((p) => items.filter((x) => x.part === p)).filter((l) => l.length);
   const W = deck.w - 2 * GAP, H = deck.h - top - GAP, n = Math.max(...parts.map((l) => l.length), 1);
   const BREAK = GAP * 2;                   // extra space between sections
   const rowsFor = (cols) => parts.reduce((t, l) => t + Math.ceil(l.length / cols), 0);
@@ -79,7 +90,11 @@ export function buildMenu(deck, grade, name, opts = {}) {
     }
     y += BREAK;
   }
-  placed.forEach(({ s, i, part, x, y }) => {
+  placed.forEach(({ s, i, part, x, y, submenu, media }) => {
+    if (submenu) {
+      els.push({ t: 'pic', x, y, w: size, h: size, geom: 'rect', media, alt: PART_NAMES[submenu], link: { submenu } });
+      return;
+    }
     const locked = opts.locked && opts.locked.has(i);
     els.push({ t: 'pic', x, y, w: size, h: size, geom: 'rect', media: s.song.icon, alt: s.song.name,
       link: locked ? undefined : { slide: i } });
@@ -98,7 +113,23 @@ export function buildMenu(deck, grade, name, opts = {}) {
           paras: [{ algn: 'ctr', runs: [{ t: no[1], sz: Math.round(d / PX_PER_PT * 0.55), b: true, font: 'Comic Sans MS', color: '#000000' }] }] } });
     }
   });
-  return { els, bg: template ? template.bg : null, title, generated: true };
+  return { els, bg: template ? template.bg : null, title, grade, generated: true };
+}
+
+const PART_NAMES = { moveIt: 'Move It', dance: 'Dances' };
+
+/** The picture the deck's own menus use for a button to its Move It or dance menu. */
+function sectionIcon(deck, part) {
+  for (const m of deck.slides.filter((s) => s.menu)) {
+    for (const e of m.els) {
+      const t = e.t === 'pic' && e.link && e.link.slide != null && deck.slides[e.link.slide];
+      if (!t || !t.menu) continue;
+      const songs = t.els.filter((x) => x.link && x.link.slide != null).map((x) => deck.slides[x.link.slide])
+        .filter((x) => x && x.song);
+      if (songs.length && songs.filter((x) => songSection(x) === part).length * 2 > songs.length) return e.media;
+    }
+  }
+  return null;
 }
 
 const norm = (t) => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
