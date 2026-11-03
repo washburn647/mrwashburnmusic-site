@@ -52,7 +52,8 @@ export function allIntroKeys() {
 }
 
 /* Show the intro in `host` and call done() when the learner is ready to play.
-   ui: { h, notes, sylIcons } from main.js. Returns { keys(e) } for the page's key handler. */
+   ui: { h, notes, sylIcons, mic } from main.js (mic: the mic is on). Returns { keys(e) } for the
+   page's key handler and { mic(time) } for each syllable the mic hears. */
 export function showIntro(host, key, ui, done) {
   const { h, notes, sylIcons } = ui;
   const it = introFor(key);
@@ -60,6 +61,7 @@ export function showIntro(host, key, ui, done) {
   let tries = 0;
   let busy = false;
   let keyFn = null;
+  let micFn = null;
 
   const media = it.media?.video
     ? h('video', { class: 'intro-media', src: new URL(it.media.video, import.meta.url).href, controls: true, playsInline: true, preload: 'metadata' })
@@ -94,6 +96,7 @@ export function showIntro(host, key, ui, done) {
   const finish = (right, text) => {
     busy = false;
     keyFn = null;
+    micFn = null;
     tries++;
     said.className = `intro-said ${right ? 'right' : 'wrong'}`;
     said.textContent = text;
@@ -136,14 +139,21 @@ export function showIntro(host, key, ui, done) {
 
     if (mode === 'perform' || mode === 'create') {
       const taps = [];
-      const pad = h('button', { class: 'pad intro-pad', onpointerdown: (e) => { e.preventDefault(); tap(); } }, h('b', {}, 'TAP'), h('small', {}, 'or press space'));
-      const tap = () => {
-        snd.hit('snare', ctx().currentTime, 0.8);
+      const pad = h('button', { class: 'pad intro-pad', onpointerdown: (e) => { e.preventDefault(); tap(); } }, h('b', {}, 'TAP'), h('small', {}, ui.mic ? 'or say it' : 'or press space'));
+      let tappedAt = -9;
+      // Taps and the mic, as in the game: a tap's own sound isn't a syllable, and a tap and a
+      // syllable together count once.
+      const tap = (time = ctx().currentTime, fromMic = false) => {
+        if (fromMic && time > tappedAt - 0.05 && time < tappedAt + snd.latency() + 0.12) return;
+        const t = time - snd.latency();
+        const b = (t - r0) / spb;
+        if (fromMic && (b < -0.25 || b > 3.75)) return;
+        if (!fromMic) { tappedAt = time; snd.hit('snare', time, 0.8); }
         pad.classList.remove('hit'); void pad.offsetWidth; pad.classList.add('hit');
-        const t = ctx().currentTime - snd.latency();
-        if (t >= r0 - 0.25 * spb) taps.push((t - r0) / spb);
+        if (t >= r0 - 0.25 * spb && !taps.some((x) => Math.abs(x - b) < 0.15)) taps.push(b);
       };
       keyFn = (e) => { if (e.key === ' ' || e.key === 'Enter') { tap(); return true; } return false; };
+      micFn = (time) => tap(time, true);
       area.append(pad);
       for (let k = 0; k < 4; k++) {
         snd.hit('claves', r0 + k * spb, 0.25);
@@ -199,5 +209,5 @@ export function showIntro(host, key, ui, done) {
     }
   }
 
-  return { keys: (e) => (keyFn ? keyFn(e) : false) };
+  return { keys: (e) => (keyFn ? keyFn(e) : false), mic: (time) => micFn?.(time) };
 }

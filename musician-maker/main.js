@@ -520,7 +520,9 @@ function countIn() {
     h('div', { class: 'cue-word' }, R.lap ? `Lap ${R.lap + 1}!` : 'Ready?'),
     ...R.news.splice(0).map((n) => h('p', { class: 'news' }, n))));
   [1, 2, 3, 4].forEach((n) => later(R.clock.timeOf(n - 1), () => { R.dom.overlay.querySelector('.cue-word').textContent = String(n); }));
-  R.clock.at(4, () => { later(R.clock.timeOf(4), () => overlay(null)); next(4); });
+  // Close only the count-in card: a skill intro may open on this same beat, and the two
+  // timers can fire in either order.
+  R.clock.at(4, () => { later(R.clock.timeOf(4), () => { if (R.dom.overlay.querySelector('.ready')) overlay(null); }); next(4); });
 }
 
 function next(B) {
@@ -704,14 +706,17 @@ function introBreak(B, item) {
     clearDots();
     const card = h('div', {});
     overlay(card);
-    const intro = showIntro(card, introKey(item), { h, notes, sylIcons }, () => {
+    const intro = showIntro(card, introKey(item), { h, notes, sylIcons, mic: R.micOn }, () => {
       st.intro[introKey(item)] = 1;
       save();
       R.keys = null;
+      R.onInput = null;
       overlay(null);
       countIn();
     });
     R.keys = intro.keys;
+    // The mic answers the practice round too.
+    R.onInput = (time, fromMic) => { if (fromMic) intro.mic(time); };
   });
 }
 
