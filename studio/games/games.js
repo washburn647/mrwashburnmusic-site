@@ -13,6 +13,7 @@ import { GAMES } from '/musician-maker/games.js';
 import * as OPT from '/musician-maker/options.js';
 import { STEPS, ALL, onsets } from '/musician-maker/steps.js';
 import { TIER_NAMES } from '/musician-maker/director.js';
+import { allIntroKeys, introFor } from '/musician-maker/intro.js';
 import { h } from '../dom.js';
 
 const app = document.getElementById('app');
@@ -21,7 +22,7 @@ const TIER_LABELS = ['Combo 0', ...TIER_NAMES.slice(1)];
 let site = OPT.complete();
 const draft = OPT.loadDraft();
 let opts = draft.games || site;
-const test = { step: '', tempo: 'climb', start: 'games', pace: 'normal', groove: 'mix', ...draft.test };
+const test = { step: '', tempo: 'climb', start: 'games', pace: 'normal', groove: 'mix', intros: 'mine', ...draft.test };
 let gameId = (GAMES.find((g) => g.id === test.game) || GAMES[0]).id;
 let labels = {}; // sound names, from the samples index
 let status = '';
@@ -244,6 +245,7 @@ function testUrl() {
   if (test.tempo !== 'climb') q.set('tempo', test.tempo);
   if (test.start === 'boss' && game().bossName) q.set('start', 'boss');
   if (test.pace === 'mookie') q.set('pace', 'mookie');
+  if (test.intros === 'all') q.set('intros', 'all');
   q.set('groove', test.groove);
   return `/musician-maker/?${q}`;
 }
@@ -265,9 +267,33 @@ function testCard() {
       h('label', {}, 'Tempo', seg({ climb: '92 → 126', 92: '92', 108: '108', 126: '126' }, test.tempo, set('tempo'))),
       g.bossName ? h('label', {}, 'Start with', seg({ games: 'Games', boss: g.bossName }, test.start, set('start'))) : null,
       h('label', {}, 'Pace', seg({ normal: 'Normal', mookie: 'Mookie mode' }, test.pace, set('pace'))),
+      h('label', {}, 'Skill intros', seg({ mine: 'Ones I haven\'t seen', all: 'All again' }, test.intros, set('intros'))),
       h('label', {}, 'Groove', grooveSel)),
     link,
     h('p', { class: 'hint' }, 'Only this game comes up, with the options here (saved for the site or not). Progress isn\'t saved.'));
+}
+
+/* ---------- skill intros (musician-maker/intro.js), shared by every game ---------- */
+
+function introsCard() {
+  const keys = allIntroKeys();
+  let key = keys.includes(test.intro) ? test.intro : keys[0];
+  const link = h('a', { class: 'button primary', href: `/musician-maker/?intro=${key}` }, 'Preview');
+  const about = h('p', { class: 'hint' });
+  const draw = () => {
+    const it = introFor(key);
+    link.href = `/musician-maker/?intro=${key}`;
+    about.textContent = `${it.title}: ${it.lines.join(' ')}${it.media ? ' (with a recorded message)' : ''}`;
+  };
+  draw();
+  return h('section', { class: 'card' },
+    h('h2', {}, 'Skill intros'),
+    h('p', { class: 'hint' }, 'The first time a skill comes up, the game stops for its intro and a practice try. Same in every game.'),
+    h('div', { class: 'try' },
+      h('select', { 'aria-label': 'Skill', onchange: (e) => { key = e.target.value; test.intro = key; keep(); draw(); } },
+        ...keys.map((k) => { const it = introFor(k); return h('option', { value: k, selected: k === key }, `${it.step.n}. ${it.step.name} · ${it.mode}`); })),
+      link),
+    about);
 }
 
 /* ---------- page ---------- */
@@ -298,7 +324,7 @@ function drawTabs() {
 
 const benchEl = h('div', { class: 'bench' });
 function drawBench() {
-  benchEl.replaceChildren(h('div', {}, tryCard()), h('div', {}, optionsCard(), testCard()));
+  benchEl.replaceChildren(h('div', {}, tryCard(), introsCard()), h('div', {}, optionsCard(), testCard()));
 }
 
 function saveForSite() {

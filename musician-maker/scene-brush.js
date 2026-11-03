@@ -23,6 +23,7 @@ import { rigMookie } from './rig.js';
 import { rigCat, fur } from './cats.js';
 import { toon } from './sound.js';
 import { gagDeck } from './gags.js';
+import { callBubble } from './speech.js';
 
 function h(tag, cls, text) {
   const el = document.createElement(tag);
@@ -256,6 +257,12 @@ export const brushingTime = {
       fx.append(b);
       later(700, () => b.remove());
     }
+    /* A note of the call: its syllable added to the call's bubble, or a word on its own. */
+    function say(i, syl, word, at) {
+      if (!syl) { bubble(word, at); return; }
+      const p = local(at);
+      callBubble(fx, i, syl, p.x, Math.max(34, p.y));
+    }
     function punch(at, scale = 1.15, ms = 520) {
       const p = local(at);
       cam.style.transformOrigin = `${p.x}px ${p.y}px`;
@@ -389,11 +396,12 @@ export const brushingTime = {
           rusty.say(200, 'open');
           bump(rusty.el, 'taunt');
           rusty.poof(1.55 - hits * 0.13 + 0.05);
-          bubble(syl || 'mrrp', centre(rusty.el, 0.5, 0.06));
+          say(i, syl, 'mrrp', centre(rusty.el, 0.5, 0.06));
           return;
         }
         // The Head Stylist sings each note; a tuft of Mookie's fur sproings out with it.
-        stylistSay(syl || 'brr!', 'sing', 600);
+        stylistSay(syl ? null : 'brr!', 'sing', 600);
+        if (syl) later(40, () => say(i, syl, null, centre(stylist, 0.5, 0.02)));
         const t = ORDER[notes++ % ORDER.length];
         if (!up.includes(t)) up.push(t);
         bump(cat.tuft(t, true), 'sproing');

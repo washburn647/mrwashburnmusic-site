@@ -22,6 +22,7 @@ import { rigMookie } from './rig.js';
 import { rigCat } from './cats.js';
 import { toon } from './sound.js';
 import { gagDeck } from './gags.js';
+import { callBubble } from './speech.js';
 
 function h(tag, cls, text) {
   const el = document.createElement(tag);
@@ -310,6 +311,12 @@ export const supperTime = {
       fx.append(b);
       later(700, () => b.remove());
     }
+    /* A note of the call: its syllable added to the call's bubble, or a word on its own. */
+    function say(i, syl, word, at) {
+      if (!syl) { bubble(word, at); return; }
+      const p = local(at);
+      callBubble(fx, i, syl, p.x, Math.max(34, p.y));
+    }
     function punch(at, scale = 1.15, ms = 520) {
       const p = local(at);
       cam.style.transformOrigin = `${p.x}px ${p.y}px`;
@@ -418,12 +425,12 @@ export const supperTime = {
         if (boss) {
           rusty.say(200, 'open');
           bump(rusty.el, 'taunt');
-          bubble(syl || 'mrrp', centre(rusty.el, 0.5, 0.1));
+          say(i, syl, 'mrrp', centre(rusty.el, 0.5, 0.1));
           return;
         }
         // Chef Bastet sings each note; while she sings, the thieves take a step.
         chefSay(null, 'sing', 700);
-        later(30, () => bubble(syl || 'mew!', centre(chefMask, 0.55, 0.16)));
+        later(30, () => say(i, syl, 'mew!', centre(chefMask, 0.55, 0.16)));
         steps++;
         bindi.mood('sneak');
         rusty.mood('sneak');

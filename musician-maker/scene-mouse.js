@@ -17,6 +17,7 @@ import { rigMookie } from './rig.js';
 import { critter, photoMouse } from './critters.js';
 import { toon } from './sound.js';
 import { gagDeck } from './gags.js';
+import { callBubble } from './speech.js';
 
 function h(tag, cls, text) {
   const el = document.createElement(tag);
@@ -240,6 +241,13 @@ export const mouseCatcher = {
       later(700, () => b.remove());
     }
 
+    /* A note of the call: its syllable added to the call's bubble, or a word on its own. */
+    function say(i, syl, word, at) {
+      if (!syl) { bubble(word, at); return; }
+      const p = local(at);
+      callBubble(fx, i, syl, p.x, p.y);
+    }
+
     /* Camera punch-in toward a point, then back. */
     function punch(at, scale = 1.15, ms = 520) {
       const p = local(at);
@@ -317,12 +325,12 @@ export const mouseCatcher = {
         if (rat) {
           rat.say(220);
           bump(rat, 'taunt');
-          bubble(syl || 'nyah!', centre(rat, 0.05));
+          say(i, syl, 'nyah!', centre(rat, 0.05));
           return;
         }
         bump(mouse, 'peek');
         mouse.say(220);
-        bubble(syl || 'squeak!', centre(hole, -0.25));
+        say(i, syl, 'squeak!', centre(hole, -0.25));
         // From the second tier up, the Critic sometimes sings along, deadpan.
         if (tierNow >= 1 && Math.random() < 0.22) critic(null, 'sing', 520);
       },

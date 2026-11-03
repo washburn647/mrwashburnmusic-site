@@ -12,6 +12,7 @@ import { STEPS, BANDS, UNIT, onsets, sylText, options, readTaps, fromCells, load
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import * as OPT from './options.js';
+import { showIntro, introKey, allIntroKeys } from './intro.js';
 import { mookie } from './mookie.js';
 import * as TX from './transitions.js';
 import * as FX from './effects.js';
@@ -30,13 +31,16 @@ const TEST = GAMES.some((g) => g.id === Q.get('test')) ? {
   boss: Q.get('start') === 'boss',
   groove: Q.get('groove') || null,
   mookie: Q.get('pace') === 'mookie',
+  intros: Q.get('intros') === 'all', // show every skill intro again
 } : null;
 const WORKSHOP = '/studio/games/';
 let st = store.load();
 if (TEST) {
   st.mookie = TEST.mookie;
   if (TEST.groove) st.groove = TEST.groove;
+  if (TEST.intros) st.intro = {};
 }
+st.intro ||= {};
 let dir = makeDirector(st);
 let R = null; // the run being played
 loadMarks();
@@ -631,7 +635,10 @@ function pickGame() {
 
 function gameSeg(B, seg) {
   const warm = R.lap === 0 && seg.set === 0 && !R.force;
-  const item = dir.next({ warm, force: R.force });
+  const item = R.pending || dir.next({ warm, force: R.force });
+  R.pending = null;
+  // A skill's first game: the stream stops for its intro, then this game comes next.
+  if (!st.intro[introKey(item)]) { introBreak(B, item); return; }
   const step = STEPS[item.step];
   const game = pickGame();
   const spb = R.clock.spb();
@@ -683,6 +690,29 @@ function gameSeg(B, seg) {
     R.win = null;
   });
   R.clock.at(end, () => next(end));
+}
+
+/* Stop the stream for a skill intro (intro.js), then count back in to the same game. */
+function introBreak(B, item) {
+  R.pending = item;
+  R.idx--; // this game segment again after the intro
+  R.clock.stop();
+  R.groove.mode = 'off';
+  snd.grooveStop();
+  later(R.clock.timeOf(B), () => {
+    R.dom.controls.replaceChildren();
+    clearDots();
+    const card = h('div', {});
+    overlay(card);
+    const intro = showIntro(card, introKey(item), { h, notes, sylIcons }, () => {
+      st.intro[introKey(item)] = 1;
+      save();
+      R.keys = null;
+      overlay(null);
+      countIn();
+    });
+    R.keys = intro.keys;
+  });
 }
 
 function question(item, step) {
@@ -1293,6 +1323,17 @@ function testTitle() {
 
 if (Q.has('debug')) window.mmDebug = () => R;
 
+/* A skill intro on its own, from the workshop (?intro=<key>). */
+function introPreview(key) {
+  scene('progress');
+  const card = h('div', { class: 'intro-preview' });
+  app.replaceChildren(h('div', { class: 'progress' },
+    h('a', { class: 'back', 'aria-label': 'Back to the workshop', href: WORKSHOP }, '‹'), card));
+  const intro = showIntro(card, key, { h, notes, sylIcons }, () => { location.href = WORKSHOP; });
+  document.onkeydown = (e) => { if (!e.repeat && intro.keys(e)) e.preventDefault(); };
+}
+
 if (TEST) testTitle();
+else if (allIntroKeys().includes(Q.get('intro'))) introPreview(Q.get('intro'));
 else if (Q.has('lab')) lab();
 else title();
