@@ -5,7 +5,10 @@
    menu slides, with the title shrunk to fit its box.
 
    opts.locked: slide indexes of songs not unlocked yet. They show under a
-   lock (opts.lock, the decks' lock picture, or a grey veil) and don't jump. */
+   lock (opts.lock, the decks' lock picture, or a grey veil) and don't jump.
+   opts.order: slide indexes in the order the songs should show (others after).
+   opts.only: just these slide indexes (a menu of the deck's own, such as its
+   dances), with opts.title in place of the deck's name. */
 
 import { forGradeOrEarlier, textOf } from './marks.js';
 import { fontStack } from './render.js';
@@ -16,9 +19,15 @@ const PX_PER_PT = 960 / 720;
 export function buildMenu(deck, grade, name, opts = {}) {
   const songs = deck.slides
     .map((s, i) => ({ s, i }))
-    .filter(({ s }) => s.song && s.song.kind === 'song' && s.song.icon && !s.hidden && forGradeOrEarlier(s, grade))
+    .filter(({ s, i }) => s.song && s.song.kind === 'song' && s.song.icon && !s.hidden && forGradeOrEarlier(s, grade) &&
+      (!opts.only || opts.only.has(i)))
     // A song over several slides shows once, jumping to its first.
     .filter(({ s }, k, all) => all.findIndex((x) => x.s.song.icon === s.song.icon) === k);
+  if (opts.order) {
+    const rank = new Map(opts.order.map((i, k) => [deck.slides[i].song && deck.slides[i].song.icon, k]));
+    const at = ({ s }) => rank.has(s.song.icon) ? rank.get(s.song.icon) : 1e9;
+    songs.sort((a, b) => at(a) - at(b));
+  }
   const menus = deck.slides.filter((s) => s.menu);
   // The deck's plain menu (no grade in its title) is the best look to borrow.
   const template = menus.find((s) => !/^(PK|K|1)\s/i.test(s.title || '')) || menus[0];
@@ -27,7 +36,7 @@ export function buildMenu(deck, grade, name, opts = {}) {
   const head = template && template.els
     .filter((e) => e.text && textOf(e) && e.y < 120)
     .sort((a, b) => b.w * b.h - a.w * a.h)[0];
-  const title = (grade ? grade + ' ' : '') + name;
+  const title = (grade ? grade + ' ' : '') + (opts.title || name);
   if (head) {
     const t = structuredClone(head);
     delete t.link;

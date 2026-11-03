@@ -8,9 +8,9 @@ import { buildMenu } from './menus.js';
 import { openEditor } from './editor.js';
 import { el, thumb, loadMedia } from './ui.js';
 import * as store from './store.js';
-import { missingIcons, forGrade, GRADES } from './marks.js';
+import { missingIcons, forGrade, taggedFor, GRADES } from './marks.js';
 import { showPlanner } from './planner.js';
-import { gradeHint, normName, classAsOf, lockedSlides } from './plans.js';
+import { gradeHint, normName, classAsOf, lockedSlides, indexSongs, firstClasses } from './plans.js';
 import { makeTemplate } from './builder.js';
 import * as sync from './sync.js';
 
@@ -90,13 +90,21 @@ async function showDeck(id, startPresenting, editAt) {
   }
   const grade = gradePick;
   const built = rec.deck.built;
-  const menu = grade ? await gradeMenu(rec, grade, media) : null;
+  // A category deck shows a grade's slides only; a class deck's untagged slides are for every grade.
+  const fits = (s) => (built ? forGrade : taggedFor)(s, grade);
+  const plan = await currentPlan(built);
+  const menu = grade ? await gradeMenu(rec, grade, media, built, plan) : null;
+  const menuFor = async (deckId, g, extra) => {
+    const r = await store.getDeck(deckId);
+    return r ? gradeMenu(r, g, await loadMedia(r.deck), built, plan, extra) : null;
+  };
   const run = (i, wantMenu) => present(rec, wantMenu ? MENU : i, media, (at) => {
     const card = main.querySelector('.slide-card[data-n="' + at + '"]');
     if (card) card.scrollIntoView({ block: 'center' });
-  }, findGoogle, { grade: grade || (built && built.grade), menu,
+  }, findGoogle, { grade: grade || (built && built.grade), menu, menuFor, strict: !built,
                    openDeck: (link) => openDeck(link, built, grade) });
-  const first = () => Math.max(0, rec.deck.slides.findIndex((s) => !s.hidden && forGrade(s, grade) && !(grade && s.menu)));
+  const first = () => Math.max(0, rec.deck.slides.findIndex((s) => !s.hidden && fits(s) && !(grade && s.menu)));
+  const sort = built ? 'deck' : recall('sort') || 'deck';
 
   const chips = el('span', { class: 'grades' },
     [null, ...GRADES].map((g) => el('button', {
@@ -107,6 +115,8 @@ async function showDeck(id, startPresenting, editAt) {
   const head = el('div', { class: 'deck-head' },
     el('h2', {}, rec.name),
     chips,
+    built ? null : el('select', { class: 'sort', title: 'Sort', onchange: (e) => { remember('sort', e.target.value); showDeck(id); } },
+      SORTS.map(([v, label]) => el('option', { value: v, selected: v === sort }, label))),
     grade ? el('button', { class: 'btn quiet', onclick: () => run(0, true) }, '▦ Menu') : null,
     el('button', { class: 'btn', onclick: () => run(first()) }, '▶ Present'),
     el('button', { class: 'btn quiet', onclick: () => { location.hash = '#/deck/' + rec.id + '/edit'; } }, 'Edit'),
@@ -122,23 +132,52 @@ async function showDeck(id, startPresenting, editAt) {
   if (noIcon.length) {
     notes.push('No song icon: ' + noIcon.map(({ s, i }) => (s.title || 'untitled') + ' (' + (i + 1) + ')').join(', ') + '.');
   }
-  const songs = rec.deck.slides.filter((s) => s.song && s.song.kind === 'song' && forGrade(s, grade)).length;
+  const songs = rec.deck.slides.filter((s) => s.song && s.song.kind === 'song' && fits(s)).length;
   const summary = songs ? el('p', { class: 'deck-sum' }, songs + ' song slides') : null;
   const warn = notes.length ? el('div', { class: 'warn' }, notes.join(' ')) : null;
 
   const grid = el('div', { class: 'slides' });
-  rec.deck.slides.forEach((s, i) => {
-    if (!forGrade(s, grade) || (grade && s.menu)) return;
-    grid.append(el('button', {
-      class: 'slide-card' + (s.hidden ? ' hidden-slide' : ''), 'data-n': i,
-      title: s.hidden ? 'Hidden slide (skipped when you click through)' : 'Present from here',
-      onclick: () => run(i)
-    }, thumb(s, rec.deck, media),
-    el('div', { class: 'cap' }, el('b', {}, String(i + 1)),
-      s.song && s.song.icon ? el('img', { class: 'song-icon', src: media(s.song.icon), alt: '' }) : null,
-      el('span', { class: 'cap-t' }, s.title || ''),
-      s.grades && s.grades.length ? el('span', { class: 'cap-g' }, s.grades.join(' ')) : null)));
-  });
+  const card = (s, i) => el('button', {
+    class: 'slide-card' + (s.hidden ? ' hidden-slide' : ''), 'data-n': i,
+    title: s.hidden ? 'Hidden slide (skipped when you click through)' : 'Present from here',
+    onclick: () => run(i)
+  }, thumb(s, rec.deck, media),
+  el('div', { class: 'cap' }, el('b', {}, String(i + 1)),
+    s.song && s.song.icon ? el('img', { class: 'song-icon', src: media(s.song.icon), alt: '' }) : null,
+    el('span', { class: 'cap-t' }, s.title || ''),
+    s.grades && s.grades.length ? el('span', { class: 'cap-g' }, s.grades.join(' ')) : null));
+  if (sort === 'deck') {
+    rec.deck.slides.forEach((s, i) => { if (fits(s) && !(grade && s.menu)) grid.append(card(s, i)); });
+  } else {
+    // Sorted, a deck shows its songs only, each song's slides together.
+    const groups = sortGroups(rec, songGroups(rec, plan, fits), sort, plan, grade);
+    let dragged = null;
+    for (const g of groups) {
+      for (const i of g.slides) {
+        const c = card(rec.deck.slides[i], i);
+        if (sort === 'custom') {
+          c.draggable = true;
+          c.addEventListener('dragstart', (e) => { dragged = g; e.dataTransfer.effectAllowed = 'move'; c.classList.add('dragging'); });
+          c.addEventListener('dragend', () => c.classList.remove('dragging'));
+          c.addEventListener('dragover', (e) => { if (dragged && dragged !== g) e.preventDefault(); });
+          c.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            if (!dragged || dragged === g) return;
+            const keys = groups.map((x) => x.key).filter((k) => k !== dragged.key);
+            const r = c.getBoundingClientRect();
+            const after = e.clientX > r.left + r.width / 2;
+            keys.splice(keys.indexOf(g.key) + (after ? 1 : 0), 0, dragged.key);
+            // Songs not in this view keep their places after these.
+            const rest = (rec.deck.songOrder || []).filter((k) => !keys.includes(k));
+            rec.deck.songOrder = [...keys, ...rest];
+            await store.putDeck(rec);
+            showDeck(id);
+          });
+        }
+        grid.append(c);
+      }
+    }
+  }
   main.replaceChildren(head, summary || '', warn || '', grid);
   if (startPresenting) run(first());
 }
@@ -157,16 +196,83 @@ async function openDeck(link, built, pick) {
   return hit;
 }
 
-/** A category deck's menu for a grade, with songs not reached yet locked: by a built class,
-    the plan up to that class; otherwise the plan up to today's class on the calendar. */
-async function gradeMenu(rec, grade, media, built) {
+/** The year plan in use: a built class's own, or the one the planner last showed. */
+async function currentPlan(built) {
   const years = await store.listPlans().catch(() => []);
-  const plan = built ? years.find((y) => y.year === built.year)
-    : years.find((y) => y.year === recall('year')) || years[years.length - 1];
+  return (built ? years.find((y) => y.year === built.year)
+    : years.find((y) => y.year === recall('year')) || years[years.length - 1]) || null;
+}
+
+/** A category deck's menu for a grade, with songs not reached yet locked: by a built class,
+    the plan up to that class; otherwise the plan up to today's class on the calendar.
+    Its songs come in the order the deck page is sorted by. */
+async function gradeMenu(rec, grade, media, built, plan, extra = {}) {
+  if (plan === undefined) plan = await currentPlan(built);
   const through = !plan ? null : built ? built.no : classAsOf(plan, grade, today());
   const locked = through == null ? new Set() : lockedSlides(plan, grade, rec.deck, rec.name, through);
   const lock = media(LOCK) ? LOCK : null;
-  return buildMenu(rec.deck, grade, rec.name, { locked, lock });
+  const sort = recall('sort') || 'deck';
+  const order = sort === 'deck' ? null
+    : sortGroups(rec, songGroups(rec, plan, () => true), sort, plan, grade).map((g) => g.slides[0]);
+  return buildMenu(rec.deck, grade, rec.name, { locked, lock, order, ...extra });
+}
+
+// ---- sorting a deck's songs -------------------------------------------------
+
+const SORTS = [['deck', 'Deck order'], ['az', 'A–Z'], ['za', 'Z–A'], ['class', 'Class order'],
+  ['class-r', 'Class order, last first'], ['custom', 'Custom order']];
+
+/** A deck's songs: { key, name, slides }, a song over several slides as one. */
+function songGroups(rec, plan, fits) {
+  const category = plan && plan.categories.find((c) => normName(c) === normName(rec.name));
+  const names = new Map();                 // slide index -> the plan's name for its song
+  const shown = new Map();                 // normName -> that name as the plan writes it
+  if (category) {
+    const list = (plan.catalog[category] || []).map((s) => s.name);
+    for (const n of list) shown.set(normName(n), n);
+    for (const [n, idx] of indexSongs(rec.deck, list)) {
+      for (const i of idx) names.set(i, n);
+    }
+  }
+  const groups = [], seen = new Map();
+  let last = null;
+  rec.deck.slides.forEach((s, i) => {
+    if (!s.song || s.song.kind !== 'song' || !fits(s)) { last = null; return; }
+    const name = s.song.name || s.title || '';
+    // A song's later slides share its icon, and its title or none.
+    if (last && s.song.icon === last.icon && (!normName(name) || normName(name) === normName(last.name))) {
+      last.slides.push(i);
+      return;
+    }
+    const base = normName(name) || s.song.icon || String(i);
+    const n = (seen.get(base) || 0) + 1;
+    seen.set(base, n);
+    groups.push(last = { key: n > 1 ? base + '#' + n : base, icon: s.song.icon, slides: [i], name,
+                         planned: names.get(i) || null, label: shown.get(names.get(i)) || name });
+  });
+  return groups;
+}
+
+function sortGroups(rec, groups, sort, plan, grade) {
+  const by = (fn) => groups.map((g, k) => ({ g, k, v: fn(g) }));
+  const done = (list, cmp) => list.sort((a, b) => cmp(a, b) || a.k - b.k).map((x) => x.g);
+  if (sort === 'az' || sort === 'za') {
+    const dir = sort === 'az' ? 1 : -1;
+    return done(by((g) => g.label.trim()), (a, b) => dir * a.v.localeCompare(b.v, undefined, { numeric: true, sensitivity: 'base' }));
+  }
+  if (sort === 'class' || sort === 'class-r') {
+    // Songs the plan doesn't slate come last either way.
+    const first = firstClasses(plan, rec.name, grade);
+    const dir = sort === 'class' ? 1 : -1;
+    return done(by((g) => g.planned != null && first.has(g.planned) ? first.get(g.planned) : null),
+      (a, b) => (a.v == null) - (b.v == null) || (a.v == null ? 0 : dir * (a.v - b.v)));
+  }
+  if (sort === 'custom') {
+    const order = rec.deck.songOrder || [];
+    const at = (g) => { const k = order.indexOf(g.key); return k < 0 ? 1e9 : k; };
+    return done(by(at), (a, b) => a.v - b.v);
+  }
+  return groups;
 }
 
 function today() {
@@ -294,6 +400,7 @@ sync.onPulled((list) => {
 });
 
 function recall(k) { try { return localStorage.getItem('class.' + k); } catch (e) { return null; } }
+function remember(k, v) { try { localStorage.setItem('class.' + k, v); } catch (e) { /* private window */ } }
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 

@@ -247,8 +247,27 @@ export function gradeHint(rec) {
   if (!rec) return out;
   for (const list of Object.values(rec.catalog)) {
     for (const s of list) {
+      if (s.shelf) continue;
       const g = rec.grades.filter((k) => s.max[k] > 0);
       if (g.length) out.set(normName(s.name), g);
+    }
+  }
+  return out;
+}
+
+/** normName -> the first class a category's song is slated in, for a grade, or the
+    earliest of any grade's. */
+export function firstClasses(rec, deckName, grade) {
+  const out = new Map();
+  const category = rec && rec.categories.find((c) => normName(c) === normName(deckName));
+  if (!category) return out;
+  const idx = slotsOf(rec, category);
+  for (const g of grade ? [grade] : rec.grades) {
+    for (const c of rec.plan[g] || []) {
+      for (const i of idx) {
+        const n = normName(c.slots[i]);
+        if (n && !(out.get(n) <= c.no)) out.set(n, c.no);
+      }
     }
   }
   return out;

@@ -56,16 +56,17 @@ export function markDeck(deck, hint) {
       deck.slides[el.link.slide] && deck.slides[el.link.slide].song);
     if (jumps.length >= 4) slide.menu = true; else delete slide.menu;
   });
-  if (!deck.gradesSet) guessGrades(deck, hint);
-  else if (!deck.built && hint) planGradesOnly(deck, hint);
+  const plan = !deck.built && hint && hint.size ? hint : null;
+  if (!deck.gradesSet) guessGrades(deck, plan);
+  if (plan) planGradesOnly(deck, plan);
   return deck;
 }
 
 /* The decks run in sections: a big "PK" slide, then the songs that start in
    PK, then "K", then "1", then "EXTRA". Until grades are set by hand, a song
    is for the grade its section starts in and the grades after it, the way the
-   old K menus open PK songs too. A song the year plan gives a Max in some
-   grades is for those grades instead. */
+   old K menus open PK songs too. With a year plan, songs go by the plan
+   instead (planGradesOnly). */
 function guessGrades(deck, hint) {
   let section = null;
   for (const slide of deck.slides) {
@@ -75,19 +76,22 @@ function guessGrades(deck, hint) {
       if (section) slide.grades = [section]; else delete slide.grades;
       continue;
     }
-    const planned = slide.song && slide.song.kind === 'song' && hint && planGrades(slide, hint);
-    if (planned) slide.grades = planned;
-    else if (slide.song && slide.song.kind === 'song' && section) slide.grades = GRADES.slice(GRADES.indexOf(section));
+    if (slide.song && slide.song.kind === 'song' && section && !hint) slide.grades = GRADES.slice(GRADES.indexOf(section));
     else delete slide.grades;
   }
 }
 
-/* Grades set by hand in the editor stay, except on songs the year plan has:
-   those always follow their Max columns. */
+/* With a year plan, a song slide is for the grades its song has a Max in, and
+   for none when the plan doesn't have it. The slides after a song's first that
+   carry its icon go with it. Other slides keep the grades set by hand. */
 function planGradesOnly(deck, hint) {
+  let last = null;
   for (const slide of deck.slides) {
-    const planned = slide.song && slide.song.kind === 'song' && planGrades(slide, hint);
-    if (planned) slide.grades = planned;
+    if (!slide.song || slide.song.kind !== 'song') { last = null; continue; }
+    const planned = planGrades(slide, hint) ||
+      (last && slide.song.icon && last.song.icon === slide.song.icon ? last.grades : null);
+    if (planned) slide.grades = [...planned]; else delete slide.grades;
+    last = slide;
   }
 }
 
@@ -109,9 +113,15 @@ const norm = (s) => String(s || '').toLowerCase().replace(/[‘’]/g, "'").repl
 
 /** True when a slide is for this grade or an earlier one: a grade's menu holds both. */
 export function forGradeOrEarlier(slide, grade) {
-  if (!grade || !slide.grades || !slide.grades.length) return true;
+  if (!grade) return true;
+  if (!slide.grades || !slide.grades.length) return false;
   const at = GRADES.indexOf(grade);
   return slide.grades.some((g) => GRADES.indexOf(g) <= at);
+}
+
+/** True when a slide is tagged for this grade: what a category deck shows for one grade. */
+export function taggedFor(slide, grade) {
+  return !grade || (slide.grades || []).includes(grade);
 }
 
 /** True when a slide belongs in a grade's run of slides. Slides with no grade go everywhere. */
