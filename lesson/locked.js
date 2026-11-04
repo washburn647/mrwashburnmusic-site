@@ -1,4 +1,5 @@
-/* Locked student pages. Each private student has a code of five words. The code makes
+/* Locked student pages. Each private student signs in with their first name and five
+   emojis (a code of five words, one per emoji). Name and code together make
    (in this browser, never sent anywhere) a key that encrypts their pages, an id that names
    their box on the site, and a token that lets them add practice results to it. The site
    keeps only what it can't read (see /worker/index.js). Kyle keeps the codes in the studio.
@@ -49,6 +50,15 @@ export const pickable = (code) => code.split('-').every((w) => EMOJI.has(w));
 export function newCode() {
   const n = crypto.getRandomValues(new Uint8Array(5));
   return [...n].map((x) => PICKS[x & 63][0]).join('-');
+}
+
+/* A first name, tidied for signing in: "Zoë " and "zoe" are the same. */
+export const cleanName = (name) => String(name || '').normalize('NFD').toLowerCase().replace(/[^a-z]/g, '');
+/* What signs a student in: their first name with their code. '' when either is missing. */
+export function secretFor(name, code) {
+  const n = cleanName(name);
+  const c = cleanCode(code);
+  return n && c ? `${n}/${c}` : '';
 }
 
 /* A typed or linked code, tidied: "Tiger moon, PIANO..." becomes "tiger-moon-piano...". */

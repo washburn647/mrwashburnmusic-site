@@ -15,7 +15,7 @@ import { readPieceFile, slimXML, pieceInfo } from '/lesson/score.js';
 import { openPlayer, PIECE_MODES, KEYBOARD_MODES } from '/lesson/player.js';
 import { openPractice } from '/lesson/practice.js';
 import { LESSON_PAGE, LOCAL_PAGE, STUDIO_HOME, API } from '/lesson/paths.js';
-import { newCode, cleanCode, publish, results, unpublish, showCode } from '/lesson/locked.js';
+import { newCode, cleanCode, publish, results, unpublish, secretFor, PICKS } from '/lesson/locked.js';
 import { cardLabel, KINDS } from '/lesson/cards.js';
 import { editDeck, deckSummary, newDeck } from './decks.js';
 
@@ -115,7 +115,7 @@ async function restoreBackup(file) {
   const cleanItem = (it) => ({
     id: id(it.id), title: str(it.title), detail: str(it.detail), link: str(it.link),
     piece: typeof it.piece === 'string' ? it.piece : null,
-    setup: cleanSetup(it.setup), deck: cleanDeck(it.deck, { studio: true }),
+    setup: cleanSetup(it.setup), deck: cleanDeck(it.deck, { studio: true }), shelf: !!it.shelf,
   });
   for (const p of Array.isArray(data.pieces) ? data.pieces : []) {
     if (!p || typeof p.id !== 'string' || typeof p.xml !== 'string' || await pieces.get(p.id)) continue;
@@ -131,7 +131,7 @@ async function restoreBackup(file) {
     const here = await students.get(s.id);
     if (here && here.updated >= s.updated) continue;
     await students.put({
-      id: s.id, name: str(s.name), instrument: str(s.instrument), code: cleanCode(s.code), published: Number(s.published) || 0,
+      id: s.id, name: str(s.name), instrument: str(s.instrument), code: str(s.code).split('-').slice(0, 5).map((w) => (PICKS.some(([x]) => x === w) ? w : '')).join('-'), pubSecret: str(s.pubSecret), published: Number(s.published) || 0,
       day: s.day === '' || s.day == null ? '' : Math.max(0, Math.min(6, Number(s.day) || 0)), time: /^\d\d:\d\d$/.test(s.time) ? s.time : '',
       created: Number(s.created) || Date.now(), updated: Number(s.updated) || Date.now(),
       lessons: s.lessons.map((l) => ({
@@ -392,8 +392,14 @@ async function showStudent(id, lessonId) {
       save();
       renderItems();
     };
+    // In the student's own library (on their page, beside their lessons).
+    const shelfBtn = h('button', { class: 'icon shelf', title: 'In their library', 'aria-pressed': String(!!item.shelf), onclick: () => {
+      item.shelf = !item.shelf;
+      shelfBtn.setAttribute('aria-pressed', String(item.shelf));
+      save();
+    } }, '📚');
     const star = h('button', { class: 'icon', title: 'Save to library', onclick: async () => {
-      await library.put({ id: newId(), created: Date.now(), item: copyItem(item) });
+      await library.put({ id: newId(), created: Date.now(), item: { ...copyItem(item), shelf: false } });
       star.textContent = '★';
       setTimeout(() => { star.textContent = '☆'; }, 1200);
     } }, '☆');
@@ -407,6 +413,7 @@ async function showStudent(id, lessonId) {
       h('div', { class: 'tools' },
         h('button', { class: 'icon', title: 'Move up', onclick: () => move(-1) }, '↑'),
         h('button', { class: 'icon', title: 'Move down', onclick: () => move(1) }, '↓'),
+        shelfBtn,
         star,
         h('button', { class: 'icon', title: 'Remove', onclick: remove }, '×'),
       ),
@@ -438,73 +445,76 @@ async function showStudent(id, lessonId) {
     h('option', { value: '', selected: student.day === '' }, 'Day'),
     DAYS.map((d, i) => h('option', { value: i, selected: String(student.day) === String(i) }, d)));
 
-  /* The student's code, and their locked pages on the site */
+  /* How the student signs in (first name and five emojis), and their locked pages on the site */
   function codeBar() {
     const bar = h('div', { class: 'bar codebar' });
     const status = h('small', {});
-    const showStatus = () => { status.textContent = student.published ? `✓ ${new Date(student.published).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''; };
+    const secret = () => secretFor(student.name, student.code);
+    const live = () => student.pubSecret && student.pubSecret === secret();
+    const showStatus = () => { status.textContent = live() && student.published ? `✓ ${new Date(student.published).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''; };
+    const picks = [...PICKS].sort((x, y) => x[0].localeCompare(y[0]));
     const draw = () => {
       showStatus();
-      if (!student.code) {
-        bar.replaceChildren(h('button', { onclick: () => { student.code = newCode(); save(); draw(); } }, '🔑 Make code'));
-        return;
-      }
-      const pub = h('button', { class: 'primary', disabled: API == null, onclick: async () => {
+      const parts = (student.code || '').split('-');
+      const lists = [0, 1, 2, 3, 4].map((i) => h('select', { class: 'codepick', 'aria-label': `Emoji ${i + 1}`, onchange: () => {
+        student.code = lists.map((x) => x.value).join('-');
+        save();
+        pub.disabled = API == null || !secret();
+        showStatus();
+      } },
+      h('option', { value: '' }, '—'),
+      picks.map(([w, e]) => h('option', { value: w, selected: parts[i] === w }, `${e} ${w}`))));
+      const pub = h('button', { class: 'primary', disabled: API == null || !secret(), onclick: async () => {
         pub.disabled = true;
         pub.textContent = '…';
         try {
           await flush();
-          await publish(student.code, await pagesFor(student));
+          const next = secret();
+          await publish(next, await pagesFor(student));
+          // A changed name or emojis: the old sign-in stops working.
+          const old = student.pubSecret || (student.published && cleanCode(student.code)) || '';
+          if (old && old !== next) await unpublish(old).catch(() => {});
+          student.pubSecret = next;
           student.published = Date.now();
           save();
-          pub.textContent = 'Publish';
         } catch (err) {
           pub.textContent = `✗ ${err.message}`;
+          pub.disabled = false;
+          return;
         }
-        pub.disabled = false;
-        showStatus();
+        draw();
       } }, 'Publish');
-      const copyCode = h('button', { onclick: async () => {
-        await navigator.clipboard.writeText(`${LESSON_PAGE}#${student.code}`);
-        copyCode.textContent = 'Copied';
-        setTimeout(() => { copyCode.textContent = 'Copy code link'; }, 1500);
-      } }, 'Copy code link');
       bar.replaceChildren(
-        h('span', { class: 'code' }, '🔑 ', showCode(student.code)),
+        h('span', { class: 'lock' }, '🔑'),
+        h('div', { class: 'picks' }, lists),
+        h('button', { class: 'icon', title: 'Pick for me', onclick: () => { student.code = newCode(); save(); draw(); } }, '🎲'),
         pub, status,
-        copyCode,
-        h('button', { disabled: API == null, onclick: () => showResults(student) }, 'Practice'),
-        h('span', { class: 'grow' }),
-        confirmButton('New code', 'Old code stops working', async () => {
-          const old = student.code;
-          await unpublish(old).catch(() => {});
-          student.code = newCode();
-          student.published = 0;
-          save();
-          draw();
-        }));
+        h('button', { disabled: API == null || !student.pubSecret, onclick: () => showResults(student) }, 'Practice'));
     };
     draw();
+    // Renaming the student changes how they sign in: the tick goes until the next Publish.
+    bar.refresh = () => { bar.querySelector('button.primary')?.toggleAttribute('disabled', API == null || !secret()); showStatus(); };
     return bar;
   }
 
+  const codes = codeBar();
   app.replaceChildren(
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '#/' }, '‹ Lesson pages')),
     h('div', { class: 'who' },
-      input(student, 'name', { class: 'title', placeholder: 'First name', 'aria-label': 'First name', autocomplete: 'off' }, setTitle),
+      input(student, 'name', { class: 'title', placeholder: 'First name', 'aria-label': 'First name', autocomplete: 'off' }, () => { setTitle(); codes.refresh(); }),
       instrumentSel,
       daySel,
       input(student, 'time', { type: 'time', class: 'time', 'aria-label': 'Lesson time' }),
       confirmButton('Remove student', 'Remove for good?', async () => {
         clearTimeout(saveTimer);
         saveTimer = null;
-        if (student.code) await unpublish(student.code).catch(() => {});
+        if (student.pubSecret) await unpublish(student.pubSecret).catch(() => {});
         await students.delete(student.id);
         student = null;
         location.hash = '#/';
       }),
     ),
-    codeBar(),
+    codes,
     h('div', { class: 'bar' },
       chips,
       h('span', { class: 'grow' }),
@@ -576,7 +586,22 @@ async function pagesFor(s) {
     for (const it of page.t) if (it.p !== undefined) it.p = mine[it.p];
     lessons.push({ d: page.d, ...(page.x ? { x: page.x } : {}), t: page.t, ...(page.m ? { m: page.m } : {}), ...(page.s ? { s: page.s } : {}), ...(page.w ? { w: page.w } : {}) });
   }
-  return { v: 1, n: s.name.trim(), i: s.instrument.trim(), l: lessons, p: pool };
+  // Their library: every item marked for it, from any lesson, newest first, once each.
+  const seen = new Set();
+  const kept = [];
+  for (const lesson of [...s.lessons].sort((a, b) => b.date.localeCompare(a.date))) {
+    for (const it of lesson.items) {
+      if (!it.shelf || !hasContent(it)) continue;
+      const k = JSON.stringify([it.title.trim(), it.piece, it.deck, it.link.trim()]);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      kept.push(it);
+    }
+  }
+  const shelf = await pageFor(s, { items: kept, date: '', note: '' });
+  const mine = (shelf.p || []).map((xml) => { const i = pool.indexOf(xml); return i >= 0 ? i : pool.push(xml) - 1; });
+  for (const it of shelf.t) if (it.p !== undefined) it.p = mine[it.p];
+  return { v: 1, n: s.name.trim(), i: s.instrument.trim(), l: lessons, p: pool, ...(shelf.t.length ? { b: shelf.t } : {}) };
 }
 
 /* What a student did with their pages, from the notes their page sends back (encrypted):
@@ -590,7 +615,7 @@ async function showResults(s) {
   dlg.append(h('p', {}, '…'));
   dlg.showModal();
   let list;
-  try { list = await results(s.code); } catch (err) { dlg.replaceChildren(h('p', {}, `✗ ${err.message}`), h('button', { onclick: close }, 'Close')); return; }
+  try { list = await results(s.pubSecret); } catch (err) { dlg.replaceChildren(h('p', {}, `✗ ${err.message}`), h('button', { onclick: close }, 'Close')); return; }
   const weeks = new Map();
   const decks = new Map();
   const week = (d) => {
