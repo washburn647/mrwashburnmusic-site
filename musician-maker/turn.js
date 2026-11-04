@@ -214,6 +214,7 @@ export function makeTurn(item, game, ui) {
   return {
     el,
     beats,
+    tResp, // audio time the turn starts (heard time), for the Test mode mic log
     keys: (e) => keys(e),
     input: (time, fromMic, ev) => input(time, fromMic, ev),
     grade,
