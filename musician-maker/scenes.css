@@ -201,6 +201,77 @@
   .ms-cut-face { width: auto; height: 190%; top: 86%; }
 }
 
+/* ---------- five rooms (THEMES in scene-mouse.js), one per game in turn ---------- */
+.ms-poster .mp-paper { fill: var(--paper, #f1dfb4); stroke: var(--paper-line, #c8a96a); }
+.ms-poster .mp-ink { fill: var(--ink, #6b3d1f); }
+.ms-window .mw-sky1 { stop-color: var(--sky1, #1d2a4f); } .ms-window .mw-sky2 { stop-color: var(--sky2, #4a5f93); }
+.ms-window .mw-moon { fill: var(--moon, #fff6d0); } .ms-window .mw-bite { fill: var(--bite, #2a3a63); opacity: var(--bite-o, .9); }
+.ms-window .mw-hills { fill: var(--hills, #22324f); } .ms-window .mw-curt { fill: var(--curt, #7d9a6b); }
+.ms-window .ms-stars { opacity: var(--stars, 1); }
+.scene-ms[data-theme]:not([data-theme="parlor"]) .ms-wall::after { display: none; }
+
+/* Castle: stone blocks, flagstones, a sunny window with red curtains, a royal decree. */
+.scene-ms[data-theme="castle"] { background: #8e8a84;
+  --sky1: #5fa8e0; --sky2: #cfe9f7; --moon: #ffe066; --bite-o: 0; --stars: 0; --hills: #6c9a4e; --curt: #b23a48;
+  --paper: #efe2c2; --paper-line: #a8895a; --ink: #4a2a16; }
+.scene-ms[data-theme="castle"] .ms-wall { background:
+    radial-gradient(circle at 50% 30%, rgba(255, 240, 200, .3), transparent 60%),
+    repeating-linear-gradient(180deg, transparent 0 32px, #6e6a64 32px 35px),
+    repeating-linear-gradient(90deg, transparent 0 62px, #6e6a64 62px 65px) 0 0 / 130px 70px,
+    repeating-linear-gradient(90deg, transparent 0 62px, #6e6a64 62px 65px) 32px 35px / 130px 70px,
+    linear-gradient(180deg, #a9a49b, #8e8a84); }
+.scene-ms[data-theme="castle"] .ms-floor { background:
+    linear-gradient(180deg, rgba(0, 0, 0, .25), transparent 35%),
+    repeating-linear-gradient(90deg, transparent 0 78px, #4f4b46 78px 81px),
+    repeating-linear-gradient(180deg, transparent 0 calc(33% - 3px), #4f4b46 calc(33% - 3px) 33%),
+    linear-gradient(180deg, #7d7871, #67625c); }
+.scene-ms[data-theme="castle"] .ms-base { background: linear-gradient(180deg, #b7b2a8, #7d7871); }
+
+/* Ship's cabin: dark planks, a deck, the sea at sunset, a pirate's wanted poster. */
+.scene-ms[data-theme="ship"] { background: #4a2d18;
+  --sky1: #f08a5d; --sky2: #ffd59a; --moon: #fff1b8; --bite-o: 0; --stars: 0; --hills: #2f6f9a; --curt: #e9dcc0;
+  --paper: #f2e6c8; --paper-line: #b0905c; --ink: #7a2a1a; }
+.scene-ms[data-theme="ship"] .ms-wall { background:
+    radial-gradient(circle at 50% 30%, rgba(255, 210, 140, .25), transparent 60%),
+    repeating-linear-gradient(180deg, #7a4e2c 0 30px, #4a2d18 30px 33px),
+    #6b4428; }
+.scene-ms[data-theme="ship"] .ms-floor { background:
+    linear-gradient(180deg, rgba(0, 0, 0, .3), transparent 35%),
+    repeating-linear-gradient(90deg, #c08a52 0 46px, #8a5a32 46px 48px); }
+.scene-ms[data-theme="ship"] .ms-base { background: linear-gradient(180deg, #c99a5a, #7a4e2c); }
+
+/* Groovy: a 1970s den, mustard wallpaper with orange circles, avocado shag. */
+.scene-ms[data-theme="groovy"] { background: #e9a93a;
+  --sky1: #ffb85c; --sky2: #ffe2a0; --moon: #fff4c0; --bite-o: 0; --stars: 0; --hills: #b5652e; --curt: #c8452f;
+  --paper: #fff3d6; --paper-line: #d9a35a; --ink: #a23a1e; }
+.scene-ms[data-theme="groovy"] .ms-wall { background:
+    radial-gradient(circle, transparent 9px, #e0702c 10px 14px, transparent 15px) 0 0 / 48px 48px,
+    radial-gradient(circle, transparent 9px, #c8452f 10px 14px, transparent 15px) 24px 24px / 48px 48px,
+    linear-gradient(180deg, #f2bd4c, #e2a032); }
+.scene-ms[data-theme="groovy"] .ms-floor { background:
+    linear-gradient(180deg, rgba(0, 0, 0, .25), transparent 35%),
+    repeating-linear-gradient(80deg, rgba(255, 255, 255, .08) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(100deg, rgba(0, 0, 0, .1) 0 2px, transparent 2px 6px),
+    #7d8c3a; }
+.scene-ms[data-theme="groovy"] .ms-base { background: linear-gradient(180deg, #a0522d, #6e3a1e); }
+
+/* Space station: riveted panels, a metal grate floor, stars outside, a glowing poster. */
+.scene-ms[data-theme="space"] { background: #2b2f45;
+  --sky1: #05061a; --sky2: #2a1a5e; --moon: #ff9b5c; --bite: #170f3c; --hills: #3a2a6a; --curt: #8a96ae;
+  --paper: #0d1030; --paper-line: #4fe3ff; --ink: #8ffbff; }
+.scene-ms[data-theme="space"] .ms-wall { background:
+    radial-gradient(circle, #9aa3bd 2px, transparent 2.6px) 8px 8px / 90px 70px,
+    repeating-linear-gradient(90deg, transparent 0 88px, #1c1f30 88px 90px),
+    repeating-linear-gradient(180deg, transparent 0 68px, #1c1f30 68px 70px),
+    linear-gradient(180deg, #4a5068, #343a52); }
+.scene-ms[data-theme="space"] .ms-floor { background:
+    linear-gradient(180deg, rgba(0, 0, 0, .35), transparent 40%),
+    repeating-linear-gradient(90deg, transparent 0 14px, rgba(0, 0, 0, .35) 14px 16px),
+    repeating-linear-gradient(180deg, transparent 0 14px, rgba(0, 0, 0, .35) 14px 16px),
+    linear-gradient(180deg, #6f7a93, #4a5068); }
+.scene-ms[data-theme="space"] .ms-base { background: linear-gradient(180deg, #c9d1de, #6f7a93); }
+.scene-ms[data-theme="space"] .ms-poster svg { filter: drop-shadow(0 0 5px rgba(79, 227, 255, .7)); }
+
 /* ---------- real-photo props (props/), cut out like stickers ---------- */
 .ms-photo { display: block; width: 100%; height: auto; pointer-events: none; user-select: none;
   filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 5px 3px rgba(0, 0, 0, .3)); }
