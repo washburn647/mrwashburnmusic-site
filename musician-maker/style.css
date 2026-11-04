@@ -366,7 +366,7 @@ body[data-screen="progress"] {
 .du-tile b { font-size: 38px; line-height: 1; }
 .du-tile small { font-size: 13px; color: var(--muted); }
 .controls.live .du-tile, .controls.live .note-tile { background: var(--wheat); box-shadow: 0 6px 0 #b8924f; }
-.controls.live .du-tile.du-de, .controls.live .note-tile.note-back { background: var(--wheat-soft); }
+.controls.live .du-tile.du-ee, .controls.live .note-tile.note-back { background: var(--wheat-soft); }
 .du-tile.hit, .note-tile.hit { animation: hit .12s ease-out; }
 .note-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .note-slot { height: 60px; border-radius: 16px; background: var(--paper); border: 2px solid transparent; display: grid; place-items: center; }
@@ -601,6 +601,27 @@ body[data-screen="progress"] {
   100% { transform: translate(var(--dx), calc(var(--dy) + 60px)) scale(1) rotate(var(--rot)); opacity: 0; }
 }
 .pad { position: relative; }
+/* Tap It: the game's object, big, to tap right on (turn.js). It dozes while the call plays,
+   wakes and bounces on the beat on the learner's turn, and squashes on every tap. */
+.tap-obj { position: relative; display: grid; place-items: center; min-height: 140px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.tap-obj::before { content: ''; position: absolute; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, var(--wheat-soft) 0%, transparent 70%); opacity: 0; transition: opacity .2s; }
+.controls.live .tap-obj::before { opacity: 1; animation: tap-glow var(--spb, .6s) ease-out infinite; }
+.tap-shadow { position: absolute; bottom: 14px; width: 90px; height: 14px; border-radius: 50%; background: rgba(47, 74, 58, .18); transition: transform .2s; }
+.tap-body { position: relative; display: inline-block; transform-origin: 50% 100%; }
+.tap-face { display: inline-block; font-size: 96px; line-height: 1; transform-origin: 50% 100%; transform: scale(.78); filter: saturate(.5); opacity: .75;
+  animation: tap-doze 2.4s ease-in-out infinite; transition: transform .25s cubic-bezier(.3, 1.6, .5, 1), filter .2s, opacity .2s; }
+.controls.live .tap-face { transform: none; filter: none; opacity: 1; animation: tap-bounce var(--spb, .6s) ease-in-out infinite; }
+.tap-obj.hit .tap-body { animation: tap-squash .28s cubic-bezier(.3, 1.5, .5, 1); }
+.controls.live .tap-shadow { animation: tap-shade var(--spb, .6s) ease-in-out infinite; }
+.tap-fly { position: absolute; font-size: 34px; line-height: 1; pointer-events: none; transform: translate(-50%, -50%); animation: tap-fly .8s ease-out forwards; }
+@keyframes tap-doze { 50% { transform: scale(.78) rotate(-4deg) translateY(3px); } }
+@keyframes tap-bounce { 0%, 100% { transform: translateY(0) scale(1.06, .94); } 45% { transform: translateY(-14px) scale(.97, 1.04); } }
+@keyframes tap-shade { 0%, 100% { transform: scale(1.1); } 45% { transform: scale(.8); } }
+@keyframes tap-squash { 0% { transform: scale(1.3, .65) rotate(var(--tilt, 0deg)); } 55% { transform: scale(.9, 1.15) rotate(calc(var(--tilt, 0deg) * -.5)); } 100% { transform: none; } }
+@keyframes tap-glow { 0% { transform: scale(.85); } 30% { transform: scale(1.1); } 100% { transform: scale(.85); } }
+@keyframes tap-fly { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.6); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -170%) scale(1) rotate(var(--rot)); } }
+@media (prefers-reduced-motion: reduce) { .tap-face, .controls.live .tap-face, .controls.live .tap-shadow, .controls.live .tap-obj::before { animation: none; } }
+.pad-say { cursor: default; }
 .fx-ripple { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; pointer-events: none;
   border: 4px solid var(--sage); animation: fx-ripple .5s ease-out forwards; }
 .fx-ripple.tap { border-color: var(--forest); }
@@ -771,3 +792,16 @@ audio.intro-media { background: none; }
 .ptasks .ticon { width: 20px; height: 20px; font-size: 11px; }
 .ptasks .ticon.t-du { font-size: 9px; }
 .ptasks .ticon.open, .ptasks .ticon.locked { filter: grayscale(1); opacity: .4; }
+
+/* ---------- the mic screen before a visit's first run (main.js micGate) ---------- */
+.mic-gate { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.mic-gate .back { align-self: flex-start; }
+.mic-gate h2 { margin: 0; }
+.mic-big { font-size: 84px; line-height: 1; animation: mic-bob 1.6s ease-in-out infinite; }
+@keyframes mic-bob { 50% { transform: translateY(-8px) rotate(-6deg); } }
+.mic-gate .miccheck { font-size: 16px; }
+.mic-gate .miccheck .mini { font-size: 17px; padding: 8px 18px; }
+.mic-help:empty { display: none; }
+.mic-help { background: var(--paper); border-radius: 18px; padding: 10px 16px; text-align: left; max-width: 420px; }
+.mic-help ol { margin: 6px 0 0; padding-left: 22px; }
+.mic-problem { margin: 0; color: var(--rose); font-weight: 600; }

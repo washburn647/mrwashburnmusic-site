@@ -59,8 +59,9 @@ export function makeDirector(st) {
 
   /* A task the step uses: Speak/Sing It twice as often (it's the fundamental one), and any
      task that's weak at this step more often. */
-  function chooseTask(stepN) {
-    const list = tasksAt(stepN);
+  function chooseTask(stepN, noSay) {
+    const all = tasksAt(stepN);
+    const list = noSay && all.length > 1 ? all.filter((t) => t.id !== 'say') : all;
     const ws = list.map((t) => (t.id === 'say' ? 2 : 1) * (1.25 - task(t.id, stepN).s / 100));
     let r = Math.random() * ws.reduce((a, b) => a + b, 0);
     for (let i = 0; i < list.length; i++) if ((r -= ws[i]) <= 0) return list[i].id;
@@ -83,8 +84,10 @@ export function makeDirector(st) {
     mastered,
     step,
     /* The next item: { step, task, stim, pattern }. warm: mastered material only. force: drill
-       one step. forceTask: only this task (a workshop test); with force too, when it fits. */
-    next({ warm = false, force = null, forceTask = null } = {}) {
+       one step. forceTask: only this task (a workshop test); with force too, when it fits.
+       noSay: no Speak/Sing It (the mic is off). */
+    next({ warm = false, force = null, forceTask = null, noSay = false } = {}) {
+      if (noSay && forceTask === 'say') forceTask = null;
       played++;
       if (forceTask && !(force && cellOf(forceTask, force))) force = stepFor(forceTask);
       const due = !force && retries.findIndex((r) => r.due <= played);
@@ -108,7 +111,7 @@ export function makeDirector(st) {
       const id = choosePattern(n);
       lastPatterns.push(id);
       if (lastPatterns.length > 4) lastPatterns.shift();
-      const t = forceTask && cellOf(forceTask, n) ? forceTask : chooseTask(n);
+      const t = forceTask && cellOf(forceTask, n) ? forceTask : chooseTask(n, noSay);
       return { step: n, task: t, stim: chooseStim(t, n), pattern: byId(id) };
     },
     task,

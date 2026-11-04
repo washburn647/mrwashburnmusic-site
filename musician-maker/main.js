@@ -197,8 +197,6 @@ function title() {
         st.stickers.length ? h('p', { class: 'stickers' }, st.stickers.join(' ')) : null),
       h('div', { class: 'switches' },
         toggle('Mookie mode', 'An easier pace', st.mookie, (v) => { st.mookie = v; dir = makeDirector(st); save(); }),
-        toggle('Use the mic', 'Say your answers too', st.input === 'mic', (v) => { st.input = v ? 'mic' : 'tap'; save(); title(); }),
-        st.input === 'mic' ? micCheck() : null,
         groovePick()),
       h('button', { class: 'to-map', onclick: progress },
         h('span', { class: 'staff-ico' }), 'My progress'))));
@@ -206,7 +204,7 @@ function title() {
 
 /* Say "du du-de du du" and watch the meter: shows whether the mic hears you, and how many
    syllables it counts. A pause of 1.5 s starts a new count, so each try is counted alone. */
-function micCheck() {
+function micCheck(onProblem = null) {
   const fill = h('span', {});
   const heard = h('span', { class: 'heard' }, '');
   let count = 0;
@@ -236,7 +234,8 @@ function micCheck() {
         cancelAnimationFrame(raf);
         draw();
       } catch (e) {
-        heard.textContent = micProblem(e);
+        heard.textContent = onProblem ? '' : micProblem(e);
+        onProblem?.(micProblem(e));
       }
     } }, 'Test the mic'),
     h('span', { class: 'meter' }, fill), heard);
@@ -371,7 +370,7 @@ async function practise(t, n, intro) {
   };
   app.replaceChildren(h('div', { class: 'progress' },
     h('button', { class: 'back', 'aria-label': 'Back', onclick: back }, '‹'), card));
-  if (st.input === 'mic' && t.id === 'say') {
+  if (t.id === 'say') {
     mic.setEcho(st.echo !== false);
     try { await mic.start(snd.ac()); micOn = true; } catch { micOn = false; }
   }
@@ -545,7 +544,30 @@ function later(t, fn) {
   setTimeout(() => { if (R === run && !run.ended) fn(); }, Math.max(0, (t - run.ctx.currentTime + snd.latency()) * 1000));
 }
 
+/* The mic for this visit: null until the learner chooses on the mic screen, then 'mic' or
+   'none'. Without it, Speak/Sing It doesn't come up. */
+let micChoice = null;
+
+/* Before the first run of a visit: a screen that asks for the mic, tests it, and helps when
+   the browser blocks it. "Play without the mic" plays on with no Speak/Sing It. */
+function micGate(go, problem = '') {
+  scene('progress');
+  const help = h('div', { class: 'mic-help' });
+  const showProblem = (text) => help.replaceChildren(h('p', { class: 'mic-problem' }, text),
+    h('ol', {}, h('li', {}, 'Tap the icon left of the web address.'), h('li', {}, 'Set Microphone to Allow.'), h('li', {}, 'Reload the page.')));
+  if (problem) showProblem(problem);
+  const check = micCheck(showProblem);
+  app.replaceChildren(h('div', { class: 'progress howto mic-gate' },
+    h('button', { class: 'back', 'aria-label': 'Back', onclick: title }, '‹'),
+    h('div', { class: 'mic-big', 'aria-hidden': 'true' }, '🎤'),
+    h('h2', {}, 'Sing with the mic!'),
+    check, help,
+    h('button', { class: 'play', onclick: () => { micChoice = 'mic'; go(); } }, 'Let\'s play'),
+    h('button', { class: 'link', onclick: () => { micChoice = 'none'; go(); } }, 'Play without the mic')));
+}
+
 async function startRun(opts = {}) {
+  if (!TEST && !micChoice) { micGate(() => startRun(opts)); return; }
   const ctx = snd.ac();
   scene('run');
   app.replaceChildren(h('div', { class: 'loading' }, mookie(''), h('p', {}, 'Tuning up…')));
@@ -553,9 +575,12 @@ async function startRun(opts = {}) {
   if (!TEST) LINEUP = OPT.apply(await OPT.siteOptions());
   let micOn = false;
   let micError = '';
-  if (st.input === 'mic') {
+  if (TEST ? st.input === 'mic' : micChoice === 'mic') {
     mic.setEcho(st.echo !== false);
-    try { await mic.start(ctx); micOn = true; } catch (e) { micError = `${micProblem(e)} Tapping still works.`; }
+    try { await mic.start(ctx); micOn = true; } catch (e) {
+      if (!TEST) { micGate(() => startRun(opts), micProblem(e)); return; }
+      micError = micProblem(e);
+    }
   }
   const recording = micOn && st.test && st.recMic;
   if (recording) mic.recordStart();
@@ -739,7 +764,7 @@ function gameSeg(B, seg) {
   const warm = R.lap === 0 && seg.set === 0 && !R.force;
   const pend = R.pending;
   R.pending = null;
-  const item = pend?.item || dir.next({ warm, force: R.force, forceTask: TEST?.task });
+  const item = pend?.item || dir.next({ warm, force: R.force, forceTask: TEST?.task, noSay: !R.micOn });
   const game = pend?.game || pickGame();
   // A task's first game at a step: the stream stops for its intro, then this game comes next.
   if (!st.intro[taskKey(item.task, item.step)]) { introBreak(B, item, game); return; }
@@ -1130,7 +1155,7 @@ function breather(B, seg) {
 function bossItem() {
   let item = null;
   for (let k = 0; k < 8; k++) {
-    item = dir.next({ force: R.force, forceTask: TEST?.task });
+    item = dir.next({ force: R.force, forceTask: TEST?.task, noSay: !R.micOn });
     if (st.intro[taskKey(item.task, item.step)]) break;
   }
   return item;
@@ -1361,8 +1386,14 @@ function introPreview(key) {
   const card = h('div', { class: 'intro-preview' });
   app.replaceChildren(h('div', { class: 'progress' },
     h('a', { class: 'back', 'aria-label': 'Back to the workshop', href: WORKSHOP }, '‹'), card));
-  const intro = showIntro(card, key, { h, notes, sylIcons }, () => { location.href = WORKSHOP; }, { game });
-  document.onkeydown = (e) => { if (!e.repeat && intro.keys(e)) e.preventDefault(); };
+  const show = (micOn) => {
+    const intro = showIntro(card, key, { h, notes, sylIcons, mic: micOn }, () => { location.href = WORKSHOP; }, { game });
+    if (micOn) { mic.setTempo(84); mic.listen((time) => intro.mic(time)); }
+    document.onkeydown = (e) => { if (!e.repeat && intro.keys(e)) e.preventDefault(); };
+  };
+  // Speak/Sing It needs the mic, here too.
+  if (key.startsWith('say-')) mic.start(snd.ac()).then(() => show(true), () => show(false));
+  else show(false);
 }
 
 if (TEST) testTitle();

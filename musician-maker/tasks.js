@@ -50,7 +50,7 @@ export const TASKS = [
   },
   {
     id: 'du', name: 'Du It', cue: 'DU IT!', icon: 'du', xp: 1,
-    about: 'Tap the syllable tiles in rhythm.',
+    about: 'Tap the du and du-de tiles in rhythm.',
     steps: { 2: [S('syllables'), S('syllables+inst')], 3: EAR, 4: EAR, 5: ANY, 6: ROTE_READ, 7: READ, 8: READ },
   },
   {
@@ -106,7 +106,7 @@ export function howTo({ task, step, stim }, game = null) {
     say: create ? 'say your own answer' : step === 1 ? 'say it back on "bum"' : 'say it in du and de',
     tap: create ? `tap your own answer on ${obj}` : `tap it back on ${obj}`,
     play: create ? `play your own answer on ${inst}` : `play it back on ${inst}`,
-    du: create ? 'answer on the du and de tiles, in time' : 'tap du and de on the tiles, in time',
+    du: create ? 'answer on the du and du-de tiles, in time' : 'tap it on the du and du-de tiles, in time',
     note: create ? 'write your own answer with the notes' : 'tap the notes to write it',
   };
   return { how: `${first}${lines[task]}.`, go: taskById(task).cue, look: l };
@@ -126,8 +126,8 @@ export function introLines(task, step, game = null) {
   const { how } = howTo({ task, step, stim: cell[0] || {} }, game);
   const action = how.replace(/^(Listen and read|Listen|Read it)\. Then /, '');
   const lines = [...first, `${action[0].toUpperCase()}${action.slice(1)}`];
-  if (task === 'say') lines.push('Say it out loud. With the mic on, the game hears you; without it, tap along as you say it.');
-  if (task === 'du') lines.push('du goes on the beat, de on the second half of it.');
+  if (task === 'say') lines.push('Say it out loud: the mic hears you.');
+  if (task === 'du') lines.push('Tap du for a du, and du-de twice for a du-de.');
   if (task === 'note') lines.push(`You have ${beatsOf(task)} beats to pick them.`);
   if (step === 5 || step === 12) lines.push('Make yours different from mine, and try new ones: the same answer again earns less.');
   if (task === 'note' && step >= 10) lines.push('No notes to look at earns more points.');

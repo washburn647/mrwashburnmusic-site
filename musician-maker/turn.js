@@ -3,17 +3,19 @@
    answers and grades the same everywhere.
 
    Controls per task (tasks.js):
-     say, tap, play  a pad, tapped in time. Say It is said or sung: the mic counts it (only
-                     Say It listens), and without the mic the learner taps along as they say
-                     it. Tap It taps the game's object, Play It plays its instrument.
-     du              the unit's syllable tiles (du, de), tapped in time: the right tile on the
+     say             said or sung into the mic; nothing to tap (without the mic, Say It
+                     doesn't come up in a run).
+     tap             the game's object, big, tapped right on, in time.
+     play            a pad for the game's instrument, tapped in time.
+     du              two tiles, du (a quarter) and du-de (two eighths, tapped twice), tapped in
+                     time: each note on its own tile.
                      right part of the beat.
      note            notation tiles (♩, ♫) and a backspace, picked out of time, all four
                      before the turn's 8 beats are up.
    A turn is 4 beats, or the task's own (tasks.js beatsOf). Echo steps grade against the call's pattern; create steps (5, 12)
    want a whole pattern of the learner's own, different from the call. */
 
-import { onsets, readTaps, fromCells, sylText, SYLS, isCreate } from './steps.js';
+import { onsets, readTaps, fromCells, sylText, isCreate } from './steps.js';
 import { look, beatsOf } from './tasks.js';
 
 /* Fixed markup for the note tiles and the answer slots. */
@@ -49,8 +51,10 @@ export function makeTurn(item, game, ui) {
   const taps = []; // say/tap/play: times; du: { t, syl }
   const cells = []; // note
   let usedMic = false;
-  let tappedAt = -9;
-  const expected = create ? null : onsets(pattern).map((o) => ({ t: tResp + o.b * spb, syl: o.syl }));
+  // Du It's tiles: each note goes on the tile of its beat, du for a quarter, du-de for eighths.
+  const TILES = [{ id: 'q', label: 'du' }, { id: 'ee', label: 'du-de' }];
+  const tileOf = (p, b) => p.cells[Math.max(0, Math.min(3, Math.floor(b + 0.25)))];
+  const expected = create ? null : onsets(pattern).map((o) => ({ t: tResp + o.b * spb, syl: pattern.cells[Math.floor(o.b)] }));
   const tol = 0.2 * spb + 0.03;
   const tight = 0.08 * spb + 0.02;
   const waitText = look(stim) === 'read' ? '👀 Read…' : '👂 Listen…';
@@ -71,43 +75,55 @@ export function makeTurn(item, game, ui) {
 
   if (task === 'say' || task === 'tap' || task === 'play') {
     const sound = task === 'tap' ? game?.tap || 'snare' : task === 'play' ? game?.play || kit.instrument?.sound || 'conga' : 'claves';
+    // Speak/Sing It is said or sung into the mic, and only the mic answers it.
     const listens = task === 'say' && ui.mic;
-    const big = task === 'say' ? '🗣️ SAY IT' : task === 'tap' ? `${kit.object?.icon || '👆'} TAP` : `${kit.instrument?.icon || '🥁'} PLAY`;
-    const small = task === 'say' ? (listens ? 'the mic hears you, or tap along' : 'say it, and tap along')
-      : task === 'tap' ? `${kit.object?.name || 'the pad'} · or press space` : `${kit.instrument?.name || 'the drum'} · or press space`;
-    el = h('button', { class: `pad pad-${task}`, onpointerdown: (e) => { e.preventDefault(); input(ui.now(), false, e); } },
-      h('b', { class: 'wait' }, waitText), h('b', { class: 'now' }, create ? big.replace(/SAY IT|TAP|PLAY/, 'ANSWER') : big), h('small', {}, small),
-      listens ? h('span', { class: 'meter' }, h('span', {})) : null);
+    const tapIn = task !== 'say';
+    const press = (e) => { e.preventDefault(); input(ui.now(), false, e); };
+    if (task === 'tap') {
+      // Tap It: just the game's object, big, to tap right on.
+      const obj = kit.object?.icon || '👆';
+      el = h('button', { class: 'tap-obj', 'aria-label': `Tap ${kit.object?.name || 'it'}`, onpointerdown: press },
+        h('span', { class: 'tap-shadow' }), h('span', { class: 'tap-body' }, h('span', { class: 'tap-face' }, obj)));
+      el.style.setProperty('--spb', `${spb}s`);
+    } else if (task === 'say') {
+      el = h('div', { class: 'pad pad-say' },
+        h('b', { class: 'wait' }, waitText), h('b', { class: 'now' }, create ? '🎤 ANSWER' : '🎤 SAY IT'),
+        listens ? h('span', { class: 'meter' }, h('span', {})) : h('small', {}, 'Turn the mic on to play this one'));
+    } else {
+      const big = `${kit.instrument?.icon || '🥁'} PLAY`;
+      el = h('button', { class: `pad pad-${task}`, onpointerdown: press },
+        h('b', { class: 'wait' }, waitText), h('b', { class: 'now' }, create ? big.replace('PLAY', 'ANSWER') : big),
+        h('small', {}, `${kit.instrument?.name || 'the drum'} · or press space`));
+    }
     input = (time, fromMic, ev) => {
-      if (fromMic && !listens) return;
-      // A tap plays a sound, and the mic hears it: that isn't a syllable.
-      if (fromMic && time > tappedAt - 0.05 && time < tappedAt + ui.latency() + 0.12) return;
-      if (!fromMic) { tappedAt = time; ui.hit(sound, task === 'say' ? 0.5 : 0.9); }
+      if (fromMic ? !listens : !tapIn) return;
+      if (!fromMic) ui.hit(sound, 0.9);
       // What the learner hears lags the clock; their taps line up with what they hear.
       const t = time - ui.latency();
       // The mic stops a little early: the payoff sounds right after the turn, and it hears them.
       const isOpen = open(t) && (!fromMic || t <= to - 0.2 * spb);
       if (fromMic && !isOpen) return; // the mic only listens on the learner's turn
-      // Tapping while speaking gives two inputs for one syllable: count it once.
       if (isOpen && !taps.some((x) => Math.abs(x - t) < 0.15 * spb)) {
         taps.push(t);
         if (fromMic) usedMic = true;
       } else if (fromMic) return;
       bumpEl(el, 'hit');
+      if (task === 'tap') tapFun(el, ev);
       ui.feel?.({ el, ev, t, b: (t - tResp) / spb, open: isOpen, ...(isOpen ? judge(t) : { cls: 'idle', word: '' }) });
       ui.onPress?.();
     };
     keys = (e) => {
+      if (!tapIn) return false;
       if (e.key === ' ' || e.key === 'Enter' || /^[a-z]$/i.test(e.key)) { input(ui.now(), false); return true; }
       return false;
     };
   } else if (task === 'du') {
-    const tiles = SYLS.map((syl, k) => h('button', { class: `du-tile du-${syl}`, onpointerdown: (e) => { e.preventDefault(); press(syl, e, tiles[k]); } },
-      h('b', {}, syl), h('small', {}, k ? 'off the beat' : 'on the beat')));
+    const tiles = TILES.map((x, k) => h('button', { class: `du-tile du-${x.id}`, onpointerdown: (e) => { e.preventDefault(); press(x.id, e, tiles[k]); } },
+      h('b', {}, x.label)));
     el = h('div', { class: 'du-pad' }, h('b', { class: 'wait' }, waitText), h('div', { class: 'du-tiles' }, ...tiles));
     const press = (syl, ev, tile) => {
       const time = ui.now();
-      ui.hit(game?.tap || 'snare', syl === SYLS[0] ? 0.9 : 0.6);
+      ui.hit(game?.tap || 'snare', syl === 'q' ? 0.9 : 0.7);
       const t = time - ui.latency();
       const isOpen = open(t);
       if (isOpen) taps.push({ t, syl });
@@ -116,7 +132,7 @@ export function makeTurn(item, game, ui) {
       // The right moment on the wrong tile: say so.
       if (isOpen && expected) {
         const near = expected.reduce((best, x) => (Math.abs(t - x.t) < Math.abs(t - best.t) ? x : best));
-        if (Math.abs(t - near.t) <= tol && near.syl !== syl) fb = { cls: 'off', word: `${near.syl}!` };
+        if (Math.abs(t - near.t) <= tol && near.syl !== syl) fb = { cls: 'off', word: `${TILES.find((x) => x.id === near.syl).label}!` };
       }
       ui.feel?.({ el: tile, ev, t, b: (t - tResp) / spb, open: isOpen, ...fb });
       ui.onPress?.();
@@ -124,8 +140,8 @@ export function makeTurn(item, game, ui) {
     input = () => {};
     keys = (e) => {
       const k = e.key.toLowerCase();
-      if (['f', 'd', '1', 'arrowleft'].includes(k)) { press(SYLS[0], null, tiles[0]); return true; }
-      if (['j', 'k', '2', 'arrowright'].includes(k)) { press(SYLS[1], null, tiles[1]); return true; }
+      if (['f', 'd', '1', 'arrowleft'].includes(k)) { press('q', null, tiles[0]); return true; }
+      if (['j', 'k', '2', 'arrowright'].includes(k)) { press('ee', null, tiles[1]); return true; }
       return false;
     };
   } else {
@@ -185,7 +201,7 @@ export function makeTurn(item, game, ui) {
     if (create) {
       const got = readTaps(list.map((x) => (x.t - tResp) / spb));
       if (!got) return { right: false, why: 'unclear', got: null, mic: usedMic };
-      if (task === 'du' && list.some((x) => (Math.round(((x.t - tResp) / spb) * 2) % 2 ? SYLS[1] : SYLS[0]) !== x.syl)) return { right: false, why: 'tiles', got, mic: usedMic };
+      if (task === 'du' && list.some((x) => tileOf(got, (x.t - tResp) / spb) !== x.syl)) return { right: false, why: 'tiles', got, mic: usedMic };
       return { right: got.id !== pattern.id, why: got.id === pattern.id ? 'same' : '', got, mic: usedMic };
     }
     if (list.length !== expected.length) return { right: false, why: list.length < expected.length ? 'missing' : 'extra', mic: usedMic };
@@ -206,6 +222,23 @@ export function makeTurn(item, game, ui) {
     meter: el.querySelector?.('.meter span') || null,
     answerText: (res) => (res.got ? sylText(res.got) : ''),
   };
+}
+
+/* Tap It: the object squashes and tilts a new way on every tap, and a little copy of it pops
+   off and flies away. */
+function tapFun(el, ev) {
+  const face = el.querySelector('.tap-face');
+  el.style.setProperty('--tilt', `${Math.round(Math.random() * 24 - 12)}deg`);
+  const r = el.getBoundingClientRect();
+  const fly = document.createElement('span');
+  fly.className = 'tap-fly';
+  fly.textContent = face.textContent;
+  fly.style.left = `${ev?.clientX != null ? ev.clientX - r.left : r.width / 2}px`;
+  fly.style.top = `${ev?.clientY != null ? ev.clientY - r.top : r.height / 2}px`;
+  fly.style.setProperty('--dx', `${Math.round(Math.random() * 160 - 80)}px`);
+  fly.style.setProperty('--rot', `${Math.round(Math.random() * 120 - 60)}deg`);
+  fly.addEventListener('animationend', () => fly.remove());
+  el.append(fly);
 }
 
 function bumpEl(el, cls) {
