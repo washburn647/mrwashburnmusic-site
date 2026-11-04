@@ -10,12 +10,14 @@ const DEFAULTS = {
   mookie: false,
   input: 'tap', // or 'mic'
   frontier: 1, // newest unlocked step
-  steps: {}, // n: { s strength 0-100, n graded, pb perform/build graded, fast right at 108+, mastered }
+  steps: {}, // n: { s strength 0-100, n graded, fast right at 108+, mastered }
+  tasks: {}, // task-step (tasks.js taskKey): { s strength 0-100, n graded }
   pat: {}, // pattern id: strength
   feat: {}, // pattern feature: strength
   stickers: [],
-  seen: {}, // step-mode: 1 once that kind of game has been played (its instruction stops saying NEW)
-  intro: {}, // step-mode: 1 once its skill intro has been shown (intro.js)
+  seen: {}, // task-step: 1 once it has been played (its instruction stops saying NEW)
+  intro: {}, // task-step: 1 once its task intro has been shown (intro.js)
+  made: [], // the learner's last 12 create answers (pattern ids): repeats earn less
   test: false,
   recMic: false, // Test mode: record the mic in runs, saved as a file for Claude
   echo: true, // the mic's echo cancelling (Test mode can turn it off)

@@ -2,11 +2,12 @@
    - Try it: the game's scene as in the game, on the groove at any combo tier, with its call,
      taps, every win and fail gag, and its boss. Uses the game's own code (musician-maker/).
    - Options: whether it comes up in the stream, whether it hosts the boss, which gags can come
-     up, its tap sound (musician-maker/options.js). Kept on this device as a draft; "Publish
+     up, its tap sound (Tap It) and its instrument's sound (Play It) (musician-maker/options.js). Kept on this device as a draft; "Publish
      to site" puts it in the game right away (/api/live/games.json, see worker/index.js), and
      "Download" saves games.json, a backup tools/add_games.py puts in musician-maker/games.json.
-   - Test play: the real game with only this game in it, the draft options and a step, tempo,
-     pace and groove picked here. Progress isn't saved in a test run. */
+   - Test play: the real game with only this game in it, the draft options and a step, task,
+     tempo, pace and groove picked here. Progress isn't saved in a test run.
+   - Task intros: any task's intro at any step, with this game's object and instrument. */
 
 import * as snd from '/musician-maker/sound.js';
 import { makeClock } from '/musician-maker/clock.js';
@@ -14,7 +15,8 @@ import { GAMES } from '/musician-maker/games.js';
 import * as OPT from '/musician-maker/options.js';
 import { STEPS, ALL, onsets } from '/musician-maker/steps.js';
 import { TIER_NAMES } from '/musician-maker/director.js';
-import { allIntroKeys, introFor } from '/musician-maker/intro.js';
+import { TASKS, allTaskKeys } from '/musician-maker/tasks.js';
+import { introFor } from '/musician-maker/intro.js';
 import { h } from '../dom.js';
 
 const app = document.getElementById('app');
@@ -23,7 +25,7 @@ const TIER_LABELS = ['Combo 0', ...TIER_NAMES.slice(1)];
 let site = OPT.complete();
 const draft = OPT.loadDraft();
 let opts = draft.games || site;
-const test = { step: '', tempo: 'climb', start: 'games', pace: 'normal', groove: 'mix', intros: 'mine', input: 'tap', ...draft.test };
+const test = { step: '', task: '', tempo: 'climb', start: 'games', pace: 'normal', groove: 'mix', intros: 'mine', input: 'tap', ...draft.test };
 let gameId = (GAMES.find((g) => g.id === test.game) || GAMES[0]).id;
 let labels = {}; // sound names, from the samples index
 let status = '';
@@ -221,6 +223,9 @@ function optionsCard() {
   const o = opts[g.id];
   const tapSel = h('select', { 'aria-label': 'Tap sound', onchange: (e) => { o.tap = e.target.value; changed(); tap(); } },
     ...snd.HITS.map((n) => h('option', { value: n, selected: n === o.tap }, `${labels[n] || n}${n === g.baseTap ? ' (its own)' : ''}`)));
+  const playIt = async () => { const ctx = await ready(); snd.hit(g.play, ctx.currentTime, 0.9); };
+  const playSel = h('select', { 'aria-label': 'Instrument sound', onchange: (e) => { o.play = e.target.value; changed(); playIt(); } },
+    ...snd.HITS.map((n) => h('option', { value: n, selected: n === o.play }, `${labels[n] || n}${n === g.basePlay ? ' (its own)' : ''}`)));
   return h('section', { class: 'card' },
     h('div', { class: 'bar' },
       h('h2', { class: 'grow' }, 'Options'),
@@ -233,9 +238,10 @@ function optionsCard() {
     g.bossName ? switchRow(`Hosts the boss: ${g.bossName}`, 'Takes turns with the other bosses, one a lap', o.boss, (v) => { o.boss = v; changed(); }) : null,
     gagChips(g, o, 'win'),
     gagChips(g, o, 'fail'),
-    h('h3', {}, 'Tap sound'),
+    h('h3', {}, `Tap It: ${g.kit.object.icon} ${g.kit.object.name}`),
     h('div', { class: 'try' }, tapSel, h('button', { onclick: tap }, '▶')),
-    h('p', { class: 'hint' }, 'Every tap, pick and slot in this game plays it.'));
+    h('h3', {}, `Play It: ${g.kit.instrument.icon} ${g.kit.instrument.name}`),
+    h('div', { class: 'try' }, playSel, h('button', { onclick: playIt }, '▶')));
 }
 
 /* ---------- test play ---------- */
@@ -243,6 +249,7 @@ function optionsCard() {
 function testUrl() {
   const q = new URLSearchParams({ test: gameId });
   if (test.step) q.set('step', test.step);
+  if (test.task) q.set('task', test.task);
   if (test.tempo !== 'climb') q.set('tempo', test.tempo);
   if (test.start === 'boss' && game().bossName) q.set('start', 'boss');
   if (test.pace === 'mookie') q.set('pace', 'mookie');
@@ -266,35 +273,39 @@ function testCard() {
         h('select', { onchange: (e) => set('step')(e.target.value) },
           h('option', { value: '', selected: !test.step }, 'From my progress'),
           ...STEPS.slice(1).map((s) => h('option', { value: String(s.n), selected: String(s.n) === String(test.step) }, `${s.n}. ${s.name}`)))),
+      h('label', {}, 'Task',
+        h('select', { onchange: (e) => set('task')(e.target.value) },
+          h('option', { value: '', selected: !test.task }, 'Any the step uses'),
+          ...TASKS.map((t) => h('option', { value: t.id, selected: t.id === test.task }, t.name)))),
       h('label', {}, 'Tempo', seg({ climb: '92 → 126', 92: '92', 108: '108', 126: '126' }, test.tempo, set('tempo'))),
       g.bossName ? h('label', {}, 'Start with', seg({ games: 'Games', boss: g.bossName }, test.start, set('start'))) : null,
       h('label', {}, 'Pace', seg({ normal: 'Normal', mookie: 'Mookie mode' }, test.pace, set('pace'))),
       h('label', {}, 'Answer with', seg({ tap: 'Taps', mic: 'Taps and the mic' }, test.input, set('input'))),
-      h('label', {}, 'Skill intros', seg({ mine: 'Ones I haven\'t seen', all: 'All again' }, test.intros, set('intros'))),
+      h('label', {}, 'Task intros', seg({ mine: 'Ones I haven\'t seen', all: 'All again' }, test.intros, set('intros'))),
       h('label', {}, 'Groove', grooveSel)),
     link,
     h('p', { class: 'hint' }, 'Only this game comes up, with the options here (saved for the site or not). Progress isn\'t saved.'));
 }
 
-/* ---------- skill intros (musician-maker/intro.js), shared by every game ---------- */
+/* ---------- task intros (musician-maker/intro.js), shared by every game ---------- */
 
 function introsCard() {
-  const keys = allIntroKeys();
+  const keys = allTaskKeys();
   let key = keys.includes(test.intro) ? test.intro : keys[0];
-  const link = h('a', { class: 'button primary', href: `/musician-maker/?intro=${key}` }, 'Preview');
+  const url = () => `/musician-maker/?intro=${key}&game=${gameId}`;
+  const link = h('a', { class: 'button primary', href: url() }, 'Preview');
   const about = h('p', { class: 'hint' });
   const draw = () => {
-    const it = introFor(key);
-    link.href = `/musician-maker/?intro=${key}`;
-    about.textContent = `${it.title}: ${it.lines.join(' ')}${it.media ? ' (with a recorded message)' : ''}`;
+    const it = introFor(key, game());
+    link.href = url();
+    about.textContent = `${it.lines.join(' ')}${it.media ? ' (with a recorded message)' : ''}`;
   };
   draw();
   return h('section', { class: 'card' },
-    h('h2', {}, 'Skill intros'),
-    h('p', { class: 'hint' }, 'The first time a skill comes up, the game stops for its intro and a practice try. Same in every game.'),
+    h('h2', {}, 'Task intros'),
     h('div', { class: 'try' },
-      h('select', { 'aria-label': 'Skill', onchange: (e) => { key = e.target.value; test.intro = key; keep(); draw(); } },
-        ...keys.map((k) => { const it = introFor(k); return h('option', { value: k, selected: k === key }, `${it.step.n}. ${it.step.name} · ${it.mode}`); })),
+      h('select', { 'aria-label': 'Task and step', onchange: (e) => { key = e.target.value; test.intro = key; keep(); draw(); } },
+        ...keys.map((k) => { const it = introFor(k); return h('option', { value: k, selected: k === key }, `${it.task.name} · ${it.step.n}. ${it.step.name}`); })),
       link),
     about);
 }

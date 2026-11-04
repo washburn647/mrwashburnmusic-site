@@ -1,18 +1,21 @@
 /* Musician Maker: one nonstop stream of micro-games on one groove.
    A run is laps of three sets (92, 108, 126 bpm), each set followed by a breather, then a
-   boss and an intermission. A micro-game is cue (4 beats), call (4), response, payoff (4):
-   whole 2-bar phrases, so the groove's 4-bar loop starts again on every call.
-   The director (director.js) picks every game; the groove (sound.js) grows with the combo.
+   boss and an intermission. A micro-game is cue (4 beats), call (4), the learner's turn (4),
+   payoff (4): whole 2-bar phrases, so the groove's 4-bar loop starts again on every call.
+   The director (director.js) rolls each game's step, task (tasks.js), stimulus and pattern;
+   the turn's controls are turn.js; the groove (sound.js) grows with the combo.
    Why it works this way: the stream engine design doc in the project. */
 
 import * as snd from './sound.js';
 import { makeClock } from './clock.js';
 import * as mic from './mic.js';
-import { STEPS, BANDS, UNIT, onsets, sylText, options, readTaps, fromCells, loadMarks, howTo } from './steps.js';
+import { STEPS, BANDS, UNIT, onsets, sylText, loadMarks, isCreate, shows, bumText } from './steps.js';
+import { TASKS, taskById, taskKey, howTo, tasksAt, stepsOf, allTaskKeys, XP_NO_NOTES, repeatFactor } from './tasks.js';
+import { makeTurn, TURN_BEATS, WHY, NOTE_SVG } from './turn.js';
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import * as OPT from './options.js';
-import { showIntro, introKey, allIntroKeys } from './intro.js';
+import { showIntro } from './intro.js';
 import { mookie } from './mookie.js';
 import * as TX from './transitions.js';
 import * as FX from './effects.js';
@@ -27,11 +30,12 @@ const Q = new URLSearchParams(location.search);
 const TEST = GAMES.some((g) => g.id === Q.get('test')) ? {
   game: GAMES.find((g) => g.id === Q.get('test')),
   step: Number(Q.get('step')) || null,
+  task: taskById(Q.get('task')) ? Q.get('task') : null,
   tempo: [92, 108, 126].includes(Number(Q.get('tempo'))) ? Number(Q.get('tempo')) : null,
   boss: Q.get('start') === 'boss',
   groove: Q.get('groove') || null,
   mookie: Q.get('pace') === 'mookie',
-  intros: Q.get('intros') === 'all', // show every skill intro again
+  intros: Q.get('intros') === 'all', // show every task intro again
   mic: Q.get('input') === 'mic',
 } : null;
 const WORKSHOP = '/studio/games/';
@@ -96,6 +100,14 @@ function notes(p) {
   return el;
 }
 
+/* A pattern as the step can show it (steps.js shows): on "bum" at Rote, then syllables, then
+   the notes too. */
+function answerOf(p, step) {
+  const k = shows(step);
+  if (k === 'bum') return [h('span', { class: 'bum' }, bumText(p))];
+  return k === 'notes' ? [notes(p), sylIcons(p)] : [sylIcons(p)];
+}
+
 /* ---------------- title ---------------- */
 
 function seg(options, value, change) {
@@ -147,14 +159,9 @@ function toggle(label, hint, on, change) {
   return b;
 }
 
-const NOTE_SVG = {
-  q: '<svg viewBox="0 0 20 40" aria-hidden="true"><ellipse cx="7.5" cy="33" rx="7" ry="5" transform="rotate(-20 7.5 33)"/><rect x="12.6" y="3" width="2.4" height="30"/></svg>',
-  ee: '<svg viewBox="0 0 42 40" aria-hidden="true"><ellipse cx="7.5" cy="33" rx="7" ry="5" transform="rotate(-20 7.5 33)"/><ellipse cx="30.5" cy="33" rx="7" ry="5" transform="rotate(-20 30.5 33)"/><rect x="12.6" y="5" width="2.4" height="28"/><rect x="35.6" y="5" width="2.4" height="28"/><rect x="12.6" y="3" width="25.4" height="6"/></svg>',
-};
-
 function floatNote(kind, i) {
   const el = h('span', { class: `fnote fn${i}` });
-  el.innerHTML = NOTE_SVG[kind]; // fixed markup above
+  el.innerHTML = NOTE_SVG[kind]; // fixed markup (turn.js)
   return el;
 }
 
@@ -245,7 +252,7 @@ function howToPlay() {
     h('ol', { class: 'tips' },
       tip('👂', 'Listen. Mookie plays a little pattern.'),
       tip('✨', 'The box glows. Now it\'s your turn!'),
-      tip('🥁', 'Do what the words say: tap it, say it, pick it or build it.'),
+      tip('🥁', 'Do what the words say: say it, tap it, play it, du it or note it.'),
       tip('🔥', 'Get lots right in a row and the band joins in.')),
     h('p', { class: 'note' }, 'Miss one? No problem. The next one is coming. Press ❚❚ to stop.'),
     h('button', { class: 'play', onclick: () => startRun() }, 'Play')));
@@ -269,7 +276,24 @@ function stepInfo() {
   });
 }
 
-function progress() {
+/* A task at a step: met once its intro has played (then it can be practised from here),
+   open while its step is, locked after. */
+function taskState(id, n) {
+  if (st.intro[taskKey(id, n)]) return 'met';
+  return n <= st.frontier ? 'open' : 'locked';
+}
+
+const TASK_STATE = { met: '', open: 'Coming up', locked: 'Locked' };
+
+function taskIcon(t, cls = '') {
+  return h('span', { class: `ticon t-${t.id} ${cls}`, 'aria-hidden': 'true' }, t.icon);
+}
+
+/* My progress has two views: Steps (the map) and Tasks (each task's steps). */
+let progressView = 'steps';
+
+function progress(view = progressView) {
+  progressView = view;
   scene('progress');
   const info = stepInfo();
   const done = info.filter((i) => i.state === 'mastered').length;
@@ -279,8 +303,9 @@ function progress() {
     h('header', { class: 'phead' },
       h('button', { class: 'back', 'aria-label': 'Back', onclick: () => { title(); } }, '‹'),
       h('div', {}, h('h2', {}, 'My progress'), h('p', {}, `Unit 1 · ${done} of 12 steps mastered`))),
-    map,
-    h('p', { class: 'note' }, 'Master a step to open the next one. The music picks what you play.'),
+    h('div', { class: 'pviews' }, seg({ steps: 'Steps', tasks: 'Tasks' }, view, (v) => progress(v))),
+    view === 'tasks' ? taskGrid(sheet) : map,
+    view === 'steps' ? h('p', { class: 'note' }, 'Master a step to open the next one. The music picks what you play.') : null,
     h('div', { class: 'testbox' },
       h('label', {}, 'Test mode (for Kyle): drill any step', seg({ off: 'Off', on: 'On' }, st.test ? 'on' : 'off', (v) => { st.test = v === 'on'; save(); progress(); })),
       st.test ? h('label', {}, 'Record the mic in runs (saves a file for Claude)', seg({ off: 'Off', on: 'On' }, st.recMic ? 'on' : 'off', (v) => { st.recMic = v === 'on'; save(); })) : null,
@@ -288,8 +313,75 @@ function progress() {
       st.test ? h('button', { class: 'mini', onclick: lab }, 'Transitions lab') : null,
       st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); dir = makeDirector(st); progress(); } }, 'Reset all progress') : null),
     sheet));
+  if (view === 'tasks') return;
   drawMap(map, info, sheet);
   map.querySelector('.pnode.now, .pnode.open')?.scrollIntoView({ block: 'center' });
+}
+
+/* Tasks: one card per task, its 12 steps in a row. A step the task doesn't use is blank. */
+function taskGrid(sheet) {
+  return h('div', { class: 'tgrid' }, ...TASKS.map((t) => {
+    const ns = stepsOf(t.id);
+    const met = ns.filter((n) => taskState(t.id, n) === 'met').length;
+    return h('div', { class: 'tcard' },
+      h('div', { class: 'tcard-top' }, taskIcon(t), h('b', {}, t.name), h('small', {}, `${met} of ${ns.length}`)),
+      h('div', { class: 'tsteps' }, ...STEPS.slice(1).map((s) => {
+        if (!t.steps[s.n]) return h('span', { class: 'tstep na' });
+        const state = taskState(t.id, s.n);
+        return h('button', { class: `tstep ${state} ${s.band}`, 'aria-label': `${t.name}, step ${s.n}: ${s.name}. ${TASK_STATE[state] || 'Unlocked'}`,
+          onclick: () => showTask(sheet, t, s.n) }, String(s.n));
+      })));
+  }));
+}
+
+/* A task at a step: how strong it is, and (once met) its practice round and intro. */
+function showTask(sheet, t, n) {
+  const s = STEPS[n];
+  const state = taskState(t.id, n);
+  const p = dir.task(t.id, n);
+  const can = state === 'met' || st.test;
+  sheet.replaceChildren(...[
+    h('button', { class: 'close', 'aria-label': 'Close', onclick: () => sheet.classList.remove('show') }, '×'),
+    h('span', { class: `band ${s.band}` }, BANDS[s.band]),
+    h('h3', { class: 'task-h' }, taskIcon(t), t.name),
+    h('p', { class: 'intro-step' }, `Step ${n}: ${s.name}`),
+    state === 'met' ? h('div', { class: 'sheet-bar' }, h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(p.s)}%` })), h('small', {}, `${Math.round(p.s)}% strong`)) : null,
+    TASK_STATE[state] ? h('p', { class: `sheet-state ${state}` }, TASK_STATE[state]) : null,
+    can ? h('div', { class: 'row' },
+      h('button', { class: 'mini', onclick: () => practise(t, n, false) }, 'Practice'),
+      h('button', { class: 'mini', onclick: () => practise(t, n, true) }, 'Watch the intro')) : null].filter(Boolean));
+  sheet.classList.add('show');
+}
+
+/* A task's practice round, or its whole intro again, on its own page. The mic hears Speak/Sing
+   It when it's on. */
+async function practise(t, n, intro) {
+  scene('progress');
+  const key = taskKey(t.id, n);
+  const pool = LINEUP.stream.length ? LINEUP.stream : GAMES;
+  const game = pool[Math.floor(Math.random() * pool.length)];
+  const card = h('div', { class: 'intro-preview' });
+  let micOn = false;
+  const back = () => {
+    document.onkeydown = null;
+    mic.listen(null);
+    if (micOn) mic.stop();
+    micOn = false;
+    progress('tasks');
+  };
+  app.replaceChildren(h('div', { class: 'progress' },
+    h('button', { class: 'back', 'aria-label': 'Back', onclick: back }, '‹'), card));
+  if (st.input === 'mic' && t.id === 'say') {
+    mic.setEcho(st.echo !== false);
+    try { await mic.start(snd.ac()); micOn = true; } catch { micOn = false; }
+  }
+  if (!card.isConnected) { if (micOn) mic.stop(); return; }
+  const it = showIntro(card, key, { h, notes, sylIcons, mic: micOn }, back, { game, practice: !intro });
+  if (micOn) {
+    mic.setTempo(84);
+    mic.listen((time) => it.mic(time));
+  }
+  document.onkeydown = (e) => { if (!e.repeat && it.keys(e)) e.preventDefault(); };
 }
 
 /* Smooth curve through points (Catmull-Rom as cubic Béziers). */
@@ -357,6 +449,7 @@ function drawMap(map, info, sheet) {
       style: `top:${ny}px;${left ? `left:${x + 46}px` : `right:${W - x + 46}px`};max-width:${room}px` },
     h('b', {}, it.s.name),
     h('small', {}, STATE_TEXT[it.state]),
+    h('span', { class: 'ptasks' }, ...tasksAt(it.s.n).map((t) => taskIcon(t, taskState(t.id, it.s.n)))),
     it.state !== 'locked' ? h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(it.p.s)}%` })) : null);
     return [node, label];
   });
@@ -379,9 +472,11 @@ function showStep(sheet, { s, p, state }) {
     h('button', { class: 'close', 'aria-label': 'Close', onclick: () => sheet.classList.remove('show') }, '×'),
     h('span', { class: `band ${s.band}` }, BANDS[s.band]),
     h('h3', {}, `${s.n}. ${s.name}`),
-    h('p', {}, state === 'locked' ? 'Master the step before this one to open it.' : s.say),
+    h('p', {}, state === 'locked' ? 'Master the step before this one to open it.' : s.about),
     state !== 'locked' ? h('div', { class: 'sheet-bar' }, h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(p.s)}%` })), h('small', {}, `${Math.round(p.s)}% strong`)) : null,
     h('p', { class: `sheet-state ${state}` }, STATE_TEXT[state]),
+    h('div', { class: 'sheet-tasks' }, ...tasksAt(s.n).map((t) => h('button', { class: `tchip ${taskState(t.id, s.n)}`, onclick: () => showTask(sheet, t, s.n) },
+      taskIcon(t), h('span', {}, t.name)))),
     st.test ? h('button', { class: 'mini', onclick: () => startRun({ force: s.n }) }, 'Drill this step') : null].filter(Boolean));
   sheet.classList.add('show');
 }
@@ -405,7 +500,7 @@ function lab() {
   const wrap = h('div', { class: 'stage-wrap' }, stage, cue);
   mouseCatcher.make(stage, {});
   const scenes = [() => GAMES[1].make(stage, {}), () => GAMES[0].make(stage, {})];
-  const cues = ['TAP IT!', 'SAY IT!', 'PICK ONE!', 'BUILD IT!'];
+  const cues = TASKS.map((t) => t.cue);
   const run = async (tx) => {
     const ctx = snd.ac();
     await snd.load();
@@ -522,7 +617,7 @@ function countIn() {
     h('div', { class: 'cue-word' }, R.lap ? `Lap ${R.lap + 1}!` : 'Ready?'),
     ...R.news.splice(0).map((n) => h('p', { class: 'news' }, n))));
   [1, 2, 3, 4].forEach((n) => later(R.clock.timeOf(n - 1), () => { R.dom.overlay.querySelector('.cue-word').textContent = String(n); }));
-  // Close only the count-in card: a skill intro may open on this same beat, and the two
+  // Close only the count-in card: a task intro may open on this same beat, and the two
   // timers can fire in either order.
   R.clock.at(4, () => { later(R.clock.timeOf(4), () => { if (R.dom.overlay.querySelector('.ready')) overlay(null); }); next(4); });
 }
@@ -637,97 +732,136 @@ function pickGame() {
 
 /* ---------------- one micro-game ---------------- */
 
+/* A micro-game: cue (4 beats) · call (4: hear it, read it, or both) · the learner's turn
+   (4, any task) · payoff (4; 8 for Writing Create, which plays the learner's pattern back).
+   The director has rolled the step, task, stimulus and pattern; the game is any of them. */
 function gameSeg(B, seg) {
   const warm = R.lap === 0 && seg.set === 0 && !R.force;
-  const item = R.pending || dir.next({ warm, force: R.force });
+  const pend = R.pending;
   R.pending = null;
-  // A skill's first game: the stream stops for its intro, then this game comes next.
-  if (!st.intro[introKey(item)]) { introBreak(B, item); return; }
-  const step = STEPS[item.step];
-  const game = pickGame();
+  const item = pend?.item || dir.next({ warm, force: R.force, forceTask: TEST?.task });
+  const game = pend?.game || pickGame();
+  // A task's first game at a step: the stream stops for its intro, then this game comes next.
+  if (!st.intro[taskKey(item.task, item.step)]) { introBreak(B, item, game); return; }
+  const task = taskById(item.task);
+  const create = isCreate(item.step);
   const spb = R.clock.spb();
   const T = (i) => R.clock.timeOf(i);
-  const callBeats = step.call === 'none' ? 0 : 4;
-  const respBeats = { perform: 4, create: 4, pick: 4, build: 8, compose: 8 }[item.mode];
-  // Compose plays the learner's pattern back after 2 beats of payoff, so it gets 8.
-  const payBeats = item.mode === 'compose' ? 8 : 4;
   const c0 = B + 4;
-  snd.setGroovePhase(c0); // the call (or a compose answer) starts on bar 1 of the groove
-  const r0 = c0 + callBeats;
-  const p0 = r0 + respBeats;
-  const end = p0 + payBeats;
-  const q = question(item, step);
-  const win = { tResp: T(r0), spb, from: T(r0) - 0.25 * spb, to: T(p0) - 0.05 * spb, taps: [], usedMic: false, choice: null, slots: [null, null, null, null] };
+  snd.setGroovePhase(c0); // the call starts on bar 1 of the groove
+  const r0 = c0 + 4;
+  const p0 = r0 + TURN_BEATS;
+  const end = p0 + (create && item.task === 'note' ? 8 : 4);
+  const turn = makeTurn(item, game, turnUi(T(r0), spb));
 
   const tx = TX.pick(st.tx);
-  if (!snd.speak(cueId(step.cue), T(B))) snd.fx.cue(T(B));
+  if (!snd.speak(cueId(task.cue), T(B))) snd.fx.cue(T(B));
   tx.sound(snd, T(B), spb);
   later(T(B), () => {
     hud();
-    showGame(item, step, game, q, win, tx, spb);
+    showGame(item, game, turn, tx, spb);
   });
-  if (callBeats) {
-    R.groove.duckFrom = T(c0);
-    R.groove.duckUntil = R.micOn && ['perform', 'create'].includes(item.mode) ? T(p0) : T(r0);
-    R.groove.micFrom = T(r0) - 0.3 * spb;
-    for (let k = 0; k < callBeats; k++) later(T(c0 + k), () => dots(k, callBeats, 'call'));
-  }
-  if (step.call === 'neutral' || step.call === 'syllables') {
-    snd.call(item.pattern, step.call, T(c0), spb);
-    onsets(item.pattern).forEach((o, i) => later(T(c0) + o.b * spb, () => R.api.onCall(i, step.call === 'syllables' ? o.syl : null)));
-  }
+  R.groove.duckFrom = T(c0);
+  // Only Say It listens: while the mic is on, the groove stays soft through the turn.
+  R.groove.duckUntil = R.micOn && item.task === 'say' ? T(p0) : T(r0);
+  R.groove.micFrom = T(r0) - 0.3 * spb;
+  for (let k = 0; k < 4; k++) later(T(c0 + k), () => dots(k, 4, 'call'));
+  callOut(item, game, T(c0), spb);
   later(T(r0), () => {
     R.dom.controls.classList.add('live');
     R.dom.stage.parentElement.classList.add('yours');
-    flash(howTo(item.step, item.mode).go, 'turn');
+    flash(task.cue, 'turn');
   });
-  for (let k = 0; k < respBeats; k++) later(T(r0 + k), () => dots(k, respBeats, 'resp'));
+  for (let k = 0; k < TURN_BEATS; k++) later(T(r0 + k), () => dots(k, TURN_BEATS, 'resp'));
   later(T(p0), () => {
     R.dom.controls.classList.remove('live');
+    R.dom.controls.classList.add('over');
     R.dom.stage.parentElement.classList.remove('yours');
-    const res = grade(item, q, win);
+    const res = grade(item, turn);
     result(item, res, { onWin: () => R.api.win(), onFail: () => R.api.fail(), t: T(p0) });
-    if (item.mode === 'compose' && res.got) {
-      snd.playBack(res.got, T(p0 + 2), spb);
-      R.dom.prompt.replaceChildren(h('div', { class: 'answer' }, h('span', {}, 'Your pattern'), notes(res.got), sylIcons(res.got)));
+    if (create && res.right && res.got) {
+      if (item.task === 'note') snd.playBack(res.got, T(p0 + 2), spb);
+      R.dom.prompt.replaceChildren(h('div', { class: 'answer' }, h('span', {}, 'Your pattern'), ...answerOf(res.got, item.step)));
     }
-    R.win = null;
   });
   R.clock.at(end, () => next(end));
 }
 
-/* Stop the stream for a skill intro (intro.js), then count back in to the same game. */
-function introBreak(B, item) {
-  R.pending = item;
+/* The call: the pattern heard (on "bum", in syllables, on the game's instrument, or syllables
+   with it), with each note shown in the scene. What's seen goes up in showGame. */
+function callOut(item, game, t, spb) {
+  const hear = item.stim.hear;
+  if (!hear) return;
+  snd.call(item.pattern, hear, t, spb, game.play);
+  const syl = hear.startsWith('syllables');
+  onsets(item.pattern).forEach((o, i) => later(t + o.b * spb, () => R.api.onCall(i, syl ? o.syl : null)));
+}
+
+/* What a turn needs from the run: the clock, sounds, the mic, and tap feedback drawn on the
+   controls and the beat lane. */
+function turnUi(tResp, spb) {
+  return {
+    h, mic: R.micOn, tResp, spb,
+    now: () => R.ctx.currentTime,
+    latency: () => snd.latency(),
+    hit: (name, vol) => snd.hit(name, R.ctx.currentTime, vol),
+    onPress: () => R.api?.onTap(),
+    // Tap feedback: a ripple where the finger landed, coloured by timing when the answer is
+    // known (on time, close, off), and a tick on the beat lane where the tap fell.
+    feel: ({ el, ev, b, open, cls, word }) => {
+      const r = el.getBoundingClientRect();
+      const x = ev?.clientX != null ? ev.clientX - r.left : r.width / 2;
+      const y = ev?.clientY != null ? ev.clientY - r.top : r.height / 2;
+      FX.ripple(el, x, y, cls);
+      if (word) FX.pop(el, x, y - 24, word, cls);
+      if (open) tick(b, cls);
+    },
+  };
+}
+
+/* The turn's controls go in, and the keyboard and the mic answer to them. */
+function useTurn(turn) {
+  R.turn = turn;
+  R.dom.controls.classList.remove('over');
+  R.keys = turn.keys;
+  R.onInput = turn.input;
+  R.dom.controls.replaceChildren(turn.el);
+  if (turn.meter) {
+    const fill = turn.meter;
+    const draw = () => {
+      if (!fill.isConnected) return;
+      fill.style.width = `${Math.round(mic.getLevel() * 100)}%`;
+      requestAnimationFrame(draw);
+    };
+    draw();
+  }
+}
+
+/* Stop the stream for a task intro (intro.js), then count back in to the same game. */
+function introBreak(B, item, game) {
+  R.pending = { item, game };
   R.idx--; // this game segment again after the intro
   R.clock.stop();
   R.groove.mode = 'off';
   snd.grooveStop();
+  const key = taskKey(item.task, item.step);
   later(R.clock.timeOf(B), () => {
     R.dom.controls.replaceChildren();
     clearDots();
     const card = h('div', {});
     overlay(card);
-    const intro = showIntro(card, introKey(item), { h, notes, sylIcons, mic: R.micOn }, () => {
-      st.intro[introKey(item)] = 1;
+    const intro = showIntro(card, key, { h, notes, sylIcons, mic: R.micOn }, () => {
+      st.intro[key] = 1;
       save();
       R.keys = null;
       R.onInput = null;
       overlay(null);
       countIn();
-    });
+    }, { game });
     R.keys = intro.keys;
     // The mic answers the practice round too.
     R.onInput = (time, fromMic) => { if (fromMic) intro.mic(time); };
   });
-}
-
-function question(item, step) {
-  if (item.mode === 'pick') {
-    const spec = dir.pickSpec(item.step);
-    return { ...options(item.pattern, spec.count, spec.close), show: step.show };
-  }
-  return {};
 }
 
 function dots(k, n, kind) {
@@ -821,7 +955,7 @@ function tick(b, cls) {
   row.parentElement.append(m);
 }
 
-function showGame(item, step, game, q, win, tx, spb) {
+function showGame(item, game, turn, tx, spb) {
   const d = R.dom;
   overlay(null);
   // The new scene goes in once the transition has hidden the old one (transitions.js).
@@ -831,192 +965,54 @@ function showGame(item, step, game, q, win, tx, spb) {
     d.stage.replaceChildren();
     R.api = game.make(d.stage, {});
   });
-  d.cue.textContent = step.cue;
+  d.cue.textContent = taskById(item.task).cue;
   bump(d.cue, 'slam');
-  d.prompt.replaceChildren(instruction(item));
-  bigHow(item);
-  if (step.call === 'notation') d.prompt.append(notes(item.pattern));
-  if (step.call === 'text') d.prompt.append(h('div', { class: 'syl-card' }, sylIcons(item.pattern)));
+  d.prompt.replaceChildren(instruction(item, game));
+  bigHow(item, game);
+  if (item.stim.see) d.prompt.append(notes(item.pattern));
   clearDots();
-  R.win = win;
-  R.item = { item, q };
-  controlsFor(item, game, q, win);
+  R.item = item;
+  useTurn(turn);
 }
 
-/* The what-to-do line, on screen for the whole game. The first time a kind of game comes
-   up it's marked NEW and stays big. */
-function instruction(item) {
-  const key = `${item.step}-${item.mode}`;
+const LOOK_ICON = { listen: '👂', read: '👀', both: '👀' };
+
+/* The what-to-do line, on screen for the whole game. The first time a task comes up at a
+   step it's marked NEW and stays big. */
+function instruction(item, game) {
+  const key = taskKey(item.task, item.step);
   const fresh = !st.seen[key];
   st.seen[key] = 1;
-  const { how, look } = howTo(item.step, item.mode);
+  const { how, look } = howTo(item, game);
   return h('div', { class: `say${fresh ? ' new' : ''}` },
-    st.mookie ? mookie('happy') : h('span', { class: 'ic' }, look === 'read' ? '👀' : look === 'listen' ? '👂' : '✏️'),
+    st.mookie ? mookie('happy') : h('span', { class: 'ic' }, LOOK_ICON[look] || '✏️'),
     fresh ? h('b', { class: 'tag' }, 'NEW') : null,
     h('span', {}, how));
 }
 
 /* The instruction pops up big over the scene at the start of each game, then shrinks
    away into the line under it. Held for 4 beats (at least 2.4 s) so it can be read. */
-function bigHow(item) {
+function bigHow(item, game) {
   const wrap = R.dom.stage.parentElement;
   wrap.querySelector('.how-big')?.remove();
-  const el = h('div', { class: 'how-big' }, h('span', {}, howTo(item.step, item.mode).how));
+  const el = h('div', { class: 'how-big' }, h('span', {}, howTo(item, game).how));
   el.style.animationDuration = `${Math.max(2.4, 4 * R.clock.spb())}s`;
   el.addEventListener('animationend', () => el.remove());
   wrap.append(el);
 }
 
-function controlsFor(item, game, q, win) {
-  const d = R.dom;
-  R.keys = null;
-  R.onInput = null;
-  if (item.mode === 'perform' || item.mode === 'create') {
-    let tappedAt = -9;
-    // Tap feedback: a ripple where the finger landed, coloured by timing when the answer is
-    // known (on time, close, off), and a tick on the beat lane where the tap fell.
-    const expected = item.mode === 'perform' ? onsets(item.pattern).map((o) => win.tResp + o.b * win.spb) : null;
-    const feel = (t, open, ev) => {
-      const r = pad.getBoundingClientRect();
-      const x = ev?.clientX != null ? ev.clientX - r.left : r.width / 2;
-      const y = ev?.clientY != null ? ev.clientY - r.top : r.height / 2;
-      let cls = open ? 'tap' : 'idle';
-      let word = '';
-      if (open && expected) {
-        const e = expected.reduce((best, x) => (Math.abs(t - x) < Math.abs(best) ? t - x : best), Infinity);
-        const a = Math.abs(e);
-        if (a <= 0.08 * win.spb + 0.02) cls = 'on';
-        else if (a <= 0.2 * win.spb + 0.03) { cls = 'close'; word = e < 0 ? 'early' : 'late'; } else { cls = 'off'; word = e < 0 ? 'too early' : 'too late'; }
-      }
-      FX.ripple(pad, x, y, cls);
-      if (word) FX.pop(pad, x, y - 24, word, cls);
-      if (open) tick((t - win.tResp) / win.spb, cls);
-    };
-    const tap = (time, fromMic, ev) => {
-      // A tap plays a sound, and the mic hears it: that isn't a syllable.
-      if (fromMic && time > tappedAt - 0.05 && time < tappedAt + snd.latency() + 0.12) return;
-      if (!fromMic) {
-        tappedAt = time;
-        snd.hit(game.tap, R.ctx.currentTime, 0.9);
-      }
-      // What the learner hears lags the clock; their taps line up with what they hear.
-      const t = time - snd.latency();
-      // The mic stops a little early: the payoff sounds right after the turn, and it hears them.
-      const open = R.win && t >= win.from && t <= win.to - (fromMic ? 0.2 * win.spb : 0);
-      // The mic only listens on the learner's turn: before it, it would hear the call.
-      if (fromMic && !open) return;
-      // Tapping while speaking gives two inputs for one syllable: count it once.
-      const same = 0.3 * win.spb / 2;
-      if (open && !win.taps.some((x) => Math.abs(x - t) < same)) {
-        win.taps.push(t);
-        if (fromMic) win.usedMic = true;
-      } else if (fromMic) return;
-      R.api.onTap();
-      bump(pad, 'hit');
-      feel(t, open, ev);
-    };
-    const pad = h('button', { class: 'pad', onpointerdown: (e) => { e.preventDefault(); tap(R.ctx.currentTime, false, e); } },
-      h('b', { class: 'wait' }, STEPS[item.step].call === 'notation' ? '👀 Read…' : '👂 Listen…'),
-      h('b', { class: 'now' }, item.mode === 'create' ? 'ANSWER BACK' : 'TAP'), R.micOn ? h('small', {}, 'or say it') : h('small', {}, 'or press space'),
-      R.micOn ? h('span', { class: 'meter' }, h('span', {})) : null);
-    if (R.micOn) {
-      const fill = pad.querySelector('.meter span');
-      const draw = () => {
-        if (!pad.isConnected) return;
-        fill.style.width = `${Math.round(mic.getLevel() * 100)}%`;
-        requestAnimationFrame(draw);
-      };
-      draw();
-    }
-    R.onInput = tap;
-    R.keys = (e) => {
-      if (e.key === ' ' || e.key === 'Enter' || /^[a-z]$/i.test(e.key)) { tap(R.ctx.currentTime, false); return true; }
-      return false;
-    };
-    d.controls.replaceChildren(pad);
-  } else if (item.mode === 'pick') {
-    const buttons = q.list.map((p, i) => h('button', {
-      class: `opt ${game.pickClass}`,
-      onclick: () => choose(i),
-    }, q.show === 'notation' ? notes(p) : sylIcons(p, 'syl')));
-    const choose = (i) => {
-      if (!R.win || win.choice != null) return;
-      win.choice = i;
-      buttons[i].classList.add('chosen');
-      bump(buttons[i], 'press');
-      snd.hit(game.tap, R.ctx.currentTime, 0.7);
-    };
-    R.keys = (e) => {
-      const n = Number(e.key);
-      if (n >= 1 && n <= buttons.length) { choose(n - 1); return true; }
-      return false;
-    };
-    R.pickButtons = buttons;
-    d.controls.replaceChildren(h('div', { class: `opts n${buttons.length}` }, ...buttons));
-  } else {
-    // Build and compose: four beat slots, each ♩ or ♫.
-    const slots = win.slots.map((_, i) => h('button', { class: 'slot', onclick: () => cycle(i) }));
-    R.slotButtons = slots;
-    const draw = () => slots.forEach((b, i) => {
-      const c = win.slots[i];
-      b.className = `slot ${c || 'empty'}`;
-      b.replaceChildren(h('b', {}, c === 'ee' ? '♫' : c === 'q' ? '♩' : '?'), h('small', {}, c ? game.slotIcon(c) : 'tap me'));
-    });
-    const cycle = (i) => {
-      if (!R.win) return;
-      win.slots[i] = win.slots[i] === 'q' ? 'ee' : 'q';
-      snd.hit(game.tap, R.ctx.currentTime, 0.6);
-      draw();
-      bump(slots[i], 'flip');
-    };
-    R.keys = (e) => {
-      const n = Number(e.key);
-      if (n >= 1 && n <= 4) { cycle(n - 1); return true; }
-      return false;
-    };
-    draw();
-    d.controls.replaceChildren(h('div', { class: 'slots' }, ...slots));
-  }
-}
-
-function grade(item, q, win) {
-  const res = gradeTurn(item, q, win);
+function grade(item, turn) {
+  const res = turn.grade();
+  turn.reveal(res);
   R.log?.push({
-    step: item.step, mode: item.mode, cells: item.pattern.cells, bpm: R.tempo,
-    tResp: win.tResp, spb: win.spb, from: win.from, to: win.to,
-    inputs: win.taps.slice(), right: res.right, why: res.why || '',
+    step: item.step, task: item.task, stim: item.stim, cells: item.pattern.cells, bpm: R.tempo,
+    spb: R.clock.spb(), inputs: turn.inputs(), right: res.right, why: res.why || '',
   });
   return res;
 }
 
-function gradeTurn(item, q, win) {
-  const p = item.pattern;
-  if (item.mode === 'perform') {
-    const expected = onsets(p).map((o) => win.tResp + o.b * win.spb);
-    const taps = win.taps.slice().sort((a, b) => a - b);
-    if (taps.length !== expected.length) return { right: false, why: taps.length < expected.length ? 'missing' : 'extra' };
-    const tol = 0.2 * win.spb + 0.03;
-    const tight = 0.08 * win.spb + 0.02;
-    const errs = expected.map((e, i) => Math.abs(taps[i] - e));
-    const right = errs.every((e) => e <= tol);
-    return { right, perfect: right && errs.every((e) => e <= tight), mic: win.usedMic };
-  }
-  if (item.mode === 'create') {
-    const got = readTaps(win.taps.map((t) => (t - win.tResp) / win.spb));
-    return { right: !!got && got.id !== p.id, got, why: !got ? 'unclear' : got.id === p.id ? 'same' : '', mic: win.usedMic };
-  }
-  if (item.mode === 'pick') {
-    R.pickButtons?.forEach((b, i) => b.classList.add(i === q.correct ? 'right' : i === win.choice ? 'wrong' : 'dim'));
-    if (win.choice === q.correct) FX.burst(R.pickButtons[q.correct], { kind: 'stars', count: 10, spread: 0.6 });
-    return { right: win.choice === q.correct };
-  }
-  const full = win.slots.every(Boolean);
-  if (item.mode === 'compose') return { right: full, got: full ? fromCells(win.slots) : null };
-  // Build: each slot shows whether it was right.
-  R.slotButtons?.forEach((b, i) => b.classList.add(win.slots[i] === p.cells[i] ? 'right' : 'wrong'));
-  return { right: full && fromCells(win.slots).id === p.id };
-}
-
+/* XP for a right answer: 10 (+5 perfect) × tempo × the mic (×1.5) × the task (Speak/Sing It
+   ×1.5) × no notes to look at in Note It (×1.5) × a create answer's freshness × the combo. */
 function result(item, res, { onWin, onFail, t, quiet = false }) {
   const rec = dir.record({ item, right: res.right, bpm: R.tempo });
   if (rec.mastered) R.news.push(`★ Step ${rec.mastered} mastered: ${STEPS[rec.mastered].name}`);
@@ -1026,7 +1022,16 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     R.combo++;
     R.runCombo = Math.max(R.runCombo, R.combo);
     const tier = tierOf(R.combo);
-    const gained = addXP((10 + (res.perfect ? 5 : 0)) * (TEMPO_XP[R.tempo] || 1) * (res.mic ? 1.5 : 1) * (tier + 1));
+    let mult = taskById(item.task).xp;
+    if (item.task === 'note' && !item.stim.see) mult *= XP_NO_NOTES;
+    // Improvised and composed answers: the same pattern again soon earns less.
+    let repeats = 0;
+    if (isCreate(item.step) && res.got) {
+      repeats = st.made.filter((id) => id === res.got.id).length;
+      mult *= repeatFactor(repeats);
+      st.made = [...st.made, res.got.id].slice(-12);
+    }
+    const gained = addXP((10 + (res.perfect ? 5 : 0)) * (TEMPO_XP[R.tempo] || 1) * (res.mic ? 1.5 : 1) * mult * (tier + 1));
     onWin();
     snd.fx.win(t);
     // Right: confetti (stars when perfect) that grows with the combo, and the XP flies to the counter.
@@ -1039,6 +1044,8 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
       flash(`${TIER_NAMES[tier]}! ×${tier + 1}`, `tier t${tier}`);
       FX.shockwave(wrap, TIER_COLORS[tier]);
       FX.parade(wrap, bandAt(tier));
+    } else if (repeats && !quiet) {
+      flash('Nice! Try a new one next time', 'plus');
     } else {
       if (res.perfect) snd.speak('perfect', t);
       if (!quiet) flash(res.perfect ? 'PERFECT!' : PRAISE[Math.floor(Math.random() * PRAISE.length)], res.perfect ? 'plus gold' : 'plus');
@@ -1055,11 +1062,10 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     bump(R.dom.stage.parentElement, 'fx-miss');
     if (was >= 3) R.lostCombo = was;
     if (!quiet) {
-      const why = { missing: 'Not enough notes', extra: 'Too many notes', same: 'Make it different from mine!', unclear: "Couldn't hear a pattern" }[res.why];
+      const create = isCreate(item.step);
       R.dom.prompt.replaceChildren(h('div', { class: 'answer' },
-        h('span', {}, why || (item.mode === 'create' ? '' : 'It was')),
-        item.mode === 'create' ? null : notes(item.pattern),
-        item.mode === 'create' ? null : sylIcons(item.pattern)));
+        h('span', {}, WHY[res.why] || (create ? '' : 'It was')),
+        ...(create ? [] : answerOf(item.pattern, item.step))));
     }
   }
   st.bestCombo = Math.max(st.bestCombo, R.combo);
@@ -1118,16 +1124,20 @@ function breather(B, seg) {
 
 /* ---------------- boss ---------------- */
 
-const BOSS_CALL = { 1: 'neutral', 2: 'syllables', 3: 'neutral', 4: 'neutral', 5: 'syllables', 6: 'syllables', 7: 'notation', 8: 'notation', 9: 'notation', 10: 'neutral', 11: 'neutral', 12: 'notation' };
-
-function bossSay(item, kind) {
-  const how = item.mode === 'create' ? 'Listen. Then answer with a different one.'
-    : kind === 'notation' ? 'Read it. Then say it and tap.' : 'Listen. Then tap it back.';
-  return h('div', { class: 'say' }, h('span', { class: 'ic' }, kind === 'notation' ? '👀' : '👂'), h('span', {}, how));
+/* A boss round's item: any task the learner has met (its intro seen), so the boss never
+   springs a task on them that they haven't been shown. */
+function bossItem() {
+  let item = null;
+  for (let k = 0; k < 8; k++) {
+    item = dir.next({ force: R.force, forceTask: TEST?.task });
+    if (st.intro[taskKey(item.task, item.step)]) break;
+  }
+  return item;
 }
 
 /* The boss alternates by lap between the games that host one (The Big Cheese in Mouse
-   Catcher, The Big Fluff in Supper Time; the workshop's options choose which do). */
+   Catcher, The Big Fluff in Supper Time; the workshop's options choose which do). Four
+   rounds of call and turn, each any task; three hits beat him. */
 function boss(B) {
   const game = LINEUP.bosses[R.lap % LINEUP.bosses.length];
   const T = (i) => R.clock.timeOf(i);
@@ -1155,36 +1165,32 @@ function boss(B) {
   for (let r = 0; r < rounds; r++) {
     const c0 = B + 4 + r * 8;
     const r0 = c0 + 4;
-    const item = dir.next({ boss: true, force: R.force });
-    const kind = BOSS_CALL[item.step];
-    const win = { tResp: T(r0), spb, from: T(r0) - 0.25 * spb, to: T(r0 + 4) - 0.05 * spb, taps: [], usedMic: false };
+    const item = bossItem();
+    const task = taskById(item.task);
+    const turn = makeTurn(item, game, turnUi(T(r0), spb));
     R.groove.duckFrom = T(c0);
-    R.groove.duckUntil = T(R.micOn ? r0 + 4 : r0);
+    R.groove.duckUntil = T(R.micOn && item.task === 'say' ? r0 + 4 : r0);
     R.groove.micFrom = T(r0) - 0.3 * spb;
     later(T(c0), () => {
-      R.win = null;
       R.dom.prompt.querySelector('.notation')?.remove();
       R.dom.prompt.querySelector('.say')?.remove();
-      R.dom.prompt.append(bossSay(item, kind));
-      if (kind === 'notation') R.dom.prompt.append(notes(item.pattern));
-      R.item = { item, q: {} };
-      controlsFor(item, game, {}, win);
+      const { how, look } = howTo(item, game);
+      R.dom.prompt.append(h('div', { class: 'say' }, h('span', { class: 'ic' }, LOOK_ICON[look] || '✏️'), h('span', {}, how)));
+      if (item.stim.see) R.dom.prompt.append(notes(item.pattern));
+      R.item = item;
+      useTurn(turn);
     });
     for (let k = 0; k < 4; k++) later(T(c0 + k), () => dots(k, 4, 'call'));
-    if (kind !== 'notation') {
-      snd.call(item.pattern, kind, T(c0), spb);
-      onsets(item.pattern).forEach((o, i) => later(T(c0) + o.b * spb, () => R.api.onCall(i, kind === 'syllables' ? o.syl : null)));
-    }
-    later(T(r0) - 0.25 * spb, () => { R.win = win; });
-    later(T(r0), () => { R.dom.controls.classList.add('live'); flash(item.mode === 'create' ? 'ANSWER!' : 'HIT IT!', 'turn'); });
-    for (let k = 0; k < 4; k++) later(T(r0 + k), () => dots(k, 4, 'resp'));
-    later(T(r0 + 4), () => {
+    callOut(item, game, T(c0), spb);
+    later(T(r0), () => { R.dom.controls.classList.add('live'); flash(task.cue, 'turn'); });
+    for (let k = 0; k < TURN_BEATS; k++) later(T(r0 + k), () => dots(k, TURN_BEATS, 'resp'));
+    later(T(r0 + TURN_BEATS), () => {
       R.dom.controls.classList.remove('live');
-      R.win = null;
-      const res = grade(item, {}, win);
+      R.dom.controls.classList.add('over');
+      const res = grade(item, turn);
       if (res.right) hits++;
       result(item, res, {
-        t: T(r0 + 4),
+        t: T(r0 + TURN_BEATS),
         quiet: true,
         onWin: () => {
           const hearts = R.dom.prompt.querySelector('.hearts');
@@ -1212,6 +1218,8 @@ function boss(B) {
     }
     save();
     R.dom.controls.replaceChildren();
+    R.keys = null;
+    R.onInput = null;
     clearDots();
     hud();
   });
@@ -1315,6 +1323,7 @@ function testTitle() {
   const g = TEST.game;
   const bits = [
     TEST.step ? `Step ${TEST.step}: ${STEPS[TEST.step].name}` : 'Steps from my progress',
+    TEST.task ? taskById(TEST.task).name : null,
     TEST.tempo ? `${TEST.tempo} bpm` : `${LADDER().join(' · ')} bpm`,
     TEST.boss && LINEUP.bosses.length ? `straight to ${g.bossName}` : null,
     TEST.mookie ? 'Mookie mode' : null,
@@ -1333,17 +1342,19 @@ function testTitle() {
 
 if (Q.has('debug')) window.mmDebug = () => R;
 
-/* A skill intro on its own, from the workshop (?intro=<key>). */
+/* A task intro on its own, from the workshop (?intro=<key>, &game=<id> for its object and
+   instrument). */
 function introPreview(key) {
   scene('progress');
+  const game = GAMES.find((g) => g.id === Q.get('game')) || LINEUP.stream[0] || GAMES[0];
   const card = h('div', { class: 'intro-preview' });
   app.replaceChildren(h('div', { class: 'progress' },
     h('a', { class: 'back', 'aria-label': 'Back to the workshop', href: WORKSHOP }, '‹'), card));
-  const intro = showIntro(card, key, { h, notes, sylIcons }, () => { location.href = WORKSHOP; });
+  const intro = showIntro(card, key, { h, notes, sylIcons }, () => { location.href = WORKSHOP; }, { game });
   document.onkeydown = (e) => { if (!e.repeat && intro.keys(e)) e.preventDefault(); };
 }
 
 if (TEST) testTitle();
-else if (allIntroKeys().includes(Q.get('intro'))) introPreview(Q.get('intro'));
+else if (allTaskKeys().includes(Q.get('intro'))) introPreview(Q.get('intro'));
 else if (Q.has('lab')) lab();
 else title();

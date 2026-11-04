@@ -6,7 +6,10 @@
      onBeat(down, spb, tier)  every beat of the groove (down: beat 1 of the 2/4 bar; tier:
                      the combo tier), so the scene shows the pulse and parties with the band
      hit(), miss()   boss rounds only (optional; a game with a bossName can host the boss)
-   plus its look for Pick options (pickClass) and Build slots (slotIcon).
+   plus its kit for the tasks (tasks.js): the object Tap It taps and the instrument Play It
+   plays (and the stimulus "on the instrument" sounds on). KITS holds them, so a scene file
+   doesn't need to; a scene can set its own `kit` instead. Their sounds can be changed in the
+   game workshop (options.js: tap, play).
    These are first versions of Kyle's ideas; see the design doc's Game ideas. */
 
 import { mouseCatcher } from './scene-mouse.js';
@@ -23,3 +26,11 @@ export function bump(el, cls) {
 }
 
 export const GAMES = [mouseCatcher, supperTime, brushingTime];
+
+export const KITS = {
+  'mouse-catcher': { object: { name: 'the mouse', icon: '🐭' }, instrument: { name: 'the bongos', icon: '🪘', sound: 'bongo-high' } },
+  'supper-time': { object: { name: 'the gong bowl', icon: '🥣' }, instrument: { name: 'the dinner bell', icon: '🔔', sound: 'cowbell' } },
+  'brushing-time': { object: { name: 'the brush', icon: '🪮' }, instrument: { name: 'the maracas', icon: '🪇', sound: 'shaker' } },
+};
+const DEFAULT_KIT = { object: { name: 'the pad', icon: '👆' }, instrument: { name: 'the drum', icon: '🥁', sound: 'conga' } };
+for (const g of GAMES) g.kit ||= KITS[g.id] || DEFAULT_KIT;

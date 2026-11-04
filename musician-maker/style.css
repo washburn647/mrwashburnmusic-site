@@ -331,6 +331,7 @@ body[data-screen="progress"] {
 @keyframes tag { 50% { transform: scale(1.12); } }
 .answer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .answer > span { color: var(--rose); font-weight: 600; }
+.answer > span.bum { color: var(--forest); font-size: 20px; }
 .answer .notation { width: 220px; }
 .dots { display: flex; justify-content: center; gap: 16px; min-height: 24px; align-items: center; }
 .dots i { width: 22px; height: 22px; border-radius: 50%; background: var(--sage-soft); }
@@ -350,27 +351,33 @@ body[data-screen="progress"] {
 .controls.live .pad { background: var(--wheat); box-shadow: 0 6px 0 #b8924f; }
 .pad.hit { animation: hit .12s ease-out; }
 @keyframes hit { 50% { transform: translateY(4px) scale(.98); box-shadow: 0 2px 0 #b8924f; } }
-.opts.n2, .opts.n3, .opts.n4 { display: grid; gap: 8px; }
-.controls .opts.n2 { grid-template-columns: repeat(2, 1fr); }
-.controls .opts.n3 { grid-template-columns: repeat(3, 1fr); }
-.controls .opts.n4 { grid-template-columns: repeat(2, 1fr); }
-.opt {
-  background: var(--paper); border-radius: 18px; padding: 8px; box-shadow: 0 4px 0 rgba(47, 74, 58, .18);
-  display: grid; place-items: center; min-height: 64px; position: relative;
+/* Du It: the syllable tiles. Note It: four answer slots and the note tiles (turn.js). */
+.du-pad, .note-pad { display: grid; gap: 8px; align-content: center; }
+.du-pad .wait, .note-pad .wait { text-align: center; font-size: 20px; color: var(--muted); }
+.controls.live .du-pad .wait, .controls.live .note-pad .wait { display: none; }
+.controls.over .wait { visibility: hidden; }
+.du-tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.du-tile, .note-tile {
+  position: relative; display: grid; place-items: center; align-content: center; gap: 2px; border-radius: 22px;
+  background: var(--sage-soft); box-shadow: 0 6px 0 #b9c9ac; touch-action: manipulation; user-select: none;
 }
-.opt .notation { width: 100%; padding: 0; }
-.opt .syl { font-size: 16px; font-weight: 600; word-spacing: 6px; }
-.opt.opt-hole::before { content: ''; position: absolute; left: 50%; top: -7px; width: 34px; height: 14px; margin-left: -17px; background: #3b2a1c; border-radius: 17px 17px 0 0; }
-.opt.opt-bowl::before { content: '🥣'; position: absolute; left: 8px; top: 4px; font-size: 16px; }
-.opt.opt-brush::before { content: '🐈‍⬛'; position: absolute; left: 8px; top: 4px; font-size: 16px; }
-.opt.chosen { box-shadow: 0 0 0 3px var(--forest); }
-.opt.right { box-shadow: 0 0 0 4px var(--moss); }
-.opt.dim { opacity: .45; }
-.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.slot { background: var(--paper); border-radius: 18px; box-shadow: 0 4px 0 rgba(47, 74, 58, .18); display: grid; place-items: center; align-content: center; }
-.slot b { font-size: 44px; line-height: 1; font-family: 'Times New Roman', serif; }
-.slot small { font-size: 14px; color: var(--muted); }
-.slot.empty b { color: var(--sage); }
+.du-tile { min-height: 96px; }
+.du-tile b { font-size: 38px; line-height: 1; }
+.du-tile small { font-size: 13px; color: var(--muted); }
+.controls.live .du-tile, .controls.live .note-tile { background: var(--wheat); box-shadow: 0 6px 0 #b8924f; }
+.controls.live .du-tile.du-de, .controls.live .note-tile.note-back { background: var(--wheat-soft); }
+.du-tile.hit, .note-tile.hit { animation: hit .12s ease-out; }
+.note-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.note-slot { height: 60px; border-radius: 16px; background: var(--paper); border: 2px solid transparent; display: grid; place-items: center; }
+.note-slot.empty { border: 2px dashed var(--sage); }
+.note-slot svg { height: 42px; width: auto; fill: var(--forest); }
+.note-slot.q, .note-slot.ee { animation: press .22s ease-out; }
+.note-slot.right { box-shadow: 0 0 0 4px var(--moss); }
+.note-slot.wrong { box-shadow: 0 0 0 4px var(--rose); animation: fx-no .4s ease-out; }
+.note-tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 68px; gap: 10px; }
+.note-tile { min-height: 70px; }
+.note-tile svg { height: 44px; width: auto; fill: currentColor; }
+.note-tile.note-back { font-size: 26px; }
 
 .overlay { position: fixed; inset: 0; display: none; place-items: center; background: rgba(246, 241, 228, .72); padding: 16px; z-index: 5; }
 .overlay.show { display: grid; }
@@ -636,13 +643,7 @@ body[data-screen="progress"] {
 .stage-wrap.fx-miss .stage { animation: fx-tint .6s ease-out; }
 @keyframes fx-miss { 15% { transform: translateX(-8px) rotate(-.6deg); } 35% { transform: translateX(7px) rotate(.5deg); } 55% { transform: translateX(-4px); } 75% { transform: translateX(2px); } }
 @keyframes fx-tint { 15% { filter: saturate(.4) brightness(.92); box-shadow: inset 0 0 0 6px rgba(196, 106, 90, .6); } }
-.opt.press, .slot.flip { animation: press .22s ease-out; }
 @keyframes press { 40% { transform: scale(.94) rotateX(25deg); } }
-.opt.right { animation: opt-right .5s ease-out; }
-@keyframes opt-right { 30% { transform: scale(1.08); } }
-.opt.wrong { box-shadow: 0 0 0 4px var(--rose); animation: fx-no .4s ease-out; }
-.slot.right { box-shadow: 0 0 0 4px var(--moss); }
-.slot.wrong { box-shadow: 0 0 0 4px var(--rose); animation: fx-no .4s ease-out; }
 .hearts { display: inline-block; }
 .hearts.fx-hit { animation: fx-got .4s ease-out; }
 .hearts.fx-no { animation: fx-no .4s ease-out; }
@@ -665,10 +666,6 @@ body[data-screen="progress"] {
 .ic-note b { font-weight: inherit; }
 .ic-beat.ee::before { content: ''; position: absolute; top: 2px; height: 4px; border-radius: 2px; background: currentColor;
   left: .6em; right: .6em; }
-.opt { min-width: 0; }
-.opt .syl-ic { font-size: 15px; gap: 4px 9px; flex-wrap: wrap; justify-content: center; }
-.opt .ic-beat { padding-top: 18px; gap: 3px; }
-.opt .ic-note i { height: 14px; }
 .answer .syl-ic { font-size: 18px; }
 
 /* The band's seats either side of the bouncing ball: grey until that layer joins. */
@@ -716,7 +713,7 @@ a.back { display: grid; place-items: center; text-decoration: none; color: inher
 .test-title .back { align-self: flex-start; }
 .test-title p { margin: 0; }
 
-/* ---------- skill intro (intro.js) ---------- */
+/* ---------- task intro and practice (intro.js) ---------- */
 .card.intro { max-width: 520px; max-height: calc(100dvh - 32px); overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .card.intro .tag { background: var(--rose); color: var(--paper); font-size: 13px; padding: 2px 10px; border-radius: 999px; }
 .intro-lines { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 18px; }
@@ -724,12 +721,13 @@ a.back { display: grid; place-items: center; text-decoration: none; color: inher
 audio.intro-media { background: none; }
 .intro-try { width: 100%; display: grid; gap: 10px; background: var(--cream); border-radius: 18px; padding: 12px; }
 .intro-shown:empty, .intro-area:empty { display: none; }
+.intro-try[hidden] { display: none; }
 .intro-shown .notation { max-width: 260px; margin: 0 auto; }
-.intro-pad { min-height: 96px; width: 100%; background: var(--paper); border-radius: 18px; box-shadow: 0 4px 0 rgba(47, 74, 58, .18); display: grid; place-items: center; align-content: center; }
-.intro-pad b { font-size: 28px; }
-.intro-slots .slot { min-height: 72px; }
 .intro-area { display: grid; gap: 8px; justify-items: center; }
-.intro-area .opts, .intro-area .slots { width: 100%; }
+.intro-area > * { width: 100%; }
+.intro-area .pad { min-height: 110px; }
+.intro-step { margin: 0; color: var(--muted); font-weight: 600; }
+.card.intro .tag.soft { background: var(--sage-soft); color: var(--forest); }
 .intro-said { min-height: 1.4em; font-weight: 600; margin: 0; }
 .intro-said.right { color: var(--moss); }
 .intro-said.wrong { color: var(--rose); }
@@ -737,3 +735,38 @@ audio.intro-media { background: none; }
 .card.intro .play:disabled { opacity: .45; }
 .card.intro .mini { font-size: 16px; padding: 8px 16px; }
 .intro-preview { display: grid; place-items: center; padding-top: 8px; }
+
+/* ---------- My progress: tasks (main.js taskGrid) ---------- */
+.pviews { display: flex; justify-content: center; margin: 4px 0 12px; }
+.ticon {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--paper);
+  font-size: 16px; font-weight: 700; line-height: 1; flex: none; box-shadow: 0 1px 0 rgba(47, 74, 58, .15);
+}
+.ticon.t-du { font-size: 13px; }
+.tgrid { display: grid; gap: 12px; }
+.tcard { background: var(--paper); border-radius: 20px; padding: 12px 14px; box-shadow: 0 4px 0 rgba(47, 74, 58, .1); }
+.tcard-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.tcard-top .ticon { width: 36px; height: 36px; font-size: 20px; background: var(--cream); }
+.tcard-top .ticon.t-du { font-size: 15px; }
+.tcard-top b { font-size: 19px; flex: 1; }
+.tcard-top small { color: var(--muted); }
+.tsteps { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+.tstep { aspect-ratio: 1; min-width: 0; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 600; padding: 0; }
+.tstep.na { visibility: hidden; }
+.tstep.locked { color: #b5bfb1; box-shadow: inset 0 0 0 2px var(--sage-soft); }
+.tstep.open { color: var(--forest); box-shadow: inset 0 0 0 2px var(--sage); }
+.tstep.met { color: #fff; }
+.tstep.met.ear { background: var(--ear); } .tstep.met.read { background: var(--read); } .tstep.met.write { background: var(--write); }
+.task-h { display: flex; align-items: center; gap: 10px; }
+.task-h .ticon { width: 38px; height: 38px; font-size: 22px; background: var(--cream); }
+.psheet .row { justify-content: flex-start; margin-top: 4px; gap: 10px; }
+.sheet-state.open { color: var(--moss); }
+.sheet-tasks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.tchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px 3px 3px; border-radius: 999px; background: var(--cream); font-size: 15px; }
+.tchip.locked { opacity: .5; }
+.tchip.met { background: var(--sage-soft); }
+.ptasks { display: flex; gap: 3px; margin-top: 2px; }
+.plabel.l .ptasks { justify-content: flex-end; }
+.ptasks .ticon { width: 20px; height: 20px; font-size: 11px; }
+.ptasks .ticon.t-du { font-size: 9px; }
+.ptasks .ticon.open, .ptasks .ticon.locked { filter: grayscale(1); opacity: .4; }

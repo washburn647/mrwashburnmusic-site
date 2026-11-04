@@ -3,7 +3,8 @@
   python tools/add_games.py games.json
 
 Checks the file the workshop's "Save for site" downloads (each game a known id, with stream
-and boss on or off, lists of win and fail gags, and a tap sound the game loads) and writes it
+and boss on or off, lists of win and fail gags, a tap sound the game loads, and optionally
+an instrument sound for Play It) and writes it
 to musician-maker/games.json, one game per line. At least one game must stay in the stream.
 """
 
@@ -57,6 +58,8 @@ def main():
                 raise SystemExit(f'{gid}: unknown {kind} gag {sorted(set(gags) - known[gid][kind])}')
         if o.get('tap') not in taps:
             raise SystemExit(f'{gid}: no tap sound "{o.get("tap")}"')
+        if 'play' in o and o['play'] not in taps:
+            raise SystemExit(f'{gid}: no instrument sound "{o["play"]}"')
     if not any(o['stream'] for o in games.values()):
         raise SystemExit('At least one game has to stay in the stream')
     lines = ',\n'.join(f'  {json.dumps(gid)}: {json.dumps(o, ensure_ascii=False)}' for gid, o in games.items())
