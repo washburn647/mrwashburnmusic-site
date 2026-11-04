@@ -3,6 +3,8 @@
      timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
      and every request is checked here too, so a missing Access rule never opens it up.
    - /api/s/ and /studio/api/s/: a locked box for each private lesson student (see Box).
+   - /api/live/ and /studio/api/live/: what Kyle publishes from the studio straight to the
+     site (grooves, game options, voice takes, units), read by the games and lessons (see Live).
 
    wrangler.jsonc sets ACCESS_TEAM (the Zero Trust team domain) and ACCESS_AUD
    (the Access application's Audience tag). */
@@ -19,6 +21,8 @@ export default {
     const url = new URL(request.url);
     const box = /^\/(studio\/)?api\/s\/([^/]+)(\/r)?$/.exec(url.pathname);
     if (box) return boxApi(request, env, box);
+    const live = /^\/(studio\/)?api\/live\/(.+)$/.exec(url.pathname);
+    if (live) return liveApi(request, env, !!live[1], live[2]);
     if (!url.pathname.startsWith('/api/class/')) return env.ASSETS.fetch(request);
     if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.CLASS_FILES) return reply({ error: 'not set up' }, 503);
     if (!(await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
@@ -216,6 +220,168 @@ async function boxApi(request, env, [, studio, id, results]) {
   if (studio && results && method === 'GET') return box.results();
   if (studio && !results && method === 'DELETE') return box.clear();
   return reply({ error: 'method not allowed' }, 405);
+}
+
+// ---- Published from the studio ------------------------------------------------
+
+/* Live: what Kyle publishes from the studio, so it reaches the site without a new deploy.
+   One Durable Object holds it all. Anyone can read it (it's what the public games play);
+   only Kyle can change it.
+
+   GET  /api/live/grooves.json              Groove Lab's grooves (musician-maker/grooves.json's shape)
+   GET  /api/live/games.json                the game workshop's options (musician-maker/games.json's shape)
+   GET  /api/live/units.json                the voice recorder's units (assets/patterns/units.json's shape)
+   GET  /api/live/voice/:voice.json         a voice's takes (index.json "voices" entry's shape)
+   GET  /api/live/voice/:voice/:take.mp3    one take
+   PUT  /studio/api/live/grooves            publish the grooves                       (Kyle)
+   PUT  /studio/api/live/games              publish the game options                  (Kyle)
+   GET  /studio/api/live/voice/:voice       ids of the takes already uploaded         (Kyle)
+   PUT  /studio/api/live/voice/:voice/:take.mp3   upload a take                       (Kyle)
+   PUT  /studio/api/live/voice/:voice       publish the take list and units; takes it
+                                            no longer lists are deleted               (Kyle)
+
+   The site falls back to the files in the repo when nothing is published here, and
+   tools/pull_live.py copies what is published back into the repo. */
+
+const VOICE = /^[a-z0-9]{1,20}$/;
+const TAKE = /^[0-9a-f-]{8,40}$/;
+const MAX_TEXT = 4 * 1024 * 1024;
+const MAX_TAKE = 1.5 * 1024 * 1024;   // one stored value; takes are a few seconds of 24 kHz mono
+
+function liveHeaders(type, cache = 'no-cache') {
+  return { 'Content-Type': type, 'Cache-Control': cache, 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow' };
+}
+
+async function liveApi(request, env, studio, path) {
+  const method = request.method;
+  if (studio && !(env.ACCESS_TEAM && env.ACCESS_AUD && await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
+  const live = env.LIVE.get(env.LIVE.idFromName('site'));
+  let m;
+  if (!studio) {
+    if (method !== 'GET' && method !== 'HEAD') return reply({ error: 'method not allowed' }, 405);
+    if (path === 'grooves.json') return live.text('grooves');
+    if (path === 'units.json') return live.text('units');
+    if (path === 'games.json') return live.text('games');
+    if ((m = /^voice\/([^/]+)\.json$/.exec(path)) && VOICE.test(m[1])) return live.text('voice:' + m[1]);
+    if ((m = /^voice\/([^/]+)\/([^/]+)\.mp3$/.exec(path)) && VOICE.test(m[1]) && TAKE.test(m[2])) return live.take(m[1], m[2]);
+    return reply({ error: 'not found' }, 404);
+  }
+  if (path === 'grooves' && method === 'PUT') {
+    const text = await request.text();
+    if (text.length > MAX_TEXT) return reply({ error: 'too big' }, 413);
+    let data;
+    try { data = JSON.parse(text); } catch { return reply({ error: 'not JSON' }, 400); }
+    const list = data && data.grooves;
+    if (!Array.isArray(list) || !list.length || !list.every((g) => g && typeof g === 'object' && typeof g.id === 'string')) {
+      return reply({ error: 'no grooves' }, 400);
+    }
+    return live.putText('grooves', text);
+  }
+  if (path === 'games' && method === 'PUT') {
+    const text = await request.text();
+    if (text.length > MAX_TEXT) return reply({ error: 'too big' }, 413);
+    let data;
+    try { data = JSON.parse(text); } catch { return reply({ error: 'not JSON' }, 400); }
+    const games = data && data.games;
+    if (!games || typeof games !== 'object' || Array.isArray(games) || !Object.keys(games).length) return reply({ error: 'no games' }, 400);
+    return live.putText('games', text);
+  }
+  if ((m = /^voice\/([^/]+)$/.exec(path)) && VOICE.test(m[1])) {
+    if (method === 'GET') return live.takeIds(m[1]);
+    if (method === 'PUT') {
+      const text = await request.text();
+      if (text.length > MAX_TEXT) return reply({ error: 'too big' }, 413);
+      return live.putVoice(m[1], text);
+    }
+  }
+  if ((m = /^voice\/([^/]+)\/([^/]+)\.mp3$/.exec(path)) && VOICE.test(m[1]) && TAKE.test(m[2]) && method === 'PUT') {
+    const bytes = await request.arrayBuffer();
+    if (bytes.byteLength > MAX_TAKE) return reply({ error: 'too big' }, 413);
+    const b = new Uint8Array(bytes, 0, Math.min(3, bytes.byteLength));
+    const mp3 = b.length === 3 && ((b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0));
+    if (!mp3) return reply({ error: 'not an mp3' }, 400);
+    return live.putTake(m[1], m[2], bytes);
+  }
+  return reply({ error: 'not found' }, 404);
+}
+
+export class Live extends DurableObject {
+  // text:<name> → { chunks, at }, text:<name>:<i> → a piece of it (names: grooves, games, units, voice:<voice>)
+  // takes:<voice> → [take ids], take:<voice>:<id> → the mp3's bytes
+  async text(name) {
+    const meta = await this.ctx.storage.get(`text:${name}`);
+    if (!meta) return reply({ error: 'not published' }, 404);
+    const parts = await this.ctx.storage.get([...Array(meta.chunks).keys()].map((i) => `text:${name}:${i}`));
+    let text = '';
+    for (let i = 0; i < meta.chunks; i++) text += parts.get(`text:${name}:${i}`) || '';
+    return new Response(text, { headers: { ...liveHeaders('application/json'), 'Last-Modified': new Date(meta.at).toUTCString() } });
+  }
+
+  async putText(name, text) {
+    const old = await this.ctx.storage.get(`text:${name}`);
+    const chunks = Math.ceil(text.length / CHUNK) || 1;
+    const put = {};
+    for (let i = 0; i < chunks; i++) put[`text:${name}:${i}`] = text.slice(i * CHUNK, (i + 1) * CHUNK);
+    put[`text:${name}`] = { chunks, at: Date.now() };
+    await this.ctx.storage.put(put);
+    if (old && old.chunks > chunks) await this.ctx.storage.delete([...Array(old.chunks - chunks).keys()].map((i) => `text:${name}:${chunks + i}`));
+    return reply({ ok: true, at: put[`text:${name}`].at });
+  }
+
+  async takeIds(voice) {
+    return reply({ takes: (await this.ctx.storage.get(`takes:${voice}`)) || [] });
+  }
+
+  async take(voice, id) {
+    const bytes = await this.ctx.storage.get(`take:${voice}:${id}`);
+    if (!bytes) return reply({ error: 'not found' }, 404);
+    // A take's id names one recording, never changed after.
+    return new Response(bytes, { headers: liveHeaders('audio/mpeg', 'public, max-age=31536000, immutable') });
+  }
+
+  async putTake(voice, id, bytes) {
+    const ids = (await this.ctx.storage.get(`takes:${voice}`)) || [];
+    if (!ids.includes(id)) ids.push(id);
+    await this.ctx.storage.put({ [`take:${voice}:${id}`]: bytes, [`takes:${voice}`]: ids });
+    return reply({ ok: true });
+  }
+
+  /* list: { label, patterns: { id: [{ take, speed, bpm, key?, as? }] }, cues: { id: [{ take, speed, bpm }] }, units? }
+     Every take it names must be uploaded already. */
+  async putVoice(voice, text) {
+    let list;
+    try { list = JSON.parse(text); } catch { return reply({ error: 'not JSON' }, 400); }
+    const have = new Set((await this.ctx.storage.get(`takes:${voice}`)) || []);
+    const used = new Set();
+    const missing = [];
+    const files = (groups) => {
+      const out = {};
+      for (const [id, options] of Object.entries(groups && typeof groups === 'object' ? groups : {})) {
+        if (!Array.isArray(options)) continue;
+        out[id] = options.filter((o) => o && TAKE.test(o.take || '')).map((o) => {
+          if (!have.has(o.take)) missing.push(o.take);
+          used.add(o.take);
+          const entry = { file: `/api/live/voice/${voice}/${o.take}.mp3`, speed: String(o.speed || ''), bpm: Number(o.bpm) || 0 };
+          if (o.as === 'bum') entry.as = 'bum';
+          if (typeof o.key === 'number') entry.key = o.key;
+          return entry;
+        });
+      }
+      return out;
+    };
+    const spec = { label: String(list.label || voice).slice(0, 80), patterns: files(list.patterns), cues: files(list.cues) };
+    if (missing.length) return reply({ error: 'takes not uploaded', missing }, 409);
+    await this.putText(`voice:${voice}`, JSON.stringify(spec));
+    if (Array.isArray(list.units) && list.units.every((u) => u && typeof u.id === 'string')) {
+      await this.putText('units', JSON.stringify({ units: list.units }));
+    }
+    const gone = [...have].filter((id) => !used.has(id));
+    if (gone.length) {
+      await this.ctx.storage.put(`takes:${voice}`, [...used]);
+      for (let i = 0; i < gone.length; i += 100) await this.ctx.storage.delete(gone.slice(i, i + 100).map((id) => `take:${voice}:${id}`));
+    }
+    return reply({ ok: true, takes: used.size, deleted: gone.length });
+  }
 }
 
 async function sha256(text) {

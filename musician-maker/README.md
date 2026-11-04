@@ -45,7 +45,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   the site's sampled instruments for anything missing.
 - `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
 - `grooves.json`: the grooves, made in the studio's Groove Lab (`/studio/groove/`, added with
-  `tools/add_grooves.py`). Notes on a 16th-note grid in six layers, so they play at any tempo. A groove can have a
+  `tools/add_grooves.py`). The game plays what the Lab last published (`/api/live/grooves.json`)
+  ahead of this file. Notes on a 16th-note grid in six layers, so they play at any tempo. A groove can have a
   2/4 and a 6/8 version on the same instruments and chords; `snd.setGrooveMeter` switches
   between them mid-loop (for review items from a unit in the other meter);
   `sound.js` plays them with the same code as the Lab. The title's Groove button picks one, or
@@ -53,7 +54,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `options.js`, `games.json`: game options from the studio's Musician Maker game workshop
   (`/studio/games/`): per game, whether it's in the stream, whether it hosts the boss, which win
   and fail gags can come up, and its tap sound. The workshop keeps drafts on Kyle's device;
-  "Save for site" downloads `games.json`, which `tools/add_games.py` checks and puts here.
+  "Publish to site" puts them in the game straight away (`/api/live/games.json`, played ahead of
+  this file); "Download" saves `games.json`, which `tools/add_games.py` checks and puts here.
   Learners get `games.json`; a workshop test run (`?test=<game id>`, plus `step`, `tempo`,
   `start=boss`, `pace=mookie`, `groove`) plays only that game, with the drafts, and saves nothing.
 - `gags.js`: picks a game's win and fail gags from the ones that are on. Each game lists its gags

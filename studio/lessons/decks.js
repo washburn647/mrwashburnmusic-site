@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { clefRange, inKey, noteAnswer, KEY_NAMES, MODES, KINDS, cardLabel, loadVex } from '/lesson/cards.js';
 import { notation } from '/assets/patterns/notation.js';
 import { openPractice } from '/lesson/practice.js';
-import { DEFAULT_UNITS, KEYS, unitPatterns, patternById } from '/assets/patterns/patterns.js';
+import { DEFAULT_UNITS, KEYS, unitPatterns, patternById, siteUnits } from '/assets/patterns/patterns.js';
 
 const CLEF_NAMES = [['g', 'Treble'], ['f', 'Bass'], ['c', 'Alto'], ['gf', 'Grand']];
 const SETS = [['all', 'All'], ['familiar', 'Familiar'], ['unfamiliar', 'Unfamiliar']];
@@ -48,8 +48,8 @@ export function loadUnits() {
     if (mine?.length) return mine;
     if (location.protocol !== 'file:') {
       try {
-        const r = await fetch('/assets/patterns/units.json');
-        if (r.ok) return (await r.json()).units;
+        const r = await siteUnits();
+        if (r) return (await r.json()).units;
       } catch { /* offline */ }
     }
     return DEFAULT_UNITS;

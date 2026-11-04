@@ -130,9 +130,21 @@ export function tonalPatterns(tonality, tones, length) {
 /* Units follow Conversational Solfege: each one brings in a concept (rhythm cells in a
    meter, or tonal syllables), and its patterns are drawn from what it allows. Kyle trims the
    generated list and marks each pattern familiar or unfamiliar; the recorder keeps units
-   on the device and sends them to the site with the takes (assets/patterns/units.json).
+   on the device and publishes them with the takes (siteUnits() reads them).
    unit: { id, name, kind: 'rhythm' | 'tonal', meter | tonality, concepts, require, bars | length,
            removed: [pattern ids], marks: { [pattern id]: 'familiar' | 'unfamiliar' } } */
+/* The units on the site: what the recorder last published (/api/live/units.json), otherwise
+   the repo's copy (assets/patterns/units.json). A Response, or null when neither answers. */
+export async function siteUnits() {
+  for (const url of ['/api/live/units.json', '/assets/patterns/units.json']) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) return r;
+    } catch { /* offline, or no server: try the next */ }
+  }
+  return null;
+}
+
 export const DEFAULT_UNITS = [
   { id: 'unit-1', name: 'Unit 1', kind: 'rhythm', meter: '2/4', concepts: ['q', 'ee'], require: [], bars: 2 },
   { id: 'unit-2', name: 'Unit 2', kind: 'rhythm', meter: '6/8', concepts: ['dq', 'eee'], require: [], bars: 2 },

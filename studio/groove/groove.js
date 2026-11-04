@@ -7,8 +7,9 @@
    (the game's band seats show them), and a layer can have variations: other takes, each with
    its own chance of playing in place of the main one each time round the loop. The game plays grooves with the same code as here
    (musician-maker/sound.js), so what you hear is what the kids hear, at any tempo.
-   Grooves are kept on this device (localStorage) with undo. "Save for site" downloads
-   grooves.json for musician-maker/grooves.json (tools/add_grooves.py). */
+   Grooves are kept on this device (localStorage) with undo. "Publish to site" puts them in the
+   game right away (/api/live/grooves.json, see worker/index.js); "Download" saves grooves.json,
+   a backup that Restore reads and tools/add_grooves.py puts in musician-maker/grooves.json. */
 
 import * as samples from '/assets/sounds/samples.js';
 import * as snd from '/musician-maker/sound.js';
@@ -211,7 +212,8 @@ function render() {
       h('h1', { class: 'grow' }, 'Groove Lab', h('small', {}, ' Musician Maker')),
       h('button', { onclick: () => restore.click() }, 'Restore'),
       restore,
-      h('button', { class: 'primary', onclick: saveForSite }, 'Save for site'),
+      h('button', { onclick: download }, 'Download'),
+      h('button', { class: 'primary', disabled: publishing, onclick: publish }, publishing ? 'Publishing…' : 'Publish to site'),
     ),
     h('div', { class: 'bar' },
       h('select', { class: 'pick', onchange: (e) => { settings.groove = e.target.value; store(); render(); } },
@@ -745,14 +747,34 @@ function setLength(g, beats) {
 
 /* ---------- save for site, restore ---------- */
 
-function saveForSite() {
-  const text = `{"grooves":[\n${snd.checkGrooves(grooves).map((g) => JSON.stringify(g)).join(',\n')}\n]}\n`;
+const siteText = () => `{"grooves":[\n${snd.checkGrooves(grooves).map((g) => JSON.stringify(g)).join(',\n')}\n]}\n`;
+const plural = (n) => `${n} groove${n === 1 ? '' : 's'}`;
+
+/* Straight to the game: the next time a kid opens Musician Maker, these are the grooves. */
+let publishing = false;
+async function publish() {
+  publishing = true;
+  render();
+  try {
+    const r = await fetch('/studio/api/live/grooves', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: siteText() });
+    if (r.status === 401) throw new Error('your sign-in ran out. Reload the page and try again');
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `the site said ${r.status}`);
+    status = `Published ${plural(grooves.length)}. They're in Musician Maker now (reload the game if it's open).`;
+  } catch (e) {
+    status = `Couldn't publish: ${e.message}`;
+  }
+  publishing = false;
+  render();
+}
+
+function download() {
+  const text = siteText();
   const a = h('a', { href: URL.createObjectURL(new Blob([text], { type: 'application/json' })), download: 'grooves.json', hidden: true });
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-  status = `Downloaded grooves.json with ${grooves.length} groove${grooves.length === 1 ? '' : 's'}. Upload it to the Musician Maker project to put it in the game.`;
+  status = `Downloaded grooves.json with ${plural(grooves.length)}, a backup you can Restore.`;
   render();
 }
 

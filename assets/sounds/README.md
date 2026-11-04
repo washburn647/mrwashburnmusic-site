@@ -32,8 +32,10 @@ The try-out page is `/studio/sounds/`.
 ## Recorded voice
 
 Kyle records the patterns of each unit at `/studio/record/` (pattern ids from
-`/assets/patterns/patterns.js`), a few takes each at three speeds. Its "Save for site" zip goes
-in with `python tools/add_takes.py voice-kyle.zip`, which also writes the units to
+`/assets/patterns/patterns.js`), a few takes each at three speeds. Its "Publish to site" button
+puts the takes on the site straight away (`/api/live/voice/kyle.json`, which `samples.takes()`
+reads ahead of this folder). Its "Download" zip goes in with
+`python tools/add_takes.py voice-kyle.zip`, which also writes the units to
 `/assets/patterns/units.json`. Then:
 
 ```js
