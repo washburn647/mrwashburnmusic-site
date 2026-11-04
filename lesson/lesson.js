@@ -6,7 +6,7 @@
    Checkmarks and practice minutes are kept only in this browser. */
 
 import { decodeLesson, cleanPage, formatDate } from './codec.js';
-import { cleanCode, openPages, sendResult, PICKS } from './locked.js';
+import { secretFor, openPages, sendResult, PICKS } from './locked.js';
 import { LOGO, QR_SRC, LESSON_PAGE } from './paths.js';
 import { loadScript } from './score.js';
 import { confetti } from './fun.js';
@@ -76,56 +76,67 @@ const logo = () => el('header', {}, el('img', { src: LOGO, alt: 'Mr. Washburn Mu
 
 async function show() {
   const hash = decodeURIComponent(location.hash.slice(1));
-  const code = cleanCode(hash) || (!hash && savedCode());
-  if (code) { showLocked(code, !!hash); return; }
+  const code = !hash && savedCode();
+  if (code && code.includes('/')) { showLocked(code); return; }
   let page = null;
   if (hash) { try { page = await decodeLesson(hash); } catch { page = null; } }
   if (!page) { showEntry(); return; }
   render(page, { key: await keyFor(hash), qr: location.href });
 }
 
-/* Where a student picks their code: five lists of pictures and words. */
+/* Where a student signs in: their first name and their five emojis. */
 function showEntry(problem = '') {
   stop();
   document.title = 'Lesson · Mr. Washburn Music';
   const picks = [...PICKS].sort((a, b) => a[0].localeCompare(b[0]));
-  const lists = [1, 2, 3, 4, 5].map((n) => el('select', { class: 'codepick', 'aria-label': `Word ${n}` },
+  const name = el('input', { class: 'codename', autocomplete: 'off', autocapitalize: 'words', spellcheck: false, 'aria-label': 'First name', placeholder: '🙂' });
+  const lists = [1, 2, 3, 4, 5].map((n) => el('select', { class: 'codepick', 'aria-label': `Emoji ${n}` },
     el('option', { value: '' }, '—'),
     ...picks.map(([w, e]) => el('option', { value: w }, `${e} ${w}`))));
   const form = el('form', { class: 'codeform' + (problem ? ' shake' : ''), onsubmit: (e) => {
     e.preventDefault();
-    const code = cleanCode(lists.map((x) => x.value).join(' '));
-    if (!code) { form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); return; }
-    showLocked(code, false);
-  } }, el('span', { class: 'lock' }, '🔑'), el('div', { class: 'picks' }, ...lists), el('button', { class: 'go', 'aria-label': 'Open' }, '▶'));
+    const secret = secretFor(name.value, lists.map((x) => x.value).join(' '));
+    if (!secret) { form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); return; }
+    showLocked(secret);
+  } }, name, el('div', { class: 'picks' }, ...lists), el('button', { class: 'go', 'aria-label': 'Open' }, '▶'));
   main.replaceChildren(logo(), form, ...(problem ? [el('p', { class: 'codeerr' }, problem)] : []));
+  name.focus();
 }
 
-async function showLocked(code, fromLink) {
+async function showLocked(code) {
   stop();
   main.replaceChildren(logo(), el('p', { class: 'loading' }, '🎵'));
   let pages;
   try {
     pages = await openPages(code);
   } catch {
-    main.replaceChildren(logo(), el('p', { class: 'codeerr' }, '📡'), el('button', { class: 'go', 'aria-label': 'Try again', onclick: () => showLocked(code, fromLink) }, '🔁'));
+    main.replaceChildren(logo(), el('p', { class: 'codeerr' }, '📡'), el('button', { class: 'go', 'aria-label': 'Try again', onclick: () => showLocked(code) }, '🔁'));
     return;
   }
-  if (!pages || !pages.l?.length) { showEntry(fromLink || savedCode() !== code ? '✗' : ''); return; }
+  if (!pages || !pages.l?.length) { showEntry(savedCode() !== code ? '✗' : ''); return; }
   try { localStorage.setItem(CODE, code); } catch { /* private window */ }
-  // The code stays on this device, not in the address bar.
-  if (fromLink) history.replaceState(null, '', location.pathname);
   sendPending(code);
   const lessons = pages.l.map((l) => cleanPage({ ...l, v: 2, n: pages.n, i: pages.i, p: pages.p }));
+  // The songs and material Kyle picked for them to keep, from every lesson.
+  const shelf = pages.b?.length ? cleanPage({ v: 2, n: pages.n, i: pages.i, t: pages.b, p: pages.p }) : null;
+  const forget = () => { try { localStorage.removeItem(CODE); } catch { /* nothing kept */ } showEntry(); };
+  const openShelf = async () => {
+    render(shelf, {
+      key: await keyFor(`${code}/library`), qr: LESSON_PAGE, shelf: true, lessons, index: -1, open, openShelf, forget,
+      onCards: (it, r) => queueResult(code, { y: 'c', t: Date.now(), d: 'library', a: it.a, ...r }),
+      onPiece: (it, r) => queueResult(code, { y: 'p', t: Date.now(), d: 'library', a: it.a, ...r }),
+    });
+    scrollTo(0, 0);
+  };
   const open = async (index) => {
     render(lessons[index], {
       key: await keyFor(`${code}/${lessons[index].d}`),
-      qr: `${LESSON_PAGE}#${code}`,
-      lessons, index, open,
+      qr: LESSON_PAGE,
+      lessons, index, open, openShelf: shelf && openShelf,
       onCards: (it, r) => queueResult(code, { y: 'c', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
       onPiece: (it, r) => queueResult(code, { y: 'p', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
       onVisit: () => visited(code, lessons[index].d),
-      forget: () => { try { localStorage.removeItem(CODE); } catch { /* nothing kept */ } showEntry(); },
+      forget,
     });
     scrollTo(0, 0);
   };
@@ -172,7 +183,7 @@ function stop() { timers.forEach(clearInterval); timers = []; }
 
 /* ---------- The page ---------- */
 
-function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPiece, onVisit, forget }) {
+function render(page, { key, qr: qrText, lessons, index = 0, open, openShelf, shelf = false, onCards, onPiece, onVisit, forget }) {
   stop();
   const header = logo();
   document.title = `${page.n || 'Lesson'} · Mr. Washburn Music`;
@@ -184,7 +195,7 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPi
 
   header.append(el('div', {},
     el('h1', { textContent: page.n }),
-    el('p', { textContent: [page.i, formatDate(page.d)].filter(Boolean).join(' · ') })));
+    el('p', { textContent: shelf ? '📚' : [page.i, formatDate(page.d)].filter(Boolean).join(' · ') })));
 
   /* Stars from Mr. W */
   const reward = page.s ? el('div', { class: 'reward' }, el('span', { class: 'rstars', 'aria-label': `${page.s} stars` }, '★'.repeat(page.s))) : null;
@@ -210,7 +221,7 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPi
     showDone();
   };
   showDone();
-  const practice = el('section', { class: 'practice' }, next, doneEl);
+  const practice = shelf ? null : el('section', { class: 'practice' }, next, doneEl);
   if (onVisit) onVisit();
 
   /* The list */
@@ -270,8 +281,8 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPi
           if (onCards) onCards(it, r);
         } })) }, it.c.nm ? `🃏 ${it.c.nm}` : '🃏'), badge);
     }
-    return el('li', {},
-      box,
+    return el('li', { class: shelf ? 'shelf' : null },
+      shelf ? null : box,
       el('strong', { textContent: it.a }),
       it.b ? el('p', { textContent: it.b }) : null,
       it.l ? el('a', { href: it.l, textContent: new URL(it.l).hostname.replace(/^www\./, ''), target: '_blank', rel: 'noopener noreferrer' }) : null,
@@ -279,8 +290,10 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPi
   }));
 
   /* Earlier lessons, when the page came with the student's code */
-  const earlier = lessons?.length > 1 && el('nav', { class: 'earlier' }, lessons.map((l, i) =>
-    el('button', { 'aria-current': i === index ? 'true' : null, onclick: () => open(i) }, formatDate(l.d).replace(/^\w+, /, '') || '·')));
+  const earlier = (lessons?.length > 1 || openShelf) && el('nav', { class: 'earlier' },
+    openShelf ? el('button', { class: 'tolib', 'aria-current': shelf ? 'true' : null, 'aria-label': 'Library', onclick: openShelf }, '📚') : null,
+    lessons.map((l, i) =>
+      el('button', { 'aria-current': i === index ? 'true' : null, onclick: () => open(i) }, formatDate(l.d).replace(/^\w+, /, '') || '·')));
 
   /* Printing: a QR code back to this page when the link is short enough */
   const qr = el('div', { class: 'qr' });
@@ -297,9 +310,9 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, onCards, onPi
   }
 
   main.replaceChildren(...[
-    header, reward, practice, list,
+    header, shelf ? earlier : null, reward, practice, list,
     page.m ? el('p', { class: 'note', textContent: page.m }) : null,
-    earlier,
+    shelf ? null : earlier,
     el('div', { class: 'foot' },
       el('button', { class: 'print', 'aria-label': 'Print', onclick: () => print() }, '🖨'),
       forget && el('button', { class: 'print', 'aria-label': 'Sign out on this device', onclick: forget }, '🚪'),

@@ -51,7 +51,8 @@ header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
 
 /* Code entry, and earlier lessons */
 .codeform { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 22px; padding: 10px 10px 10px 16px; margin-top: 24px; box-shadow: 0 3px 0 rgba(47,74,58,.08); }
-.codeform .lock { font-size: 28px; }
+.codeform { flex-wrap: wrap; padding: 12px; }
+.codeform .codename { flex: 1 1 100%; min-width: 0; font: inherit; font-size: 22px; border: 0; background: #F6F1E4; border-radius: 12px; padding: 10px 12px; color: #2F4A3A; }
 .codeform .picks { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
 .codeform .codepick { min-width: 0; font: inherit; font-size: 18px; border: 0; background: #F6F1E4; border-radius: 12px; padding: 10px 8px; color: #2F4A3A; }
 .codeerr, .loading { text-align: center; font-size: 40px; margin: 24px 0 12px; }
@@ -63,3 +64,9 @@ header p { margin: 2px 0 0; color: #5B6B5F; font-size: 16px; }
 .earlier button { background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 15px; min-height: 40px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
 .earlier button[aria-current] { background: #2F4A3A; color: #F6F1E4; }
 @media print { .earlier { display: none; } }
+
+.earlier .tolib { font-size: 22px; }
+.items li.shelf { grid-template-columns: 1fr; }
+.items li.shelf > * { grid-column: 1; }
+.codeform .picks { flex: 1 1 100%; }
+.codeform .go { margin-left: auto; }
