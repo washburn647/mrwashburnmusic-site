@@ -21,6 +21,9 @@ class SyllableDetector {
     this.endAt = -9; // when the last syllable went quiet
     this.echoDrop = 10; // dB: a much quieter sound just after a syllable is its tail or echo
     this.pend = null; // a rise after a dip, waiting to show it's a new syllable
+    this.hist = []; // the envelope over the last attackWin seconds: [t, dB]
+    this.attack = 12; // dB: a rise this big this fast is a new syllable, dip or no dip
+    this.attackWin = 0.06; // s
     this.risePeak = DB_MIN;
     this.peak = DB_MIN; // highest point since the last onset or valley
     this.valley = 0; // lowest point of the current dip
@@ -56,6 +59,9 @@ class SyllableDetector {
     const off = on - 6; // back to quiet
 
     let onset = null;
+    const hist = this.hist;
+    hist.push([t, env]);
+    while (hist.length && hist[0][0] < t - this.attackWin) hist.shift();
     if (this.age < 0.5) return null;
     if (this.state === 'quiet') {
       if (env < this.floor + 6) this.stir = t + dt;
@@ -85,6 +91,14 @@ class SyllableDetector {
         this.state = 'quiet';
         this.endAt = t;
         this.pend = null;
+      } else if (this.attackFrom(t, env)) {
+        // A sharp jump while the level never fell to quiet (the call or the band still
+        // in the room, a "bum" running into the next): a new syllable starts here.
+        // Like a rise after a dip, it counts once it gets near the last syllable's level.
+        // A rise already waiting (after a dip) keeps its own start and level to reach.
+        this.pend ||= { start: this.stir, at: t, ref: this.peak };
+        this.dipped = false;
+        this.peak = env;
       } else if (!this.dipped) {
         this.peak = Math.max(this.peak, env);
         // A rise after a dip is a new syllable once it gets near the last one's level;
@@ -93,7 +107,7 @@ class SyllableDetector {
         if (p && env >= p.ref - this.echoDrop) {
           if (p.start - this.last >= this.minGap) onset = p.start;
           this.pend = null;
-        } else if (p && t - p.at > 0.05) this.pend = null;
+        } else if (p && t - p.at > 0.08) this.pend = null;
         if (env < this.peak - 9) { this.dipped = true; this.valley = env; this.stir = t; }
       } else {
         if (env < this.valley) { this.valley = env; this.stir = t; }
@@ -107,6 +121,18 @@ class SyllableDetector {
     }
     if (onset != null) this.last = onset;
     return onset;
+  }
+
+  /* Did the envelope just jump by `attack` dB within attackWin? Sets stir to where it began. */
+  attackFrom(t, env) {
+    let lo = Infinity;
+    let at = t;
+    for (const [ht, he] of this.hist) if (he < lo) { lo = he; at = ht; }
+    if (env - lo < this.attack) return false;
+    // Date it to where the rise left the low point.
+    for (const [ht, he] of this.hist) if (ht >= at && he < lo + 3) this.stir = ht;
+    this.hist = [[t, env]];
+    return true;
   }
 }
 

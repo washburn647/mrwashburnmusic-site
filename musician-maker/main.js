@@ -1032,7 +1032,7 @@ function grade(item, turn) {
   turn.reveal(res);
   R.log?.push({
     step: item.step, task: item.task, stim: item.stim, cells: item.pattern.cells, bpm: R.tempo,
-    spb: R.clock.spb(), inputs: turn.inputs(), right: res.right, why: res.why || '',
+    spb: R.clock.spb(), tResp: turn.tResp, inputs: turn.inputs(), right: res.right, why: res.why || '',
   });
   return res;
 }
