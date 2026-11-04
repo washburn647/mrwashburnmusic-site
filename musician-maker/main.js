@@ -32,6 +32,7 @@ const TEST = GAMES.some((g) => g.id === Q.get('test')) ? {
   groove: Q.get('groove') || null,
   mookie: Q.get('pace') === 'mookie',
   intros: Q.get('intros') === 'all', // show every skill intro again
+  mic: Q.get('input') === 'mic',
 } : null;
 const WORKSHOP = '/studio/games/';
 let st = store.load();
@@ -39,6 +40,7 @@ if (TEST) {
   st.mookie = TEST.mookie;
   if (TEST.groove) st.groove = TEST.groove;
   if (TEST.intros) st.intro = {};
+  st.input = TEST.mic ? 'mic' : 'tap';
 }
 st.intro ||= {};
 let dir = makeDirector(st);
@@ -1322,6 +1324,9 @@ function testTitle() {
     h('h2', {}, `Test: ${g.name}`),
     h('p', {}, bits.join(' · ')),
     h('p', { class: 'note' }, 'Only this game comes up, with the workshop\'s options. Progress isn\'t saved.'),
+    h('div', { class: 'switches' },
+      toggle('Use the mic', 'Say your answers too', st.input === 'mic', (v) => { st.input = v ? 'mic' : 'tap'; testTitle(); }),
+      st.input === 'mic' ? micCheck() : null),
     h('button', { class: 'play', onclick: () => startRun() }, 'Play'),
     h('a', { class: 'link', href: WORKSHOP }, 'Back to the workshop')));
 }

@@ -22,7 +22,7 @@ const TIER_LABELS = ['Combo 0', ...TIER_NAMES.slice(1)];
 let site = OPT.complete();
 const draft = OPT.loadDraft();
 let opts = draft.games || site;
-const test = { step: '', tempo: 'climb', start: 'games', pace: 'normal', groove: 'mix', intros: 'mine', ...draft.test };
+const test = { step: '', tempo: 'climb', start: 'games', pace: 'normal', groove: 'mix', intros: 'mine', input: 'tap', ...draft.test };
 let gameId = (GAMES.find((g) => g.id === test.game) || GAMES[0]).id;
 let labels = {}; // sound names, from the samples index
 let status = '';
@@ -246,6 +246,7 @@ function testUrl() {
   if (test.start === 'boss' && game().bossName) q.set('start', 'boss');
   if (test.pace === 'mookie') q.set('pace', 'mookie');
   if (test.intros === 'all') q.set('intros', 'all');
+  if (test.input === 'mic') q.set('input', 'mic');
   q.set('groove', test.groove);
   return `/musician-maker/?${q}`;
 }
@@ -267,6 +268,7 @@ function testCard() {
       h('label', {}, 'Tempo', seg({ climb: '92 → 126', 92: '92', 108: '108', 126: '126' }, test.tempo, set('tempo'))),
       g.bossName ? h('label', {}, 'Start with', seg({ games: 'Games', boss: g.bossName }, test.start, set('start'))) : null,
       h('label', {}, 'Pace', seg({ normal: 'Normal', mookie: 'Mookie mode' }, test.pace, set('pace'))),
+      h('label', {}, 'Answer with', seg({ tap: 'Taps', mic: 'Taps and the mic' }, test.input, set('input'))),
       h('label', {}, 'Skill intros', seg({ mine: 'Ones I haven\'t seen', all: 'All again' }, test.intros, set('intros'))),
       h('label', {}, 'Groove', grooveSel)),
     link,

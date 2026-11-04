@@ -346,7 +346,7 @@ export function toon(name, t, opts = {}) {
     case 'snore': noise(t, 0.6, 0.18 * vol, 'lowpass', 250, 700, 2); synth(t, 70, 0.55, 0.12 * vol, master, 'sawtooth', 1.3); break;
     case 'tiptoe': synth(t, 1100 * rate, 0.05, 0.1 * vol, master, 'triangle', 0.7); break;
     /* Brushing Time (scene-brush.js) */
-    case 'brush': noise(t, 0.13, 0.32 * vol, 'bandpass', 1800 * rate, 5200 * rate, 1.2); break;
+    case 'brush': noise(t, 0.13, 0.12 * vol, 'bandpass', 1800 * rate, 5200 * rate, 1.2); break;
     case 'sproing': tone(240 * rate, 0.16, 0.14, 'triangle', 2.6); synth(t + 0.05, 420 * rate, 0.14, 0.08 * vol, master, 'sine', 0.7); break;
     case 'ting': [2637, 3951, 5274].forEach((fq, i) => synth(t + i * 0.05, fq * rate, 0.35, 0.07 * vol, master, 'sine')); break;
     case 'spritz': [0, 0.11].forEach((d) => noise(t + d, 0.09, 0.3 * vol, 'highpass', 4000, 7000, 0.8)); break;

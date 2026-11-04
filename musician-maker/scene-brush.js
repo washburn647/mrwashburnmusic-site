@@ -24,6 +24,7 @@ import { rigCat, fur } from './cats.js';
 import { toon } from './sound.js';
 import { gagDeck } from './gags.js';
 import { callBubble } from './speech.js';
+import { fitSigns } from './signs.js';
 
 function h(tag, cls, text) {
   const el = document.createElement(tag);
@@ -44,7 +45,7 @@ const later = (ms, fn) => setTimeout(fn, ms);
 /* The brush: a wooden slicker brush, a white cartoon glove on the handle, and a long sleeve
    that runs off the top right of the stage. The bristles' middle is at 25% 72% of the box. */
 const BRUSH = `<svg viewBox="0 0 240 90" aria-hidden="true">
-  <path class="bt-sleeve" d="M214 30 C300 10 360 -120 520 -260" stroke="#f08aa8" stroke-width="20" fill="none" stroke-linecap="round"/>
+  <path class="bt-sleeve" d="M214 30 C300 10 360 -120 520 -260" stroke-width="20" fill="none" stroke-linecap="round"/>
   <path d="M214 30 C300 10 360 -120 520 -260" stroke="#fff" stroke-width="20" stroke-dasharray="6 14" fill="none" opacity=".5"/>
   <path d="M100 30 L196 26 Q204 34 196 42 L100 42 Z" fill="#a8622c" stroke="#6e3c16" stroke-width="2"/>
   <g class="bt-bristles" stroke="#d9d4cc" stroke-width="2.2" stroke-linecap="round">
@@ -62,24 +63,32 @@ const STOOL = `<svg viewBox="0 0 140 100" preserveAspectRatio="none" aria-hidden
   <ellipse cx="70" cy="94" rx="44" ry="6" fill="#9aa3ab" stroke="#5f666d" stroke-width="2"/>
   <rect x="62" y="34" width="16" height="60" fill="#c9d1d8" stroke="#5f666d" stroke-width="2"/>
   <path d="M66 36 V92" stroke="#fff" stroke-width="3" opacity=".7"/>
-  <path d="M8 18 Q70 2 132 18 L128 34 Q70 46 12 34 Z" fill="#d83a4a" stroke="#8e1f2c" stroke-width="2.5"/>
-  <path d="M20 16 Q70 6 120 16" stroke="#ff8fa0" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M8 18 Q70 2 132 18 L128 34 Q70 46 12 34 Z" class="bt-cush" stroke-width="2.5"/>
+  <path class="bt-cush-hi" d="M20 16 Q70 6 120 16" stroke-width="3" fill="none" stroke-linecap="round"/>
   <path d="M40 22 V36 M70 18 V40 M100 22 V36" stroke="#8e1f2c" stroke-width="1.5" opacity=".6"/>
 </svg>`;
 
-/* The price list. */
-const SIGN = `<svg viewBox="0 0 100 120" aria-hidden="true">
-  <rect class="bt-sign-frame" x="2" y="2" width="96" height="116" rx="6"/><rect x="8" y="8" width="84" height="104" rx="3" fill="#fff8f2"/>
-  <g font-family="Fredoka, sans-serif" fill="#7a2742" text-anchor="middle">
-    <text x="50" y="23" font-size="10.5" font-weight="700" letter-spacing=".5">SALON</text>
-    <text x="50" y="35" font-size="12.5" font-weight="700" letter-spacing="1">MOOKIE</text></g>
-  <path d="M20 41 H80" stroke="#f08aa8" stroke-width="1.5"/>
-  <g font-family="Fredoka, sans-serif" fill="#3a2a30" font-size="7.4">
-    <text x="13" y="55">brush</text><text x="87" y="55" text-anchor="end">1 fish</text>
-    <text x="13" y="67">detangle</text><text x="87" y="67" text-anchor="end">2 fish</text>
-    <text x="13" y="79">sproing</text><text x="87" y="79" text-anchor="end">free</text>
-    <text x="13" y="91">Rusty</text><text x="87" y="91" text-anchor="end">99 fish</text></g>
-  <text x="50" y="105" font-family="Fredoka, sans-serif" font-size="5.6" fill="#7a2742" text-anchor="middle" opacity=".85">no refunds on hairballs</text>
+/* Five salons, one per round in turn (styles in scene-brush.css under [data-theme]). */
+const THEMES = [
+  { id: 'salon', head: ['SALON', 'MOOKIE'], menu: [['brush', '1 fish'], ['detangle', '2 fish'], ['sproing', 'free'], ['Rusty', '99 fish']], note: 'no refunds on hairballs' },
+  { id: 'barber', head: ["MOOKIE'S", 'BARBERS'], menu: [['trim', '1 fish'], ['hot towel', '3 fish'], ['buzz cut', 'NO'], ['Rusty', '99 fish']], note: 'cash or tuna only' },
+  { id: 'spa', head: ['MOOKIE', 'DAY SPA'], menu: [['mud mask', '3 fish'], ['cucumbers', '2 fish'], ['big nap', 'free'], ['Rusty', 'ask']], note: 'please purr quietly' },
+  { id: 'neon', head: ['TOTALLY', 'HAIR'], menu: [['perm', '5 fish'], ['mullet', '8 fish'], ['big hair', '10 fish'], ['Rusty', 'lol']], note: 'gnarly to the max' },
+  { id: 'paris', head: ['Chez', 'MOOKIE'], menu: [['le brush', '1 poisson'], ['le fluff', 'gratuit'], ['le chic', 'très cher'], ['Rusty', 'non']], note: 'pas de remboursement' },
+];
+let themeAt = Math.floor(Math.random() * THEMES.length);
+const nextTheme = () => THEMES[themeAt++ % THEMES.length];
+
+/* The price list. data-fit keeps each line inside the board (signs.js). */
+const signSvg = (t) => `<svg viewBox="0 0 100 120" aria-hidden="true">
+  <rect class="bt-sign-frame" x="2" y="2" width="96" height="116" rx="6"/><rect class="bt-sign-board" x="8" y="8" width="84" height="104" rx="3"/>
+  <g class="bt-sign-head" font-family="Fredoka, sans-serif" text-anchor="middle" font-weight="700">
+    <text x="50" y="23" font-size="10.5" letter-spacing=".5" data-fit="74">${t.head[0]}</text>
+    <text x="50" y="35" font-size="12.5" letter-spacing="1" data-fit="74">${t.head[1]}</text></g>
+  <path class="bt-sign-rule" d="M20 41 H80" stroke-width="1.5"/>
+  <g class="bt-sign-ink" font-family="Fredoka, sans-serif" font-size="7.4">
+    ${t.menu.map(([what, cost], i) => `<text x="13" y="${55 + i * 12}" data-fit="44">${what}</text><text x="87" y="${55 + i * 12}" text-anchor="end" data-fit="28">${cost}</text>`).join('')}</g>
+  <text class="bt-sign-head" x="50" y="105" font-family="Fredoka, sans-serif" font-size="5.6" text-anchor="middle" opacity=".85" data-fit="74">${t.note}</text>
 </svg>`;
 
 /* A clump of brushed-out hair, and the pile it lands on. */
@@ -148,6 +157,7 @@ export const brushingTime = {
   gags: GAGS,
   make(stage, { boss = false } = {}) {
     stage.className = `stage scene-bt${boss ? ' boss' : ''}`;
+    stage.dataset.theme = nextTheme().id;
     preload();
     const cam = h('div', 'bt-cam');
     const wall = h('div', 'bt-wall');
@@ -167,7 +177,8 @@ export const brushingTime = {
       mirror.append(b);
     }
     const sign = h('div', 'bt-sign');
-    sign.innerHTML = SIGN; // fixed markup
+    sign.innerHTML = signSvg(THEMES.find((t) => t.id === stage.dataset.theme)); // fixed markup
+    fitSigns(sign);
     /* The Head Stylist: Pharaoh Amenhotep III's granite head (c. 1391-1353 BCE) on a wig stand,
        with googly eyes and a ventriloquist's jaw. */
     const stylist = h('div', 'bt-stylist');
@@ -646,6 +657,7 @@ export const brushingTime = {
       later(n + 1150, () => {
         twin.mood('happy');
         twin.el.classList.add('leave');
+        later(950, () => twin.el.remove());
         toon('tiptoe', undefined, { vol: 0.6 });
         cat.mood('smug');
       });

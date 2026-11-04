@@ -18,6 +18,7 @@ import { critter, photoMouse } from './critters.js';
 import { toon } from './sound.js';
 import { gagDeck } from './gags.js';
 import { callBubble } from './speech.js';
+import { fitSigns } from './signs.js';
 
 function h(tag, cls, text) {
   const el = document.createElement(tag);
@@ -46,10 +47,22 @@ const CLOCK = `<svg viewBox="0 0 80 150" aria-hidden="true">
   <path d="M14 64 H66 L62 70 H18 Z" fill="#6e4526"/>
 </svg>`;
 
-const POSTER = `<svg viewBox="0 0 90 110" aria-hidden="true">
-  <path d="M4 4 L86 2 L88 106 L2 108 Z" fill="#f1dfb4" stroke="#c8a96a" stroke-width="2"/>
-  <text x="45" y="22" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="700" font-size="17" fill="#6b3d1f">WANTED</text>
-  <text x="45" y="84" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="9" fill="#6b3d1f">REWARD</text>
+/* Five rooms, one per game in turn: wallpaper, floor, window and poster change together
+   (scenes.css, [data-theme]). Strings here are fixed markup. */
+const THEMES = [
+  { id: 'parlor', title: 'WANTED', foot: 'REWARD' },
+  { id: 'castle', title: 'WANTED', foot: 'BY ORDER OF THE KING' },
+  { id: 'ship', title: 'WANTED', foot: 'REWARD: 1 DOUBLOON' },
+  { id: 'groovy', title: 'HAVE YOU SEEN ME?', foot: 'CALL MOOKIE' },
+  { id: 'space', title: 'MOST WANTED', foot: 'IN 3 GALAXIES' },
+];
+let themeAt = Math.floor(Math.random() * THEMES.length);
+const nextTheme = () => THEMES[themeAt++ % THEMES.length];
+
+const posterSvg = (t) => `<svg viewBox="0 0 90 110" aria-hidden="true">
+  <path class="mp-paper" d="M4 4 L86 2 L88 106 L2 108 Z" stroke-width="2"/>
+  <text class="mp-ink" x="45" y="22" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="700" font-size="17" data-fit="74">${t.title}</text>
+  <text class="mp-ink" x="45" y="84" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="9" data-fit="74">${t.foot}</text>
   <g transform="translate(22 88)"><path d="M0 12 L22 2 L22 12 Z" fill="#f2c94c"/><circle cx="16" cy="8" r="1.6" fill="#d9a93a"/>
     <path d="M24 12 L46 2 L46 12 Z" fill="#f2c94c"/><circle cx="38" cy="8" r="1.6" fill="#d9a93a"/></g>
   <circle cx="45" cy="5" r="2.5" fill="#b33"/>
@@ -58,13 +71,13 @@ const POSTER = `<svg viewBox="0 0 90 110" aria-hidden="true">
 const WINDOW = `<svg viewBox="0 0 100 110" aria-hidden="true">
   <rect x="8" y="8" width="84" height="84" rx="4" fill="#2c3e66"/>
   <rect x="8" y="8" width="84" height="84" rx="4" fill="url(#ms-sky)"/>
-  <defs><linearGradient id="ms-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2a4f"/><stop offset="1" stop-color="#4a5f93"/></linearGradient></defs>
-  <circle cx="66" cy="30" r="11" fill="#fff6d0"/><circle cx="71" cy="27" r="10" fill="#2a3a63" opacity=".9"/>
+  <defs><linearGradient id="ms-sky" x1="0" y1="0" x2="0" y2="1"><stop class="mw-sky1" offset="0" stop-color="#1d2a4f"/><stop class="mw-sky2" offset="1" stop-color="#4a5f93"/></linearGradient></defs>
+  <circle class="mw-moon" cx="66" cy="30" r="11" fill="#fff6d0"/><circle class="mw-bite" cx="71" cy="27" r="10" fill="#2a3a63" opacity=".9"/>
   <g class="ms-stars" fill="#fff6d0"><circle cx="22" cy="22" r="1.4"/><circle cx="40" cy="38" r="1.1"/><circle cx="30" cy="58" r="1.3"/><circle cx="78" cy="62" r="1.2"/><circle cx="55" cy="16" r="1"/></g>
-  <path d="M8 76 Q30 66 50 74 T92 70 V92 H8 Z" fill="#22324f" opacity=".9"/>
+  <path class="mw-hills" d="M8 76 Q30 66 50 74 T92 70 V92 H8 Z" fill="#22324f" opacity=".9"/>
   <path d="M50 8 V92 M8 50 H92" stroke="#f6ead0" stroke-width="4"/>
   <rect x="8" y="8" width="84" height="84" rx="4" fill="none" stroke="#f6ead0" stroke-width="6"/>
-  <path d="M2 4 Q14 50 6 98 L24 98 Q16 50 22 4 Z" fill="#7d9a6b"/><path d="M98 4 Q86 50 94 98 L76 98 Q84 50 78 4 Z" fill="#7d9a6b"/>
+  <path class="mw-curt" d="M2 4 Q14 50 6 98 L24 98 Q16 50 22 4 Z" fill="#7d9a6b"/><path class="mw-curt" d="M98 4 Q86 50 94 98 L76 98 Q84 50 78 4 Z" fill="#7d9a6b"/>
   <path d="M0 2 H100" stroke="#8a5a32" stroke-width="5" stroke-linecap="round"/>
   <rect x="2" y="96" width="96" height="8" rx="2" fill="#efe1c2"/>
 </svg>`;
@@ -127,6 +140,8 @@ export const mouseCatcher = {
   gags: GAGS,
   make(stage, { boss = false } = {}) {
     stage.className = `stage scene-ms${boss ? ' boss' : ''}`;
+    const theme = nextTheme();
+    stage.dataset.theme = theme.id;
     preload();
     const cam = h('div', 'ms-cam');
     const wall = h('div', 'ms-wall');
@@ -134,7 +149,8 @@ export const mouseCatcher = {
     clock.innerHTML = CLOCK; // fixed markup
     const pend = clock.querySelector('.ms-pend');
     const poster = h('div', 'ms-poster');
-    poster.innerHTML = POSTER; // fixed markup
+    poster.innerHTML = posterSvg(theme); // fixed markup
+    fitSigns(poster);
     poster.append(photo('mouse', 'ms-mugshot'));
     const disco = h('div', 'ms-disco');
     disco.append(h('i', 'ms-disco-ball'));

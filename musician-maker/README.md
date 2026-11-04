@@ -83,7 +83,10 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   gags are picked at random (never the same twice running). Real photo props join in: the
   Critic (a googly-eyed Roman bust who sings along and tuts), a hopping frog flask, a teacup
   trap, a jousting helmet, a bronze decoy mouse, and for the boss a bell drop and a trophy.
-  Styles in `scenes.css`.
+  The room takes turns in five looks (`THEMES`: parlor, castle, pirate ship, groovy 70s, space
+  station), with the poster's words to match; styles in `scenes.css` under `[data-theme]`.
+- `signs.js`: `fitSigns(root)` shrinks any SVG `<text data-fit="<width>">` that's too wide for
+  its sign, once fonts load. Every sign, menu and poster with words uses it.
 - `scene-supper.js`: Supper Time in full (styles in `scene-supper.css`): a kitchen (lamp that
   swings on the beat, rattling pot, menu board, checkerboard floor) in one of five looks that
   take turns game by game (`THEMES`: sunset diner, French bistro, 1950s atomic, farmhouse,
@@ -99,7 +102,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   blows his fur up, the last blasts him off.
 - `scene-brush.js`: Brushing Time (styles in `scene-brush.css`): Salon Mookie, a grooming salon
   (barber pole that turns a stripe a beat, a mirror whose bulbs chase with the band, a price
-  list, pink tiles). Mookie sits on the barber stool in his fluffiest coat; a gloved hand on a
+  list, tiles) in one of five looks that take turns (`THEMES`: pink salon, barber shop, day spa,
+  80s neon, Paris; colors are CSS variables under `[data-theme]`, and each has its own price list). Mookie sits on the barber stool in his fluffiest coat; a gloved hand on a
   very long sleeve holds the brush. The Head Stylist (Amenhotep III's granite head, googly
   eyes) sings the call, and a tuft of Mookie's fur sproings out on each note. Each tap is a
   brush stroke: a tuft lies flat and a clump flies onto the hair pile. Wins: sleek and slicked
@@ -144,7 +148,8 @@ cancelling too, to compare.
 
 **Game workshop** (`/studio/games/`, private): each game's scene on the groove at any combo
 tier, with its call, taps, every gag and its boss; its options; and Test play, which opens the
-game with only that game in it. `?lab` opens the Transitions lab. A new game goes in `GAMES`
+game with only that game in it. "Answer with: Taps and the mic" starts the test with the mic on
+(the test screen has the same switch). `?lab` opens the Transitions lab. A new game goes in `GAMES`
 (`games.js`) with an `id`, `gags` and `win(gag)`/`fail(gag)`, and its stylesheet goes in
 `studio/games/index.html` as well as `index.html`.
 

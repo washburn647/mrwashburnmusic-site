@@ -22,6 +22,7 @@ import { rigMookie } from './rig.js';
 import { rigCat } from './cats.js';
 import { toon } from './sound.js';
 import { gagDeck } from './gags.js';
+import { fitSigns } from './signs.js';
 import { callBubble } from './speech.js';
 
 function h(tag, cls, text) {
@@ -75,9 +76,9 @@ function menuSvg(t) {
   return `<svg viewBox="0 0 100 120" aria-hidden="true">
   <rect class="mb-frame" x="2" y="2" width="96" height="116" rx="6"/><rect class="mb-board" x="8" y="8" width="84" height="104" rx="3"/>
   <g class="mb-ink" font-family="${t.font}" text-anchor="middle">
-    <text x="50" y="28" font-size="${titleSize}" font-weight="700" letter-spacing="1">${t.title}</text>
-    ${t.lines.map((l, i) => `<text x="50" y="${ys[i]}" font-size="${big ? 22 : l.length > 11 ? 8 : 10}" font-weight="${big ? 700 : 400}">${l}</text>`).join('')}
-    <text x="50" y="${big ? 98 : 100}" font-size="${t.note.length > 14 ? 5.6 : 8}" opacity=".8">${t.note}</text></g>
+    <text x="50" y="28" font-size="${titleSize}" font-weight="700" letter-spacing="1" data-fit="76">${t.title}</text>
+    ${t.lines.map((l, i) => `<text x="50" y="${ys[i]}" font-size="${big ? 22 : l.length > 11 ? 8 : 10}" font-weight="${big ? 700 : 400}" data-fit="74">${l}</text>`).join('')}
+    <text x="50" y="${big ? 98 : 100}" font-size="${t.note.length > 14 ? 5.6 : 8}" opacity=".8" data-fit="76">${t.note}</text></g>
   <path class="mb-line" d="M20 33 H80" stroke-width="1" opacity=".6"/>
   <g class="mb-line" stroke-width="1.2" fill="none" opacity=".75"><path d="M14 ${big ? 50 : 58} q6 -6 12 0 q-6 6 -12 0 Z M26 ${big ? 50 : 58} l4 -3 v6 Z"/><path d="M74 ${big ? 86 : 74} q6 -6 12 0 q-6 6 -12 0 Z M86 ${big ? 86 : 74} l4 -3 v6 Z"/></g>
   <rect class="mb-frame" x="30" y="112" width="40" height="5" rx="2"/><rect class="mb-chalk" x="56" y="109" width="10" height="4" rx="1"/>
@@ -188,6 +189,7 @@ export const supperTime = {
     win.innerHTML = WINDOW.replace(/sp-sky/g, `sp-sky${++skyId}`); // fixed markup
     const menu = h('div', 'sp-menu');
     menu.innerHTML = menuSvg(theme); // fixed markup
+    fitSigns(menu);
     const lamp = h('div', 'sp-lamp');
     lamp.innerHTML = LAMP; // fixed markup
     lamp.append(h('i', 'sp-cone'));

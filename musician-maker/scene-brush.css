@@ -19,7 +19,10 @@
 @keyframes sparkle { from { transform: scale(.3) rotate(0); opacity: .4; } to { transform: scale(1.15) rotate(45deg); opacity: 1; } }
 
 /* ---------- the salon ---------- */
-.scene-bt { container-type: size; background: #fbe3ea; overflow: hidden; isolation: isolate; --u: min(1cqh, .9cqw); --seat-x: 50%; }
+.scene-bt { container-type: size; background: var(--bt-bg);
+  --bt-bg: #fbe3ea; --bt-tile: #fff6f8; --bt-tile-d: #f08aa8; --bt-frame: #d9a62c; --bt-frame-d: #a87b16;
+  --bt-sign-frame: #e58aa6; --bt-sign-board: #fff8f2; --bt-sign-head: #7a2742; --bt-sign-ink: #3a2a30; --bt-sign-rule: #f08aa8;
+  --bt-cush: #d83a4a; --bt-cush-d: #8e1f2c; --bt-cush-hi: #ff8fa0; --bt-sleeve: #f08aa8; overflow: hidden; isolation: isolate; --u: min(1cqh, .9cqw); --seat-x: 50%; }
 .bt-cam { position: absolute; inset: 0; }
 .bt-wall { position: absolute; inset: 0 0 30% 0;
   background:
@@ -27,11 +30,11 @@
     repeating-linear-gradient(90deg, #fbe3ea 0 26px, #f6cdd9 26px 30px, #fbe3ea 30px 52px, #cdeee3 52px 58px); }
 .bt-wall::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 10%;
   background: repeating-linear-gradient(90deg, #fff 0 20px, #f3e6ea 20px 22px); border-top: 4px solid #e58aa6; }
-.bt-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; overflow: hidden; background: #f08aa8; }
+.bt-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; overflow: hidden; background: var(--bt-tile-d); }
 .bt-floor::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(80, 20, 40, .22), transparent 40%); pointer-events: none; }
 .bt-tiles { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(4, 1fr); }
-.bt-tiles i { background: #fff6f8; transition: background .12s; }
-.bt-tiles i.d { background: #f08aa8; }
+.bt-tiles i { background: var(--bt-tile); transition: background .12s; }
+.bt-tiles i.d { background: var(--bt-tile-d); }
 .scene-bt[data-tier="4"] .bt-tiles i.lit:nth-child(3n) { background: #ffd84a; }
 .scene-bt[data-tier="4"] .bt-tiles i.lit:nth-child(3n+1) { background: #7fe3d2; }
 .scene-bt[data-tier="4"] .bt-tiles i.lit:nth-child(3n+2) { background: #9b7bff; }
@@ -48,8 +51,8 @@
 
 /* The mirror, with bulbs that chase with the band. */
 .bt-mirror { position: absolute; left: calc(var(--seat-x) - 21 * var(--u)); top: 6%; width: calc(42 * var(--u)); height: calc(46 * var(--u));
-  border-radius: 50% 50% 8px 8px / 40% 40% 8px 8px; background: #d9a62c; padding: calc(2.4 * var(--u)); box-sizing: border-box;
-  box-shadow: 0 4px 0 rgba(120, 40, 70, .2), inset 0 0 0 3px #a87b16; }
+  border-radius: 50% 50% 8px 8px / 40% 40% 8px 8px; background: var(--bt-frame); padding: calc(2.4 * var(--u)); box-sizing: border-box;
+  box-shadow: 0 4px 0 rgba(120, 40, 70, .2), inset 0 0 0 3px var(--bt-frame-d); }
 .bt-glass { position: absolute; inset: calc(2.6 * var(--u)); border-radius: inherit;
   background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .55) 33%, transparent 38%, transparent 46%, rgba(255, 255, 255, .35) 48%, transparent 52%),
     linear-gradient(180deg, #cfe9f2, #9cc9d9); }
@@ -63,7 +66,14 @@
 .bt-sign { position: absolute; right: 4%; top: 7%; height: calc(30 * var(--u)); aspect-ratio: 100 / 120; transform: rotate(3deg); transform-origin: 50% 0;
   filter: drop-shadow(0 3px 0 rgba(120, 40, 70, .2)); }
 .bt-sign svg, .bt-stool svg, .bt-pile svg, .bt-brush svg, .bt-clump svg, .bt-coat svg, .bt-zap svg, .bt-onehair svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.bt-sign-frame { fill: #e58aa6; }
+.bt-sign-frame { fill: var(--bt-sign-frame); }
+.bt-sign-board { fill: var(--bt-sign-board); }
+.bt-sign-head { fill: var(--bt-sign-head); }
+.bt-sign-ink { fill: var(--bt-sign-ink); }
+.bt-sign-rule { stroke: var(--bt-sign-rule); }
+.bt-cush { fill: var(--bt-cush); stroke: var(--bt-cush-d); }
+.bt-cush-hi { stroke: var(--bt-cush-hi); }
+.bt-sleeve { stroke: var(--bt-sleeve); }
 .bt-sign.bop { animation: bop .3s ease-out; }
 .bt-sign.bop2 { animation: bop2 .3s ease-out; }
 
@@ -122,7 +132,10 @@
 @keyframes strut { 50% { rotate: -3deg; } }
 .bt-twin { position: absolute; height: calc(30 * var(--u)); aspect-ratio: 200 / 222; z-index: 5; transform: translate(-50%, -100%); animation: twin-up .3s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes twin-up { from { transform: translate(-50%, -100%) scale(1, .1); } }
-.bt-twin.leave { transition: transform .9s ease-in; transform: translate(-60cqw, -100%); animation: flee-legs .14s linear infinite; }
+.bt-twin.leave { animation: twin-leave .9s ease-in forwards; }
+.bt-twin.leave svg { animation: waddle .14s linear infinite; }
+@keyframes twin-leave { from { transform: translate(-50%, -100%); } to { transform: translate(-60cqw, -100%); } }
+@keyframes waddle { 50% { transform: translateY(-4%) rotate(-4deg); } }
 .bt-hen { position: absolute; aspect-ratio: 320 / 191; z-index: 6; transform: translate(-50%, -85%) translateY(-120cqh); }
 .bt-hen .ms-photo { position: absolute; inset: 0; }
 .bt-hen.sit { transform: translate(-50%, -85%); transition: transform .3s cubic-bezier(.5, 0, .9, .6); }
@@ -185,3 +198,50 @@
 .bt-fx .ms-comic { font-size: clamp(18px, 6.5cqw, 34px); }
 .bt-fx .ms-comic.big { font-size: clamp(24px, 8.5cqw, 58px); }
 .bt-fx .ms-comic.hit { font-size: clamp(20px, 7cqw, 40px); }
+
+/* ---------- five salons (THEMES in scene-brush.js) ---------- */
+/* Barber shop: bottle green, brass, black and white floor. */
+.scene-bt[data-theme="barber"] { --bt-bg: #1f4a3a; --bt-tile: #f4f1ea; --bt-tile-d: #1d1d22; --bt-frame: #c9a24a; --bt-frame-d: #8a6a1c;
+  --bt-sign-frame: #6b3f1f; --bt-sign-board: #1f2a24; --bt-sign-head: #e8c66a; --bt-sign-ink: #f4f1ea; --bt-sign-rule: #e8c66a;
+  --bt-cush: #2a2a30; --bt-cush-d: #0e0e12; --bt-cush-hi: #6d6d78; --bt-sleeve: #e8e4da; }
+.scene-bt[data-theme="barber"] .bt-wall { background:
+  radial-gradient(ellipse at 50% 30%, rgba(255, 240, 200, .25), transparent 60%),
+  repeating-linear-gradient(90deg, #1f4a3a 0 40px, #245442 40px 44px); }
+.scene-bt[data-theme="barber"] .bt-wall::after { background: repeating-linear-gradient(90deg, #6b3f1f 0 38px, #57321a 38px 40px); border-top-color: #c9a24a; }
+.scene-bt[data-theme="barber"] .bt-base { background: linear-gradient(180deg, #8a5a32, #4a2c16); }
+
+/* Day spa: lavender, bamboo, river stones. */
+.scene-bt[data-theme="spa"] { --bt-bg: #e6defa; --bt-tile: #d7e6cf; --bt-tile-d: #b8cfae; --bt-frame: #a7c27a; --bt-frame-d: #6e8a48;
+  --bt-sign-frame: #8fb06a; --bt-sign-board: #fbfaf2; --bt-sign-head: #4d6a34; --bt-sign-ink: #3c3a48; --bt-sign-rule: #b49be8;
+  --bt-cush: #b49be8; --bt-cush-d: #6f58a8; --bt-cush-hi: #e2d6ff; --bt-sleeve: #fff; }
+.scene-bt[data-theme="spa"] .bt-wall { background:
+  radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, .7), transparent 60%),
+  repeating-linear-gradient(90deg, #e6defa 0 60px, #a7c27a 60px 66px, #8fb06a 66px 68px, #e6defa 68px 120px); }
+.scene-bt[data-theme="spa"] .bt-wall::after { background: repeating-linear-gradient(90deg, #c7b59a 0 16px, #b39f84 16px 18px); border-top-color: #8fb06a; }
+.scene-bt[data-theme="spa"] .bt-tiles i { border-radius: 40%; margin: 2px; }
+.scene-bt[data-theme="spa"] .bt-floor { background: #9fb894; }
+.scene-bt[data-theme="spa"] .bt-base { background: linear-gradient(180deg, #e8e2d2, #b3a98f); }
+
+/* 80s neon: purple dusk, hot pink and cyan, a grid floor. */
+.scene-bt[data-theme="neon"] { --bt-bg: #2a1446; --bt-tile: #1a0c30; --bt-tile-d: #24104a; --bt-frame: #ff3fb4; --bt-frame-d: #a01c78;
+  --bt-sign-frame: #3ce8ff; --bt-sign-board: #1a0c30; --bt-sign-head: #ff6fd0; --bt-sign-ink: #c9fbff; --bt-sign-rule: #ffe45c;
+  --bt-cush: #3ce8ff; --bt-cush-d: #137a8f; --bt-cush-hi: #c9fbff; --bt-sleeve: #ff3fb4; }
+.scene-bt[data-theme="neon"] .bt-wall { background:
+  radial-gradient(ellipse at 50% 120%, #ff7a3c 0 22%, #ff3fb4 30%, transparent 60%),
+  linear-gradient(180deg, #1a0c30, #4b1d6e); }
+.scene-bt[data-theme="neon"] .bt-wall::after { background: #1a0c30; border-top-color: #3ce8ff; box-shadow: 0 -2px 10px #3ce8ff; }
+.scene-bt[data-theme="neon"] .bt-tiles i { box-shadow: inset 0 0 0 1px #ff3fb4; }
+.scene-bt[data-theme="neon"] .bt-base { background: linear-gradient(180deg, #ff3fb4, #6a1450); }
+.scene-bt[data-theme="neon"] .bt-sign svg { filter: drop-shadow(0 0 5px rgba(60, 232, 255, .8)); }
+.scene-bt[data-theme="neon"] .bt-mirror { box-shadow: 0 0 18px #ff3fb4, inset 0 0 0 3px var(--bt-frame-d); }
+
+/* Paris: striped wallpaper, gilt, a parquet floor. */
+.scene-bt[data-theme="paris"] { --bt-bg: #f3ece0; --bt-tile: #c48a52; --bt-tile-d: #a86f3c; --bt-frame: #e0bb4a; --bt-frame-d: #a07c1c;
+  --bt-sign-frame: #1d2a5a; --bt-sign-board: #fbf6ea; --bt-sign-head: #1d2a5a; --bt-sign-ink: #3a2a30; --bt-sign-rule: #d23a48;
+  --bt-cush: #1d2a5a; --bt-cush-d: #0d1430; --bt-cush-hi: #5a6ab0; --bt-sleeve: #d23a48; }
+.scene-bt[data-theme="paris"] .bt-wall { background:
+  radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, .6), transparent 60%),
+  repeating-linear-gradient(90deg, #f3ece0 0 22px, #e4d3e8 22px 44px); }
+.scene-bt[data-theme="paris"] .bt-wall::after { background: repeating-linear-gradient(90deg, #fbf6ea 0 30px, #e0bb4a 30px 32px); border-top-color: #e0bb4a; }
+.scene-bt[data-theme="paris"] .bt-tiles i { transform: skewX(-30deg) scaleX(1.2); }
+.scene-bt[data-theme="paris"] .bt-base { background: linear-gradient(180deg, #e0bb4a, #8a6418); }
