@@ -11,6 +11,15 @@ Pull requests get a Cloudflare preview build (`npx wrangler preview`).
   fonts or stylesheets. Self-host anything a page needs.
 - `/studio/` is private (Cloudflare Access). Don't link to it from public pages.
 
+## Publishing from the studio
+
+Groove Lab, the game workshop and the voice recorder have "Publish to site": Kyle's grooves,
+game options, voice takes and units go straight to the live site (`/api/live/`, a Durable
+Object in `worker/index.js`), and the site reads them ahead of the repo's files. So the repo's
+`musician-maker/grooves.json`, `games.json`, `assets/patterns/units.json` and voice takes can be
+behind: run `python tools/pull_live.py` first when a change touches them, and commit what it
+pulls.
+
 ## Song Burner (`songburner/`)
 
 A lyric memorization app, served at `/songburner/`. Read `songburner/README.md` first.

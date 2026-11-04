@@ -2,8 +2,9 @@
    - Try it: the game's scene as in the game, on the groove at any combo tier, with its call,
      taps, every win and fail gag, and its boss. Uses the game's own code (musician-maker/).
    - Options: whether it comes up in the stream, whether it hosts the boss, which gags can come
-     up, its tap sound (musician-maker/options.js). Kept on this device as a draft; "Save for
-     site" downloads games.json for musician-maker/games.json (tools/add_games.py).
+     up, its tap sound (musician-maker/options.js). Kept on this device as a draft; "Publish
+     to site" puts it in the game right away (/api/live/games.json, see worker/index.js), and
+     "Download" saves games.json, a backup tools/add_games.py puts in musician-maker/games.json.
    - Test play: the real game with only this game in it, the draft options and a step, tempo,
      pace and groove picked here. Progress isn't saved in a test run. */
 
@@ -305,7 +306,7 @@ function setStatus(text) { status = text; drawStatus(); }
 function drawStatus() {
   const draftOnly = !same();
   statusEl.className = `status${draftOnly ? ' draft' : ''}`;
-  statusEl.textContent = status || (draftOnly ? 'Options changed here are only on this device until you Save for site.' : 'Options match the site.');
+  statusEl.textContent = status || (draftOnly ? 'Options changed here are only on this device until you Publish to site.' : 'Options match the site.');
 }
 
 function changed() {
@@ -329,15 +330,37 @@ function drawBench() {
   benchEl.replaceChildren(h('div', {}, tryCard(), introsCard()), h('div', {}, optionsCard(), testCard()));
 }
 
-function saveForSite() {
+function siteText() {
   const all = OPT.complete(opts);
-  const text = `{"games": {\n${GAMES.map((g) => `  ${JSON.stringify(g.id)}: ${JSON.stringify(all[g.id])}`).join(',\n')}\n}}\n`;
+  return `{"games": {\n${GAMES.map((g) => `  ${JSON.stringify(g.id)}: ${JSON.stringify(all[g.id])}`).join(',\n')}\n}}\n`;
+}
+
+/* Straight to the game: learners get these options the next time they open it. */
+async function publish(e) {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = 'Publishing…';
+  try {
+    const r = await fetch('/studio/api/live/games', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: siteText() });
+    if (r.status === 401) throw new Error('your sign-in ran out. Reload the page and try again');
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `the site said ${r.status}`);
+    site = structuredClone(OPT.complete(opts));
+    setStatus('Published. Learners get these options the next time they open the game.');
+  } catch (err) {
+    setStatus(`Couldn't publish: ${err.message}`);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Publish to site';
+}
+
+function download() {
+  const text = siteText();
   const a = h('a', { href: URL.createObjectURL(new Blob([text], { type: 'application/json' })), download: 'games.json', hidden: true });
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-  setStatus('Downloaded games.json. Upload it to the Musician Maker project to put it in the game.');
+  setStatus('Downloaded games.json, a backup of these options (tools/add_games.py puts it in the repo).');
 }
 
 async function start() {
@@ -353,7 +376,8 @@ async function start() {
       h('h1', { class: 'grow' }, 'Musician Maker game workshop'),
       h('a', { class: 'button', href: '/musician-maker/?lab' }, 'Transitions lab'),
       h('a', { class: 'button', href: '/musician-maker/' }, 'Open the game'),
-      h('button', { class: 'primary', onclick: saveForSite }, 'Save for site')),
+      h('button', { onclick: download }, 'Download'),
+      h('button', { class: 'primary', onclick: publish }, 'Publish to site')),
     statusEl, tabs, benchEl);
   drawStatus();
   drawTabs();

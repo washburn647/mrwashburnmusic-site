@@ -4,8 +4,11 @@
    its patterns are generated from them, then Kyle removes the ones he doesn't want and marks
    the rest familiar or unfamiliar. Each take is recorded after a count-in (tonal ones after the
    key on the piano), stops on its own after the pattern, is trimmed to the voice and saved as a
-   small mp3 (24 kHz mono) on this device (IndexedDB 'mwm-voice'). "Save for site" writes
-   voice-kyle.zip (every take, tagged by pattern, plus the units) for tools/add_takes.py.
+   small mp3 (24 kHz mono) on this device (IndexedDB 'mwm-voice'). "Publish to site" uploads
+   the takes the site doesn't have yet and then the take list and units, so the games and
+   lessons use them right away (/api/live/, see worker/index.js). "Download" writes
+   voice-kyle.zip (every take, tagged by pattern, plus the units): a backup Restore reads, and
+   what tools/add_takes.py puts in the repo.
    Each pattern is recorded in syllables and on "bum" (Musician Maker's neutral call), and
    Cue words holds Musician Maker's spoken cues (musician-maker/cues.js), at one speed. */
 
@@ -430,7 +433,8 @@ function top(u) {
       h('button', { onclick: () => restore.click() }, 'Restore'),
       restore,
       settings.folder && window.showDirectoryPicker ? h('button', { class: 'icon', title: 'Change folder', onclick: () => saveForSite(true) }, `Folder: ${settings.folder}`) : null,
-      h('button', { class: 'primary', onclick: () => saveForSite() }, 'Save for site'),
+      h('button', { onclick: () => saveForSite() }, 'Download'),
+      h('button', { class: 'primary', disabled: publishing, onclick: publish }, publishing ? 'Publishing…' : 'Publish to site'),
     ),
     micBar(),
     h('div', { class: 'bar units' },
@@ -777,6 +781,49 @@ async function buildZip() {
   const json = { voice, label: 'Mr. Washburn', saved: new Date().toISOString(), takes: list, units: units.map(unitForSite) };
   files.unshift({ name: `voice/${voice}/takes.json`, data: new TextEncoder().encode(JSON.stringify(json, null, 1)) });
   return { blob: makeZip(files), count: list.length };
+}
+
+/* Uploads the takes the site doesn't have, then the list of every take and the units. The site
+   deletes takes no longer on the list, so it ends up with exactly the takes on this device. */
+let publishing = false;
+async function publish() {
+  const api = `/studio/api/live/voice/${settings.voice}`;
+  const call = async (url, options) => {
+    const r = await fetch(url, options);
+    if (r.status === 401) throw new Error('your sign-in ran out. Reload the page and try again');
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `the site said ${r.status}`);
+    return r.json();
+  };
+  publishing = true;
+  render();
+  try {
+    const have = new Set((await call(api)).takes);
+    const list = { label: 'Mr. Washburn', patterns: {}, cues: {}, units: units.map(unitForSite) };
+    const send = [];
+    for (const take of [...takes].sort((a, b) => a.created - b.created)) {
+      if (!itemById(take.pattern)) continue;
+      const as = takeAs(take);
+      const entry = { take: take.id, speed: take.speed, bpm: take.bpm };
+      if (as === 'cue') {
+        (list.cues[take.pattern.slice(4)] ||= []).push(entry);
+      } else {
+        if (as === 'bum') entry.as = 'bum';
+        if (take.key != null) entry.key = take.key;
+        (list.patterns[take.pattern] ||= []).push(entry);
+      }
+      if (!have.has(take.id)) send.push(take);
+    }
+    for (const [i, take] of send.entries()) {
+      say(`Uploading take ${i + 1} of ${send.length}…`);
+      await call(`${api}/${take.id}.mp3`, { method: 'PUT', headers: { 'Content-Type': 'audio/mpeg' }, body: take.mp3 });
+    }
+    const r = await call(api, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list) });
+    say(`Published ${r.takes} takes (${send.length} new${r.deleted ? `, ${r.deleted} removed` : ''}). The games and lessons use them now.`);
+  } catch (err) {
+    say(`Couldn't publish: ${err.message}`, true);
+  }
+  publishing = false;
+  render();
 }
 
 /* Writes voice-kyle.zip to a folder picked once (where the browser allows it), otherwise

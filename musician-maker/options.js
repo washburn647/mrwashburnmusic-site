@@ -42,8 +42,10 @@ export function complete(raw = {}) {
 
 let siteLoading = null;
 export function siteOptions() {
-  siteLoading ||= fetch(new URL('games.json', import.meta.url))
-    .then((r) => (r.ok ? r.json() : {}))
+  // What the workshop last published (worker/index.js), otherwise the repo's copy.
+  const get = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  siteLoading ||= get('/api/live/games.json')
+    .then(async (live) => (live?.games ? live : (await get(new URL('games.json', import.meta.url))) || {}))
     .then((data) => complete(data.games))
     .catch(() => complete());
   return siteLoading;

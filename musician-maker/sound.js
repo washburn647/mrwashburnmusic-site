@@ -59,8 +59,10 @@ export function load() {
 /* The groove list alone (no sound), e.g. for a picker. */
 let groovesLoading = null;
 export function loadGrooves() {
-  groovesLoading ||= fetch(new URL('grooves.json', import.meta.url))
-    .then((r) => (r.ok ? r.json() : { grooves: [] }))
+  // What Groove Lab last published, otherwise the repo's copy.
+  const get = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  groovesLoading ||= get('/api/live/grooves.json')
+    .then(async (live) => (live?.grooves?.length ? live : (await get(new URL('grooves.json', import.meta.url))) || { grooves: [] }))
     .then((data) => {
       grooves = checkGrooves(data.grooves);
       G ||= grooves[0] || null;

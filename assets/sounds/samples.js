@@ -138,7 +138,15 @@ export async function instrument(name, { lo = 0, hi = 127 } = {}) {
    Cue words (Musician Maker's spoken cues) play as recorded, never twice the same running:
      kyle.hasCue('echo') && kyle.cue('echo', t); */
 export async function takes(name) {
-  const spec = (await list()).voices?.[name];
+  // The takes the voice recorder last published (worker/index.js), otherwise the repo's.
+  let spec = null;
+  if (/^https?:$/.test(location.protocol)) {
+    try {
+      const r = await fetch(`/api/live/voice/${encodeURIComponent(name)}.json`);
+      if (r.ok) spec = await r.json();
+    } catch { /* not published, or offline */ }
+  }
+  spec ||= (await list()).voices?.[name];
   if (!spec) throw new Error(`No voice "${name}"`);
   const patterns = spec.patterns;
   const cues = spec.cues || {};

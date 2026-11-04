@@ -3,7 +3,7 @@
    games never know which step they are teaching. Patterns and their ids come from the
    site's catalogue, so recordings made at /studio/record/ fit here. */
 
-import { DEFAULT_UNITS, unitPatterns, patternById } from '/assets/patterns/patterns.js';
+import { DEFAULT_UNITS, unitPatterns, patternById, siteUnits } from '/assets/patterns/patterns.js';
 
 // call: neutral = heard on "bum", syllables = heard in syllables, notation = seen as notes,
 //       text = seen as syllables, none = nothing (compose)
@@ -37,8 +37,8 @@ let fam = new Set(['q-ee-q-q', 'ee-q-ee-q', 'ee-ee-ee-q', 'q-q-ee-q', 'ee-q-q-q'
 /* Kyle's kept patterns and familiar/unfamiliar marks from the recorder, when published. */
 export async function loadMarks() {
   try {
-    const r = await fetch('/assets/patterns/units.json');
-    if (!r.ok) return;
+    const r = await siteUnits();
+    if (!r) return;
     const data = await r.json();
     const unit = (Array.isArray(data) ? data : data.units || []).find((u) => u.id === 'unit-1');
     if (!unit?.patterns?.length) return;

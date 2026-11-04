@@ -1,6 +1,6 @@
 // Lets Cloudflare Workers serve this folder as a static site. The Worker in
-// worker/ only answers /api/ (the Class app's files, and lesson students' locked boxes,
-// see worker/index.js).
+// worker/ only answers /api/ (the Class app's files, lesson students' locked boxes, and what
+// the studio publishes live; see worker/index.js).
 {
   "name": "mrwashburnmusic-site",
   "main": "worker/index.js",
@@ -25,10 +25,17 @@
     { "binding": "CLASS_FILES", "bucket_name": "mwm-class-files" }
   ],
   // Lesson students' locked boxes: one Durable Object each, holding only encrypted data.
+  // LIVE: what Kyle publishes from the studio (grooves, game options, voice takes), one Durable Object.
   "durable_objects": {
-    "bindings": [{ "name": "BOXES", "class_name": "Box" }]
+    "bindings": [
+      { "name": "BOXES", "class_name": "Box" },
+      { "name": "LIVE", "class_name": "Live" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Box"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Box"] },
+    { "tag": "v2", "new_sqlite_classes": ["Live"] }
+  ],
   // Which Cloudflare Access login guards /api/class. Not secrets: the Worker checks each login
   // token's signature against Access's public keys, so knowing these lets no one in.
   "vars": {
