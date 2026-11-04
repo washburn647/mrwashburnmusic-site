@@ -8,7 +8,7 @@ import { buildMenu } from './menus.js';
 import { openEditor } from './editor.js';
 import { el, thumb, loadMedia } from './ui.js';
 import * as store from './store.js';
-import { missingIcons, forGrade, taggedFor, GRADES } from './marks.js';
+import { missingIcons, forGrade, taggedFor, GRADES, songSection, SECTIONS } from './marks.js';
 import { showPlanner } from './planner.js';
 import { gradeHint, normName, classAsOf, lockedSlides, indexSongs, firstClasses } from './plans.js';
 import { makeTemplate } from './builder.js';
@@ -90,8 +90,10 @@ async function showDeck(id, startPresenting, editAt) {
   }
   const grade = gradePick;
   const built = rec.deck.built;
-  // A category deck shows a grade's slides only; a class deck's untagged slides are for every grade.
-  const fits = (s) => (built ? forGrade : taggedFor)(s, grade);
+  // A deck with grade tags (a category deck) shows a grade's slides only; in others (class decks)
+  // untagged slides are for every grade.
+  const strict = !built && rec.deck.slides.some((s) => s.grades && s.grades.length);
+  const fits = (s) => (strict ? taggedFor : forGrade)(s, grade);
   const plan = await currentPlan(built);
   const menu = grade ? await gradeMenu(rec, grade, media, built, plan) : null;
   const menuFor = async (deckId, g, extra) => {
@@ -101,10 +103,12 @@ async function showDeck(id, startPresenting, editAt) {
   const run = (i, wantMenu) => present(rec, wantMenu ? MENU : i, media, (at) => {
     const card = main.querySelector('.slide-card[data-n="' + at + '"]');
     if (card) card.scrollIntoView({ block: 'center' });
-  }, findGoogle, { grade: grade || (built && built.grade), menu, menuFor, strict: !built,
+  }, findGoogle, { grade: grade || (built && built.grade), menu, menuFor, strict,
                    openDeck: (link) => openDeck(link, built, grade) });
   const first = () => Math.max(0, rec.deck.slides.findIndex((s) => !s.hidden && fits(s) && !(grade && s.menu)));
-  const sort = built ? 'deck' : recall('sort') || 'deck';
+  // Only a deck of songs (a category deck) sorts.
+  const sortable = !built && rec.deck.slides.some((s) => s.song && s.song.kind === 'song');
+  const sort = sortable ? recall('sort') || 'deck' : 'deck';
 
   const chips = el('span', { class: 'grades' },
     [null, ...GRADES].map((g) => el('button', {
@@ -115,7 +119,7 @@ async function showDeck(id, startPresenting, editAt) {
   const head = el('div', { class: 'deck-head' },
     el('h2', {}, rec.name),
     chips,
-    built ? null : el('select', { class: 'sort', title: 'Sort', onchange: (e) => { remember('sort', e.target.value); showDeck(id); } },
+    !sortable ? null : el('select', { class: 'sort', title: 'Sort', onchange: (e) => { remember('sort', e.target.value); showDeck(id); } },
       SORTS.map(([v, label]) => el('option', { value: v, selected: v === sort }, label))),
     grade ? el('button', { class: 'btn quiet', onclick: () => run(0, true) }, '▦ Menu') : null,
     el('button', { class: 'btn', onclick: () => run(first()) }, '▶ Present'),
@@ -248,14 +252,15 @@ function songGroups(rec, plan, fits) {
     const n = (seen.get(base) || 0) + 1;
     seen.set(base, n);
     groups.push(last = { key: n > 1 ? base + '#' + n : base, icon: s.song.icon, slides: [i], name,
-                         planned: names.get(i) || null, label: shown.get(names.get(i)) || name });
+                         planned: names.get(i) || null, part: SECTIONS.indexOf(songSection(s)), label: shown.get(names.get(i)) || name });
   });
   return groups;
 }
 
 function sortGroups(rec, groups, sort, plan, grade) {
   const by = (fn) => groups.map((g, k) => ({ g, k, v: fn(g) }));
-  const done = (list, cmp) => list.sort((a, b) => cmp(a, b) || a.k - b.k).map((x) => x.g);
+  // The usual songs, then the Move Its, then the dances, each sorted.
+  const done = (list, cmp) => list.sort((a, b) => a.g.part - b.g.part || cmp(a, b) || a.k - b.k).map((x) => x.g);
   if (sort === 'az' || sort === 'za') {
     const dir = sort === 'az' ? 1 : -1;
     return done(by((g) => g.label.trim()), (a, b) => dir * a.v.localeCompare(b.v, undefined, { numeric: true, sensitivity: 'base' }));

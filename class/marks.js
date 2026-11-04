@@ -111,6 +111,15 @@ function planGrades(slide, hint) {
 const norm = (s) => String(s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
   .replace(/[^a-z0-9']+/g, ' ').trim();
 
+/** The part of a category deck a song belongs to: its usual songs, the Move Its
+    (titled "Move It ..."), or the dances (a DANCE banner on the slide). */
+export const SECTIONS = ['main', 'moveIt', 'dance'];
+export function songSection(slide) {
+  if (/^move\s*it\b/i.test((slide.title || (slide.song && slide.song.name) || '').trim())) return 'moveIt';
+  if (slide.els.some((el) => /^dance!?$/i.test(textOf(el)))) return 'dance';
+  return 'main';
+}
+
 /** True when a slide is for this grade or an earlier one: a grade's menu holds both. */
 export function forGradeOrEarlier(slide, grade) {
   if (!grade) return true;

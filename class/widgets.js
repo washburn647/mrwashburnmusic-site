@@ -3,13 +3,18 @@
    - timer:   secs (counts down from it; 0 counts up). Tap to start or pause.
    - spinner: picks a student. Names stay on this device (see names below),
               never in a deck, so they never leave it.
-   - video:   url (YouTube) or media (a video file kept on the device)
+   - video:   url (YouTube) or media (a video file kept on the device), name
    - sound:   media (a sound file kept on the device), name
-   - spotify: url (an open.spotify.com track, album or playlist)
+   - spotify: url (an open.spotify.com track, album or playlist), name
+   - draw:    a box to draw on, bg (its color)
+   Video, Spotify and the drawing box sit on the slide as a small labeled box;
+   tapped, they open big over the slide (OPENS), clear of the slide's scaling.
    Elsewhere (thumbnails, the editor) a widget draws as a quiet label. */
 
-export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify' };
-const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵' };
+export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify', draw: 'Drawing box' };
+const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵', draw: '✏' };
+const OPENS = ['video', 'spotify', 'draw'];
+const INK = ['#000000', '#D04B4B', '#3B83C0', '#4A9C5C', '#E8A33D', '#9257BD'];
 const COLORS = ['#E8A33D', '#5E7D4F', '#3B83C0', '#D04B4B', '#9257BD', '#C9A41F', '#4A9C5C', '#DD8033'];
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -24,13 +29,15 @@ const h = (tag, cls, text) => {
 export function drawWidget(el, opts = {}) {
   const d = h('div', 'el wg wg-' + el.kind);
   Object.assign(d.style, { left: el.x + 'px', top: el.y + 'px', width: el.w + 'px', height: el.h + 'px' });
-  d.style.fontSize = Math.max(12, Math.min(el.w, el.h) / 6) + 'px';
+  d.style.fontSize = (OPENS.includes(el.kind) ? Math.max(12, Math.min(el.h / 2.6, el.w / 8))
+    : Math.max(12, Math.min(el.w, el.h) / 6)) + 'px';
   if (!opts.live) {
     d.classList.add('wg-face');
+    if (OPENS.includes(el.kind)) d.classList.add('wg-tile');
     d.append(h('span', 'wg-icon', ICONS[el.kind] || '?'), h('span', 'wg-label', label(el)));
     return d;
   }
-  const make = { timer, spinner, video, sound, spotify }[el.kind];
+  const make = { timer, spinner, video, sound, spotify, draw }[el.kind];
   if (make) make(d, el, opts);
   // A widget is for using: clicks on it are not "show the controls" clicks.
   d.addEventListener('click', (e) => e.stopPropagation());
@@ -39,7 +46,7 @@ export function drawWidget(el, opts = {}) {
 
 export function label(el) {
   if (el.kind === 'timer') return el.secs ? clock(el.secs) : '0:00 +';
-  if (el.kind === 'sound') return el.name || 'Sound';
+  if (['sound', 'video', 'spotify'].includes(el.kind)) return el.name || KINDS[el.kind];
   return KINDS[el.kind] || '';
 }
 
@@ -325,22 +332,358 @@ function frame(d, src, title) {
   d.append(f);
 }
 
-function video(d, el, opts) {
-  const id = youtubeId(el.url);
-  if (id) { frame(d, 'https://www.youtube-nocookie.com/embed/' + id + '?rel=0&modestbranding=1', 'Video'); return; }
-  if (el.media && opts.media) {
-    const v = h('video', 'wg-media');
-    v.src = opts.media(el.media);
-    v.controls = true;
-    v.playsInline = true;
-    d.append(v);
-    every(d, 500, () => {}, () => v.pause());
-  }
+// ---- opening big over the slide -----------------------------------------------
+
+/** The small box on the slide: an icon and the widget's name. */
+function tile(d, el) {
+  d.classList.add('wg-tile');
+  d.append(h('span', 'wg-icon', ICONS[el.kind]), h('span', 'wg-label', label(el)));
 }
 
+let openPanel = null;                      // { close } of the panel showing now
+
+/** A panel over the whole slide, for a widget that opened. Keys go to it, not to
+    Present: Escape closes it. Closes by itself when its slide goes away. */
+function panel(d, cls, onClose) {
+  if (openPanel) openPanel.close();
+  const host = d.closest('.present') || document.body;
+  const shade = h('div', 'wg-shade');
+  const box = h('div', 'wg-panel ' + cls);
+  const x = h('button', 'wg-btn wg-close', '✕');
+  x.title = 'Close';
+  shade.append(box, x);
+  host.append(shade);
+  const keys = (e) => {
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); me.close(); }
+  };
+  const me = {
+    box, shade,
+    close() {
+      window.removeEventListener('keydown', keys, true);
+      if (openPanel === me) openPanel = null;
+      onClose(me);
+    },
+    /** Shows a tucked-away panel again. */
+    reopen() {
+      if (openPanel && openPanel !== me) openPanel.close();
+      window.addEventListener('keydown', keys, true);
+      openPanel = me;
+      shade.classList.remove('wg-tucked');
+    }
+  };
+  window.addEventListener('keydown', keys, true);
+  shade.addEventListener('click', (e) => { e.stopPropagation(); if (e.target === shade) me.close(); });
+  // Drawing and tapping in here aren't swipes to another slide.
+  for (const t of ['touchstart', 'touchend']) shade.addEventListener(t, (e) => e.stopPropagation(), { passive: true });
+  x.addEventListener('click', () => me.close());
+  openPanel = me;
+  return me;
+}
+
+function video(d, el, opts) {
+  tile(d, el);
+  let p = null;
+  const shut = () => { if (p) { const q = p; p = null; q.close(); } };
+  d.addEventListener('click', () => {
+    if (p) return;
+    p = panel(d, 'wg-panel-video', (me) => { me.shade.remove(); if (p === me) p = null; });
+    const id = youtubeId(el.url);
+    if (id) frame(p.box, 'https://www.youtube-nocookie.com/embed/' + id + '?rel=0&modestbranding=1&autoplay=1', label(el));
+    else if (el.media && opts.media) {
+      const v = h('video', 'wg-media');
+      v.src = opts.media(el.media);
+      v.controls = true;
+      v.playsInline = true;
+      v.autoplay = true;
+      p.box.append(v);
+    }
+  });
+  every(d, 500, () => {}, shut);
+}
+
+/* Spotify plays only from its own player, so the box opens it; closing tucks it
+   away still playing, and the box's ■ stops it. */
 function spotify(d, el) {
-  const p = spotifyPath(el.url);
-  if (p) frame(d, 'https://open.spotify.com/embed/' + p, 'Spotify');
+  tile(d, el);
+  const path = spotifyPath(el.url);
+  const stop = h('button', 'wg-btn wg-stop', '■');
+  stop.title = 'Stop';
+  stop.hidden = true;
+  d.append(stop);
+  let p = null;
+  const end = () => {
+    if (!p) return;
+    const q = p;
+    p = null;
+    q.close();
+    q.shade.remove();
+    stop.hidden = true;
+    d.classList.remove('wg-on');
+  };
+  d.addEventListener('click', () => {
+    if (!path) return;
+    if (p) { p.reopen(); return; }
+    p = panel(d, 'wg-panel-spotify', (me) => {
+      if (me === p) me.shade.classList.add('wg-tucked'); else me.shade.remove();
+    });
+    frame(p.box, 'https://open.spotify.com/embed/' + path + '?utm_source=generator', label(el));
+    stop.hidden = false;
+    d.classList.add('wg-on');
+  });
+  stop.addEventListener('click', (e) => { e.stopPropagation(); end(); });
+  every(d, 500, () => {}, end);
+}
+
+// ---- drawing box ---------------------------------------------------------------
+// A board to draw on, and to put pictures on: 🔎 looks for see-through pictures
+// in a Google Images tab (SafeSearch on), and a copied picture comes back in by
+// pasting (Ctrl+V or 📋), or a picture file by dropping it. ✋ moves and sizes
+// pictures. It all lasts for this sitting only, unless 💾 saves a copy (PNG) to
+// the device. Nothing goes to the website.
+
+const boards = new WeakMap();              // widget -> { ink: data URL, pics: [{ img, x, y, w, h }], look: data URL }
+const CW = 1600;                           // the board's width in canvas pixels
+
+function draw(d, el) {
+  d.classList.add('wg-draw');
+  d.style.background = el.bg || '#FFFFFF';
+  const preview = h('img', 'wg-preview');
+  preview.alt = '';
+  const face = h('div', 'wg-tile');
+  face.append(h('span', 'wg-icon', ICONS.draw), h('span', 'wg-label', label(el)));
+  d.append(preview, face);
+  const paintPreview = () => {
+    const b = boards.get(el);
+    const url = b && b.look;
+    preview.hidden = !url;
+    face.hidden = !!url;
+    if (url) preview.src = url;
+  };
+  paintPreview();
+  let p = null;
+  d.addEventListener('click', () => {
+    if (p) return;
+    const cw = CW, ch = Math.round(CW * el.h / el.w);
+    const state = boards.get(el) || { ink: null, pics: [], look: null };
+    const k = Math.min(window.innerWidth * 0.92 / cw, (window.innerHeight * 0.92 - 64) / ch);
+    const board = h('div', 'wg-board');
+    Object.assign(board.style, { width: cw * k + 'px', height: ch * k + 'px', background: el.bg || '#FFFFFF' });
+    const layer = h('div', 'wg-pics');
+    const canvas = h('canvas', 'wg-canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    board.append(layer, canvas);
+    const g = canvas.getContext('2d');
+    if (state.ink) { const img = new Image(); img.onload = () => g.drawImage(img, 0, 0); img.src = state.ink; }
+
+    // Everything on the board as one picture.
+    const flat = () => {
+      const out = h('canvas');
+      out.width = cw;
+      out.height = ch;
+      const o = out.getContext('2d');
+      o.fillStyle = el.bg || '#FFFFFF';
+      o.fillRect(0, 0, cw, ch);
+      for (const q of state.pics) if (q.img.complete) o.drawImage(q.img, q.x, q.y, q.w, q.h);
+      o.drawImage(canvas, 0, 0);
+      return out;
+    };
+
+    p = panel(d, 'wg-panel-draw', (me) => {
+      window.removeEventListener('paste', onPaste, true);
+      state.ink = canvas.toDataURL();
+      state.look = state.pics.length || !blank(g, cw, ch) ? flat().toDataURL('image/jpeg', 0.8) : null;
+      boards.set(el, state);
+      me.shade.remove();
+      p = null;
+      paintPreview();
+    });
+
+    // ---- pictures: placed, moved and sized in board pixels
+    let chosen = null;
+    const place = (q) => {
+      Object.assign(q.node.style, { left: q.x * k + 'px', top: q.y * k + 'px', width: q.w * k + 'px', height: q.h * k + 'px' });
+    };
+    const choose = (q) => {
+      chosen = q;
+      for (const x of state.pics) x.node.classList.toggle('on', x === q);
+    };
+    const showPic = (q) => {
+      const node = h('div', 'wg-pic');
+      const grip = h('div', 'wg-grip');
+      const drop = h('button', 'wg-drop', '✕');
+      drop.title = 'Take off';
+      node.append(q.img, grip, drop);
+      q.node = node;
+      layer.append(node);
+      place(q);
+      drop.addEventListener('pointerdown', (e) => e.stopPropagation());
+      drop.addEventListener('click', () => {
+        state.pics.splice(state.pics.indexOf(q), 1);
+        node.remove();
+        if (chosen === q) chosen = null;
+      });
+      node.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        choose(q);
+        const sizing = e.target === grip;
+        const x0 = e.clientX, y0 = e.clientY, start = { ...q };
+        node.setPointerCapture(e.pointerId);
+        const move = (ev) => {
+          const dx = (ev.clientX - x0) / k, dy = (ev.clientY - y0) / k;
+          if (sizing) {
+            const s = Math.max(40 / start.w, (start.w + Math.max(dx, dy * start.w / start.h)) / start.w);
+            q.w = start.w * s;
+            q.h = start.h * s;
+          } else {
+            q.x = start.x + dx;
+            q.y = start.y + dy;
+          }
+          place(q);
+        };
+        const up = () => {
+          node.removeEventListener('pointermove', move);
+          node.removeEventListener('pointerup', up);
+          node.removeEventListener('pointercancel', up);
+        };
+        node.addEventListener('pointermove', move);
+        node.addEventListener('pointerup', up);
+        node.addEventListener('pointercancel', up);
+      });
+    };
+    const addPicture = (blob) => {
+      if (!blob || !/^image\//.test(blob.type)) return;
+      const img = new Image();
+      img.draggable = false;
+      img.alt = '';
+      img.onload = () => {
+        const s = Math.min(1, cw * 0.4 / img.naturalWidth, ch * 0.6 / img.naturalHeight);
+        const w = img.naturalWidth * s, hh = img.naturalHeight * s;
+        const q = { img, x: (cw - w) / 2, y: (ch - hh) / 2, w, h: hh };
+        state.pics.push(q);
+        showPic(q);
+        setMode('move');
+        choose(q);
+      };
+      img.src = URL.createObjectURL(blob);
+    };
+    state.pics.forEach(showPic);
+    const onPaste = (e) => {
+      const items = [...((e.clipboardData && e.clipboardData.items) || [])].filter((i) => /^image\//.test(i.type));
+      if (!items.length) return;
+      e.preventDefault();
+      for (const i of items) addPicture(i.getAsFile());
+    };
+    window.addEventListener('paste', onPaste, true);
+    board.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+    board.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      for (const f of (e.dataTransfer && e.dataTransfer.files) || []) addPicture(f);
+    });
+
+    // ---- tools
+    let pen = INK[0], mode = 'pen';
+    const tools = h('div', 'wg-drawbar');
+    let handBtn = null;
+    const setMode = (m, b) => {
+      mode = m;
+      board.classList.toggle('moving', m === 'move');
+      if (m !== 'move') choose(null);
+      const on = b || (m === 'move' ? handBtn : null);
+      tools.querySelectorAll('.ink, .wg-erase, .wg-hand').forEach((x) => x.classList.toggle('on', x === on));
+    };
+    const tool = (cls, text, title, fn) => {
+      const b = h('button', cls, text);
+      b.title = title;
+      b.addEventListener('click', () => fn(b));
+      tools.append(b);
+      return b;
+    };
+    INK.forEach((c, i) => {
+      const b = tool('ink' + (i === 0 ? ' on' : ''), '', 'Pen', (me) => { pen = c; setMode('pen', me); });
+      b.style.background = c;
+    });
+    tool('wg-erase', '⌫', 'Eraser', (b) => setMode('erase', b));
+    handBtn = tool('wg-hand', '✋', 'Move pictures', (b) => setMode('move', b));
+    tool('wg-wipe', '🗑', 'Clear', () => {
+      g.clearRect(0, 0, cw, ch);
+      state.pics.forEach((q) => q.node.remove());
+      state.pics.length = 0;
+      chosen = null;
+    });
+    const find = h('input', 'wg-find');
+    find.type = 'search';
+    find.placeholder = 'Picture of…';
+    find.hidden = true;
+    find.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { find.hidden = true; return; }
+      if (e.key !== 'Enter' || !find.value.trim()) return;
+      // See-through pictures only, SafeSearch on. Copy one there, paste it here.
+      window.open('https://www.google.com/search?udm=2&safe=active&tbs=ic:trans&q=' +
+        encodeURIComponent(find.value.trim()), '_blank', 'noopener');
+      find.hidden = true;
+    });
+    tool('wg-search', '🔎', 'Find a picture', () => { find.hidden = !find.hidden; if (!find.hidden) find.focus(); });
+    tools.append(find);
+    tool('wg-paste', '📋', 'Paste a picture', async () => {
+      try {
+        for (const item of await navigator.clipboard.read()) {
+          const type = item.types.find((t) => /^image\//.test(t));
+          if (type) { addPicture(await item.getType(type)); return; }
+        }
+      } catch (e) { /* nothing to paste, or not allowed */ }
+    });
+    tool('wg-save', '💾', 'Save a copy', () => {
+      flat().toBlob((blob) => {
+        if (!blob) return;
+        const a = h('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'drawing ' + new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-') + '.png';
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }, 'image/png');
+    });
+    p.box.append(board, tools);
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (mode === 'move') return;
+      const r = canvas.getBoundingClientRect();
+      const at = (ev) => [(ev.clientX - r.left) * cw / r.width, (ev.clientY - r.top) * ch / r.height];
+      const erase = mode === 'erase';
+      g.strokeStyle = pen;
+      g.lineWidth = erase ? 60 : 10;
+      g.lineCap = g.lineJoin = 'round';
+      g.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
+      let [x, y] = at(e);
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + 0.1, y);
+      g.stroke();
+      canvas.setPointerCapture(e.pointerId);
+      const move = (ev) => { [x, y] = at(ev); g.lineTo(x, y); g.stroke(); };
+      const up = () => {
+        canvas.removeEventListener('pointermove', move);
+        canvas.removeEventListener('pointerup', up);
+        canvas.removeEventListener('pointercancel', up);
+      };
+      canvas.addEventListener('pointermove', move);
+      canvas.addEventListener('pointerup', up);
+      canvas.addEventListener('pointercancel', up);
+    });
+  });
+  every(d, 500, () => {}, () => { if (p) p.close(); });
+}
+
+/** True when nothing has been drawn. */
+function blank(g, w, h) {
+  const px = g.getImageData(0, 0, w, h).data;
+  for (let i = 3; i < px.length; i += 64) if (px[i]) return false;
+  return true;
 }
 
 function sound(d, el, opts) {

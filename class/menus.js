@@ -8,9 +8,13 @@
    lock (opts.lock, the decks' lock picture, or a grey veil) and don't jump.
    opts.order: slide indexes in the order the songs should show (others after).
    opts.only: just these slide indexes (a menu of the deck's own, such as its
-   dances), with opts.title in place of the deck's name. */
+   dances), with opts.title in place of the deck's name.
+   A deck's Move Its and dances have menus of their own (opts.part: 'moveIt'
+   or 'dance'): its main menu holds its usual songs, then one icon for each of
+   those menus (a { submenu } link). A menu from opts.only keeps its songs in
+   sections, each starting a new row: the usual ones, Move Its, dances. */
 
-import { forGradeOrEarlier, textOf } from './marks.js';
+import { forGradeOrEarlier, textOf, songSection, SECTIONS } from './marks.js';
 import { fontStack } from './render.js';
 
 const GAP = 14;
@@ -21,12 +25,22 @@ export function buildMenu(deck, grade, name, opts = {}) {
     .map((s, i) => ({ s, i }))
     .filter(({ s, i }) => s.song && s.song.kind === 'song' && s.song.icon && !s.hidden && forGradeOrEarlier(s, grade) &&
       (!opts.only || opts.only.has(i)))
-    // A song over several slides shows once, jumping to its first.
-    .filter(({ s }, k, all) => all.findIndex((x) => x.s.song.icon === s.song.icon) === k);
-  if (opts.order) {
-    const rank = new Map(opts.order.map((i, k) => [deck.slides[i].song && deck.slides[i].song.icon, k]));
-    const at = ({ s }) => rank.has(s.song.icon) ? rank.get(s.song.icon) : 1e9;
-    songs.sort((a, b) => at(a) - at(b));
+    .map((x) => ({ ...x, part: songSection(x.s) }))
+    // A song over several slides shows once, jumping to its first. The Move Its share
+    // one icon, so they go by name.
+    .filter(({ s, part }, k, all) => all.findIndex((x) => part === 'moveIt'
+      ? x.part === part && norm(x.s.title) === norm(s.title) : x.s.song.icon === s.song.icon) === k);
+  const rank = new Map((opts.order || []).map((i, k) => [i, k]));
+  const at = ({ i }) => rank.has(i) ? rank.get(i) : 1e9;
+  songs.sort((a, b) => SECTIONS.indexOf(a.part) - SECTIONS.indexOf(b.part) || at(a) - at(b));
+  let items = songs;
+  if (opts.part) items = songs.filter((x) => x.part === opts.part);
+  else if (!opts.only) {
+    items = songs.filter((x) => x.part === 'main');
+    for (const part of SECTIONS.slice(1)) {
+      const first = songs.find((x) => x.part === part);
+      if (first) items.push({ part: 'main', submenu: part, media: sectionIcon(deck, part) || first.s.song.icon });
+    }
   }
   const menus = deck.slides.filter((s) => s.menu);
   // The deck's plain menu (no grade in its title) is the best look to borrow.
@@ -36,7 +50,7 @@ export function buildMenu(deck, grade, name, opts = {}) {
   const head = template && template.els
     .filter((e) => e.text && textOf(e) && e.y < 120)
     .sort((a, b) => b.w * b.h - a.w * a.h)[0];
-  const title = (grade ? grade + ' ' : '') + (opts.title || name);
+  const title = (grade ? grade + ' ' : '') + (opts.title || (opts.part ? PART_NAMES[opts.part] : name));
   if (head) {
     const t = structuredClone(head);
     delete t.link;
@@ -52,31 +66,73 @@ export function buildMenu(deck, grade, name, opts = {}) {
         paras: [{ algn: 'ctr', runs: [{ t: title, sz: 36, b: true, font: 'Comic Sans MS', color: '#000000' }] }] } });
     top = 14 + 70 + GAP;
   }
-  // The biggest icons that fit every song in the space left.
-  const W = deck.w - 2 * GAP, H = deck.h - top - GAP, n = songs.length;
+  // The biggest icons that fit every song in the space left, each section on rows of its own.
+  const parts = SECTIONS.map((p) => items.filter((x) => x.part === p)).filter((l) => l.length);
+  const W = deck.w - 2 * GAP, H = deck.h - top - GAP, n = Math.max(...parts.map((l) => l.length), 1);
+  const BREAK = GAP * 2;                   // extra space between sections
+  const rowsFor = (cols) => parts.reduce((t, l) => t + Math.ceil(l.length / cols), 0);
   let best = { size: 0, cols: 1 };
-  for (let cols = 1; cols <= Math.max(n, 1); cols++) {
-    const rows = Math.ceil(n / cols);
-    const size = Math.min((W - GAP * (cols - 1)) / cols, (H - GAP * (rows - 1)) / rows);
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = rowsFor(cols);
+    const size = Math.min((W - GAP * (cols - 1)) / cols, (H - GAP * (rows - 1) - BREAK * (parts.length - 1)) / rows);
     if (size > best.size) best = { size, cols };
   }
   const { size, cols } = best;
-  const rows = Math.ceil(n / cols);
-  const y0 = top + (H - (rows * size + (rows - 1) * GAP)) / 2;
-  songs.forEach(({ s, i }, k) => {
-    const row = Math.floor(k / cols), col = k % cols;
-    const inRow = Math.min(cols, n - row * cols);
-    const x0 = GAP + (W - (inRow * size + (inRow - 1) * GAP)) / 2;
-    const x = x0 + col * (size + GAP), y = y0 + row * (size + GAP);
+  const rows = rowsFor(cols);
+  let y = top + (H - (rows * size + (rows - 1) * GAP + BREAK * (parts.length - 1))) / 2;
+  const placed = [];
+  for (const list of parts) {
+    for (let r = 0; r * cols < list.length; r++) {
+      const row = list.slice(r * cols, r * cols + cols);
+      const x0 = GAP + (W - (row.length * size + (row.length - 1) * GAP)) / 2;
+      row.forEach((song, c) => placed.push({ ...song, x: x0 + c * (size + GAP), y }));
+      y += size + GAP;
+    }
+    y += BREAK;
+  }
+  placed.forEach(({ s, i, part, x, y, submenu, media }) => {
+    if (submenu) {
+      els.push({ t: 'pic', x, y, w: size, h: size, geom: 'rect', media, alt: PART_NAMES[submenu], link: { submenu } });
+      return;
+    }
     const locked = opts.locked && opts.locked.has(i);
     els.push({ t: 'pic', x, y, w: size, h: size, geom: 'rect', media: s.song.icon, alt: s.song.name,
       link: locked ? undefined : { slide: i } });
-    if (locked && opts.lock) els.push({ t: 'pic', x: x - size * 0.02, y: y - size * 0.02, w: size * 1.04, h: size * 1.04, geom: 'rect', media: opts.lock });
+    // Placed as the decks place it: its bottom margin cropped off, its ring centered on the icon.
+    if (locked && opts.lock) els.push({ t: 'pic', x: x - size * 3 / 145, y, w: size * 151 / 145, h: size,
+      geom: 'rect', media: opts.lock, crop: [0, 0, 0, 0.08215] });
     else if (locked) els.push({ t: 'sp', x, y, w: size, h: size, geom: 'roundRect', adj: {},
       fill: { type: 'solid', color: '#55555599' } });
+    // Move Its share an icon: each carries its number.
+    const no = part === 'moveIt' && /(\d+)\s*$/.exec(s.title || '');
+    if (no) {
+      const d = size * 0.36;
+      els.push({ t: 'sp', x: x + size - d, y: y + size - d, w: d, h: d, geom: 'ellipse', adj: {},
+        fill: { type: 'solid', color: '#FFFFFF' }, line: { color: '#000000', width: Math.max(1.5, size / 60) },
+        text: { anchor: 'ctr', ins: [0, 0, 0, 0], wrap: false,
+          paras: [{ algn: 'ctr', runs: [{ t: no[1], sz: Math.round(d / PX_PER_PT * 0.55), b: true, font: 'Comic Sans MS', color: '#000000' }] }] } });
+    }
   });
-  return { els, bg: template ? template.bg : null, title, generated: true };
+  return { els, bg: template ? template.bg : null, title, grade, generated: true };
 }
+
+const PART_NAMES = { moveIt: 'Move It', dance: 'Dances' };
+
+/** The picture the deck's own menus use for a button to its Move It or dance menu. */
+function sectionIcon(deck, part) {
+  for (const m of deck.slides.filter((s) => s.menu)) {
+    for (const e of m.els) {
+      const t = e.t === 'pic' && e.link && e.link.slide != null && deck.slides[e.link.slide];
+      if (!t || !t.menu) continue;
+      const songs = t.els.filter((x) => x.link && x.link.slide != null).map((x) => deck.slides[x.link.slide])
+        .filter((x) => x && x.song);
+      if (songs.length && songs.filter((x) => songSection(x) === part).length * 2 > songs.length) return e.media;
+    }
+  }
+  return null;
+}
+
+const norm = (t) => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 let ruler = null;
 

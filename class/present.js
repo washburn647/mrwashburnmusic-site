@@ -2,7 +2,7 @@
 
    Keys: Right, Down, Space, Page Down, Enter = next (clickers send Page Down)
          Left, Up, Page Up, Backspace = previous
-         Home / End = first / last   F = full screen   N = notes   D = draw
+         Home / End = first / last   F = full screen   N = notes
          M = menu   Esc = leave
    Swipe left or right on a touch screen. Clicking a linked shape follows its
    link; clicking anywhere else only shows the controls, because slides hold
@@ -17,7 +17,6 @@ import { forGrade, taggedFor, GRADES } from './marks.js';
 import { spinnerOverlay } from './widgets.js';
 
 const SPINNER_URL = /spinthewheel\.app|wheelofnames\.com|pickerwheel\.com|classtools\.net\/random-name/i;
-const INK = ['#000000', '#D04B4B', '#3B83C0', '#4A9C5C', '#FFFFFF'];
 
 export const MENU = -1;                    // the index Present gives a grade's built menu
 
@@ -63,84 +62,10 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   bar.appendChild(num);
   btn('›', 'Next slide', () => step(1));
   const menuBtn = btn('▦', 'Menu (M)', () => show(MENU));
-  const penBtn = btn('✏', 'Draw (D)', () => togglePen());
-  const inks = document.createElement('span');
-  inks.className = 'inks';
-  inks.hidden = true;
-  INK.forEach((c, i) => {
-    const b = document.createElement('button');
-    b.className = 'ink' + (i === 0 ? ' on' : '');
-    b.style.background = c;
-    b.title = 'Pen color';
-    b.addEventListener('click', (e) => { e.stopPropagation(); pen = c; inks.querySelectorAll('.ink').forEach((x) => x.classList.toggle('on', x === b)); });
-    inks.appendChild(b);
-  });
-  const wipe = document.createElement('button');
-  wipe.textContent = '⌫';
-  wipe.title = 'Clear drawing';
-  wipe.addEventListener('click', (e) => { e.stopPropagation(); clearInk(); });
-  inks.appendChild(wipe);
-  bar.appendChild(inks);
   btn('☰', 'Speaker notes (N)', () => toggleNotes());
   btn('⛶', 'Full screen (F)', () => toggleFull());
   btn('✕', 'Leave (Esc)', () => close());
   root.appendChild(bar);
-
-  // Drawing over the slide: kept per slide for this sitting, never saved.
-  const ink = document.createElement('canvas');
-  ink.className = 'ink-layer';
-  ink.hidden = true;
-  const drawings = new Map();               // deckId:index -> data URL
-  let pen = INK[0];
-  let drawing = false;
-
-  function togglePen() {
-    drawing = !drawing;
-    ink.hidden = !drawing && !drawings.has(slideKey());
-    ink.classList.toggle('on', drawing);
-    penBtn.classList.toggle('on', drawing);
-    inks.hidden = !drawing;
-  }
-  function loadInk() {
-    ink.width = deck.w;
-    ink.height = deck.h;
-    const url = drawings.get(slideKey());
-    ink.hidden = !drawing && !url;
-    if (!url) return;
-    const img = new Image();
-    img.onload = () => ink.getContext('2d').drawImage(img, 0, 0);
-    img.src = url;
-  }
-  function clearInk() {
-    ink.getContext('2d').clearRect(0, 0, ink.width, ink.height);
-    drawings.delete(slideKey());
-  }
-  ink.addEventListener('pointerdown', (e) => {
-    if (!drawing) return;
-    e.stopPropagation();
-    const r = ink.getBoundingClientRect();
-    const at = (ev) => [(ev.clientX - r.left) * ink.width / r.width, (ev.clientY - r.top) * ink.height / r.height];
-    const g = ink.getContext('2d');
-    g.strokeStyle = pen;
-    g.lineWidth = pen === '#FFFFFF' ? 28 : 6;
-    g.lineCap = g.lineJoin = 'round';
-    g.globalCompositeOperation = pen === '#FFFFFF' ? 'destination-out' : 'source-over';
-    let [x, y] = at(e);
-    g.beginPath();
-    g.moveTo(x, y);
-    g.lineTo(x + 0.1, y);
-    g.stroke();
-    ink.setPointerCapture(e.pointerId);
-    const move = (ev) => { [x, y] = at(ev); g.lineTo(x, y); g.stroke(); };
-    const up = () => {
-      ink.removeEventListener('pointermove', move);
-      ink.removeEventListener('pointerup', up);
-      drawings.set(slideKey(), ink.toDataURL());
-    };
-    ink.addEventListener('pointermove', move);
-    ink.addEventListener('pointerup', up);
-  });
-  ink.addEventListener('click', (e) => { if (drawing) e.stopPropagation(); });
 
   let index = startAt === MENU && menu ? MENU : clamp(startAt || 0);
   const trail = [];                       // { deck, media, index } a link jumped away from
@@ -188,8 +113,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     resume();
     const slide = index === MENU ? curMenu() : deck.slides[index];
     const stage = renderSlide(slide, deck, { media, onLink: follow, timer: () => clock(elapsed()), live: true });
-    frame.replaceChildren(stage, ink);
-    loadInk();
+    frame.replaceChildren(stage);
     fit();
     num.textContent = index === MENU ? '▦' : (index + 1) + ' / ' + deck.slides.length;
     notes.textContent = slide.notes || 'No notes on this slide.';
@@ -231,6 +155,12 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
         return;
       }
     }
+    if (link.submenu && menuFor) {
+      const g = curMenu() && curMenu().grade || grade;
+      const m = g && await menuFor(deckId, g, { part: link.submenu });
+      if (m) { trail.push({ deck, media, index, deckId, deckName, menu: curMenu() }); menus.set(deckId, m); show(MENU); }
+      return;
+    }
     if (link.slide != null) {
       const m = await ownMenu(deck.slides[link.slide]);
       trail.push({ deck, media, index, deckId, deckName });
@@ -261,7 +191,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
      songs, those for the grade showing. */
   async function ownMenu(target) {
     if (!target || !target.menu || !menuFor) return null;
-    const named = /^(PK|K|1)\b/i.exec((target.title || '').trim());
+    const named = /^(PK|K|1)\s+\S/i.exec((target.title || '').trim());
     if (named) return menuFor(deckId, GRADES.find((g) => g === named[1].toUpperCase()));
     if (!grade) return null;
     const only = new Set(target.els.filter((e) => e.link && e.link.slide != null).map((e) => e.link.slide));
@@ -273,6 +203,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     const t = trail.pop();
     pause();
     ({ deck, media, deckId, deckName } = t);
+    if (t.menu) menus.set(deckId, t.menu);
     show(t.index);
   }
 
@@ -301,7 +232,6 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     else if (k === 'n' || k === 'N') toggleNotes();
     else if (k === 'b' || k === 'B') back();
     else if ((k === 'm' || k === 'M') && curMenu()) show(MENU);
-    else if (k === 'd' || k === 'D') togglePen();
     else if (k === 'Escape') { if (!document.fullscreenElement) close(); return; }
     else return;
     e.preventDefault();
@@ -323,7 +253,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   let touchX = null;
   root.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
   root.addEventListener('touchend', (e) => {
-    if (touchX == null || drawing) return;
+    if (touchX == null) return;
     const dx = e.changedTouches[0].clientX - touchX;
     touchX = null;
     if (Math.abs(dx) > 60) { step(dx < 0 ? 1 : -1); e.preventDefault(); }
