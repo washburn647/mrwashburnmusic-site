@@ -335,6 +335,7 @@ body[data-screen="progress"] {
 .answer .notation { width: 220px; }
 .dots { display: flex; justify-content: center; gap: 16px; min-height: 24px; align-items: center; }
 .dots i { width: 22px; height: 22px; border-radius: 50%; background: var(--sage-soft); }
+.dots.long { gap: 8px; }
 .dots.call i.now, .dots.call i.past { background: var(--sage); }
 .dots.resp i.past { background: var(--wheat-soft); }
 .dots.resp i.now { background: var(--wheat); transform: scale(1.25); }

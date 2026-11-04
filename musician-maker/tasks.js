@@ -13,7 +13,8 @@
            null              nothing to hear
      see   'notation'        the notes on screen during the call (and the turn)
            null              nothing to see
-   The director rolls one of a cell's stimuli for each game. */
+   The director rolls one of a cell's stimuli for each game.
+   beats: the learner's turn, if not 4 (beatsOf). */
 
 const S = (hear, see = null) => ({ hear, see });
 const EAR = [S('instrument'), S('neutral')]; // instrument or neutral syllables
@@ -50,16 +51,18 @@ export const TASKS = [
   {
     id: 'du', name: 'Du It', cue: 'DU IT!', icon: 'du', xp: 1,
     about: 'Tap the syllable tiles in rhythm.',
-    steps: { 2: [S('syllables'), S('syllables+inst')], 3: ANY, 4: ANY, 5: ANY, 6: ROTE_READ, 7: READ, 8: READ },
+    steps: { 2: [S('syllables'), S('syllables+inst')], 3: EAR, 4: EAR, 5: ANY, 6: ROTE_READ, 7: READ, 8: READ },
   },
   {
-    id: 'note', name: 'Note It', cue: 'NOTE IT!', icon: '♫', xp: 1,
-    about: 'Pick the notes on the note tiles before the 4 beats run out.',
+    id: 'note', name: 'Note It', cue: 'NOTE IT!', icon: '♫', xp: 1, beats: 8,
+    about: 'Pick the notes on the note tiles before the 8 beats run out.',
     steps: { 9: ROTE_READ, 10: WRITE, 11: WRITE, 12: WRITE },
   },
 ];
 
 export const taskById = (id) => TASKS.find((t) => t.id === id);
+/* How long the learner's turn is, in beats: 4, or a task's own (Note It picks out of rhythm). */
+export const beatsOf = (id) => taskById(id)?.beats || 4;
 export const taskKey = (task, step) => `${task}-${step}`; // e.g. 'say-1': intros, strength, NEW tags
 export const cellOf = (task, step) => taskById(task)?.steps[step] || null;
 export const tasksAt = (step) => TASKS.filter((t) => t.steps[step]);
@@ -125,7 +128,7 @@ export function introLines(task, step, game = null) {
   const lines = [...first, `${action[0].toUpperCase()}${action.slice(1)}`];
   if (task === 'say') lines.push('Say it out loud. With the mic on, the game hears you; without it, tap along as you say it.');
   if (task === 'du') lines.push('du goes on the beat, de on the second half of it.');
-  if (task === 'note') lines.push('You have 4 beats to pick them.');
+  if (task === 'note') lines.push(`You have ${beatsOf(task)} beats to pick them.`);
   if (step === 5 || step === 12) lines.push('Make yours different from mine, and try new ones: the same answer again earns less.');
   if (task === 'note' && step >= 10) lines.push('No notes to look at earns more points.');
   return lines;

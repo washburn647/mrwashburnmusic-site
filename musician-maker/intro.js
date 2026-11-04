@@ -18,8 +18,8 @@
 
 import * as snd from './sound.js';
 import { STEPS, ALL, patternsFor, byId, sayAs, isCreate } from './steps.js';
-import { taskById, parseKey, cellOf, introLines, howTo, look } from './tasks.js';
-import { makeTurn, TURN_BEATS, WHY } from './turn.js';
+import { taskById, parseKey, cellOf, introLines, howTo, look, beatsOf } from './tasks.js';
+import { makeTurn, WHY } from './turn.js';
 
 export const INTROS = {
   'say-1': {
@@ -91,7 +91,7 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
   const spb = 60 / PRACTICE_BPM;
   const at = (t, fn) => setTimeout(fn, Math.max(0, (t - ctx().currentTime + snd.latency()) * 1000));
   const beatDots = (k, n, kind) => {
-    dots.className = `dots ${kind}`;
+    dots.className = `dots ${kind}${n > 4 ? ' long' : ''}`;
     dots.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < k ? 'past' : i === k ? 'now' : '' })));
   };
 
@@ -132,11 +132,12 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
     area.classList.remove('live');
     area.replaceChildren(turn.el);
     at(r0, () => { area.classList.add('live'); said.textContent = shout; });
-    for (let k = 0; k < TURN_BEATS; k++) {
+    const n = beatsOf(task.id);
+    for (let k = 0; k < n; k++) {
       snd.hit('claves', r0 + k * spb, 0.25);
-      at(r0 + k * spb, () => beatDots(k, TURN_BEATS, 'resp'));
+      at(r0 + k * spb, () => beatDots(k, n, 'resp'));
     }
-    at(r0 + TURN_BEATS * spb, () => {
+    at(r0 + n * spb, () => {
       area.classList.remove('live');
       area.classList.add('over');
       const res = turn.grade();

@@ -1,7 +1,7 @@
 /* Musician Maker: one nonstop stream of micro-games on one groove.
    A run is laps of three sets (92, 108, 126 bpm), each set followed by a breather, then a
-   boss and an intermission. A micro-game is cue (4 beats), call (4), the learner's turn (4),
-   payoff (4): whole 2-bar phrases, so the groove's 4-bar loop starts again on every call.
+   boss and an intermission. A micro-game is cue (4 beats), call (4), the learner's turn (4;
+   Note It 8), payoff (4): whole bars, and the groove's 4-bar loop starts again on every call.
    The director (director.js) rolls each game's step, task (tasks.js), stimulus and pattern;
    the turn's controls are turn.js; the groove (sound.js) grows with the combo.
    Why it works this way: the stream engine design doc in the project. */
@@ -10,8 +10,8 @@ import * as snd from './sound.js';
 import { makeClock } from './clock.js';
 import * as mic from './mic.js';
 import { STEPS, BANDS, UNIT, onsets, sylText, loadMarks, isCreate, shows, bumText } from './steps.js';
-import { TASKS, taskById, taskKey, howTo, tasksAt, stepsOf, allTaskKeys, XP_NO_NOTES, repeatFactor } from './tasks.js';
-import { makeTurn, TURN_BEATS, WHY, NOTE_SVG } from './turn.js';
+import { TASKS, taskById, taskKey, howTo, tasksAt, stepsOf, allTaskKeys, beatsOf, XP_NO_NOTES, repeatFactor } from './tasks.js';
+import { makeTurn, WHY, NOTE_SVG } from './turn.js';
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import * as OPT from './options.js';
@@ -733,7 +733,7 @@ function pickGame() {
 /* ---------------- one micro-game ---------------- */
 
 /* A micro-game: cue (4 beats) · call (4: hear it, read it, or both) · the learner's turn
-   (4, any task) · payoff (4; 8 for Writing Create, which plays the learner's pattern back).
+   (4, any task; Note It 8) · payoff (4; 8 for Writing Create, which plays the learner's pattern back).
    The director has rolled the step, task, stimulus and pattern; the game is any of them. */
 function gameSeg(B, seg) {
   const warm = R.lap === 0 && seg.set === 0 && !R.force;
@@ -750,7 +750,8 @@ function gameSeg(B, seg) {
   const c0 = B + 4;
   snd.setGroovePhase(c0); // the call starts on bar 1 of the groove
   const r0 = c0 + 4;
-  const p0 = r0 + TURN_BEATS;
+  const n = beatsOf(item.task);
+  const p0 = r0 + n;
   const end = p0 + (create && item.task === 'note' ? 8 : 4);
   const turn = makeTurn(item, game, turnUi(T(r0), spb));
 
@@ -772,7 +773,7 @@ function gameSeg(B, seg) {
     R.dom.stage.parentElement.classList.add('yours');
     flash(task.cue, 'turn');
   });
-  for (let k = 0; k < TURN_BEATS; k++) later(T(r0 + k), () => dots(k, TURN_BEATS, 'resp'));
+  for (let k = 0; k < n; k++) later(T(r0 + k), () => dots(k, n, 'resp'));
   later(T(p0), () => {
     R.dom.controls.classList.remove('live');
     R.dom.controls.classList.add('over');
@@ -866,7 +867,7 @@ function introBreak(B, item, game) {
 
 function dots(k, n, kind) {
   if (k === 0 && kind === 'call') clearTicks();
-  R.dom.dots.className = `dots ${kind}`;
+  R.dom.dots.className = `dots ${kind}${n > 4 ? ' long' : ''}`;
   R.dom.dots.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < k ? 'past' : i === k ? 'now' : '' })));
   hop(k, n, kind);
 }
@@ -1161,17 +1162,26 @@ function boss(B) {
     bump(R.dom.cue, 'slam');
     R.dom.prompt.replaceChildren(h('div', { class: 'boss-name' }, game.bossName), h('div', { class: 'hearts' }, '❤️❤️❤️❤️'));
   });
-  snd.setGroovePhase(B + 4);
+  let c0 = B + 4;
   for (let r = 0; r < rounds; r++) {
-    const c0 = B + 4 + r * 8;
     const r0 = c0 + 4;
     const item = bossItem();
     const task = taskById(item.task);
+    const n = beatsOf(item.task);
+    const p0 = r0 + n;
+    const call = c0;
     const turn = makeTurn(item, game, turnUi(T(r0), spb));
-    R.groove.duckFrom = T(c0);
-    R.groove.duckUntil = T(R.micOn && item.task === 'say' ? r0 + 4 : r0);
-    R.groove.micFrom = T(r0) - 0.3 * spb;
-    later(T(c0), () => {
+    // Each round sets the groove as it starts: soft under the call (and Speak/Sing It's turn
+    // with the mic), and bar 1 on the call, whatever the turn before it took.
+    const groove = () => {
+      R.groove.duckFrom = T(call);
+      R.groove.duckUntil = T(R.micOn && item.task === 'say' ? p0 : r0);
+      R.groove.micFrom = T(r0) - 0.3 * spb;
+      snd.setGroovePhase(call);
+    };
+    if (r) R.clock.at(call, groove);
+    else groove();
+    later(T(call), () => {
       R.dom.prompt.querySelector('.notation')?.remove();
       R.dom.prompt.querySelector('.say')?.remove();
       const { how, look } = howTo(item, game);
@@ -1180,17 +1190,17 @@ function boss(B) {
       R.item = item;
       useTurn(turn);
     });
-    for (let k = 0; k < 4; k++) later(T(c0 + k), () => dots(k, 4, 'call'));
-    callOut(item, game, T(c0), spb);
+    for (let k = 0; k < 4; k++) later(T(call + k), () => dots(k, 4, 'call'));
+    callOut(item, game, T(call), spb);
     later(T(r0), () => { R.dom.controls.classList.add('live'); flash(task.cue, 'turn'); });
-    for (let k = 0; k < TURN_BEATS; k++) later(T(r0 + k), () => dots(k, TURN_BEATS, 'resp'));
-    later(T(r0 + TURN_BEATS), () => {
+    for (let k = 0; k < n; k++) later(T(r0 + k), () => dots(k, n, 'resp'));
+    later(T(p0), () => {
       R.dom.controls.classList.remove('live');
       R.dom.controls.classList.add('over');
       const res = grade(item, turn);
       if (res.right) hits++;
       result(item, res, {
-        t: T(r0 + TURN_BEATS),
+        t: T(p0),
         quiet: true,
         onWin: () => {
           const hearts = R.dom.prompt.querySelector('.hearts');
@@ -1202,8 +1212,9 @@ function boss(B) {
         onFail: () => { bump(R.dom.prompt.querySelector('.hearts'), 'fx-no'); flash('missed!', 'bad'); R.api.miss?.(); },
       });
     });
+    c0 = p0;
   }
-  const done = B + 4 + rounds * 8;
+  const done = c0;
   later(T(done), () => {
     if (hits >= 3) {
       R.api.win();

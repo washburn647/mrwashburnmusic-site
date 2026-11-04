@@ -14,8 +14,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   followed by an 8-beat breather, then a boss (The Big Cheese, The Big Fluff or The Mane Event, by turns) and an intermission where the
   learner can stop. The next lap starts back at 92. A rung is held when the learner is
   struggling.
-- **Micro-game:** cue (4 beats) · call (4) · the learner's turn (4) · payoff (4; Writing
-  Create 8, to play the pattern back). Every part is whole bars, and the groove loop restarts
+- **Micro-game:** cue (4 beats) · call (4) · the learner's turn (4; Note It 8) · payoff (4;
+  Writing Create 8, to play the pattern back). Every part is whole bars, and the groove loop restarts
   at bar 1 on each call, so a game never lands mid-loop. Each game rolls a step and a task:
   the step sets the patterns and what the call is (the stimulus), the task sets how the
   learner answers. Syllables on screen carry iconic notation: a stem over each note, a beam
@@ -26,7 +26,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - **Tasks** (`tasks.js`, Kyle's writeup cell by cell): Speak/Sing It (steps 1–8, said or sung;
   the only task the mic hears; ×1.5 XP), Tap It (the game's object), Play It (the game's
   instrument), Du It (du and de tiles in rhythm, steps 2–8) and Note It (♩ and ♫ tiles out of
-  rhythm within the 4 beats, steps 9–12; ×1.5 XP without the notes to look at). At the create
+  rhythm within 8 beats, steps 9–12; ×1.5 XP without the notes to look at). At the create
   steps (5, 12) the answer is the learner's own pattern; the same one again soon earns less.
 - **Combo:** 3, 6, 10 and 15 in a row add bass, drums, horns and the full band to the groove
   and multiply XP ×2 to ×5. A miss resets it (Mookie mode: drops one tier). XP is never lost.

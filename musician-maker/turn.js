@@ -9,14 +9,12 @@
      du              the unit's syllable tiles (du, de), tapped in time: the right tile on the
                      right part of the beat.
      note            notation tiles (♩, ♫) and a backspace, picked out of time, all four
-                     before the turn's 4 beats are up.
-   Every turn is 4 beats. Echo steps grade against the call's pattern; create steps (5, 12)
+                     before the turn's 8 beats are up.
+   A turn is 4 beats, or the task's own (tasks.js beatsOf). Echo steps grade against the call's pattern; create steps (5, 12)
    want a whole pattern of the learner's own, different from the call. */
 
 import { onsets, readTaps, fromCells, sylText, SYLS, isCreate } from './steps.js';
-import { look } from './tasks.js';
-
-export const TURN_BEATS = 4;
+import { look, beatsOf } from './tasks.js';
 
 /* Fixed markup for the note tiles and the answer slots. */
 export const NOTE_SVG = {
@@ -37,15 +35,16 @@ export const WHY = {
 /* item: { task, step, stim, pattern }. game: for its object, instrument and sounds.
    ui: { h, now() audio time, latency(), hit(name, vol), mic (the mic is on), tResp (audio time
    the turn starts), spb, feel(info) optional: tap feedback for the host to draw }.
-   Returns { el, keys(e), input(time, fromMic, ev), grade(), reveal(res), inputs() }. */
+   Returns { el, beats, keys(e), input(time, fromMic, ev), grade(), reveal(res), inputs() }. */
 export function makeTurn(item, game, ui) {
   const { h } = ui;
   const { task, step, pattern, stim } = item;
   const create = isCreate(step);
   const kit = game?.kit || {};
   const { tResp, spb } = ui;
+  const beats = beatsOf(task);
   const from = tResp - 0.25 * spb;
-  const to = tResp + TURN_BEATS * spb - 0.05 * spb;
+  const to = tResp + beats * spb - 0.05 * spb;
   const open = (t) => t >= from && t <= to;
   const taps = []; // say/tap/play: times; du: { t, syl }
   const cells = []; // note
@@ -198,6 +197,7 @@ export function makeTurn(item, game, ui) {
 
   return {
     el,
+    beats,
     keys: (e) => keys(e),
     input: (time, fromMic, ev) => input(time, fromMic, ev),
     grade,
