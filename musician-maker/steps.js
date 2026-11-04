@@ -1,33 +1,37 @@
-/* The 12 Conversational Solfège steps as the stream uses them, and Unit 1's patterns.
-   A step decides what the call is (call) and which answer modes can test it (modes);
-   games never know which step they are teaching. Patterns and their ids come from the
-   site's catalogue, so recordings made at /studio/record/ fit here. */
+/* The 12 steps of Conversational Solfège as the stream uses them, and Unit 1's patterns.
+   A step is where the learner is in the curriculum; what they do at a step is a task
+   (tasks.js), and what they hear or see first depends on both. Games never know which step
+   they are teaching. Patterns and their ids come from the site's catalogue, so recordings made
+   at /studio/record/ fit here.
+   set: which patterns the step uses (fam: familiar, unf: unfamiliar, any). */
 
 import { DEFAULT_UNITS, unitPatterns, patternById, siteUnits } from '/assets/patterns/patterns.js';
 
-// call: neutral = heard on "bum", syllables = heard in syllables, notation = seen as notes,
-//       text = seen as syllables, none = nothing (compose)
-// show: what Pick options look like
 export const STEPS = [
   null,
-  { n: 1, band: 'ear', name: 'Echo', cue: 'ECHO!', call: 'neutral', modes: ['perform'], set: 'fam', say: 'Listen, then tap it back!' },
-  { n: 2, band: 'ear', name: 'Say it back', cue: 'SAY IT!', call: 'syllables', modes: ['perform'], set: 'fam', say: 'Say it back in syllables!' },
-  { n: 3, band: 'ear', name: 'Name it', cue: 'NAME IT!', call: 'neutral', modes: ['perform', 'pick'], show: 'syllables', set: 'fam', say: 'What did you hear?' },
-  { n: 4, band: 'ear', name: 'Name it: new', cue: 'NAME IT!', call: 'neutral', modes: ['perform', 'pick'], show: 'syllables', set: 'unf', say: 'A new one! What did you hear?' },
-  { n: 5, band: 'ear', name: 'Answer back', cue: 'ANSWER!', call: 'syllables', modes: ['create'], set: 'any', say: 'Answer me with a different one!' },
-  { n: 6, band: 'read', name: 'Match', cue: 'MATCH!', call: 'syllables', modes: ['pick'], show: 'notation', set: 'fam', say: 'Which notes did you hear?' },
-  { n: 7, band: 'read', name: 'Read it', cue: 'READ!', call: 'notation', modes: ['perform', 'pick'], show: 'syllables', set: 'fam', say: 'Read it!' },
-  { n: 8, band: 'read', name: 'Read it: new', cue: 'READ!', call: 'notation', modes: ['perform', 'pick'], show: 'syllables', set: 'unf', say: 'A new one. Read it!' },
-  { n: 9, band: 'write', name: 'Build it', cue: 'BUILD!', call: 'text', modes: ['build', 'pick'], show: 'notation', set: 'fam', say: 'Build the notes!' },
-  { n: 10, band: 'write', name: 'Dictation', cue: 'WRITE!', call: 'neutral', modes: ['build', 'pick'], show: 'notation', set: 'fam', say: 'Write what you hear!' },
-  { n: 11, band: 'write', name: 'Dictation: new', cue: 'WRITE!', call: 'neutral', modes: ['build', 'pick'], show: 'notation', set: 'unf', say: 'A new one. Write what you hear!' },
-  { n: 12, band: 'write', name: 'Compose', cue: 'COMPOSE!', call: 'none', modes: ['compose'], set: 'any', say: 'Make your own!' },
+  { n: 1, band: 'ear', name: 'Rote', set: 'fam', about: 'Echo patterns you hear on "bum" or on an instrument.' },
+  { n: 2, band: 'ear', name: 'CS Rote', set: 'fam', about: 'Echo patterns you hear in syllables.' },
+  { n: 3, band: 'ear', name: 'CS Decode Familiar', set: 'fam', about: 'Hear a pattern you know without its syllables, and give them back.' },
+  { n: 4, band: 'ear', name: 'CS Decode Unfamiliar', set: 'unf', about: 'The same, with patterns you haven\'t learned yet.' },
+  { n: 5, band: 'ear', name: 'Create', set: 'any', about: 'Answer with a pattern of your own.' },
+  { n: 6, band: 'read', name: 'Reading Rote', set: 'fam', about: 'Echo the syllables while you see the notes.' },
+  { n: 7, band: 'read', name: 'Reading Familiar', set: 'fam', about: 'Read patterns you know.' },
+  { n: 8, band: 'read', name: 'Reading Unfamiliar', set: 'unf', about: 'Read patterns you haven\'t learned yet.' },
+  { n: 9, band: 'write', name: 'Writing Rote', set: 'fam', about: 'Write the notes while you hear them and see them.' },
+  { n: 10, band: 'write', name: 'Writing Familiar', set: 'fam', about: 'Write patterns you know from hearing them.' },
+  { n: 11, band: 'write', name: 'Writing Unfamiliar', set: 'unf', about: 'Write patterns you haven\'t learned yet from hearing them.' },
+  { n: 12, band: 'write', name: 'Writing Create', set: 'any', about: 'Write a pattern of your own as an answer.' },
 ];
+
+/* Create steps: the answer is the learner's own pattern, not an echo. */
+export const isCreate = (n) => n === 5 || n === 12;
 
 export const BANDS = { ear: 'Ear', read: 'Read', write: 'Write' };
 
 export const UNIT = DEFAULT_UNITS.find((u) => u.id === 'unit-1');
 export const ALL = unitPatterns(UNIT); // every 2-bar pattern of ♩ and ♫ in 2/4
+// The unit's syllables, for Du It's tiles: on the beat, and on the second half of the beat.
+export const SYLS = ['du', 'de'];
 
 // Until the recorder's marks for Unit 1 are on the site, the test build's familiar set.
 let pool = ALL.map((p) => p.id);
@@ -67,22 +71,12 @@ export function onsets(p) {
 
 export const cellSyl = (c) => (c === 'ee' ? 'du-de' : 'du');
 export const sylText = (p) => p.cells.map(cellSyl).join('  ');
+export const bumText = (p) => p.cells.map((c) => (c === 'ee' ? 'bum-bum' : 'bum')).join('  ');
+/* What a step can show of a pattern when it gives the answer: Rote has no syllables yet (on
+   "bum"), the ear steps add the syllables, and reading adds the notes. */
+export const shows = (n) => (n >= 6 ? 'notes' : n >= 2 ? 'syllables' : 'bum');
+export const sayAs = (p, n) => (shows(n) === 'bum' ? bumText(p) : sylText(p));
 export const fromCells = (cells) => patternById(`rhythm/2-4/${cells.join('-')}`);
-
-/* Pick options: the answer plus n-1 others, 1 cell away when close, else 2. */
-export function options(p, n, close) {
-  const diff = (a) => a.cells.reduce((d, c, i) => d + (c !== p.cells[i]), 0);
-  const want = close ? 1 : 2;
-  const others = ALL.filter((q) => q.id !== p.id)
-    .map((q) => ({ q, score: Math.abs(diff(q) - want) + Math.random() * 0.9 }))
-    .sort((a, b) => a.score - b.score)
-    .slice(0, n - 1)
-    .map((o) => o.q);
-  const list = [...others];
-  const at = Math.floor(Math.random() * n);
-  list.splice(at, 0, p);
-  return { list, correct: at };
-}
 
 /* Taps (in beats from the response's downbeat) read as a pattern, or null if they
    don't make one. */
@@ -99,23 +93,4 @@ export function readTaps(beats) {
     cells.push(slots.has(k + 0.5) ? 'ee' : 'q');
   }
   return fromCells(cells);
-}
-
-/* What to do, in a few words a young reader can take in at a glance. Shown for the whole
-   game: `how` is the full line, `go` the shout when it's the learner's turn, `look` what
-   the call asks of them (listen or read). */
-export function howTo(stepN, mode) {
-  const s = STEPS[stepN];
-  const look = s.call === 'neutral' || s.call === 'syllables' ? 'listen' : s.call === 'none' ? '' : 'read';
-  const first = look === 'listen' ? 'Listen. Then ' : look === 'read' ? 'Read it. Then ' : '';
-  const say = { 1: 'tap it back', 2: 'say it back and tap', 3: 'say it in du and de', 4: 'say it in du and de', 7: 'say it and tap', 8: 'say it and tap' };
-  const lines = {
-    perform: [`${first}${say[stepN] || 'tap it back'}.`, stepN === 1 ? 'TAP IT!' : 'SAY IT!'],
-    create: ['Listen. Then answer with a different one.', 'YOUR TURN!'],
-    pick: [look === 'read' ? `${first}tap the one that matches.` : 'Listen. Then tap the one you heard.', 'PICK ONE!'],
-    build: [look === 'read' ? `${first}tap the boxes to make these notes.` : 'Listen. Then tap the boxes to write it.', 'BUILD IT!'],
-    compose: ['Tap the boxes to make your own.', 'GO!'],
-  };
-  const [how, go] = lines[mode];
-  return { how, go, look };
 }

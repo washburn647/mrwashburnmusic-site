@@ -435,9 +435,16 @@ export function note(name, midi, t, dur, vol = 0.25, dest = master) {
   else synth(t, 440 * 2 ** ((midi - 69) / 12), Math.max(dur, 0.1), vol * 0.5, dest);
 }
 
-/* ---------- the call: a pattern on "bum" or in syllables ---------- */
+/* ---------- the call: a pattern on "bum", in syllables or on an instrument ---------- */
 
-export function call(p, kind, t, spb) {
+/* kind (tasks.js stimulus `hear`): 'neutral', 'syllables', 'instrument', 'syllables+inst'.
+   inst: the instrument's sound (a HITS name), for the last two. */
+export function call(p, kind, t, spb, inst = 'conga') {
+  if (kind === 'instrument' || kind === 'syllables+inst') {
+    for (const o of onsets(p)) hit(inst, t + o.b * spb, kind === 'instrument' ? 0.95 : 0.55);
+    if (kind === 'instrument') return;
+    kind = 'syllables';
+  }
   if (kind === 'syllables' && kyle?.has(p.id)) {
     kyle.say(p.id, t, { bpm: 60 / spb });
     return;

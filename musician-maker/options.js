@@ -1,6 +1,6 @@
 /* Game options, set in the studio's Musician Maker game workshop (/studio/games/).
    Per game: whether it comes up in the stream, whether it can host the boss, which win and
-   fail gags can come up, and its tap sound.
+   fail gags can come up, its tap sound (Tap It's object) and its instrument's sound (Play It).
    - games.json: the options learners get. The workshop's "Save for site" downloads it and
      tools/add_games.py puts it here.
    - The workshop's own copy (localStorage on Kyle's device): drafts. Only a workshop test
@@ -10,7 +10,10 @@
 import { GAMES } from './games.js';
 
 const KEY = 'musician-maker-workshop-1';
-for (const g of GAMES) g.baseTap ??= g.tap;
+for (const g of GAMES) {
+  g.baseTap ??= g.tap;
+  g.basePlay ??= g.kit.instrument.sound;
+}
 
 export function defaults(g) {
   return {
@@ -19,6 +22,7 @@ export function defaults(g) {
     win: Object.keys(g.gags?.win || {}),
     fail: Object.keys(g.gags?.fail || {}),
     tap: g.baseTap,
+    play: g.basePlay,
   };
 }
 
@@ -35,6 +39,7 @@ export function complete(raw = {}) {
       win: pick('win'),
       fail: pick('fail'),
       tap: typeof o.tap === 'string' && o.tap ? o.tap : d.tap,
+      play: typeof o.play === 'string' && o.play ? o.play : d.play,
     };
   }
   return out;
@@ -71,6 +76,7 @@ export function apply(opts, only = null) {
   for (const g of GAMES) {
     const o = opts[g.id];
     g.tap = o.tap;
+    g.play = o.play;
     g.gagsOn = { win: o.win, fail: o.fail };
   }
   if (only) {

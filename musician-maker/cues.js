@@ -11,6 +11,10 @@ export const CUES = [
   { id: 'build', text: 'Build!' },
   { id: 'write', text: 'Write!' },
   { id: 'compose', text: 'Compose!' },
+  { id: 'tap-it', text: 'Tap it!' },
+  { id: 'play-it', text: 'Play it!' },
+  { id: 'du-it', text: 'Du it!' },
+  { id: 'note-it', text: 'Note it!' },
   { id: 'boss', text: 'Boss!' },
   { id: 'new-step', text: 'New step!' },
   { id: 'perfect', text: 'Perfect!' },
@@ -22,5 +26,5 @@ export const CUES = [
 
 export const cueById = (id) => CUES.find((c) => c.id === id);
 
-/* Step cue text (steps.js) to its id: 'NAME IT!' → 'name-it'. */
+/* Cue text (a task's cue in tasks.js) to its id: 'SAY IT!' → 'say-it'. */
 export const cueId = (text) => text.toLowerCase().replace(/[^a-z ]/g, '').trim().replace(/ +/g, '-');

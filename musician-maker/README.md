@@ -14,30 +14,45 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   followed by an 8-beat breather, then a boss (The Big Cheese, The Big Fluff or The Mane Event, by turns) and an intermission where the
   learner can stop. The next lap starts back at 92. A rung is held when the learner is
   struggling.
-- **Micro-game:** cue (4 beats) · call (4) · response (4 beats; Build and Compose 8) · payoff
-  (4; Compose 8, to play the pattern back). Every part is whole bars, and the groove loop
-  restarts at bar 1 on each call, so a game never lands mid-loop. The call is "bum" (neutral), syllables, notation or text, depending on the step.
-  Syllables on screen carry iconic notation: a stem over each note, a beam over each du-de.
+- **Micro-game:** cue (4 beats) · call (4) · the learner's turn (4; Note It 8) · payoff (4;
+  Writing Create 8, to play the pattern back). Every part is whole bars, and the groove loop restarts
+  at bar 1 on each call, so a game never lands mid-loop. Each game rolls a step and a task:
+  the step sets the patterns and what the call is (the stimulus), the task sets how the
+  learner answers. Syllables on screen carry iconic notation: a stem over each note, a beam
+  over each du-de. A miss shows the answer as the step can: on "bum" at Rote, syllables on
+  the other ear steps, notes and syllables from Reading on.
 - **Band seats:** either side of the bouncing ball, one seat per layer (bass, drums, horns,
   keys). Each lights up when its layer joins at a combo tier and bobs on the beat.
-- **Answer modes:** Perform (tap or speak in time), Pick (1 of 2–4), Build (four ♩/♫ slots),
-  Create (answer with a different pattern), Compose (any pattern, played back).
+- **Tasks** (`tasks.js`, Kyle's writeup cell by cell): Speak/Sing It (steps 1–8, said or sung;
+  the only task the mic hears; ×1.5 XP), Tap It (the game's object), Play It (the game's
+  instrument), Du It (du and de tiles in rhythm, steps 2–8) and Note It (♩ and ♫ tiles out of
+  rhythm within 8 beats, steps 9–12; ×1.5 XP without the notes to look at). At the create
+  steps (5, 12) the answer is the learner's own pattern; the same one again soon earns less.
 - **Combo:** 3, 6, 10 and 15 in a row add bass, drums, horns and the full band to the groove
   and multiply XP ×2 to ×5. A miss resets it (Mookie mode: drops one tier). XP is never lost.
 - **XP:** 10 a right answer, +5 for perfect timing, × tempo (1, 1.5, 2), × 1.5 by mic,
-  × combo. +50 for a set with no misses, +100 for beating the boss, +50 for the first run of
+  × the task's own (above), × combo. +50 for a set with no misses, +100 for beating the boss, +50 for the first run of
   the day. No game over, no leaderboards, no streak that can break.
 
 ## Files
 
-- `main.js`: title, progress view, the run (laps, games, breathers, boss, intermission), grading.
-- `director.js`: picks every next game (60% newest step, 25% weak steps, 15% review), tracks
-  strength per step, pattern and pattern feature, re-queues misses, keeps success near 80%,
-  and decides mastery (strength 80+, 10+ items, half Perform/Build, 3 right at 108+).
-- `steps.js`: the 12 steps (call, answer modes, familiar/unfamiliar set) and Unit 1's patterns
+- `main.js`: title, My progress (Steps: the map; Tasks: each task's steps, with a practice
+  round and the intro again for each one met), the run (laps, games, breathers, boss,
+  intermission), scoring.
+- `director.js`: picks every next game's step (60% newest step, 25% weak steps, 15% review),
+  then a task the step uses (Speak/Sing It twice as often, weak ones more), a stimulus from
+  that task's cell, and a pattern. Tracks strength per step, task at a step, pattern and
+  pattern feature, re-queues misses (same task and pattern, a fresh stimulus), keeps success
+  near 80%, and decides mastery (strength 80+, 10+ items, 3 right at 108+).
+- `tasks.js`: the five tasks: which steps each is used at and what the learner hears or sees
+  there, cue words, XP, the what-to-do line (`howTo`) and an intro's default lines.
+- `turn.js`: one turn of a task: its controls (a pad, the du/de tiles, or the note tiles and
+  slots), what the learner did, and the grade. The run and the intros both use it.
+- `steps.js`: the 12 steps (names, familiar/unfamiliar set) and Unit 1's patterns
   from `/assets/patterns/patterns.js`. Kyle's familiar marks from the recorder
   (`/assets/patterns/units.json`) replace the built-in set once published.
-- `games.js`: the micro-games. A game is a scene and a gesture; it never knows the step.
+- `games.js`: the micro-games. A game is a scene and a gesture; it never knows the step or the
+  task. Each has a kit (`KITS`): the object Tap It taps and the instrument Play It plays.
   Mouse Catcher, Supper Time and Brushing Time are in their own files. A game with a `bossName` can host
   the boss; `main.js` takes turns between them by lap.
 - `sound.js`: the groove, calls, cue words, effects. Uses Kyle's recordings where they're on
@@ -53,19 +68,20 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   Mix: a different groove each lap, from the grooves in the unit's meter.
 - `options.js`, `games.json`: game options from the studio's Musician Maker game workshop
   (`/studio/games/`): per game, whether it's in the stream, whether it hosts the boss, which win
-  and fail gags can come up, and its tap sound. The workshop keeps drafts on Kyle's device;
+  and fail gags can come up, its tap sound (Tap It) and its instrument's sound (Play It). The workshop keeps drafts on Kyle's device;
   "Publish to site" puts them in the game straight away (`/api/live/games.json`, played ahead of
   this file); "Download" saves `games.json`, which `tools/add_games.py` checks and puts here.
-  Learners get `games.json`; a workshop test run (`?test=<game id>`, plus `step`, `tempo`,
+  Learners get `games.json`; a workshop test run (`?test=<game id>`, plus `step`, `task`, `tempo`,
   `start=boss`, `pace=mookie`, `groove`) plays only that game, with the drafts, and saves nothing.
 - `gags.js`: picks a game's win and fail gags from the ones that are on. Each game lists its gags
   with names (`gags`), and `win(gag)` / `fail(gag)` can force one (the workshop's Try it).
-- `intro.js`: skill intros. The first time a kind of game comes up (step and answer mode), the
-  stream stops for a pop-up: a title, what to do, Kyle's recorded message when there is one
-  (audio or video in `intros/`), and a slow practice try with no score. "Let's play" counts back
-  in to that game. Written intros go in `INTROS`; any skill without one uses its step's lines.
-  Seen ones are kept in `st.intro`. The workshop previews each one (`?intro=<step>-<mode>`), and
-  a test run can show them all again (`intros=all`).
+- `intro.js`: task intros. The first time a task comes up at a step (`say-1`, `du-2`, …), the
+  stream stops for a pop-up: the task, the step, what to do, Kyle's recorded message when there
+  is one (audio or video in `intros/`), and a slow practice try with no score. "Let's play"
+  counts back in to that game. Written intros go in `INTROS`; any without one uses the lines
+  from `tasks.js`. Seen ones are kept in `st.intro`; My progress replays them and their practice
+  rounds. The workshop previews each one (`?intro=<task>-<step>&game=<id>`), and a test run can
+  show them all again (`intros=all`). The boss only uses tasks whose intro has been seen.
 - `speech.js`: the call in syllables, built up in one speech bubble a syllable at a time and left
   up a moment so the whole pattern shows. Every game's singer uses it.
 - `clock.js`: the beat clock everything is scheduled on.
@@ -133,8 +149,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 
-Every game shows a what-to-do line (`howTo` in `steps.js`), marked NEW the first time that
-kind of game comes up. The pad says Listen or Read until it's the learner's turn.
+Every game shows a what-to-do line (`howTo` in `tasks.js`), marked NEW the first time that
+task comes up at that step. The pad says Listen or Read until it's the learner's turn.
 How to play (on the title screen) explains the loop in four lines.
 
 Private preview: `python tools/mm_preview.py` copies the app and the assets it uses into
@@ -150,7 +166,7 @@ cancelling too, to compare.
 
 **Game workshop** (`/studio/games/`, private): each game's scene on the groove at any combo
 tier, with its call, taps, every gag and its boss; its options; and Test play, which opens the
-game with only that game in it. "Answer with: Taps and the mic" starts the test with the mic on
+game with only that game in it (any step and task). "Answer with: Taps and the mic" starts the test with the mic on
 (the test screen has the same switch). `?lab` opens the Transitions lab. A new game goes in `GAMES`
 (`games.js`) with an `id`, `gags` and `win(gag)`/`fail(gag)`, and its stylesheet goes in
 `studio/games/index.html` as well as `index.html`.
