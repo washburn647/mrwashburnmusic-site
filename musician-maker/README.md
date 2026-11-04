@@ -23,11 +23,14 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   the other ear steps, notes and syllables from Reading on.
 - **Band seats:** either side of the bouncing ball, one seat per layer (bass, drums, horns,
   keys). Each lights up when its layer joins at a combo tier and bobs on the beat.
-- **Tasks** (`tasks.js`, Kyle's writeup cell by cell): Speak/Sing It (steps 1–8, said or sung;
-  the only task the mic hears; ×1.5 XP), Tap It (the game's object), Play It (the game's
-  instrument), Du It (du and de tiles in rhythm, steps 2–8) and Note It (♩ and ♫ tiles out of
-  rhythm within 8 beats, steps 9–12; ×1.5 XP without the notes to look at). At the create
-  steps (5, 12) the answer is the learner's own pattern; the same one again soon earns less.
+- **Tasks** (`tasks.js`, Kyle's writeup cell by cell): Speak/Sing It (steps 1–8, said or sung
+  into the mic, mic only; ×1.5 XP), Tap It (the game's object, big, tapped right on), Play It
+  (the game's instrument), Du It (two tiles, du and du-de, tapped in rhythm: a du-de is two
+  taps on its tile; steps 2–8) and Note It (♩ and ♫ tiles out of rhythm within 8 beats, steps
+  9–12; ×1.5 XP without the notes to look at). At the create steps (5, 12) the answer is the
+  learner's own pattern; the same one again soon earns less.
+- **Mic:** the first Play of a visit opens a mic screen (test it, help when the browser blocks
+  it). "Play without the mic" plays the visit with no Speak/Sing It.
 - **Combo:** 3, 6, 10 and 15 in a row add bass, drums, horns and the full band to the groove
   and multiply XP ×2 to ×5. A miss resets it (Mookie mode: drops one tier). XP is never lost.
 - **XP:** 10 a right answer, +5 for perfect timing, × tempo (1, 1.5, 2), × 1.5 by mic,
