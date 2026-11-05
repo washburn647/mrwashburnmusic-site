@@ -7,7 +7,8 @@
 const AHEAD = 0.15; // seconds scheduled ahead
 const TICK = 25; // ms between looks
 
-export function makeClock(ctx) {
+// ahead: how far ahead to schedule, in seconds (more is safer on a busy page, slower to react).
+export function makeClock(ctx, { ahead = AHEAD } = {}) {
   let bpm = 92;
   let originTime = 0; // audio time of beat originIndex
   let originIndex = 0;
@@ -20,7 +21,7 @@ export function makeClock(ctx) {
   const timeOf = (i) => originTime + (i - originIndex) * spb();
 
   function tick() {
-    while (timeOf(next) < ctx.currentTime + AHEAD) {
+    while (timeOf(next) < ctx.currentTime + ahead) {
       const i = next;
       const t = timeOf(i);
       const due = jobs.get(i) || [];

@@ -42,8 +42,9 @@ input.emoji { width: 60px; font-size: 18px; border: 0; border-radius: 10px; padd
 .head { display: flex; align-items: center; gap: 4px; }
 .head select { padding: 4px 6px; max-width: 140px; font-size: 14px; }
 .head input[type=range], .card-top input[type=range] { width: 70px; }
-.gridwrap { flex: 1; min-width: 0; overflow-x: auto; }
-.gridwrap.roll { max-height: 330px; overflow-y: auto; border-radius: 10px; }
+.gridwrap { flex: 1; min-width: 0; overflow-x: auto; position: relative; }
+.gridwrap.roll { max-height: min(60vh, 480px); overflow-y: auto; border-radius: 10px; }
+.playhead { position: absolute; top: 0; background: rgba(120, 170, 100, .22); pointer-events: none; }
 canvas.grid { display: block; touch-action: none; cursor: pointer; border-radius: 8px; }
 
 .empty, .hint { color: #8A968C; }
@@ -69,3 +70,4 @@ details.add summary:hover, details.add summary:focus-visible, details.add[open] 
   .pick-group.wide { grid-column: auto; }
   .pick-group.wide .pick-grid { grid-template-columns: repeat(2, 1fr); }
 }
+.zoom { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
