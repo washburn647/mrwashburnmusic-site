@@ -42,7 +42,7 @@ const DEFAULT_TRACKS = { pulse: ['claves'], bass: ['bass'], drums: ['bass-drum',
 
 let grooves = [];
 let index = null; // samples index.json: instruments and their ranges
-const settings = { groove: 'basic', layer: 'pulse', variant: -1, roll: false, bpm: 108, hear: 'band', len: 1, vel: 'normal' };
+const settings = { groove: 'basic', layer: 'pulse', variant: -1, roll: false, bpm: 108, hear: 'band', len: 1, vel: 'normal', zoomX: 1, zoomY: 1 };
 const vel = () => VEL[settings.vel] || 0.8;
 let past = [];
 let future = [];
@@ -139,10 +139,15 @@ async function audio() {
 async function play() {
   await audio();
   if (!clock) {
-    clock = makeClock(ctx);
+    // Scheduled further ahead than the game: editing redraws the page, and on a tablet a redraw
+    // can hold up the page long enough to make notes late.
+    clock = makeClock(ctx, { ahead: 0.3 });
     clock.onBeat((i, t, spb) => {
       const g = now();
       if (!g) return;
+      // A beat whose time has passed (the page was busy, or asleep) is skipped, not played late
+      // in a heap: the groove carries on in time from the next beat.
+      if (t < ctx.currentTime - 0.02) return;
       // The layer being edited plays the take being edited; with "Roll variations" on, every
       // layer rolls its variations as in the game.
       const force = settings.roll ? null : Object.fromEntries(snd.ALL_LAYERS.map((l) => [l, l === settings.layer ? settings.variant : -1]));
@@ -166,11 +171,11 @@ function stop() {
 // The playhead: the step sounding now.
 let head = -1;
 function tick() {
-  if (!playing) { head = -1; drawAll(); return; }
+  if (!playing) { head = -1; drawHeads(); return; }
   const beats = (ctx.currentTime - snd.latency() - startT) / (60 / settings.bpm);
   const g = now();
   const step = beats < 0 ? -1 : Math.floor(beats * per(g)) % steps(g);
-  if (step !== head) { head = step; drawAll(); }
+  if (step !== head) { head = step; drawHeads(); }
   requestAnimationFrame(tick);
 }
 
@@ -197,6 +202,7 @@ function render() {
   const g = now();
   if (!g) { renderMissing(G); return; }
   canvases.length = 0;
+  const pageY = window.scrollY;
   const restore = h('input', { type: 'file', accept: '.json,application/json', hidden: true, onchange: () => { restoreFile(restore.files[0]); restore.value = ''; } });
   const layer = settings.layer;
   if (!editing(g)) settings.variant = -1;
@@ -252,6 +258,11 @@ function render() {
       h('span', { class: 'label' }, 'Note'),
       seg(LENGTHS[g.meter], settings.len, (v) => { settings.len = Number(v); store(); render(); }),
       seg(VELS, settings.vel, (v) => { settings.vel = v; store(); render(); }),
+      h('span', { class: 'zoom' }, h('span', { class: 'label' }, 'Zoom'), h('span', { class: 'seg' },
+        h('button', { title: 'Narrower steps', disabled: settings.zoomX <= ZOOM_X[0], onclick: () => zoomBy(1 / 1.5, 1) }, '↔ −'),
+        h('button', { title: 'Wider steps (scroll sideways)', disabled: settings.zoomX >= ZOOM_X[1], onclick: () => zoomBy(1.5, 1) }, '↔ +'),
+        h('button', { title: 'Shorter piano-roll rows', disabled: settings.zoomY <= ZOOM_Y[0], onclick: () => zoomBy(1, 1 / 1.3) }, '↕ −'),
+        h('button', { title: 'Taller piano-roll rows', disabled: settings.zoomY >= ZOOM_Y[1], onclick: () => zoomBy(1, 1.3) }, '↕ +'))),
       h('span', { class: 'grow' }),
       addSound(g, layer),
       tracks.length ? confirmButton('Clear layer', 'Clear?', () => { snapshot(); tracks.forEach((tr) => { tr.notes = []; }); changed(); }) : null,
@@ -259,10 +270,14 @@ function render() {
     hits.length ? hitCard(g, hits) : null,
     ...pitched.map((tr) => rollCard(g, tr)),
     tracks.length ? null : h('p', { class: 'empty' }, `No sounds in ${info(layer).name}${editing(g) ? ` variation ${settings.variant + 1}` : ''} yet. Add one above.`),
-    h('p', { class: 'hint' }, 'Click a step to add a note and drag to make it longer. Drag a note\'s right end to stretch or shorten it, drag the rest of it to move it, click it to remove it. Space plays and stops.'),
+    h('p', { class: 'hint' }, 'Click a step to add a note and drag to make it longer. Drag a note\'s right end to stretch or shorten it, drag the rest of it to move it, click it to remove it. On a touch screen, two fingers scroll a grid and pinch to zoom it (sideways for wider steps, up and down for taller rows). Space plays and stops.'),
     status ? h('p', { class: 'status' }, status) : null,
   ].filter(Boolean));
-  requestAnimationFrame(() => { drawAll(); centerRolls(); });
+  // Size and draw the grids now, before the browser lays out the page: an unsized grid is
+  // short, and the page would jump up to fit it.
+  drawAll();
+  centerRolls();
+  if (window.scrollY !== pageY) window.scrollTo(0, pageY);
 }
 
 /* The six layers side by side: each column is the layer's tab (its main take) with its
@@ -400,22 +415,136 @@ const GUTTER = 44;
 const HIT_ROW = 40;
 const ROLL_ROW = 15;
 
+// Zoom: steps wider than fit the screen (scroll sideways), and taller piano-roll rows.
+const ZOOM_X = [1, 4];
+const ZOOM_Y = [0.8, 3];
+const clamp = (v, [lo, hi]) => Math.min(hi, Math.max(lo, v));
+
 function cellWidth(g, wrapWidth) {
-  return Math.max(12, Math.floor((wrapWidth - GUTTER - 2) / steps(g)));
+  return Math.floor(Math.max(12, (wrapWidth - GUTTER - 2) / steps(g)) * settings.zoomX);
 }
 
-function makeCanvas(wrap, rows, rowH, draw, onDown, onHover) {
+/* A grid. One finger (or the mouse) edits. Two fingers scroll it and pinch to zoom: apart
+   sideways for wider steps, apart up and down for taller rows. A second finger landing
+   takes back what the first one started. */
+function makeCanvas(wrap, rows, rowH, draw, onDown, onHover, roll = false) {
   const canvas = h('canvas', { class: 'grid' });
-  const item = { canvas, wrap, rows, rowH, draw, cw: 16 };
-  canvas.addEventListener('pointerdown', (e) => onDown(e, item));
-  if (onHover) canvas.addEventListener('pointermove', (e) => { if (!e.buttons) onHover(e, item); });
+  const item = { canvas, wrap, rows, rowH, draw, cw: 16, roll, ox: 0, abort: null, saved: [] };
+  const touches = new Map();
+  let pinch = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2) {
+        if (item.abort) {
+          item.abort();
+          for (const [tr, notes] of item.saved) tr.notes.splice(0, tr.notes.length, ...notes);
+          past.pop();
+          drawAll();
+        }
+        pinch = gesture(item, [...touches.values()]);
+        return;
+      }
+      if (touches.size > 2 || pinch) return;
+    }
+    // What the notes were before this touch, in case a second finger takes it back.
+    const g = now();
+    item.saved = g ? editTracks(g).map((tr) => [tr, tr.notes.map((n) => ({ ...n }))]) : [];
+    onDown(e, item);
+  });
+  const lift = (e) => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinch = null;
+  };
+  canvas.addEventListener('pointermove', (e) => {
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && touches.size === 2) { pinch.move([...touches.values()]); return; }
+    if (onHover && !e.buttons) onHover(e, item);
+  });
+  canvas.addEventListener('pointerup', lift);
+  canvas.addEventListener('pointercancel', lift);
+  canvas.addEventListener('wheel', (e) => {
+    // Ctrl + wheel (a trackpad pinch): zoom the steps, or the rows with Shift.
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const f = Math.exp(-e.deltaY / 200);
+    zoomAt(item, e.clientX, e.clientY, e.shiftKey ? 1 : f, e.shiftKey ? f : 1);
+  }, { passive: false });
   canvases.push(item);
   return canvas;
 }
 
+function gesture(item, [a, b]) {
+  const start = { cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, dx: Math.abs(a.x - b.x), dy: Math.abs(a.y - b.y), zx: settings.zoomX, zy: settings.zoomY };
+  let last = { cx: start.cx, cy: start.cy };
+  return {
+    move([p, q]) {
+      const cx = (p.x + q.x) / 2;
+      const cy = (p.y + q.y) / 2;
+      item.wrap.scrollLeft -= cx - last.cx;
+      item.wrap.scrollTop -= cy - last.cy;
+      last = { cx, cy };
+      // Only a spread that started wide enough counts, so a two-finger scroll doesn't zoom.
+      const zx = start.dx > 60 ? clamp(start.zx * Math.abs(p.x - q.x) / start.dx, ZOOM_X) : settings.zoomX;
+      const zy = item.roll && start.dy > 60 ? clamp(start.zy * Math.abs(p.y - q.y) / start.dy, ZOOM_Y) : settings.zoomY;
+      if (Math.abs(zx - settings.zoomX) > 0.02 || Math.abs(zy - settings.zoomY) > 0.02) zoomAt(item, cx, cy, zx / settings.zoomX, zy / settings.zoomY);
+    },
+  };
+}
+
+/* Zooms by fx and fy, keeping the spot under (x, y) where it is. */
+function zoomAt(item, x, y, fx, fy) {
+  const zx = clamp(settings.zoomX * fx, ZOOM_X);
+  const zy = clamp(settings.zoomY * fy, ZOOM_Y);
+  const r = item.wrap.getBoundingClientRect();
+  const px = x - r.left;
+  const py = y - r.top;
+  const oldCw = item.cw;
+  const oldRow = item.rowH;
+  const contentX = item.wrap.scrollLeft + px - GUTTER;
+  const contentY = item.wrap.scrollTop + py;
+  settings.zoomX = zx;
+  settings.zoomY = zy;
+  drawAll();
+  item.wrap.scrollLeft = contentX * (item.cw / oldCw) - px + GUTTER;
+  item.wrap.scrollTop = contentY * (item.rowH / oldRow) - py;
+  scrollX = item.wrap.scrollLeft;
+  syncScroll(item.wrap);
+  clearTimeout(zoomSave);
+  zoomSave = setTimeout(store, 400);
+}
+let zoomSave = null;
+
+function zoomBy(fx, fy) {
+  settings.zoomX = clamp(settings.zoomX * fx, ZOOM_X);
+  settings.zoomY = clamp(settings.zoomY * fy, ZOOM_Y);
+  store();
+  render();
+}
+
+// All grids scroll sideways together, so their beats line up.
+let scrollX = 0;
+function syncScroll(from) {
+  for (const item of canvases) if (item.wrap !== from && item.wrap.scrollLeft !== scrollX) item.wrap.scrollLeft = scrollX;
+}
+function onGridScroll(wrap) {
+  if (wrap.scrollLeft !== scrollX) {
+    scrollX = wrap.scrollLeft;
+    syncScroll(wrap);
+  }
+  // Piano rolls keep their keys on screen.
+  if (canvases.some((item) => item.roll && item.wrap === wrap && item.ox !== wrap.scrollLeft)) {
+    cancelAnimationFrame(redraw);
+    redraw = requestAnimationFrame(drawAll);
+  }
+}
+let redraw = 0;
+
 function sizeCanvas(item, g) {
   const width = item.wrap.clientWidth || 800;
   item.cw = cellWidth(g, width);
+  if (item.roll) item.rowH = Math.round(ROLL_ROW * settings.zoomY);
+  item.ox = item.roll ? item.wrap.scrollLeft : 0;
   const w = GUTTER + steps(g) * item.cw;
   const hgt = item.rows * item.rowH;
   const dpr = window.devicePixelRatio || 1;
@@ -434,16 +563,32 @@ function drawAll() {
   const g = now();
   if (!g) return;
   for (const item of canvases) item.draw(sizeCanvas(item, g), item, g);
+  drawHeads();
+}
+
+/* The playhead: a strip over each grid, moved without redrawing the grid. */
+function drawHeads() {
+  for (const item of canvases) {
+    let bar = item.wrap.querySelector('.playhead');
+    if (!bar) {
+      bar = h('div', { class: 'playhead' });
+      item.wrap.append(bar);
+    }
+    bar.hidden = head < 0;
+    if (head < 0) continue;
+    bar.style.left = `${GUTTER + head * item.cw}px`;
+    bar.style.width = `${item.cw}px`;
+    bar.style.height = `${item.rows * item.rowH}px`;
+  }
 }
 window.addEventListener('resize', () => drawAll());
 
-/* Columns: shaded by bar of 2/4, lines on 16ths, beats and bars, and the playhead. */
+/* Columns: shaded by bar of 2/4, lines on 16ths, beats and bars. */
 function columns(c, item, g, hgt) {
   const n = steps(g);
   for (let s = 0; s < n; s++) {
     const x = GUTTER + s * item.cw;
     c.fillStyle = Math.floor(s / (per(g) * 2)) % 2 ? '#F3EEE1' : '#FFFFFF';
-    if (s === head) c.fillStyle = '#E3EEDC';
     c.fillRect(x, 0, item.cw, hgt);
   }
   for (let s = 0; s <= n; s++) {
@@ -462,7 +607,7 @@ function noteFill(v) {
 }
 
 function hitCard(g, hits) {
-  const wrap = h('div', { class: 'gridwrap' });
+  const wrap = h('div', { class: 'gridwrap', onscroll: () => onGridScroll(wrap) });
   const heads = h('div', { class: 'heads' }, hits.map((tr) => h('div', { class: 'head', style: `height:${HIT_ROW}px` }, trackTools(g, tr, 'hit'))));
   wrap.append(makeCanvas(wrap, hits.length, HIT_ROW, (c, item) => {
     const hgt = item.rows * item.rowH;
@@ -514,36 +659,46 @@ function range(tr) {
 function rollCard(g, tr) {
   const { lo, hi } = range(tr);
   const rows = hi - lo + 1;
-  const wrap = h('div', { class: 'gridwrap roll', onscroll: () => scrolls.set(tr, wrap.scrollTop) });
-  rollCenter.set(wrap, { tr, y: (hi - (tr.notes.length ? Math.round(tr.notes.reduce((a, n) => a + n.m, 0) / tr.notes.length) : Math.round((lo + hi) / 2))) * ROLL_ROW });
+  const wrap = h('div', { class: 'gridwrap roll', onscroll: () => { scrolls.set(tr, wrap.scrollTop / settings.zoomY); onGridScroll(wrap); } });
+  rollCenter.set(wrap, { tr, row: hi - (tr.notes.length ? Math.round(tr.notes.reduce((a, n) => a + n.m, 0) / tr.notes.length) : Math.round((lo + hi) / 2)) });
   const rowOf = (m) => hi - m;
   wrap.append(makeCanvas(wrap, rows, ROLL_ROW, (c, item) => {
-    const hgt = rows * ROLL_ROW;
+    const R = item.rowH;
+    const hgt = rows * R;
     const w = GUTTER + steps(g) * item.cw;
     c.clearRect(0, 0, w, hgt);
     columns(c, item, g, hgt);
     for (let m = hi; m >= lo; m--) {
-      const y = rowOf(m) * ROLL_ROW;
+      const y = rowOf(m) * R;
       const pc = ((m % 12) + 12) % 12;
       const deg = (pc - whole().key + 12) % 12;
-      if (!MAJOR.includes(deg)) { c.fillStyle = 'rgba(47,74,58,.07)'; c.fillRect(GUTTER, y, w - GUTTER, ROLL_ROW); }
-      if (deg === 0) { c.fillStyle = 'rgba(233,180,76,.16)'; c.fillRect(GUTTER, y, w - GUTTER, ROLL_ROW); }
-      c.fillStyle = BLACK.includes(pc) ? '#3E5446' : '#FBF8F0';
-      c.fillRect(0, y, GUTTER - 2, ROLL_ROW);
-      c.fillStyle = BLACK.includes(pc) ? '#F6F1E4' : '#5B6B5F';
-      c.font = `${pc === 0 ? 600 : 400} 10px Fredoka, sans-serif`;
-      c.fillText(`${NAMES[pc]}${Math.floor(m / 12) - 1}`, 4, y + ROLL_ROW - 4);
+      if (!MAJOR.includes(deg)) { c.fillStyle = 'rgba(47,74,58,.07)'; c.fillRect(GUTTER, y, w - GUTTER, R); }
+      if (deg === 0) { c.fillStyle = 'rgba(233,180,76,.16)'; c.fillRect(GUTTER, y, w - GUTTER, R); }
       c.strokeStyle = pc === 0 ? '#C9CFC4' : '#EFEBE0';
       c.beginPath();
-      c.moveTo(GUTTER, y + ROLL_ROW - 0.5);
-      c.lineTo(w, y + ROLL_ROW - 0.5);
+      c.moveTo(GUTTER, y + R - 0.5);
+      c.lineTo(w, y + R - 0.5);
       c.stroke();
     }
     for (const n of tr.notes) {
       c.fillStyle = noteFill(n.v);
       c.beginPath();
-      c.roundRect(GUTTER + n.s * item.cw + 1, rowOf(n.m) * ROLL_ROW + 1, Math.max(1, n.l || 1) * item.cw - 2, ROLL_ROW - 2, 3);
+      c.roundRect(GUTTER + n.s * item.cw + 1, rowOf(n.m) * R + 1, Math.max(1, n.l || 1) * item.cw - 2, R - 2, 3);
       c.fill();
+    }
+    // The keys, drawn last at the left edge of what's on screen, so they stay put when the
+    // roll scrolls sideways.
+    const ox = item.ox;
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(ox, 0, GUTTER, hgt);
+    for (let m = hi; m >= lo; m--) {
+      const y = rowOf(m) * R;
+      const pc = ((m % 12) + 12) % 12;
+      c.fillStyle = BLACK.includes(pc) ? '#3E5446' : '#FBF8F0';
+      c.fillRect(ox, y, GUTTER - 2, R);
+      c.fillStyle = BLACK.includes(pc) ? '#F6F1E4' : '#5B6B5F';
+      c.font = `${pc === 0 ? 600 : 400} ${Math.min(13, Math.max(10, R - 5))}px Fredoka, sans-serif`;
+      c.fillText(`${NAMES[pc]}${Math.floor(m / 12) - 1}`, ox + 4, y + R - Math.max(4, (R - 10) / 2));
     }
   }, (e, item) => {
     const at = cellAt(e, item);
@@ -593,7 +748,7 @@ function rollCard(g, tr) {
     const at = cellAt(e, item);
     const n = at && tr.notes.find((x) => x.m === hi - at.row && at.col >= x.s && at.col < x.s + (x.l || 1));
     item.canvas.style.cursor = !n ? '' : atEnd(e, item, n) ? 'ew-resize' : 'grab';
-  }));
+  }, true));
   return h('section', { class: 'card' },
     h('div', { class: 'card-top' }, h('h2', {}, label(tr.inst)), h('span', { class: 'grow' }), trackTools(g, tr, 'pitched')),
     wrap);
@@ -603,7 +758,7 @@ function cellAt(e, item) {
   const r = item.canvas.getBoundingClientRect();
   const x = e.clientX - r.left;
   const y = e.clientY - r.top;
-  if (x < GUTTER) return null;
+  if (x - item.ox < GUTTER) return null;
   const col = Math.floor((x - GUTTER) / item.cw);
   const row = Math.floor(y / item.rowH);
   if (col < 0 || col >= steps(now()) || row < 0 || row >= item.rows) return null;
@@ -633,13 +788,19 @@ function drag(e, item, move, anyCell = false, end = null) {
     last = at;
     move(at);
   };
-  const onUp = () => {
+  const off = () => {
     item.canvas.removeEventListener('pointermove', onMove);
     item.canvas.removeEventListener('pointerup', onUp);
     item.canvas.removeEventListener('pointercancel', onUp);
+    item.abort = null;
+  };
+  const onUp = () => {
+    off();
     if (end) end();
     changed();
   };
+  // A second finger: stop here; makeCanvas takes the change back.
+  item.abort = off;
   item.canvas.addEventListener('pointermove', onMove);
   item.canvas.addEventListener('pointerup', onUp);
   item.canvas.addEventListener('pointercancel', onUp);
@@ -647,14 +808,17 @@ function drag(e, item, move, anyCell = false, end = null) {
 
 // Piano rolls open scrolled to their notes (or the middle of the instrument), then keep
 // where they were scrolled to.
-const scrolls = new WeakMap(); // track → scrollTop
-const rollCenter = new WeakMap(); // wrap → { tr, y }
+const scrolls = new WeakMap(); // track → scrollTop at zoom 1
+const rollCenter = new WeakMap(); // wrap → { tr, row }
 function centerRolls() {
-  for (const wrap of app.querySelectorAll('.gridwrap.roll')) {
-    const { tr, y } = rollCenter.get(wrap) || {};
+  for (const item of canvases) {
+    item.wrap.scrollLeft = scrollX;
+    const { tr, row } = rollCenter.get(item.wrap) || {};
     if (!tr) continue;
-    wrap.scrollTop = scrolls.has(tr) ? scrolls.get(tr) : Math.max(0, y - wrap.clientHeight / 2);
+    item.wrap.scrollTop = scrolls.has(tr) ? scrolls.get(tr) * settings.zoomY : Math.max(0, row * item.rowH - item.wrap.clientHeight / 2);
   }
+  // Keys follow the sideways scroll just set.
+  if (canvases.some((item) => item.roll && item.ox !== item.wrap.scrollLeft)) drawAll();
 }
 
 /* A groove's other-meter version, started from this one: each note keeps its beat, and its
