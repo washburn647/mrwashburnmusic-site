@@ -264,12 +264,54 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     osmd.zoom = st.zoom;
     for (const s of staves) s.staff.Visible = !st.hidden.has(s.id);
     osmd.Sheet.Transpose = st.transpose;
+    roomForNames();
     osmd.setOptions({ coloringEnabled: st.colors, coloringMode: st.colors ? O.ColoringModes.CustomColorSet : O.ColoringModes.XML, coloringSetCustom: BOOMWHACKER, colorStemsLikeNoteheads: st.colors });
     osmd.updateGraphic();
     osmd.render();
     osmd.cursor.show();
     seekT(pos, true);
     drawLayer();
+  }
+
+  /* Note names go under the lowest note of each staff: leave room for them, chords included. */
+  const rules = osmd.EngravingRules;
+  const base = { st: rules.MinSkyBottomDistBetweenStaves, sy: rules.MinSkyBottomDistBetweenSystems, ly: rules.LyricsYMarginToBottomLine };
+  let chord = 1;
+  for (const sm of osmd.Sheet.SourceMeasures) {
+    for (const c of sm.VerticalSourceStaffEntryContainers) {
+      for (const se of c.StaffEntries) {
+        if (!se) continue;
+        const n = se.VoiceEntries.reduce((k, ve) => k + ve.Notes.filter((x) => !x.isRest()).length, 0);
+        chord = Math.max(chord, n);
+      }
+    }
+  }
+  chord = Math.min(chord, 4);
+  const nameFont = () => Math.max(10, 13 * osmd.zoom);
+  function roomForNames() {
+    const r = st.names && st.names !== 3 ? (chord * nameFont() * 1.1) / unit() + 0.8 : 0;
+    rules.MinSkyBottomDistBetweenStaves = base.st + r;
+    rules.MinSkyBottomDistBetweenSystems = base.sy + r;
+    rules.LyricsYMarginToBottomLine = base.ly + r;
+  }
+  /* The lowest point of each staff line's notes and stems (or the bottom of the staff). */
+  function lowestByLine() {
+    const low = new Map();
+    for (const row of osmd.GraphicSheet.MeasureList) {
+      for (const gm of row || []) {
+        const sl = gm?.ParentStaffLine;
+        if (!sl) continue;
+        let y = low.get(sl) ?? gm.PositionAndShape.AbsolutePosition.y + 4;
+        for (const se of gm.staffEntries) {
+          for (const gve of se.graphicalVoiceEntries) {
+            if (gve.notes.every((gn) => gn.sourceNote.isRest())) continue;
+            y = Math.max(y, gve.PositionAndShape.AbsolutePosition.y + gve.PositionAndShape.BorderBottom);
+          }
+        }
+        low.set(sl, y);
+      }
+    }
+    return low;
   }
 
   const unit = () => 10 * osmd.zoom;
@@ -389,12 +431,13 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
   function drawNames(boxes) {
     const u = unit();
     const o = origin();
+    const low = lowestByLine();
     boxes.forEach((b, mi) => {
       if (!b) return;
       b.gms.forEach((gm, si) => {
         if (!gm || !gm.ParentStaff?.isVisible?.()) return;
         const fifths = keys[mi]?.[si] ?? 0;
-        const y = o.y + (gm.PositionAndShape.AbsolutePosition.y + 4) * u + 4;
+        const y = o.y + (low.get(gm.ParentStaffLine) ?? gm.PositionAndShape.AbsolutePosition.y + 4) * u + 3;
         for (const se of gm.staffEntries) {
           const names = [];
           let x = null;
@@ -412,7 +455,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
           if (!names.length) continue;
           names.sort((a, c) => c.h - a.h);
           const uniq = [...new Set(names.map((nm) => nm.s))];
-          layer.append(el('div', { class: 'nname', style: `left:${o.x + x * u + 5 * osmd.zoom}px;top:${y}px;font-size:${Math.max(10, 13 * osmd.zoom)}px`, textContent: uniq.join('\n') }));
+          layer.append(el('div', { class: 'nname', style: `left:${o.x + x * u + 5 * osmd.zoom}px;top:${y}px;font-size:${nameFont()}px`, textContent: uniq.join('\n') }));
         }
       });
     });
@@ -785,7 +828,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     more.replaceChildren(...[
       seg('Click', ['Off', 'On'], () => +st.click, (i) => restartIfPlaying(() => { st.click = !!i; })),
       seg('Count in', ['Off', 'On'], () => +st.countIn, (i) => { st.countIn = !!i; }),
-      seg('Names', ['Off', 'ABC', 'Do re mi', 'Fingers'], () => st.names, (i) => { st.names = i; drawLayer(); }),
+      seg('Names', ['Off', 'ABC', 'Do re mi', 'Fingers'], () => st.names, (i) => { const room = !st.names !== !i || st.names === 3 || i === 3; st.names = i; if (room) render(); else drawLayer(); }),
       seg('Colours', ['Off', 'On'], () => +st.colors, (i) => { st.colors = !!i; restartIfPlaying(render); }),
       stepper('Transpose', () => (st.transpose > 0 ? `+${st.transpose}` : String(st.transpose)), (d) => {
         st.transpose = Math.max(-12, Math.min(12, st.transpose + d));
