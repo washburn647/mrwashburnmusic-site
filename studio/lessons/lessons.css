@@ -86,3 +86,5 @@ dialog .modes label { background: #F6F1E4; border-radius: 10px; padding: 4px 10p
 .rlist li { display: flex; justify-content: space-between; gap: 10px; background: #F6F1E4; border-radius: 10px; padding: 6px 10px; flex-wrap: wrap; }
 .rlist small { color: #5B6B5F; font-variant-numeric: tabular-nums; }
 .results h2 + .rdeck h3 { margin-top: 6px; }
+.sort { font: inherit; border: 0; border-radius: 10px; padding: 8px 10px; background: #F6F1E4; }
+.syncmark { color: #8A8170; font-size: 15px; white-space: nowrap; }

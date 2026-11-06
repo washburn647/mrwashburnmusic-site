@@ -5,6 +5,8 @@
      where only the code opens them (see /lesson/locked.js). Their flash card
      results come back the same way, and Results shows the weak spots.
    - a link to one lesson, with the page inside the link (see /lesson/codec.js).
+   Everything also syncs through Kyle's private copy on the website (sync.js), so
+   every device he signs in on has the same students, pieces and library.
    #/ is the week, #/library the practice library, #/<student> and
    #/<student>/<lesson> one student. */
 
@@ -18,6 +20,7 @@ import { LESSON_PAGE, LOCAL_PAGE, STUDIO_HOME, API } from '/lesson/paths.js';
 import { newCode, cleanCode, publish, results, unpublish, secretFor, PICKS } from '/lesson/locked.js';
 import { cardLabel, KINDS } from '/lesson/cards.js';
 import { editDeck, deckSummary, newDeck } from './decks.js';
+import * as sync from './sync.js';
 
 const students = store('students');
 const pieces = store('pieces');
@@ -79,6 +82,7 @@ async function showList() {
     ...(STUDIO_HOME ? [h('div', { class: 'bar' }, h('a', { class: 'back', href: STUDIO_HOME }, '‹ Studio'))] : []),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Lesson pages'),
+      syncMark(),
       h('a', { class: 'button', href: '#/library' }, 'Library'),
       h('button', { onclick: backup, disabled: !all.length }, 'Backup'),
       h('button', { onclick: () => restore.click() }, 'Restore'),
@@ -156,6 +160,28 @@ async function addPieceFile(file) {
 }
 
 const pieceName = (p) => p.title || p.name || 'Piece';
+const composer = (p) => (p.composer ??= (/<creator[^>]*type="composer"[^>]*>([^<]*)</.exec(p.xml)?.[1] || '').trim());
+const lastName = (p) => composer(p).split(/\s+/).pop() || '\uffff';
+
+/* How piece lists are sorted; remembered on this device. */
+const SORTS = [
+  ['name', 'A–Z', (a, b) => pieceName(a).localeCompare(pieceName(b))],
+  ['composer', 'Composer', (a, b) => lastName(a).localeCompare(lastName(b)) || pieceName(a).localeCompare(pieceName(b))],
+  ['new', 'Newest', (a, b) => (b.created || 0) - (a.created || 0)],
+  ['old', 'Oldest', (a, b) => (a.created || 0) - (b.created || 0)],
+  ['bars', 'Length', (a, b) => (a.measures || 0) - (b.measures || 0) || pieceName(a).localeCompare(pieceName(b))],
+];
+let pieceSort = 'name';
+try { pieceSort = localStorage.getItem('lessons.pieceSort') || 'name'; } catch { /* private window */ }
+const sortPieces = (list) => list.sort((SORTS.find(([k]) => k === pieceSort) || SORTS[0])[2]);
+function sortSelect(then) {
+  return h('select', { class: 'sort', 'aria-label': 'Sort', onchange: (e) => {
+    pieceSort = e.target.value;
+    try { localStorage.setItem('lessons.pieceSort', pieceSort); } catch { /* private window */ }
+    then();
+  } }, SORTS.map(([k, label]) => h('option', { value: k, selected: k === pieceSort }, label)));
+}
+const pieceSmall = (p) => [composer(p), p.parts.filter(Boolean).join(', '), p.measures && `${p.measures} bars`].filter(Boolean).join(' · ');
 
 /* Pick a piece already here, or add a file. Resolves with a piece or null. */
 function choosePiece() {
@@ -167,11 +193,19 @@ function choosePiece() {
     const file = h('input', { type: 'file', accept: '.mxl,.musicxml,.xml', hidden: true, onchange: async () => {
       try { done(await addPieceFile(file.files[0])); } catch { alert('That file is not a MusicXML score.'); }
     } });
-    const all = (await pieces.all()).sort((a, b) => pieceName(a).localeCompare(pieceName(b)));
+    const all = await pieces.all();
+    const filter = h('input', { type: 'search', placeholder: 'Search', class: 'search', oninput: () => fill() });
+    const list = h('ul', { class: 'sheets' });
+    const fill = () => {
+      const q = filter.value.trim().toLowerCase();
+      list.replaceChildren(...sortPieces(all.filter((p) => !q || `${pieceName(p)} ${p.name} ${composer(p)}`.toLowerCase().includes(q))).map((p) =>
+        h('li', {}, h('a', { href: '#', onclick: (e) => { e.preventDefault(); done(p); } }, h('span', {}, pieceName(p)), h('small', {}, pieceSmall(p))))));
+    };
+    fill();
     dlg.append(
       h('div', { class: 'bar' }, h('button', { class: 'primary', onclick: () => file.click() }, 'Add MusicXML file'), file, h('span', { class: 'grow' }), h('button', { onclick: () => done(null) }, 'Cancel')),
-      h('ul', { class: 'sheets' }, all.map((p) => h('li', {}, h('a', { href: '#', onclick: (e) => { e.preventDefault(); done(p); } },
-        h('span', {}, pieceName(p)), h('small', {}, [p.parts.filter(Boolean).join(', '), p.measures && `${p.measures} bars`].filter(Boolean).join(' · ')))))),
+      h('div', { class: 'bar' }, filter, sortSelect(fill)),
+      list,
     );
     dlg.showModal();
   });
@@ -209,7 +243,7 @@ function itemBadges(it, pieceMap) {
 async function showLibrary() {
   document.title = 'Library · Lesson pages';
   const all = (await library.all()).sort((a, b) => a.item.title.localeCompare(b.item.title));
-  const allPieces = (await pieces.all()).sort((a, b) => pieceName(a).localeCompare(pieceName(b)));
+  const allPieces = await pieces.all();
   const pieceMap = Object.fromEntries(allPieces.map((p) => [p.id, p]));
   const used = new Set();
   for (const s of await students.all()) for (const l of s.lessons) for (const it of l.items) if (it.piece) used.add(it.piece);
@@ -218,6 +252,17 @@ async function showLibrary() {
     for (const f of file.files) { try { await addPieceFile(f); } catch { alert(`${f.name} is not a MusicXML score.`); } }
     showLibrary();
   } });
+  const pieceSearch = h('input', { type: 'search', placeholder: 'Search', class: 'search', oninput: () => fillPieces() });
+  const pieceList = h('ul', { class: 'sheets lib' });
+  function fillPieces() {
+    const q = pieceSearch.value.trim().toLowerCase();
+    pieceList.replaceChildren(...sortPieces(allPieces.filter((p) => !q || `${pieceName(p)} ${p.name} ${composer(p)}`.toLowerCase().includes(q))).map((p) => h('li', {},
+      h('div', { class: 'libitem' },
+        h('input', { class: 'item-title', value: pieceName(p), 'aria-label': 'Piece name', onchange: (ev) => { p.title = ev.target.value; pieces.put(p); } }),
+        h('small', {}, [pieceSmall(p), `${Math.round(p.xml.length / 1024)} KB`].filter(Boolean).join(' · ')),
+        h('button', { class: 'icon', title: 'Play', onclick: () => openPlayer(document.body, { xml: p.xml, title: pieceName(p) }) }, '▶'),
+        used.has(p.id) ? null : confirmButton('×', 'Remove?', async () => { await pieces.delete(p.id); showLibrary(); })))));
+  }
   app.replaceChildren(
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '#/' }, '‹ Lesson pages')),
     h('div', { class: 'bar' }, h('h1', { class: 'grow' }, 'Library'),
@@ -229,14 +274,10 @@ async function showLibrary() {
         e.item.deck && h('button', { class: 'icon', title: 'Edit deck', onclick: async () => { const d = await editDeck(e.item.deck, e.item.title); if (d) { e.item.deck = d; await library.put(e); showLibrary(); } } }, '🃏'),
         confirmButton('×', 'Remove?', async () => { await library.delete(e.id); showLibrary(); }))))),
     h('h2', {}, 'Pieces'),
-    h('div', { class: 'bar' }, h('button', { onclick: () => file.click() }, 'Add MusicXML files'), file),
-    h('ul', { class: 'sheets lib' }, allPieces.map((p) => h('li', {},
-      h('div', { class: 'libitem' },
-        h('input', { class: 'item-title', value: pieceName(p), 'aria-label': 'Piece name', onchange: (ev) => { p.title = ev.target.value; pieces.put(p); } }),
-        h('small', {}, [p.parts.filter(Boolean).join(', '), p.measures && `${p.measures} bars`, `${Math.round(p.xml.length / 1024)} KB`].filter(Boolean).join(' · ')),
-        h('button', { class: 'icon', title: 'Play', onclick: () => openPlayer(document.body, { xml: p.xml, title: pieceName(p) }) }, '▶'),
-        used.has(p.id) ? null : confirmButton('×', 'Remove?', async () => { await pieces.delete(p.id); showLibrary(); }))))),
+    h('div', { class: 'bar' }, h('button', { onclick: () => file.click() }, 'Add MusicXML files'), file, h('span', { class: 'grow' }), pieceSearch, sortSelect(fillPieces)),
+    pieceList,
   );
+  fillPieces();
 }
 
 /* ---------- One student ---------- */
@@ -698,3 +739,23 @@ async function route() {
 window.addEventListener('hashchange', route);
 window.addEventListener('pagehide', () => { if (student) flush(); });
 route();
+
+/* Sync with the website (not in the offline copy). */
+const SYNC_MARK = { syncing: ['☁', 'Syncing'], ok: ['☁✓', 'Synced'], offline: ['☁✗', 'Offline'], signin: ['☁?', 'Sign in again'], error: ['☁✗', 'Sync failed'] };
+function syncMark() {
+  const m = h('span', { class: 'syncmark' });
+  const show = (s) => { const [t, title] = SYNC_MARK[s] || ['', '']; m.textContent = t; m.title = title; m.hidden = !t; };
+  show(sync.getStatus());
+  sync.onStatus((s) => { if (m.isConnected) show(s); });
+  return m;
+}
+if (API != null) {
+  // Records came down: show them, unless Kyle is in the middle of something.
+  let stale = false;
+  const busy = () => document.querySelector('dialog[open]') || document.body.classList.contains('playing-piece') ||
+    (document.activeElement && document.activeElement !== document.body && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
+  const refresh = () => { if (busy()) stale = true; else { stale = false; route(); } };
+  sync.onPulled(refresh);
+  document.addEventListener('focusout', () => { if (stale) setTimeout(refresh, 300); });
+  sync.start();
+}

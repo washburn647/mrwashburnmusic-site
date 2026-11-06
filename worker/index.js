@@ -3,6 +3,8 @@
      timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
      and every request is checked here too, so a missing Access rule never opens it up.
    - /api/s/ and /studio/api/s/: a locked box for each private lesson student (see Box).
+   - /studio/api/lessons/: the studio's lesson pages (students, pieces, practice library), kept
+     in the same private R2 bucket so every device Kyle signs in on sees them (see lessonsApi).
    - /api/live/ and /studio/api/live/: what Kyle publishes from the studio straight to the
      site (grooves, game options, voice takes, units), read by the games and lessons (see Live).
 
@@ -19,6 +21,15 @@ const TIMINGS = /^[\w-]{1,80}$/;
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/studio/api/lessons/')) {
+      if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.CLASS_FILES) return reply({ error: 'not set up' }, 503);
+      if (!(await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
+      try {
+        return await lessonsApi(request, env, url.pathname.slice('/studio/api/lessons/'.length).split('/'));
+      } catch (err) {
+        return reply({ error: String(err && err.message || err) }, 500);
+      }
+    }
     const box = /^\/(studio\/)?api\/s\/([^/]+)(\/r)?$/.exec(url.pathname);
     if (box) return boxApi(request, env, box);
     const live = /^\/(studio\/)?api\/live\/(.+)$/.exec(url.pathname);
@@ -118,6 +129,55 @@ async function classApi(request, env, [what, id, extra]) {
   }
 
   return reply({ error: 'not found' }, 404);
+}
+
+/* The studio's lesson pages, one JSON file per record under lessons/<kind>/<id>.
+   GET    state                      { students: { id: { u, gone } }, pieces: {...}, library: {...} }
+   GET    <kind>/<id>                one record
+   PUT    <kind>/<id>?u=&base=       save it; base is the version the device last saw (409 if it changed)
+   DELETE <kind>/<id>?u=&base=       remove it everywhere (kept as a marker so other devices remove it too) */
+const LESSON_KINDS = new Set(['students', 'pieces', 'library']);
+const MAX_RECORD = 8 * 1024 * 1024;
+
+async function lessonsApi(request, env, [what, id, extra]) {
+  const bucket = env.CLASS_FILES;
+  const method = request.method;
+  if (extra !== undefined) return reply({ error: 'not found' }, 404);
+  if (what === 'state' && !id && method === 'GET') {
+    const out = {};
+    for (const kind of LESSON_KINDS) {
+      out[kind] = {};
+      for (const o of await listAll(bucket, `lessons/${kind}/`)) {
+        const m = o.customMetadata || {};
+        out[kind][o.key.slice(kind.length + 9)] = { u: Number(m.u) || 0, gone: m.gone === '1' };
+      }
+    }
+    return reply(out);
+  }
+  if (!LESSON_KINDS.has(what) || !id || !ID.test(id)) return reply({ error: 'not found' }, 404);
+  const key = `lessons/${what}/${id}`;
+  if (method === 'GET') {
+    const o = await bucket.get(key);
+    if (!o || (o.customMetadata || {}).gone === '1') return reply({ error: 'not found' }, 404);
+    return new Response(o.body, { headers: headers({ 'Content-Type': 'application/json' }) });
+  }
+  if (method !== 'PUT' && method !== 'DELETE') return reply({ error: 'method not allowed' }, 405);
+  const params = new URL(request.url).searchParams;
+  const u = Number(params.get('u'));
+  if (!u) return reply({ error: 'u needed' }, 400);
+  const now = await bucket.head(key);
+  const have = now ? Number((now.customMetadata || {}).u) || 0 : 0;
+  if (have && String(have) !== params.get('base')) return reply({ u: have }, 409);
+  if (method === 'DELETE') {
+    await bucket.put(key, '', { customMetadata: { u: String(u), gone: '1' } });
+    return reply({ u });
+  }
+  const body = await request.text();
+  if (body.length > MAX_RECORD) return reply({ error: 'too big' }, 413);
+  const rec = JSON.parse(body);
+  if (!rec || rec.id !== id) return reply({ error: 'wrong id' }, 400);
+  await bucket.put(key, body, { httpMetadata: { contentType: 'application/json' }, customMetadata: { u: String(u) } });
+  return reply({ u });
 }
 
 async function listAll(bucket, prefix, meta = true) {
