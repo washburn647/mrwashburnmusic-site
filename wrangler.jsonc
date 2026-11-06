@@ -46,6 +46,6 @@
     "ACCESS_AUD": "2bd16f1b6cec5e0b7a60223a7176858f37c303534f0a32c9f6fb287a47185aa9",
     // Song Burner's beta sign-in: the Audience tag of its own Access application, which
     // guards /songburner/account/ and /api/songburner/. Empty turns cloud sync off.
-    "SONGBURNER_AUD": ""
+    "SONGBURNER_AUD": "505e9f20c250fbdbe5416ccdb6b274038aebde6d2a6a5d0ad74da75cdc21b36c"
   }
 }
