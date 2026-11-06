@@ -1,5 +1,5 @@
 /* GENERATED from src/Code.gs by tools/build_songburner.py. Do not edit.
-   The server half of Song Burner alpha 1.71. host.js calls this once per request with
+   The server half of Song Burner beta 1.0. host.js calls this once per request with
    its stand-ins for the Apps Script services. */
 window.SongBurnerEngine = function (services) {
 var SpreadsheetApp = services.SpreadsheetApp;
@@ -25,7 +25,7 @@ var HtmlService = services.HtmlService;
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'alpha 1.71';
+var BUILD    = 'beta 1.0';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -1437,24 +1437,35 @@ var GAME_LEVELS = ['easy', 'medium', 'hard'];
  * from this table and so are the defaults, so a game can never be tunable in
  * one place and not the other.
  *
- *   editN    how many tampered copies of this song's own material to plant
- *   editPct  how much of a tampered unit gets swapped for fake words. HIGH is
- *            EASY: a verse with a third of its words wrong is obvious on
- *            sight, one with a tenth wrong has to be read
- *   borrowN  how many units planted that are NOT this song in this place -
- *            split between lines borrowed from other songs and decoys, which
- *            are this song's own lines shown somewhere they do not belong
- *   decoyPct what share of that split is decoys rather than borrowed. A
- *            borrowed line is foreign and reads foreign, so it is the easy
- *            catch; a decoy is in your own handwriting and has to be placed,
- *            which is why the harder levels lean on it
- *   missPct  Scramble: share of the words (or lines) lifted out to be put back
- *   extraN   Scramble Words: words in the bank that belong to nothing
+ * WRONG PIECES ARE ONE COUNT AND A MIX - beta 1.0.
+ *
+ * It used to be three dials that had to be multiplied out in your head: how
+ * many tampered copies, how many planted units, and what share of the planted
+ * ones were decoys. What anybody actually wants to know is how many wrong
+ * pieces there are and what they are made of, so that is what is stored now:
+ *
+ *   wrongN   how many wrong pieces, as a range - a fixed count is a tell
+ *   mix      what each one is, as shares of 100, drawn per piece so a level
+ *            never settles into a recipe. The kinds a game can make are listed
+ *            in its `kinds`:
+ *              altered       this song with some words swapped. Caught by
+ *                            reading, not by recognising
+ *              other         lifted whole out of another song. The easy catch
+ *              place         this song, untouched, somewhere it does not go.
+ *                            Only knowing the song catches it
+ *              alteredOther  another song with words swapped as well
+ *              own / otherW  the WORD games: a fake word taken from this song
+ *                            or from the other songs
+ *   editPct  how much of an altered piece is swapped, as a range. HIGH is
+ *            EASY: a verse a third wrong reads as wrong on sight
+ *   missN    Scramble: how many go missing - words per verse, or lines over the
+ *            whole song
+ *   extraN   Scramble Words: extra words in the bank that belong nowhere
  *   trayN    Scramble: how many chips are ON THE TRAY at once. The deck is
  *            unchanged - every missing word or line is still in it, plus the
  *            ringers - and this is the size of the WINDOW onto it. More is
  *            harder, because the haystack is bigger; see makeTray
- *   fakePct  Impostor: share of the units swapped for fakes
+ *   fakePct  Impostor: share of the units swapped for fakes, as a range
  *   fakesPer Impostor: how many wrong ones hide behind each unit. Tapping
  *            walks the ring, so ONE is the easy end - a tap on a planted word
  *            lands straight on the truth - and more means a tap is a guess.
@@ -1466,34 +1477,37 @@ var GAME_LEVELS = ['easy', 'medium', 'hard'];
  *
  * THE FLOOR IS PER LEVEL, not one number for the whole app. A floor is a
  * statement about how hard the thing is - 75% of an Easy board you can half
- * read off the page is not the achievement 75% of a Hard one is - so it lives
- * with the rest of that level's difficulty rather than sitting above all of
- * them. Same reason the options count sits on the two games that ask
- * questions: four options at Easy and four at Hard were never the same dial.
- *
- * The N dials are ranges - a fixed count is a tell after two rounds.
+ * read off the page is not the achievement 75% of a Hard one is.
  *
  * THE TIME LIMIT IS A RATE, NOT A NUMBER. A two-verse song and a nine-verse
  * one cannot share a stopwatch, so each game states what it charges per unit of
  * whatever it walks you through - seconds per verse, per line, or per word -
  * and the limit for a given song is that rate times what the song actually
  * holds. `unit` says which count it multiplies.
+ *
+ * WHY SOME GAMES LACK A KIND. Order Verses and Scramble Lines put the whole
+ * song on the board, so a line of this song from somewhere else is sitting
+ * there in its real place for you to see - "place" stops being a question.
  */
+var LINE_KINDS = ['altered', 'other', 'place', 'alteredOther'];
+var WORD_KINDS = ['own', 'otherW'];
 var GAME_SPEC = {
-  verseSort:    { unit: 'section', dials: ['editN', 'editPct', 'borrowN', 'floor', 'secsPer'] },
-  lineSort:     { unit: 'line',    dials: ['editN', 'editPct', 'borrowN', 'decoyPct', 'floor', 'secsPer'] },
-  verseOrder:   { unit: 'section', dials: ['editN', 'editPct', 'borrowN', 'decoyPct', 'choiceCount', 'floor', 'secsPer'] },
-  lineOrder:    { unit: 'line',    dials: ['editN', 'editPct', 'borrowN', 'decoyPct', 'choiceCount', 'floor', 'secsPer'] },
-  wordScramble: { unit: 'word',    dials: ['missPct', 'extraN', 'trayN', 'floor', 'secsPer'] },
-  /* NO DECOY DIAL, for exactly the reason Order Verses has none: the whole
-     song is on the board, so a line of this song from somewhere else is
-     sitting there in its real place for you to see. It stops being a question.
-     What is left is BORROWED - foreign lines, the easy reject - and TAMPERED
-     copies of the very lines that are missing, which is the hard one, because
-     the only way to tell is to know the line. */
-  lineScramble: { unit: 'line',    dials: ['missPct', 'borrowN', 'editN', 'editPct', 'trayN', 'floor', 'secsPer'] },
-  wordImpostor: { unit: 'word',    dials: ['fakePct', 'fakesPer', 'floor', 'secsPer'] },
-  lineImpostor: { unit: 'line',    dials: ['fakePct', 'fakesPer', 'editN', 'editPct', 'decoyPct', 'floor', 'secsPer'] }
+  verseSort:    { unit: 'section', kinds: ['altered', 'other', 'alteredOther'],
+                  dials: ['wrongN', 'mix', 'editPct', 'floor', 'secsPer'] },
+  lineSort:     { unit: 'line',    kinds: LINE_KINDS,
+                  dials: ['wrongN', 'mix', 'editPct', 'floor', 'secsPer'] },
+  verseOrder:   { unit: 'section', kinds: LINE_KINDS,
+                  dials: ['wrongN', 'mix', 'editPct', 'choiceCount', 'floor', 'secsPer'] },
+  lineOrder:    { unit: 'line',    kinds: LINE_KINDS,
+                  dials: ['wrongN', 'mix', 'editPct', 'choiceCount', 'floor', 'secsPer'] },
+  wordScramble: { unit: 'word',    kinds: WORD_KINDS,
+                  dials: ['missN', 'extraN', 'mix', 'trayN', 'floor', 'secsPer'] },
+  lineScramble: { unit: 'line',    kinds: ['altered', 'other', 'alteredOther'],
+                  dials: ['missN', 'wrongN', 'mix', 'editPct', 'trayN', 'floor', 'secsPer'] },
+  wordImpostor: { unit: 'word',    kinds: WORD_KINDS,
+                  dials: ['fakePct', 'mix', 'fakesPer', 'floor', 'secsPer'] },
+  lineImpostor: { unit: 'line',    kinds: LINE_KINDS,
+                  dials: ['fakePct', 'mix', 'editPct', 'fakesPer', 'floor', 'secsPer'] }
 };
 
 /* A quiz has no levels - the mask IS the level - so it gets one set of dials
@@ -1572,104 +1586,114 @@ function letterRuleOf(settings) {
   };
 }
 
-/* Ranges, percentages, rates and point values, per game per level. Built rather
-   than typed out: the games share one shape and the exceptions are spelled out
-   underneath. */
+/* Ranges, mixes, rates and point values, per game per level - beta 1.0.
+   Typed out per game rather than built from one shared shape, because since
+   the mix arrived the games no longer share one. */
 function defaultGameSettings() {
-  /* decoyPct climbs with the level for the same reason editPct falls: the
-     easy rungs plant material that announces itself, the hard ones plant
-     material you can only place by knowing where it really goes. */
-  var shared = {
-    easy:   { pts: 1, editN: [0, 1], editPct: 30, borrowN: [0, 1], decoyPct: 20,
-              floor: POINTS_FLOOR, choiceCount: CHOICE_COUNT },
-    medium: { pts: 2, editN: [1, 2], editPct: 20, borrowN: [1, 2], decoyPct: 50,
-              floor: POINTS_FLOOR, choiceCount: CHOICE_COUNT },
-    hard:   { pts: 3, editN: [2, 3], editPct: 10, borrowN: [2, 3], decoyPct: 80,
-              floor: POINTS_FLOOR, choiceCount: CHOICE_COUNT }
-  };
+  function lv3(fn) { return { easy: fn(0), medium: fn(1), hard: fn(2) }; }
+  var PTS = [1, 2, 3];
+  /* The altered share falls as the level climbs for the same reason editPct
+     does, and "place" climbs: the easy rungs plant material that announces
+     itself, the hard ones plant material you can only place by knowing where
+     it really goes. */
+  var WRONG = [[0, 2], [2, 4], [4, 6]];
+  var EDIT  = [[25, 35], [15, 25], [5, 15]];
+  var LINE_MIX = [{ altered: 50, other: 40, place: 10, alteredOther: 0 },
+                  { altered: 50, other: 25, place: 25, alteredOther: 0 },
+                  { altered: 50, other: 10, place: 40, alteredOther: 0 }];
+  function base(i, secs) {
+    return { pts: PTS[i], floor: POINTS_FLOOR, secsPer: secs[i] };
+  }
+  function copyMix(m) { var o = {}; for (var k in m) if (m.hasOwnProperty(k)) o[k] = m[k]; return o; }
   /* Seconds per unit, easy / medium / hard. Reading a whole verse off a card
      costs more than glancing at a line, and a line costs more than a word, so
-     the three scales are an order of magnitude apart. Every one of these is a
-     starting guess and every one is tunable. */
-  var rates = {
-    verseSort:    [22, 16, 11],     // per section, and you must order them all
-    lineSort:     [7, 5, 3.5],      // per line, one board per section
-    verseOrder:   [26, 19, 13],     // per section: a question each, whole verses to read
-    lineOrder:    [11, 8, 5.5],     // per line: a question each
-    wordScramble: [1.6, 1.3, 1],    // per word in the song
-    lineScramble: [9, 7, 5],        // per line in the song
-    wordImpostor: [1.3, 1, 0.8],    // per word: every one is a judgement
-    lineImpostor: [7, 5, 3.5]       // per line
+     the three scales are an order of magnitude apart. */
+  return {
+    verseSort: lv3(function (i) {
+      var c = base(i, [22, 16, 11]);
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice();
+      c.mix = { altered: 50, other: 50, alteredOther: 0 };
+      return c;
+    }),
+    lineSort: lv3(function (i) {
+      var c = base(i, [7, 5, 3.5]);
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice(); c.mix = copyMix(LINE_MIX[i]);
+      return c;
+    }),
+    verseOrder: lv3(function (i) {
+      var c = base(i, [26, 19, 13]);
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice(); c.mix = copyMix(LINE_MIX[i]);
+      c.choiceCount = CHOICE_COUNT;
+      return c;
+    }),
+    lineOrder: lv3(function (i) {
+      var c = base(i, [11, 8, 5.5]);
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice(); c.mix = copyMix(LINE_MIX[i]);
+      c.choiceCount = CHOICE_COUNT;
+      return c;
+    }),
+    /* HOW BIG THE TRAY IS - 1.63. More is harder: a bigger haystack, and less
+       of the verse confirmed for you at any one moment. See makeTray. */
+    wordScramble: lv3(function (i) {
+      var c = base(i, [1.6, 1.3, 1]);
+      c.missN = [[2, 3], [3, 5], [5, 8]][i];
+      c.extraN = [[0, 2], [2, 4], [6, 8]][i];
+      c.mix = { own: 50, otherW: 50 };
+      c.trayN = [8, 12, 16][i];
+      return c;
+    }),
+    lineScramble: lv3(function (i) {
+      var c = base(i, [9, 7, 5]);
+      c.missN = [[2, 4], [4, 7], [7, 10]][i];
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice();
+      c.mix = { altered: 50, other: 50, alteredOther: 0 };
+      c.trayN = [8, 12, 16][i];
+      return c;
+    }),
+    /* Impostor grades every unit as a judgement, so sitting on your hands
+       scores exactly the share NOT faked. Fake too few and doing nothing clears
+       the floor, which is why the harder levels fake MORE, not fewer. A share,
+       not a count, because the board is the whole song. */
+    wordImpostor: lv3(function (i) {
+      var c = base(i, [1.3, 1, 0.8]);
+      c.fakePct = [[20, 30], [30, 40], [40, 50]][i];
+      c.mix = { own: 50, otherW: 50 };
+      c.fakesPer = i + 1;
+      return c;
+    }),
+    lineImpostor: lv3(function (i) {
+      var c = base(i, [7, 5, 3.5]);
+      c.fakePct = [[25, 35], [35, 45], [45, 55]][i];
+      c.editPct = EDIT[i].slice();
+      c.mix = [{ altered: 20, other: 65, place: 15, alteredOther: 0 },
+               { altered: 35, other: 35, place: 30, alteredOther: 0 },
+               { altered: 45, other: 10, place: 45, alteredOther: 0 }][i];
+      c.fakesPer = i + 1;
+      return c;
+    })
   };
-  var out = {};
-  for (var id in GAME_SPEC) {
-    if (!GAME_SPEC.hasOwnProperty(id)) continue;
-    out[id] = {};
-    for (var i = 0; i < GAME_LEVELS.length; i++) {
-      var lv = GAME_LEVELS[i];
-      var src = shared[lv], cfg = { pts: src.pts };
-      var dials = GAME_SPEC[id].dials;
-      for (var d = 0; d < dials.length; d++) {
-        var k = dials[d];
-        if (src[k] !== undefined) {
-          cfg[k] = (src[k] instanceof Array) ? src[k].slice() : src[k];
-        }
-      }
-      cfg.secsPer = rates[id][i];
-      out[id][lv] = cfg;
-    }
-  }
-  // Scramble: more of the song gone, and more junk in the bank.
-  out.wordScramble.easy.missPct   = 20;  out.wordScramble.easy.extraN   = [0, 1];
-  out.wordScramble.medium.missPct = 40;  out.wordScramble.medium.extraN = [1, 2];
-  out.wordScramble.hard.missPct   = 60;  out.wordScramble.hard.extraN   = [3, 4];
+}
 
-  /* HOW BIG THE TRAY IS - 1.63. A long verse used to put every missing word on
-     screen at once, which on Hard is thirty-odd chips and stops being a memory
-     game some way before it stops being a reading exercise. The deck is
-     unchanged; this is how much of it you can see.
-     MORE IS HARDER, so the numbers climb with the level - a bigger haystack,
-     and less of the verse confirmed for you at any one moment. It also cuts the
-     other way at the end of a board: the tray used to shrink as you spent it,
-     so the last few words were a choice of three. A window stays the size it
-     is until the deck itself runs out. */
-  out.wordScramble.easy.trayN   = 8;
-  out.wordScramble.medium.trayN = 12;
-  out.wordScramble.hard.trayN   = 16;
-  out.lineScramble.easy.trayN   = 8;
-  out.lineScramble.medium.trayN = 12;
-  out.lineScramble.hard.trayN   = 16;
-  // Scramble Lines takes the same shares, applied to lines rather than words,
-  // and fills its bank with tampered and borrowed lines instead of odd words.
-  out.lineScramble.easy.missPct   = 20;
-  out.lineScramble.medium.missPct = 40;
-  out.lineScramble.hard.missPct   = 60;
-  // Impostor Words grades every word as a judgement, so sitting on your hands
-  // scores exactly the share NOT swapped. Below 25% doing nothing would clear
-  // the 75% floor and bank points, which is why easy starts there and the
-  // harder levels swap MORE, not fewer.
-  out.wordImpostor.easy.fakePct   = 25;
-  out.wordImpostor.medium.fakePct = 35;
-  out.wordImpostor.hard.fakePct   = 45;
-  /* Line Impostor is a share now for exactly the same reason. It shows the
-     WHOLE song with no extra rows, so a fixed count of wrong lines would mean
-     a forty-line song was 92% right for doing nothing at all - over the floor,
-     banking points for sitting still. A share cannot drift with song length.
-     editN is what is left of the old count: how many of those wrong lines are
-     this song's own words meddled with, the rest splitting borrowed/decoy. */
-  out.lineImpostor.easy.fakePct   = 30;
-  out.lineImpostor.medium.fakePct = 40;
-  out.lineImpostor.hard.fakePct   = 50;
-  /* HOW MANY HIDE BEHIND EACH ONE. A tap walks the ring, so the count of
-     fakes behind a unit is the count of taps a wrong one can cost you - and
-     with one behind it, a tap on something you know is wrong lands on the
-     answer. That is the easy end by construction. */
-  out.wordImpostor.easy.fakesPer   = 1;
-  out.wordImpostor.medium.fakesPer = 2;
-  out.wordImpostor.hard.fakesPer   = 3;
-  out.lineImpostor.easy.fakesPer   = 1;
-  out.lineImpostor.medium.fakesPer = 2;
-  out.lineImpostor.hard.fakesPer   = 3;
+/**
+ * A mix, cleaned: only the kinds this game makes, no negatives, summing to
+ * exactly 100. All zeros, or nothing usable, falls back.
+ */
+function mixOf(v, kinds, fallback) {
+  if (!v || typeof v !== 'object' || v instanceof Array) return fallback;
+  var out = {}, tot = 0, i;
+  for (i = 0; i < kinds.length; i++) {
+    var n = num(v[kinds[i]], 0, 100, 0);
+    out[kinds[i]] = n;
+    tot += n;
+  }
+  if (tot <= 0) return fallback;
+  var sum = 0, big = kinds[0];
+  for (i = 0; i < kinds.length; i++) {
+    out[kinds[i]] = Math.round(out[kinds[i]] * 100 / tot);
+    sum += out[kinds[i]];
+    if (out[kinds[i]] > out[big]) big = kinds[i];
+  }
+  out[big] += 100 - sum;
   return out;
 }
 
@@ -2064,23 +2088,26 @@ function computeSettings() {
         var mine = s.games[g][lv], theirs = stored.games[g][lv];
         if (!theirs) continue;
         mine.pts = num(theirs.pts, 0, 1000, mine.pts);
-        if (mine.editPct !== undefined) mine.editPct = num(theirs.editPct, 5, 100, mine.editPct);
-        if (mine.missPct !== undefined) mine.missPct = num(theirs.missPct, 5, 100, mine.missPct);
-        if (mine.fakePct !== undefined) mine.fakePct = num(theirs.fakePct, 5, 100, mine.fakePct);
         /* A NEW DIAL DOES NOT NEED A REVISION BUMP. It is absent from every
-           blob written before it existed, num() falls back, and the level
+           blob written before it existed, the check falls back, and the level
            takes the default - which is what a bump would have done anyway,
-           except a bump would also have thrown away every dial he HAD set. */
+           except a bump would also have thrown away every dial he HAD set.
+           The beta 1.0 dials (wrongN, mix, missN, and editPct and fakePct as
+           ranges) arrived this way: an old blob's editN, borrowN and decoyPct
+           are simply no longer read, and a plain-number editPct is not a
+           range, so it falls back too. */
+        if (mine.editPct !== undefined) mine.editPct = range(theirs.editPct, 5, 100, mine.editPct);
+        if (mine.fakePct !== undefined) mine.fakePct = range(theirs.fakePct, 5, 100, mine.fakePct);
+        if (mine.wrongN  !== undefined) mine.wrongN  = range(theirs.wrongN, 0, 8, mine.wrongN);
+        if (mine.missN   !== undefined) mine.missN   = range(theirs.missN, 1, 40, mine.missN);
+        if (mine.extraN  !== undefined) mine.extraN  = range(theirs.extraN, 0, 12, mine.extraN);
+        if (mine.mix     !== undefined) mine.mix     = mixOf(theirs.mix, GAME_SPEC[g].kinds, mine.mix);
         if (mine.fakesPer !== undefined) mine.fakesPer = num(theirs.fakesPer, 1, 8, mine.fakesPer, true);
-        if (mine.decoyPct !== undefined) mine.decoyPct = num(theirs.decoyPct, 0, 100, mine.decoyPct);
         if (mine.floor !== undefined) mine.floor = num(theirs.floor, 0, 99, mine.floor);
         if (mine.choiceCount !== undefined) {
           mine.choiceCount = num(theirs.choiceCount, 2, 8, mine.choiceCount, true);
         }
         if (mine.secsPer !== undefined) mine.secsPer = num(theirs.secsPer, 0.1, 600, mine.secsPer);
-        if (mine.editN   !== undefined) mine.editN   = range(theirs.editN, 0, 6, mine.editN);
-        if (mine.borrowN !== undefined) mine.borrowN = range(theirs.borrowN, 0, 6, mine.borrowN);
-        if (mine.extraN  !== undefined) mine.extraN  = range(theirs.extraN, 0, 12, mine.extraN);
         if (mine.trayN   !== undefined) mine.trayN   = num(theirs.trayN, 2, 40, mine.trayN, true);
       }
     }

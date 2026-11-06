@@ -1160,6 +1160,11 @@ answer to the wrong question; in Scramble Lines it sits in the tray beside the
 lines that really are missing; in Line Impostor it stands in a slot that belongs
 to something else.
 
+> **Superseded in beta 1.0.** The three dials described below (`editN`,
+> `borrowN`, Decoys %) are now one count and a mix. The kinds of wrong piece are
+> the same, plus one new one; see *Wrong pieces: one count and a mix* under the
+> settings screen. The reasoning below still explains why each kind exists.
+
 **The decoy dial skews the split.** `borrowN` says how many not-here-and-now
 units to plant and **Decoys (%)** decides how many of them are decoys rather
 than borrowed — 0 is all borrowed, 100 all decoy. It climbs with the level for
@@ -3078,6 +3083,68 @@ next open paints the old lyrics. Bump `CACHE_VERSION` if the shape of the stored
 index changes.
 
 ## The settings screen
+
+### Sections that fold shut — beta 1.0
+
+Built from a mockup Kyle reviewed and edited before it went in. Eight sections,
+in the order you reach for them: **Account** (the closed-beta sign-in, web
+only), **Your songs**, **Practice**, **Timer**, **Games and quizzes**, **Fine
+tuning**, **This device**, **Start over**.
+
+- **Each section folds shut and shows its current setting** on the folded line
+  (Cooling 1 · 10% rest, On · ±20%, the game being tuned), so the screen opens
+  short and still says where everything stands. Games and quizzes starts open;
+  what you open stays open while the app is.
+- **One line under each control.** The paragraphs that sat under every dial are
+  gone. Where a number needs explaining it gets **one example in plain
+  numbers**, worked out from the dial as it stands, against the top quiz.
+- **Your songs** on the web is three buttons to the backup page (download,
+  restore, move in from Google Sheets). The Google Doc songbook box only exists
+  on the Google version, where it can work. Songs waiting on a chorus tag are
+  listed here too.
+- **Fine tuning** holds what you set once: the medal bonus and the lyric
+  heatmap's four dials.
+- The save bar, staging and resets are unchanged: nothing writes until Save.
+
+### Wrong pieces: one count and a mix — beta 1.0
+
+Kyle's ask: show, for each level of each game, what the wrong pieces are made
+of, as a picture; and make the amounts ranges.
+
+It used to be three dials you had to multiply out in your head: how many
+tampered copies, how many planted units, and what share of the planted ones
+were decoys. Now each level stores:
+
+- **`wrongN`** — how many wrong pieces, as a range (`fakePct`, a range of shares,
+  on the Impostor games; `extraN`, extra words, on Scramble Words).
+- **`mix`** — what each piece is, as shares of 100. Drawn **per piece**, so a
+  level never settles into a recipe. The kinds a game can make are in its
+  `GAME_SPEC.kinds`:
+  - *This song, altered* — tampered, as before.
+  - *Another song* — borrowed, as before.
+  - *This song, wrong place* — the decoy, as before. Not on Order Verses or
+    Scramble Lines, whose boards show the whole song.
+  - *Another song, altered* — **new**: a borrowed line or verse with words
+    swapped too. Defaults to 0%, so nothing changes until it is turned up.
+  - On the word games, *words from this song* vs *words from other songs*: where
+    the fake words in Scramble Words' bank and Impostor Words' rings come from.
+- **`editPct`** — words swapped in an altered piece, now a range drawn fresh for
+  every piece.
+- **`missN`** — Scramble: **a count** now, not a share. Words missing per verse
+  in Scramble Words (never the whole verse, never none), lines missing over the
+  whole song in Scramble Lines.
+
+On screen each level is a **ring**: one segment per kind, to scale, with the
+count in the middle. Tap a ring to tune that level. Mix sliders rebalance:
+slide one and the others keep their proportions and fill the rest, so the mix
+always adds to 100.
+
+No settings revision bump: an old blob's `editN`, `borrowN` and `decoyPct` are
+simply not read, and a plain-number `editPct` or `fakePct` is not a range, so
+those levels take the new defaults. Points, floors, seconds, trays and the
+quizzes carry over.
+
+### Before beta 1.0
 
 Cards in the order you reach for them: **Songbook**, **Scoring**, **The
 timer**, **Games and quizzes**, **This device**, then **Reset**.

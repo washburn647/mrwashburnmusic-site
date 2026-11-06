@@ -152,6 +152,65 @@ button { font-family: inherit; }
 .acct-btns .btn { flex: 1; }
 .beta-pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
   text-transform: uppercase; background: var(--gold-soft); color: var(--ink); border-radius: 999px; padding: 2px 8px; }
+/* ============ Settings sections - beta 1.0 ============ */
+.set-sec { background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius-m);
+  margin-bottom: 12px; }
+.set-sec.is-danger { border-color: var(--incorrect-bg); }
+.set-sum { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+.set-sum::-webkit-details-marker { display: none; }
+.set-chev { width: 9px; height: 9px; border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted);
+  transform: rotate(-45deg); transition: transform 0.15s; flex: none; }
+.set-sec[open] > .set-sum .set-chev { transform: rotate(45deg); }
+.set-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink); font-weight: 500; }
+.set-peek { margin-left: auto; font-size: 12px; color: var(--text-muted); text-align: right; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-body { padding: 0 16px 16px; display: grid; gap: 12px; }
+.set-body > * { margin: 0; }
+.set-stack { display: grid; gap: 12px; }
+.set-stack > * { margin: 0; }
+.set-row-top { display: flex; align-items: baseline; gap: 10px; }
+.set-lbl { font-weight: 600; font-size: 15px; color: var(--text-ink); }
+.set-val { margin-left: auto; font-family: var(--font-mono); font-size: 14px; color: var(--teal-deep);
+  font-variant-numeric: tabular-nums; }
+.set-sub { font-size: 13px; color: var(--text-muted); line-height: 1.45; margin: 0; }
+.set-sub.is-bad { color: var(--incorrect); }
+.set-eg { font-size: 13px; line-height: 1.45; margin: 0; background: var(--paper); border-radius: var(--radius-s);
+  padding: 8px 10px; color: var(--text-ink); }
+.set-eg strong { color: var(--teal-deep); }
+.set-mask { font-family: var(--font-mono); letter-spacing: 0.04em; }
+.set-hr { height: 1px; background: var(--border); }
+.set-toggle { margin: 0; }
+.set-kv { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.set-kv-name { font-size: 14px; font-weight: 500; flex: 1 1 140px; min-width: 0; color: var(--text-ink); }
+.set-kv-in { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.set-kv-in .num-input { width: 58px; flex: 0 0 58px; }
+.set-kv-in .set-select { width: auto; margin: 0; }
+.set-unit { font-size: 13px; color: var(--text-muted); }
+.set-body > .btn + .btn { margin-top: -4px; }
+.set-body > a.btn { text-align: center; text-decoration: none; box-sizing: border-box; }
+.set-body > .side-toggle, .set-stack > .side-toggle { margin-bottom: 0; }
+.set-rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.set-ring { display: grid; justify-items: center; gap: 2px; padding: 8px 2px 6px; background: #fff;
+  border: 1px solid var(--border); border-radius: 12px; cursor: pointer; color: var(--ink); font: inherit; }
+.set-ring.on { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
+.set-ring-head { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); }
+.set-ring-cap { font-size: 11px; color: var(--text-muted); text-align: center; }
+.ring-num { font: 600 8px var(--font-mono); fill: var(--ink); }
+.set-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; }
+.set-lg { display: inline-flex; align-items: center; gap: 6px; }
+.set-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.set-lvbox { display: grid; gap: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.set-lvbox > * { margin: 0; }
+.set-lv-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--teal-deep); }
+.set-mix { display: grid; gap: 6px; }
+.set-mix-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) minmax(0, 1.2fr) 40px; align-items: center;
+  gap: 8px; font-size: 13px; }
+.set-mix-row .decay-slider { margin: 0; }
+.set-mix-val { font: 500 13px var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.set-wrap .medal-dial-grid { margin: 0; }
 .manage-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; min-height: 18px; }
 
 .search-input {
