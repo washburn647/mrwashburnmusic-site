@@ -709,7 +709,10 @@
   function signOut(wipe) {
     var finish = function () {
       setAccount(null);
-      return dropBase().then(function () {
+      // ends the site's own session cookie, then the Access login behind it
+      var end = fetch(API + 'signout', { method: 'POST', credentials: 'same-origin', redirect: 'manual' })
+        .catch(function () {});
+      return Promise.all([dropBase(), end]).then(function () {
         location.href = '/cdn-cgi/access/logout';
       });
     };
