@@ -29,17 +29,23 @@
   "durable_objects": {
     "bindings": [
       { "name": "BOXES", "class_name": "Box" },
-      { "name": "LIVE", "class_name": "Live" }
+      { "name": "LIVE", "class_name": "Live" },
+      // VAULTS: Song Burner's cloud copy, one Durable Object per signed-in tester.
+      { "name": "VAULTS", "class_name": "Vault" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Box"] },
-    { "tag": "v2", "new_sqlite_classes": ["Live"] }
+    { "tag": "v2", "new_sqlite_classes": ["Live"] },
+    { "tag": "v3", "new_sqlite_classes": ["Vault"] }
   ],
   // Which Cloudflare Access login guards /api/class. Not secrets: the Worker checks each login
   // token's signature against Access's public keys, so knowing these lets no one in.
   "vars": {
     "ACCESS_TEAM": "mute-union-7a1d.cloudflareaccess.com",
-    "ACCESS_AUD": "2bd16f1b6cec5e0b7a60223a7176858f37c303534f0a32c9f6fb287a47185aa9"
+    "ACCESS_AUD": "2bd16f1b6cec5e0b7a60223a7176858f37c303534f0a32c9f6fb287a47185aa9",
+    // Song Burner's beta sign-in: the Audience tag of its own Access application, which
+    // guards /songburner/account/ and /api/songburner/. Empty turns cloud sync off.
+    "SONGBURNER_AUD": ""
   }
 }

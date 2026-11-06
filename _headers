@@ -27,3 +27,7 @@
 
 /musician-maker/*
   X-Robots-Tag: noindex, nofollow
+
+/songburner/account/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store

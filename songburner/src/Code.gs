@@ -4319,6 +4319,16 @@ button { font-family: inherit; }
   font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer;
 }
 .text-link-danger { color: var(--incorrect); }
+.acct-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.acct-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--teal); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; flex: none; text-transform: uppercase; }
+.acct-mail { font-weight: 600; overflow-wrap: anywhere; }
+.acct-state { font-size: 13px; color: var(--text-muted); }
+.acct-state.is-bad { color: var(--incorrect); }
+.acct-btns { display: flex; gap: 8px; }
+.acct-btns .btn { flex: 1; }
+.beta-pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; background: var(--gold-soft); color: var(--ink); border-radius: 999px; padding: 2px 8px; }
 .manage-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; min-height: 18px; }
 
 .search-input {
@@ -7204,6 +7214,22 @@ body {
   /* On mrwashburnmusic.com, host.js stands in for Google: there is no Sheet
      and no Doc to import from, and songs come in by hand or from a backup. */
   var ON_WEB = !!window.SONGBURNER_WEB;
+
+  /* The closed-beta cloud copy, from host.js. Null in the Sheets version. */
+  function cloud() {
+    return (ON_WEB && window.SongBurnerHost && window.SongBurnerHost.cloud) || null;
+  }
+  var syncState = { state: '', at: 0, message: '' };
+
+  function syncedText(ms) {
+    if (!ms) return 'Not synced yet';
+    var mins = Math.round((Date.now() - ms) / 60000);
+    if (mins < 1) return 'Synced just now';
+    if (mins < 60) return 'Synced ' + mins + ' min ago';
+    var hrs = Math.round(mins / 60);
+    if (hrs < 24) return 'Synced ' + hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+    return 'Synced ' + fmtDate(ms);
+  }
 
   /* ---------- state ---------- */
   var S = {
@@ -16485,11 +16511,91 @@ body {
                sub: 'when counted over a line, a verse or the song' }
   };
 
+  /* ---------------- account (closed beta) ---------------- */
+  function accountCard() {
+    var cl = cloud();
+    var card = el('div', 'card-block');
+    card.appendChild(el('div', 'card-title', 'Account'));
+    var body = el('div');
+    card.appendChild(body);
+
+    function paint() {
+      var acc = cl.account();
+      body.innerHTML = '';
+      if (!acc || acc.expired) {
+        body.appendChild(el('p', 'form-hint mt-0', '<span class="beta-pill">Closed beta</span>'));
+        body.appendChild(el('p', 'form-hint', acc && acc.expired
+          ? 'Sign in again to keep syncing.'
+          : 'Sign in to keep your songs and progress on every device.'));
+        var inBtn = el('button', 'btn btn-primary btn-block', 'Sign in');
+        inBtn.addEventListener('click', function () { cl.signIn(); });
+        body.appendChild(inBtn);
+        return;
+      }
+      var row = el('div', 'acct-row');
+      row.appendChild(el('div', 'acct-avatar', esc(acc.email.charAt(0))));
+      var who = el('div');
+      who.appendChild(el('div', 'acct-mail', esc(acc.email)));
+      var stateText = syncState.state === 'syncing' ? 'Syncing...'
+        : syncState.state === 'error' ? (syncState.message || 'Could not sync')
+        : syncedText(acc.lastSync);
+      who.appendChild(el('div', 'acct-state' + (syncState.state === 'error' ? ' is-bad' : ''), esc(stateText)));
+      row.appendChild(who);
+      body.appendChild(row);
+
+      var btns = el('div', 'acct-btns');
+      var syncBtn = el('button', 'btn btn-outline', 'Sync now');
+      syncBtn.disabled = syncState.state === 'syncing';
+      syncBtn.addEventListener('click', function () { cl.syncNow().catch(function () {}); });
+      var outBtn = el('button', 'btn btn-outline', 'Sign out');
+      outBtn.addEventListener('click', function () {
+        if (!confirm('Sign out of Song Burner?')) return;
+        var wipe = confirm('Also remove your songs from this device?' + NL + NL +
+          'Choose OK on a shared computer. Your cloud copy stays either way.');
+        cl.signOut(wipe).catch(function (e) { toast(e.message); });
+      });
+      btns.appendChild(syncBtn);
+      btns.appendChild(outBtn);
+      body.appendChild(btns);
+
+      var del = el('button', 'text-link-btn text-link-danger', 'Delete my cloud copy');
+      del.style.marginTop = '12px';
+      del.addEventListener('click', function () {
+        if (!confirm('Delete your songs and scores from the cloud and sign out?' + NL + NL +
+                     'The songs on this device stay here.')) return;
+        cl.deleteCloud().then(function () { return cl.signOut(false); })
+          .catch(function (e) { toast(e.message); });
+      });
+      body.appendChild(del);
+    }
+    /* Repainted by sync news while the card is on screen, and dropped after. */
+    S.paintAccount = function () {
+      if (!card.isConnected) { S.paintAccount = null; return; }
+      paint();
+    };
+    paint();
+    /* Signed out: ask once whether cloud sync is switched on on the site at
+       all, and stay out of the way until it is. */
+    if (!cl.account()) {
+      card.style.display = 'none';
+      cl.checkSignIn().then(function () {
+        card.style.display = '';
+        paint();
+        cl.syncNow().catch(function () {});
+      }, function (e) {
+        if (e && e.code !== 'off') card.style.display = '';
+      });
+    }
+    return card;
+  }
+
   VIEWS.settings = function () {
     S.settingsDirty = false;      // a freshly drawn screen has nothing staged
     var wrap = el('div');
     wrap.appendChild(el('p', 'section-eyebrow', 'Setup'));
     wrap.appendChild(el('h2', 'section-title', 'Settings'));
+    S.paintAccount = null;
+    if (cloud()) wrap.appendChild(accountCard());
 
     /**
      * NOTHING ON THIS SCREEN WRITES UNTIL YOU SAY SO.
@@ -17847,6 +17953,23 @@ body {
   }
 
   boot(1);
+
+  /* A sync that changed this device repaints, unless a quiz or game is open:
+     those finish on what they started with, and the next screen is fresh. */
+  if (ON_WEB) {
+    window.addEventListener('songburner:sync', function (ev) {
+      var d = ev.detail || {};
+      syncState = { state: d.state, at: d.at || syncState.at, message: d.message || '' };
+      if (S.paintAccount) S.paintAccount();
+      if (d.state === 'done' && d.changed) {
+        dropAllSongs();
+        refreshIndex().then(function () {
+          var v = route().view;
+          if (['front', 'back', 'library', 'insights', 'settings'].indexOf(v) !== -1) render();
+        }).catch(function () {});
+      }
+    });
+  }
 })();
 </script>
 </body>

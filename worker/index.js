@@ -7,6 +7,8 @@
      in the same private R2 bucket so every device Kyle signs in on sees them (see lessonsApi).
    - /api/live/ and /studio/api/live/: what Kyle publishes from the studio straight to the
      site (grooves, game options, voice takes, units), read by the games and lessons (see Live).
+   - /api/songburner/: Song Burner's cloud copy, one private library per signed-in tester,
+     behind its own Cloudflare Access application (see songBurnerApi and Vault).
 
    wrangler.jsonc sets ACCESS_TEAM (the Zero Trust team domain) and ACCESS_AUD
    (the Access application's Audience tag). */
@@ -34,6 +36,13 @@ export default {
     if (box) return boxApi(request, env, box);
     const live = /^\/(studio\/)?api\/live\/(.+)$/.exec(url.pathname);
     if (live) return liveApi(request, env, !!live[1], live[2]);
+    if (url.pathname.startsWith('/api/songburner/')) {
+      try {
+        return await songBurnerApi(request, env, url.pathname.slice('/api/songburner/'.length));
+      } catch (err) {
+        return reply({ error: 'server error' }, 500);
+      }
+    }
     if (!url.pathname.startsWith('/api/class/')) return env.ASSETS.fetch(request);
     if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.CLASS_FILES) return reply({ error: 'not set up' }, 503);
     if (!(await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
@@ -216,24 +225,30 @@ const part = (s) => JSON.parse(new TextDecoder().decode(b64(s)));
 
 /** The Access login token on the request is genuine, current and for this application. */
 export async function signedIn(request, env, keys = accessKeys) {
+  return !!(await accessToken(request, env, env.ACCESS_AUD, keys));
+}
+
+/** The verified body of the Access login token for the application `aud`, or null. */
+export async function accessToken(request, env, aud, keys = accessKeys) {
   const token = request.headers.get('Cf-Access-Jwt-Assertion');
-  if (!token) return false;
+  if (!token || !aud || !env.ACCESS_TEAM) return null;
   const team = String(env.ACCESS_TEAM).replace(/^https?:\/\//, '').replace(/\/+$/, '');
   try {
     const [h, p, s] = token.split('.');
     const head = part(h), body = part(p);
-    if (head.alg !== 'RS256') return false;
+    if (head.alg !== 'RS256') return null;
     let jwk = (await keys(team)).find((k) => k.kid === head.kid);
     if (!jwk) jwk = (await keys(team, true)).find((k) => k.kid === head.kid);
-    if (!jwk) return false;
+    if (!jwk) return null;
     const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
     const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64(s), new TextEncoder().encode(h + '.' + p));
     const now = Date.now() / 1000;
-    const aud = Array.isArray(body.aud) ? body.aud : [body.aud];
-    return ok && aud.includes(env.ACCESS_AUD) && body.iss === 'https://' + team &&
+    const auds = Array.isArray(body.aud) ? body.aud : [body.aud];
+    const good = ok && auds.includes(aud) && body.iss === 'https://' + team &&
       typeof body.exp === 'number' && body.exp > now && !(body.nbf > now + 60);
+    return good ? body : null;
   } catch (e) {
-    return false;
+    return null;
   }
 }
 
@@ -490,6 +505,80 @@ export class Box extends DurableObject {
   async results() {
     const list = await this.ctx.storage.list({ prefix: 'r:' });
     return reply({ results: [...list.values()] });
+  }
+
+  async clear() {
+    await this.ctx.storage.deleteAll();
+    return reply({ ok: true });
+  }
+}
+
+// ---- Song Burner's cloud copy -------------------------------------------------
+
+/* One private library per tester, for the closed beta. A separate Cloudflare Access
+   application (SONGBURNER_AUD) guards /songburner/account/ and /api/songburner/, and only
+   invited email addresses can sign in. Every request is checked here too.
+
+   The library is the same thing as a backup file: { tabs, order }. The browser merges its
+   copy with this one (see songburner/host.js) and sends the result back; this side only
+   stores it, with a version number so two devices never write over each other unseen.
+   The Durable Object is named by a hash of the email address, and the address itself is
+   not stored.
+
+   GET    /api/songburner/me        who is signed in              { email }
+   GET    /api/songburner/library   the stored library            { version, at, library }
+   PUT    /api/songburner/library   replace it; If-Match: version { version, at } or 409
+   DELETE /api/songburner/library   delete the cloud copy */
+
+const MAX_LIBRARY = 24 * 1024 * 1024;
+
+async function songBurnerApi(request, env, path) {
+  if (!env.SONGBURNER_AUD || !env.VAULTS) return reply({ error: 'not set up' }, 503);
+  const who = await accessToken(request, env, env.SONGBURNER_AUD);
+  const email = who && typeof who.email === 'string' ? who.email.trim().toLowerCase() : '';
+  if (!email) return reply({ error: 'sign in' }, 401);
+  const method = request.method;
+  if (path === 'me' && method === 'GET') return reply({ email });
+  if (path !== 'library') return reply({ error: 'not found' }, 404);
+  const vault = env.VAULTS.get(env.VAULTS.idFromName('songburner:' + await sha256(email)));
+  if (method === 'GET') return vault.read();
+  if (method === 'DELETE') return vault.clear();
+  if (method === 'PUT') {
+    const text = await request.text();
+    if (text.length > MAX_LIBRARY) return reply({ error: 'too big' }, 413);
+    let lib;
+    try { lib = JSON.parse(text); } catch { return reply({ error: 'bad library' }, 400); }
+    if (!lib || typeof lib.tabs !== 'object' || !Array.isArray(lib.order)) return reply({ error: 'bad library' }, 400);
+    const base = Number(request.headers.get('If-Match') || '0');
+    return vault.write(text, Number.isFinite(base) ? base : -1);
+  }
+  return reply({ error: 'method not allowed' }, 405);
+}
+
+const VAULT_CHUNK = 512 * 1024;   // characters per stored value, well under the 2 MB limit
+
+export class Vault extends DurableObject {
+  async read() {
+    const meta = await this.ctx.storage.get('meta');
+    if (!meta) return reply({ version: 0, at: 0, library: null });
+    const parts = await this.ctx.storage.get([...Array(meta.chunks).keys()].map((i) => `lib:${i}`));
+    let text = '';
+    for (let i = 0; i < meta.chunks; i++) text += parts.get(`lib:${i}`) || '';
+    return new Response('{"version":' + meta.version + ',"at":' + meta.at + ',"library":' + text + '}',
+      { headers: headers({ 'Content-Type': 'application/json' }) });
+  }
+
+  async write(text, base) {
+    const old = (await this.ctx.storage.get('meta')) || { version: 0, chunks: 0 };
+    if (base !== old.version) return reply({ error: 'changed', version: old.version }, 409);
+    const chunks = Math.ceil(text.length / VAULT_CHUNK) || 1;
+    const put = {};
+    for (let i = 0; i < chunks; i++) put[`lib:${i}`] = text.slice(i * VAULT_CHUNK, (i + 1) * VAULT_CHUNK);
+    const meta = { version: old.version + 1, chunks, at: Date.now() };
+    put.meta = meta;
+    await this.ctx.storage.put(put);
+    if (old.chunks > chunks) await this.ctx.storage.delete([...Array(old.chunks - chunks).keys()].map((i) => `lib:${chunks + i}`));
+    return reply({ version: meta.version, at: meta.at });
   }
 
   async clear() {

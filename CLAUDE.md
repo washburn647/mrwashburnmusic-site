@@ -30,7 +30,9 @@ A lyric memorization app, served at `/songburner/`. Read `songburner/README.md` 
 - Bump `BUILD` near the top of `Code.gs` for every release. The footer shows it.
 - Why the app behaves as it does is in `songburner/src/DESIGN.md`. Keep it current.
 - Data lives on each device (IndexedDB, via `host.js`), and moves between devices as a backup
-  file. Accounts and sync are planned, 13+ only. Don't add a server or logins unless asked.
+  file, or by cloud sync for closed-beta testers (13+ only): Cloudflare Access sign-in, one
+  private Durable Object per tester (`/api/songburner/`), merging in `host.js`. See the README's
+  "Cloud sync" section. Don't add other servers or logins unless asked.
 - The old copy in Kyle's `Claude Files\songburner-app` folder is retired. This repo is the source.
 - Test in a browser before opening a PR: Playwright and Chromium are preinstalled in cloud
   sessions. Serve the repo root with a static server and open `/songburner/`.

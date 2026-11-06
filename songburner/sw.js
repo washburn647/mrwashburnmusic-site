@@ -33,7 +33,10 @@ var slowUntil = 0;
 
 self.addEventListener('fetch', function (e) {
   var req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  var url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  // The sign-in page sits behind Cloudflare Access: always the network, never a saved copy.
+  if (url.pathname.indexOf('/songburner/account/') === 0) return;
   var net = fetch(req).then(function (res) {
     if (res.ok) {
       var copy = res.clone();

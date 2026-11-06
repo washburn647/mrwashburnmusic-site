@@ -312,6 +312,7 @@
         var out = engine.apiCall(payloadJson);
         return saveDirty().then(function (wrote) {
           if (wrote && channel) channel.postMessage({ type: 'saved' });
+          if (wrote) syncSoon();
           return out;
         });
       });
@@ -407,12 +408,372 @@
     });
   }
 
+  /* ---------------- cloud copy (closed beta) ----------------
+     Signed in through Cloudflare Access, a tester's library is also kept on
+     the website (worker/index.js, /api/songburner/), so it follows them to
+     every device. The server only stores; merging happens here.
+
+     A sync is a three-way merge, row by row, keyed on each tab's first column
+     (a song's id, an attempt's id, a list's id, a Meta key):
+       - BASE is what this device and the cloud last agreed on,
+       - LOCAL is this device now, REMOTE is the cloud now.
+     A row one side changed and the other did not takes the change. A row one
+     side deleted and the other did not change stays deleted. A row both sides
+     changed keeps the newer song (updatedAt) and otherwise this device's copy
+     (the cloud's, on a device's first sync, so a fresh install's defaults
+     never overwrite settings you have tuned).
+     The result is written here and sent back with the version it was built
+     on; if another device got in first, the whole thing runs again. */
+  var API = '/api/songburner/';
+  var SIGNIN_URL = '/songburner/account/';
+  var ACCOUNT_KEY = 'sb-account';
+  var syncDbp = null;
+
+  function syncDb() {
+    return syncDbp || (syncDbp = new Promise(function (resolve, reject) {
+      var req = indexedDB.open('songburner-sync', 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore('kv'); };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    }));
+  }
+  function kv(mode, fn) {
+    return syncDb().then(function (d) {
+      return new Promise(function (resolve, reject) {
+        var tx = d.transaction('kv', mode), out;
+        var r = fn(tx.objectStore('kv'));
+        if (r) r.onsuccess = function () { out = r.result; };
+        tx.oncomplete = function () { resolve(out); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+  function getBase() { return kv('readonly', function (st) { return st.get('base'); }); }
+  function putBase(b) { return kv('readwrite', function (st) { st.put(b, 'base'); }); }
+  function dropBase() { return kv('readwrite', function (st) { st.delete('base'); }); }
+
+  function account() {
+    try { return JSON.parse(localStorage.getItem(ACCOUNT_KEY) || 'null'); } catch (e) { return null; }
+  }
+  function setAccount(a) {
+    try {
+      if (a) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(a));
+      else localStorage.removeItem(ACCOUNT_KEY);
+    } catch (e) {}
+  }
+
+  /* Access answers a signed-out call with a redirect to its login page. */
+  function api(path, opts) {
+    opts = opts || {};
+    opts.credentials = 'same-origin';
+    opts.redirect = 'manual';
+    opts.cache = 'no-store';
+    return fetch(API + path, opts).then(function (res) {
+      if (res.type === 'opaqueredirect' || res.status === 401 || res.status === 403) {
+        var e = new Error('signed out'); e.code = 'signed-out'; throw e;
+      }
+      if (res.status === 503) { var n = new Error('Cloud sync is not switched on yet.'); n.code = 'off'; throw n; }
+      return res;
+    });
+  }
+
+  function keyOf(row) { return row && row[0] !== '' && row[0] !== undefined ? String(row[0]) : ''; }
+  function asMap(rows) {
+    var head = (rows && rows[0]) || [], map = {}, keys = [];
+    for (var i = 1; rows && i < rows.length; i++) {
+      var k = keyOf(rows[i]);
+      if (!k || map.hasOwnProperty(k)) continue;
+      var o = {};
+      for (var c = 0; c < head.length; c++) o[head[c]] = rows[i][c] === undefined ? '' : rows[i][c];
+      map[k] = o; keys.push(k);
+    }
+    return { head: head.slice(), map: map, keys: keys };
+  }
+  function same(a, b, head) {
+    for (var i = 0; i < head.length; i++) {
+      var x = a[head[i]], y = b[head[i]];
+      if (String(x === undefined ? '' : x) !== String(y === undefined ? '' : y)) return false;
+    }
+    return true;
+  }
+  function stamp(v) {
+    if (typeof v === 'number') return v;
+    var t = Date.parse(v);
+    return isNaN(t) ? 0 : t;
+  }
+  /* Columns are only ever added at the end, so the longer header is the newer one. */
+  function mergedHead(heads) {
+    var out = [];
+    heads.forEach(function (h) {
+      if (!h.length) return;
+      if (h.length > out.length && out.every(function (c, i) { return h[i] === c; })) out = h.slice();
+    });
+    heads.forEach(function (h) { h.forEach(function (c) { if (out.indexOf(c) < 0) out.push(c); }); });
+    return out;
+  }
+
+  function mergeTab(name, baseRows, localRows, remoteRows) {
+    var B = asMap(baseRows), L = asMap(localRows), R = asMap(remoteRows);
+    var head = mergedHead([L.head, R.head, B.head]);
+    var keys = L.keys.slice();
+    R.keys.forEach(function (k) { if (!L.map.hasOwnProperty(k)) keys.push(k); });
+    var rows = [head];
+    keys.forEach(function (k) {
+      var b = B.map[k], l = L.map[k], r = R.map[k], pick = null;
+      if (l && r) {
+        if (same(l, r, head)) pick = l;
+        else if (b && same(l, b, head)) pick = r;
+        else if (b && same(r, b, head)) pick = l;
+        else if (name === 'Songs') pick = stamp(r.updatedAt) > stamp(l.updatedAt) ? r : l;
+        /* Both changed. On a device's first sync there is no base, and the
+           cloud's settings beat a fresh install's defaults. */
+        else pick = b ? l : r;
+      } else if (l) {
+        pick = (b && same(l, b, head)) ? null : l;      // gone from the cloud, untouched here
+      } else if (r) {
+        pick = (b && same(r, b, head)) ? null : r;      // deleted here, untouched in the cloud
+      }
+      if (pick) rows.push(head.map(function (c) { return pick[c] === undefined ? '' : pick[c]; }));
+    });
+    return rows;
+  }
+
+  function mergeLibraries(base, local, remote) {
+    var bt = (base && base.tabs) || {}, lt = local.tabs, rt = (remote && remote.tabs) || {};
+    var order = local.order.slice();
+    ((remote && remote.order) || []).forEach(function (n) { if (order.indexOf(n) < 0) order.push(n); });
+    var tabsOut = {};
+    order.forEach(function (n) {
+      tabsOut[n] = mergeTab(n, bt[n] || [], lt[n] || [], rt[n] || []);
+    });
+    oneBurnerEach(tabsOut, rt.Lists || []);
+    return { tabs: tabsOut, order: order };
+  }
+
+  function parseList(v) {
+    if (Array.isArray(v)) return v;
+    try { var a = JSON.parse(v || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+
+  /* Every new device starts with its own empty Front and Back Burner, so the
+     first sync brings two of each. Keep the cloud's, and move anything filed
+     under the other one across. */
+  function oneBurnerEach(t, remoteLists) {
+    var lists = t.Lists, songs = t.Songs;
+    if (!lists || lists.length < 2) return;
+    var lh = lists[0], iId = lh.indexOf('id'), iRole = lh.indexOf('role'), iOrder = lh.indexOf('order');
+    if (iId < 0 || iRole < 0) return;
+    var cloudIds = {};
+    for (var c = 1; c < remoteLists.length; c++) cloudIds[keyOf(remoteLists[c])] = true;
+    var swap = {};
+    ['front', 'back'].forEach(function (role) {
+      var rows = lists.filter(function (r, i) { return i > 0 && r[iRole] === role; });
+      if (rows.length < 2) return;
+      var keep = rows.filter(function (r) { return cloudIds[String(r[iId])]; })[0] || rows[0];
+      rows.forEach(function (r) {
+        if (r === keep) return;
+        swap[String(r[iId])] = String(keep[iId]);
+        if (iOrder >= 0) {
+          var a = parseList(keep[iOrder]), b = parseList(r[iOrder]);
+          b.forEach(function (x) { if (a.indexOf(x) < 0) a.push(x); });
+          if (a.length) keep[iOrder] = JSON.stringify(a);
+        }
+      });
+    });
+    if (!Object.keys(swap).length) return;
+    t.Lists = lists.filter(function (r, i) { return i === 0 || !swap.hasOwnProperty(String(r[iId])); });
+    if (!songs || songs.length < 2) return;
+    var iL = songs[0].indexOf('listIds');
+    if (iL < 0) return;
+    for (var s = 1; s < songs.length; s++) {
+      var ids = parseList(songs[s][iL]), out = [];
+      ids.forEach(function (x) { var y = swap[x] || x; if (out.indexOf(y) < 0) out.push(y); });
+      if (out.join() !== ids.join()) songs[s][iL] = JSON.stringify(out);
+    }
+  }
+
+  function sameLibrary(a, b) {
+    if (a.order.join('\n') !== b.order.join('\n')) return false;
+    for (var i = 0; i < a.order.length; i++) {
+      if (JSON.stringify(a.tabs[a.order[i]]) !== JSON.stringify(b.tabs[b.order[i]])) return false;
+    }
+    return true;
+  }
+
+  function snapshot() {
+    var t = {};
+    order.forEach(function (n) { t[n] = tabs[n].map(function (r) { return r.slice(); }); });
+    return { tabs: t, order: order.slice() };
+  }
+
+  var syncing = null, syncAgain = false, syncTimer = null;
+
+  function syncOnce(tries) {
+    var acc = account();
+    var remote, baseNow;
+    return api('library').then(function (res) {
+      if (!res.ok) throw new Error('Could not reach the cloud copy (' + res.status + ').');
+      return res.json();
+    }).then(function (r) {
+      remote = r;
+      return getBase();
+    }).then(function (b) {
+      /* A base only counts against the cloud copy it came from. An emptied or
+         reset cloud copy merges as if for the first time, so nothing on this
+         device reads as deleted. */
+      baseNow = (b && acc && b.email === acc.email && remote.library &&
+                 remote.version >= b.version) ? b : null;
+      var merged = null, changedHere = false;
+      /* Inside the queue, so no edit lands between reading this device and
+         writing the merge back to it. */
+      var step = queue.then(loadAll).then(function () {
+        var local = snapshot();
+        merged = mergeLibraries(baseNow, local, remote.library);
+        changedHere = !sameLibrary(local, merged);
+        if (changedHere) return replaceAll(merged.tabs, merged.order).then(loadAll);
+      });
+      queue = step.catch(function () {});
+      return step.then(function () {
+        var unchangedRemote = remote.library && sameLibrary(remote.library, merged);
+        var send = unchangedRemote ? Promise.resolve({ version: remote.version, at: remote.at })
+          : api('library', { method: 'PUT', body: JSON.stringify(merged),
+                             headers: { 'Content-Type': 'application/json', 'If-Match': String(remote.version) } })
+            .then(function (res) {
+              if (res.status === 409) { var e = new Error('changed'); e.code = 'conflict'; throw e; }
+              if (!res.ok) throw new Error('Could not save to the cloud (' + res.status + ').');
+              return res.json();
+            });
+        return send.then(function (v) {
+          return putBase({ email: acc.email, version: v.version, tabs: merged.tabs, order: merged.order })
+            .then(function () {
+              acc.lastSync = Date.now();
+              setAccount(acc);
+              if (changedHere && channel) channel.postMessage({ type: 'replaced' });
+              return { changed: changedHere, at: acc.lastSync };
+            });
+        });
+      });
+    }).catch(function (e) {
+      if (e.code === 'conflict' && tries < 3) return syncOnce(tries + 1);
+      throw e;
+    });
+  }
+
+  function emit(detail) {
+    try { window.dispatchEvent(new CustomEvent('songburner:sync', { detail: detail })); } catch (e) {}
+  }
+
+  function syncNow() {
+    if (!account()) return Promise.resolve({ changed: false });
+    if (syncing) { syncAgain = true; return syncing; }
+    emit({ state: 'syncing' });
+    syncing = ready.then(function () { return syncOnce(0); }).then(function (r) {
+      syncing = null;
+      emit({ state: 'done', changed: r.changed, at: r.at });
+      if (syncAgain) { syncAgain = false; syncNow(); }
+      return r;
+    }, function (e) {
+      syncing = null; syncAgain = false;
+      if (e.code === 'signed-out') {
+        var acc = account();
+        if (acc) { acc.expired = true; setAccount(acc); }
+      }
+      emit({ state: 'error', code: e.code || '', message: e.message });
+      throw e;
+    });
+    return syncing;
+  }
+
+  /* After edits, sync once things have been quiet for a little while. */
+  function syncSoon() {
+    if (!account()) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function () { syncNow().catch(function () {}); }, 15000);
+  }
+
+  function checkSignIn() {
+    return api('me').then(function (res) {
+      if (!res.ok) throw new Error('Could not check the sign-in (' + res.status + ').');
+      return res.json();
+    }).then(function (me) {
+      var acc = account();
+      if (!acc || acc.email !== me.email) acc = { email: me.email, lastSync: 0 };
+      delete acc.expired;
+      setAccount(acc);
+      return acc;
+    });
+  }
+
+  /* Leaving the account. With wipe, this device's songs go too (a shared
+     school computer); without it they stay here, just no longer synced. */
+  function signOut(wipe) {
+    var finish = function () {
+      setAccount(null);
+      return dropBase().then(function () {
+        location.href = '/cdn-cgi/access/logout';
+      });
+    };
+    if (!wipe) return finish();
+    return queue.then(function () { return replaceAll({}, []); }).then(function () {
+      try {
+        var kill = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('sb1.') === 0) kill.push(k);
+        }
+        kill.forEach(function (k) { localStorage.removeItem(k); });
+      } catch (e) {}
+      if (channel) channel.postMessage({ type: 'replaced' });
+      return finish();
+    });
+  }
+
+  function deleteCloud() {
+    return api('library', { method: 'DELETE' }).then(function (res) {
+      if (!res.ok) throw new Error('Could not delete the cloud copy (' + res.status + ').');
+      return dropBase();
+    }).then(function () {
+      var acc = account();
+      if (acc) { acc.lastSync = 0; setAccount(acc); }
+    });
+  }
+
+  var cloud = {
+    account: account,
+    signIn: function () { location.href = SIGNIN_URL; },
+    signOut: signOut,
+    syncNow: syncNow,
+    deleteCloud: deleteCloud,
+    checkSignIn: checkSignIn
+  };
+
+  /* Coming back from the sign-in page, or opening the app signed in. */
+  ready.then(function () {
+    var justSignedIn = false;
+    try {
+      justSignedIn = !!localStorage.getItem('sb-account-signin');
+      localStorage.removeItem('sb-account-signin');
+    } catch (e) {}
+    if (justSignedIn) {
+      checkSignIn().then(function () { return syncNow(); }).catch(function () {});
+    } else if (account()) {
+      syncNow().catch(function () {});
+    }
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden' && syncTimer) {
+      clearTimeout(syncTimer); syncTimer = null;
+      syncNow().catch(function () {});
+    }
+  });
+
   window.SongBurnerHost = {
     ready: ready,
     exportBackup: exportBackup,
     importBackup: importBackup,
     restoreTabs: restoreTabs,
-    summary: summary
+    summary: summary,
+    cloud: cloud
   };
 
   ready.then(function () {

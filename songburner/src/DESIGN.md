@@ -2959,6 +2959,52 @@ where a song is handed to the page, never on the way back to the sheet, so a
 re-import that changes the doc's capo line is still picked up. The doc's capo
 line is left out of the grey meta line, since the key line now speaks for it.
 
+## Cloud sync — closed beta, 1.71
+
+Signed-in testers keep their library on the website as well as on the device.
+The server (`/api/songburner/`, worker/index.js) only stores a library and a
+version number; **all the merging is in host.js**, so the Durable Object never
+has to understand a song.
+
+**A three-way merge, by row.** Every tab is keyed on its first column. The
+device keeps a copy of what it and the cloud last agreed on (the *base*, in its
+own IndexedDB database so it never shows up as a tab). A row only one side
+changed takes the change; a row one side deleted and the other left alone stays
+deleted; a row both sides changed keeps the song with the newer `updatedAt`,
+and otherwise this device's copy. Attempts are new rows with new ids, so two
+devices practising the same song never lose a run.
+
+**A device's first sync has no base**, and is a union: nothing on either side
+reads as deleted. Where both have the same row and they differ, the cloud's
+wins, so a fresh install's default settings never overwrite tuned ones. Every
+fresh install also makes its own Front and Back Burner; the first sync keeps the
+cloud's and moves anything filed under the other across, so there is only ever
+one of each.
+
+**A base only counts against the copy it came from.** If the cloud copy is
+deleted or reset, the next sync is a first sync again. Without that rule, a
+device whose base still listed every song would read the empty cloud as "every
+song deleted" and empty itself.
+
+**Versions stop two devices writing over each other.** A PUT carries the
+version it was merged against, a stale one gets 409, and the device merges
+again. The merge and the write to the device happen inside host.js's call
+queue, so no edit lands between reading the device and replacing it.
+
+**When it runs:** on opening the app, coming back from Sign in, Sync now,
+fifteen quiet seconds after any change, and when the app goes to the
+background with a change still waiting. A sync that changed this device
+repaints the screen, except during a quiz or game, which finish on what they
+started with.
+
+**Signing out** asks whether to remove the songs from this device too, for a
+shared computer; that clears the library and the song cache in localStorage.
+**Delete my cloud copy** deletes it and signs out, since staying signed in would
+upload this device again on the next change.
+
+**Privacy.** The Durable Object is named by a hash of the email, which is not
+stored. Nothing about a tester is kept beyond what a backup file holds.
+
 ## Storage, caching and speed
 
 ### Why it is quicker than it was
