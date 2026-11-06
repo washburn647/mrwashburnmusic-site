@@ -3010,6 +3010,19 @@ upload this device again on the next change.
 **Privacy.** The Durable Object is named by a hash of the email, which is not
 stored. Nothing about a tester is kept beyond what a backup file holds.
 
+**The site's own session cookie — beta 1.01.** Access only guards the Sign in
+landing page, `/songburner/account/`. The Worker answers that page as well, and
+when a valid Access login reaches it, sets a cookie of its own: `sb_session`,
+the email and an expiry, signed with a key kept in one Durable Object, 30 days,
+HttpOnly, sent only to `/api/songburner/`. The API reads that cookie.
+
+Why: every Access application on a domain shares one `CF_Authorization` cookie.
+Kyle's computer, signed in to the studio, carried the studio's token to
+`/api/songburner/`, Access answered with a redirect a background request cannot
+follow, and Song Burner said "Not signed in" straight after a successful sign
+in. A school computer with no studio login worked. With the API outside Access
+the two logins cannot meet. Sign out clears the cookie, then the Access login.
+
 ## Storage, caching and speed
 
 ### Why it is quicker than it was

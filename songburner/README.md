@@ -20,9 +20,11 @@ the browser's Install button) and works offline once it has loaded once.
   from the Google Sheets version (File > Download > Microsoft Excel, then
   choose the .xlsx).
 - `sw.js` keeps an offline copy of the app (not the data).
-- `account/` is where Sign in lands, behind Cloudflare Access. The cloud copy
+- `account/` is where Sign in lands, behind Cloudflare Access. The Worker
+  answers it too: a valid Access login there gets a 30-day session cookie of
+  the site's own (`sb_session`, sent only to `/api/songburner/`). The cloud copy
   itself is `/api/songburner/` in `worker/index.js` (the Vault Durable Object),
-  and the merging is in `host.js`.
+  which reads that cookie, and the merging is in `host.js`.
 
 ## What is different from the Sheets version
 
@@ -48,8 +50,10 @@ November 2026):
    One-time PIN**, so testers sign in with an emailed code and need no account.
 2. **Access controls > Applications > Create new application > Self-hosted and
    private > Add public hostname**: `mrwashburnmusic.com`, path
-   `songburner/account`; add a second public hostname, same domain, path
-   `api/songburner`. Name it *Song Burner beta*.
+   `songburner/account`. Name it *Song Burner beta*. Only that path: the API
+   must stay outside Access, because every Access application on the domain
+   shares one login cookie and the studio's would get in the way (fixed in
+   beta 1.01; the API checks the site's own session cookie instead).
 3. Under **Access policies**, create an **Allow** policy that includes
    **Emails** and lists the testers. Inviting someone later is adding their
    address here. Login method: One-time PIN. Session duration: 1 month.

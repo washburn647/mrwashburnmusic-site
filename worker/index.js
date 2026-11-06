@@ -36,6 +36,7 @@ export default {
     if (box) return boxApi(request, env, box);
     const live = /^\/(studio\/)?api\/live\/(.+)$/.exec(url.pathname);
     if (live) return liveApi(request, env, !!live[1], live[2]);
+    if (url.pathname.startsWith('/songburner/account/')) return songBurnerSignIn(request, env);
     if (url.pathname.startsWith('/api/songburner/')) {
       try {
         return await songBurnerApi(request, env, url.pathname.slice('/api/songburner/'.length));
@@ -532,12 +533,78 @@ export class Box extends DurableObject {
 
 const MAX_LIBRARY = 24 * 1024 * 1024;
 
-async function songBurnerApi(request, env, path) {
-  if (!env.SONGBURNER_AUD || !env.VAULTS) return reply({ error: 'not set up' }, 503);
+/* SONG BURNER'S OWN SESSION COOKIE.
+   Access guards /songburner/account/, the page Sign in lands on. When a request reaches it,
+   Access has just checked who it is, so the Worker hands the browser a session cookie of its
+   own, signed here and sent only to /api/songburner/. The API reads that cookie.
+   Why: every Access application on this domain shares one CF_Authorization cookie, so a
+   browser also signed in to the studio could arrive at /api/songburner/ carrying the
+   studio's token. Access answered with a redirect the app cannot follow, and the app looked
+   signed out. */
+const SB_COOKIE = 'sb_session';
+const SB_DAYS = 30;
+
+async function sbKey(env) {
+  const raw = await env.VAULTS.get(env.VAULTS.idFromName('songburner-signing-key')).signingKey();
+  return crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)))
+  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+async function sbMint(env, email) {
+  const body = JSON.stringify({ e: email, x: Math.floor(Date.now() / 1000) + SB_DAYS * 86400 });
+  const payload = b64url(new TextEncoder().encode(body));
+  const sig = await crypto.subtle.sign('HMAC', await sbKey(env), new TextEncoder().encode(payload));
+  return payload + '.' + b64url(sig);
+}
+
+/** The email in a valid Song Burner session cookie, or ''. */
+async function sbSession(request, env) {
+  const m = /(?:^|;\s*)sb_session=([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)/.exec(request.headers.get('Cookie') || '');
+  if (!m) return '';
+  try {
+    const ok = await crypto.subtle.verify('HMAC', await sbKey(env), b64(m[2]), new TextEncoder().encode(m[1]));
+    if (!ok) return '';
+    const body = part(m[1]);
+    if (typeof body.e !== 'string' || !(body.x > Date.now() / 1000)) return '';
+    return body.e;
+  } catch (e) {
+    return '';
+  }
+}
+function sbCookie(value, maxAge) {
+  return `${SB_COOKIE}=${value}; Path=/api/songburner/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
+}
+
+/** The sign-in landing page. Behind Access, so a valid token here starts a session. */
+async function songBurnerSignIn(request, env) {
+  // a plain GET, so the asset never comes back as a 304 with no page to put the cookie on
+  const page = await env.ASSETS.fetch(new Request(request.url));
+  if (!env.SONGBURNER_AUD || !env.VAULTS || request.method !== 'GET' || !page.ok) return page;
   const who = await accessToken(request, env, env.SONGBURNER_AUD);
   const email = who && typeof who.email === 'string' ? who.email.trim().toLowerCase() : '';
-  if (!email) return reply({ error: 'sign in' }, 401);
+  if (!email) return page;
+  const res = new Response(page.body, page);
+  res.headers.append('Set-Cookie', sbCookie(await sbMint(env, email), SB_DAYS * 86400));
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
+async function songBurnerApi(request, env, path) {
+  if (!env.SONGBURNER_AUD || !env.VAULTS) return reply({ error: 'not set up' }, 503);
   const method = request.method;
+  if (path === 'signout' && method === 'POST') {
+    const out = reply({ ok: true });
+    out.headers.append('Set-Cookie', sbCookie('', 0));
+    return out;
+  }
+  // The session cookie, or an Access token while /api/songburner/ is still behind Access too.
+  let email = await sbSession(request, env);
+  if (!email) {
+    const who = await accessToken(request, env, env.SONGBURNER_AUD);
+    email = who && typeof who.email === 'string' ? who.email.trim().toLowerCase() : '';
+  }
+  if (!email) return reply({ error: 'sign in' }, 401);
   if (path === 'me' && method === 'GET') return reply({ email });
   if (path !== 'library') return reply({ error: 'not found' }, 404);
   const vault = env.VAULTS.get(env.VAULTS.idFromName('songburner:' + await sha256(email)));
@@ -584,5 +651,16 @@ export class Vault extends DurableObject {
   async clear() {
     await this.ctx.storage.deleteAll();
     return reply({ ok: true });
+  }
+
+  /* Only on the one Vault named 'songburner-signing-key': the key that signs session
+     cookies, made the first time it is asked for and never leaving the Worker. */
+  async signingKey() {
+    let key = await this.ctx.storage.get('hmac');
+    if (!key) {
+      key = crypto.getRandomValues(new Uint8Array(32)).buffer;
+      await this.ctx.storage.put('hmac', key);
+    }
+    return key;
   }
 }
