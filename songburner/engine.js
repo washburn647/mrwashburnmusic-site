@@ -1053,17 +1053,17 @@ var NL_CHAR  = String.fromCharCode(10);
 var QUIZ_MODES = [
   { id: 'verseSort',    kind: 'game', family: 'sort',     variant: 'Verses', unit: 'verse',
     label: 'Order Verses',     full: 'Order Verses',
-    blurb: 'Put the sections back in order. Some are lifted from other songs, some are this song with the words tampered with - throw both out.' },
+    blurb: 'Put the sections back in order. Throw out any that do not belong.' },
   { id: 'lineSort',     kind: 'game', family: 'sort',     variant: 'Lines',  unit: 'line',
     label: 'Order Lines',      full: 'Order Lines',
-    blurb: 'The same idea, line by line inside one section. Some strays are this song, from another part of it.' },
+    blurb: 'Put the lines of each section back in order. Throw out any that do not belong.' },
 
   { id: 'verseOrder',   kind: 'game', family: 'build',    variant: 'Verses', unit: 'verse',
     label: 'Build Verses',     full: 'Build Verses',
-    blurb: 'One at a time: which section comes next? The wrong answers include tampered copies of your own.' },
+    blurb: 'Pick the section that comes next.' },
   { id: 'lineOrder',    kind: 'game', family: 'build',    variant: 'Lines',  unit: 'line',
     label: 'Build Lines',      full: 'Build Lines',
-    blurb: 'One at a time: which line comes next?' },
+    blurb: 'Pick the line that comes next.' },
 
   /* THE BIGGER CHUNK GOES ON THE LEFT, in every family. Order and Build read
      Verses then Lines; Scramble and Impostor used to read Words then Lines,
@@ -1072,24 +1072,24 @@ var QUIZ_MODES = [
      not moved - only the order they are listed in - so no history changes. */
   { id: 'lineScramble', kind: 'game', family: 'scramble', variant: 'Lines',  unit: 'line',
     label: 'Scramble Lines',   full: 'Scramble Lines',
-    blurb: 'The whole song, with lines lifted out of it. Put them back - the bank holds a few that were never there.' },
+    blurb: 'Put the missing lines back. A few extras never belonged.' },
   { id: 'wordScramble', kind: 'game', family: 'scramble', variant: 'Words',  unit: 'word',
     label: 'Scramble Words',   full: 'Scramble Words',
-    blurb: 'Words are lifted out of every section. Tap them back where they belong - the bank holds a few that never belonged.' },
+    blurb: 'Put the missing words back. A few extras never belonged.' },
 
   { id: 'lineImpostor', kind: 'game', family: 'impostor', variant: 'Lines',  unit: 'line',
     label: 'Impostor Lines',   full: 'Impostor Lines',
-    blurb: 'The whole song, no extra rows, some lines wrong. Tapping a line swaps it - leave the page reading right.' },
+    blurb: 'Some lines are wrong. Tap a line to swap it until the song reads right.' },
   { id: 'wordImpostor', kind: 'game', family: 'impostor', variant: 'Words',  unit: 'word',
     label: 'Impostor Words',   full: 'Impostor Words',
-    blurb: 'The whole song, with words swapped for fakes. Tapping a word swaps it again - leave the page reading right.' },
+    blurb: 'Some words are wrong. Tap a word to swap it until the song reads right.' },
 
   { id: 'firstLines',   kind: 'quiz', unit: 'word',  tier: 0,
     label: 'Beginner - Blank Lines', full: 'Beginner - Blank Lines',
-    blurb: 'One line taken out of every section, with the rest of it around you. The blanks show you its shape.' },
+    blurb: 'One line is missing from each section. Type it back in.' },
   { id: 'easy',         kind: 'quiz', unit: 'word',  tier: 0,
     label: 'Beginner - Opening Words', full: 'Beginner - Opening Words',
-    blurb: 'The opening words of each line are showing.' },
+    blurb: 'The first words of each line are showing.' },
   { id: 'medium',       kind: 'quiz', unit: 'word',  tier: 1, label: 'Easy', full: 'Easy',
     /* Deliberately vague as of 1.51: what this rung shows is four dials now,
        and a blurb that named one setting would be wrong the moment any of them
@@ -1097,9 +1097,9 @@ var QUIZ_MODES = [
        letterRuleText. */
     blurb: 'Some of the letters of every word are showing.' },
   { id: 'hard',         kind: 'quiz', unit: 'word',  tier: 2, label: 'Medium', full: 'Medium',
-    blurb: 'A blank for every letter, and nothing else.' },
+    blurb: 'A blank for every letter.' },
   { id: 'blind',        kind: 'quiz', unit: 'word',  tier: 3, label: 'Hard', full: 'Hard',
-    blurb: 'No blanks, no shape, no help. Just an empty line.' }
+    blurb: 'Just an empty line.' }
 ];
 
 /* The four families, in the order the picker lays them out. Each is one card

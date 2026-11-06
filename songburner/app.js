@@ -1574,8 +1574,8 @@
     sheet.appendChild(el('div', 'card-title', esc(idx.title)));
     sheet.appendChild(el('p', 'form-hint mt-0',
       esc(mode ? mode.label : modeId) +
-      (gameUsed(idx, modeId) ? '  &middot;  taken for credit today, practice only'
-                             : '  &middot;  today is still open')));
+      (gameUsed(idx, modeId) ? '  &middot;  played for points today'
+                             : '  &middot;  ready to play for points')));
 
     for (var L = 0; L < LEVELS.length; L++) {
       (function (lv) {
@@ -1945,12 +1945,8 @@
     var head = el('div', 'flex-between');
     head.appendChild(el('div', 'card-title', 'Medals'));
     head.appendChild(infoDot(
-      'A medal multiplies the hot share on this song - the slice of a quiz’s ' +
-      'points that turns into rest days. Bronze doubles it, silver trebles it, ' +
-      'gold is four times and platinum five, so a song you have finished holds ' +
-      'its heat far longer off the same run. It never changes the points ' +
-      'themselves: those are the record of what you did. Each tier needs every ' +
-      'tier below it, so the list only ever fills from the top down.'));
+      'A medal makes every quiz on this song earn more rest days. Your points ' +
+      'stay the same. Medals are earned in order, starting with bronze.'));
     box.appendChild(head);
 
     var earned = (m && m.earned) || {};
@@ -1990,9 +1986,8 @@
     }
     var best = bestMedal({ medals: m });
     box.appendChild(el('p', 'form-hint mt-0', best
-      ? 'Holding ' + MEDAL_TEXT[best] + '. Rest days on this song are bought at ' +
-        medalX(best) + ' times the usual share.'
-      : 'No medal yet, so rest days here are bought at the plain rate.'));
+      ? MEDAL_TEXT[best] + ': quizzes here earn ' + medalX(best) + ' times the rest days.'
+      : 'No medal yet.'));
     return box;
   }
 
@@ -3629,9 +3624,9 @@
       if (S.heatOn) {
         var hsum = heatSummary(song);
         wrap.appendChild(el('p', 'form-hint mt-0 heat-note', hsum.seen
-          ? 'Painted from ' + hsum.seen + ' of ' + hsum.total + ' words' +
+          ? 'Based on ' + hsum.seen + ' of ' + hsum.total + ' words' +
             (hsum.worst ? '  &middot;  weakest: ' + esc(hsum.worst) : '')
-          : 'Nothing tested yet. Take a quiz on this song and the shading fills in.'));
+          : 'Take a quiz to see which words need work.'));
       }
       var heatMap = S.heatOn ? heatIndexMap(song) : null;
 
@@ -3709,15 +3704,11 @@
         head2.appendChild(el('div', 'card-title', 'Score'));
         // the explanation lives behind this rather than sprawling on the page
         head2.appendChild(infoDot(
-          'Each quiz banks points for the mode you picked, but only above ' +
-          cfg.floor + '% accuracy - at or below that a run is worth nothing, and ' +
-          'from there it climbs straight to the full value at 100%. ' +
-          'A quiz also makes the song HOT, for ' + (cfg.hotPct || 10) + '% of the points ' +
-          'banked, in days. Hot songs lose nothing. When the flame runs out the song ' +
-          'goes COLD and starts losing ' + cfg.decay + ' a night, then twice that, then ' +
-          'three times - neglect compounds. Practising a cold song pays that rate ' +
-          'down before it buys any hot days back. You have banked ' +
-          song.totalEarned + ' points on this song all told.'));
+          'A quiz earns points when you score above ' + cfg.floor + '%, up to full ' +
+          'points at 100%. It also keeps the song hot for a few days, and a hot song ' +
+          'keeps its points. After that it goes cold and loses ' + cfg.decay + ' a night, ' +
+          'a little more each night, until you quiz it again. You have earned ' +
+          song.totalEarned + ' points on this song in all.'));
         card.appendChild(head2);
 
         // the card badge again, at reading size
@@ -3763,13 +3754,9 @@
           var thd = el('div', 'flex-between');
           thd.appendChild(el('div', 'card-title', 'Pace on this song'));
           thd.appendChild(infoDot(
-            'Your median time at each quiz level, phone and PC kept apart ' +
-            'because they are not the same measurement. The small number is ' +
-            'how many runs are behind it. Games are not timed.' +
-            (scfg.speedMod
-              ? ' A dot means the timer box is unlocked for that level here, so ' +
-                'you can choose to let your pace move what a run banks.'
-              : ' Pace is set to information only, so none of it is touching your score.')));
+            'Your usual time at each quiz level, with phone and PC kept separate. ' +
+            'The small number is how many quizzes it comes from.' +
+            (scfg.speedMod ? ' A dot means speed can count toward your score at that level.' : '')));
           tc.appendChild(thd);
           tc.appendChild(tbl);
           wrap.appendChild(tc);
@@ -3873,7 +3860,7 @@
             var ptsTitle = owed > 0
               ? 'worth ' + gross.toFixed(1) + ', and ' + owed.toFixed(1) +
                 ' of it cleared what the song owed'
-              : 'points banked';
+              : 'points earned';
             var row = el('div', 'log-row');
             row.innerHTML =
               '<span class="log-date">' + esc(fmtDate(at.date)) + '</span>' +
@@ -4594,7 +4581,7 @@
               var opener = opensThis(idx, mode.id);
               var om = opener ? modeById(opener) : null;
               col.appendChild(el('p', 'fam-blocked',
-                om ? 'Opens when you bank points on ' + esc(om.label) + '.'
+                om ? 'Opens after you earn points on ' + esc(om.label) + '.'
                    : 'Not open on this song yet.'));
             }
             for (var L = 0; L < LEVELS.length; L++) {
@@ -4675,11 +4662,11 @@
     if (gameShut(idx, mode.id)) {
       var opener = opensThis(idx, mode.id);
       var om = opener ? modeById(opener) : null;
-      return om ? 'Bank points on ' + om.label + ' to open ' + mode.label + '.'
+      return om ? 'Earn points on ' + om.label + ' to open ' + mode.label + '.'
                 : mode.label + ' is not open on this song yet.';
     }
     var below = LEVELS[Math.max(0, levelIdx(lv) - 1)];
-    return 'Bank points on ' + LEVEL_LABEL[below] + ' to open this.';
+    return 'Earn points on ' + LEVEL_LABEL[below] + ' to open this.';
   }
 
   function renderModePicker(song, idx) {
@@ -4690,9 +4677,9 @@
       '<p class="section-eyebrow">' + (isGameShelf ? 'Games' : 'Quiz') + '</p>' +
       '<h2 class="section-title mt-0">' + esc(song.title) + '</h2>' +
       '<p class="text-muted">' + (S.pickKind === 'game'
-        ? 'One scoring run per game per day. Practice as much as you like.'
+        ? 'Each game scores once a day. Practice as much as you like.'
         : S.pickKind === 'quiz'
-          ? 'One scoring quiz per song per day - you choose which. Practice is unlimited.'
+          ? 'One quiz a day on each song scores. Practice as much as you like.'
           : 'Pick how hard you want it. You are locked in once you start.') + '</p>';
     wrap.appendChild(intro);
 
@@ -4726,13 +4713,11 @@
       if (beginnerShut(idx)) {
         var nLeft = easyLeft(idx);
         wrap.appendChild(el('p', 'day-spent quiz-gate',
-          'The quizzes open once you have passed every game on Easy - ' +
-          nLeft + ' still to go. Typing a song back from memory is a long way ' +
-          'from tapping cards into order, and the games are how you get there.'));
+          'Pass every game on Easy to open the quizzes. ' + nLeft + ' to go.'));
       }
       if (spent) {
         wrap.appendChild(el('p', 'day-spent',
-          'Today is already spent on this song. Anything below can still be practised.'));
+          'You quizzed this song for points today. You can still practice.'));
       }
 
       function timerCell(m) {
@@ -4771,11 +4756,8 @@
 
       /** Why a quiz rung will not open, in the words that say what to do. */
       function quizWhy(m) {
-        if (beginnerShut(idx)) {
-          var n = easyLeft(idx);
-          return 'Pass every game on Easy first - ' + n + ' to go.';
-        }
-        return 'Bank points on ' + QUIZ_TIER_NAME[Math.max(0, (m.tier || 0) - 1)] +
+        if (beginnerShut(idx)) return m.blurb;   // the reason is said once, above the cards
+        return 'Earn points on ' + QUIZ_TIER_NAME[Math.max(0, (m.tier || 0) - 1)] +
                ' to open this.';
       }
 
@@ -4836,8 +4818,8 @@
     }
 
     wrap.appendChild(el('p', 'form-hint',
-      'Anything at or below ' + floorPct + '% banks nothing. Bank points to open the ' +
-      'next rung. Times are your ' + esc(timingLabel(dev)) + ' runs only.'));
+      'Score above ' + floorPct + '% to earn points. Earn points to open the next level. ' +
+      'Times are from your ' + esc(timingLabel(dev)) + '.'));
     appEl.appendChild(wrap);
     buildFooter();
   }
@@ -4868,9 +4850,9 @@
       var b1 = el('button', 'mode-card');
       b1.type = 'button';
       b1.innerHTML = '<div class="mode-body"><div class="mode-name">Play for points</div>' +
-        '<div class="mode-blurb">Timed: ' + esc(fmtLimit(lim)) + ' for this song. Worth ' +
-        pts + ' point' + (pts === 1 ? '' : 's') + ' at a flawless run. This is today, ' +
-        'and backing out forfeits it.</div></div>';
+        '<div class="mode-blurb">' + esc(fmtLimit(lim)) + ' on the clock, up to ' +
+        pts + ' point' + (pts === 1 ? '' : 's') + '. Leaving early uses up ' +
+        'today’s turn.</div></div>';
       b1.addEventListener('click', function () {
         back.remove();
         S.quizMode = mode.id;
@@ -4879,15 +4861,13 @@
       sheet.appendChild(b1);
     } else {
       sheet.appendChild(el('p', 'form-hint mt-0',
-        'You have already taken ' + esc(mode.label) + ' for credit today. It comes ' +
-        'back tomorrow.'));
+        'You played ' + esc(mode.label) + ' for points today. Try again tomorrow.'));
     }
 
     var b2 = el('button', 'mode-card');
     b2.type = 'button';
     b2.innerHTML = '<div class="mode-body"><div class="mode-name">Practice</div>' +
-      '<div class="mode-blurb">No clock and no pressure. Nothing is banked, nothing ' +
-      'is recorded, and it opens no new levels.</div></div>';
+      '<div class="mode-blurb">No clock, and nothing is scored.</div></div>';
     b2.addEventListener('click', function () {
       back.remove();
       S.quizMode = mode.id;
@@ -4914,8 +4894,8 @@
       var b1 = el('button', 'mode-card');
       b1.type = 'button';
       b1.innerHTML = '<div class="mode-body"><div class="mode-name">Take it for credit</div>' +
-        '<div class="mode-blurb">Worth up to ' + modePoints(m.id) + ' points. This is your ' +
-        'one scoring quiz on this song today, and backing out forfeits it.</div></div>';
+        '<div class="mode-blurb">Up to ' + modePoints(m.id) + ' points. One a day per ' +
+        'song, and leaving early uses it up.</div></div>';
       b1.addEventListener('click', function () {
         back.remove();
         S.quizVariant = variant;
@@ -4925,14 +4905,13 @@
       sheet.appendChild(b1);
     } else {
       sheet.appendChild(el('p', 'form-hint mt-0',
-        'Today is already spent on this song. Practice is still open.'));
+        'You quizzed this song for points today. Try again tomorrow.'));
     }
 
     var b2 = el('button', 'mode-card');
     b2.type = 'button';
     b2.innerHTML = '<div class="mode-body"><div class="mode-name">Practice</div>' +
-      '<div class="mode-blurb">Nothing banked, nothing recorded, no new levels opened.' +
-      '</div></div>';
+      '<div class="mode-blurb">Nothing is scored.</div></div>';
     b2.addEventListener('click', function () {
       back.remove();
       S.quizVariant = variant;
@@ -4966,9 +4945,7 @@
     var sheet = el('div', 'sheet');
     sheet.appendChild(el('div', 'card-title', 'Which line goes missing?'));
     sheet.appendChild(el('p', 'form-hint mt-0',
-      'One line is taken out of every verse and chorus and you type it back, ' +
-      'with the rest of the section around it and a blank for every letter of ' +
-      'the line that is gone.'));
+      'One line from each section is missing. Type it back in.'));
 
     var opts = [['r', 'A different one each time',
                  'Random within every section. The one to play when you know the song.']];
@@ -5117,7 +5094,7 @@
     wrap.appendChild(gameHead(song, mode, level, note));
     if (S.practiceRun) {
       wrap.appendChild(el('p', 'practice-note',
-        'Practice run - no clock, and nothing is banked.'));
+        'Practice. Nothing is scored.'));
       return wrap;
     }
     var clock = startGameClock(timeLimitFor(songById(song.id), mode, level), expire);
@@ -5824,8 +5801,7 @@
       binWrap.innerHTML = '';
       if (twins) {
         binWrap.appendChild(el('p', 'twin-note',
-          'This one repeats itself - where two cards read the same, either can ' +
-          'go in either place.'));
+          'Cards that read the same can go in either place.'));
       }
       binWrap.appendChild(el('p', 'section-eyebrow',
         (binName || 'Not in this song') + ' (' + binned.length + ')'));
@@ -5938,7 +5914,7 @@
 
     var wrap = gameShell(song, mode, level, note, finish);
     wrap.appendChild(el('p', 'drag-hint',
-      'Drag by the dots to reorder. The cross throws a card out.'));
+      'Drag by the dots. Tap the cross to throw a card out.'));
     wrap.appendChild(w.node);
     appEl.appendChild(wrap);
 
@@ -6261,7 +6237,7 @@
       }
       runSortGame(song, idx, mode, level, items, ringers, ['You put', 'The song'],
         ringers.length
-          ? 'Put the sections in order. Some of these are not in this song at all, and some are it with the words tampered with.'
+          ? 'Put the sections in order. Throw out any that do not belong.'
           : 'Put the sections in order.');
       return;
     }
@@ -6321,7 +6297,7 @@
     }
     if (!steps.length) { toast('No section here has more than one line'); back(); return; }
     runStepGame(song, idx, mode, level, steps, ['You put', 'The song'],
-      'Put each section back in order. Drag by the dots. Throw out anything that does not belong in it - some of the strays are this song, from somewhere else in it.');
+      'Put each section back in order. Throw out any lines that do not belong.');
   }
 
   /* ---------- Verse Order / Line Order ---------- */
@@ -6938,9 +6914,8 @@
     };
 
     runStepGame(song, idx, mode, level, [step], ['You put', 'The song'],
-      slots.length + ' line' + (slots.length === 1 ? '' : 's') + ' have been lifted ' +
-      'out of the song, and the bank at the foot holds a few that were never in ' +
-      'it. Tap a line then tap its gap, or a gap then its line.');
+      'Tap a line, then the gap it belongs in. A few lines at the bottom never ' +
+      'belonged.');
   }
 
   /* ---------- Word Impostor / Line Impostor ---------- */
@@ -7077,7 +7052,7 @@
      instruction for a button that is not there. */
   function ringBackHint() {
     return deviceNow() === 'phone' ? ''
-      : '  Right-click to go back one.';
+      : ' Right-click to go back one.';
   }
 
   function startImpostor(song, idx, mode, level, decoys, unit) {
@@ -7098,8 +7073,8 @@
     var steps = (unit === 'word') ? step : [step];
     runStepGame(song, idx, mode, level, steps, ['You left', 'The song'],
       unit === 'word'
-        ? 'Every word can be tapped, and tapping swaps it for another. Leave the page reading the way the song does.' + ringBackHint()
-        : 'Every line can be tapped, and tapping swaps it for another. Leave the page reading the way the song does.' + ringBackHint());
+        ? 'Tap a word to swap it. Stop when the song reads right.' + ringBackHint()
+        : 'Tap a line to swap it. Stop when the song reads right.' + ringBackHint());
   }
 
   /** The song laid out with a heading over each section. */
@@ -8528,10 +8503,10 @@
       (p.level ? '  &middot;  ' + esc(LEVEL_LABEL[p.level] || p.level) : '') + '</span>' +
       '<span id="earnedNote">' +
       (p.practice
-        ? '  &rarr;  <strong>practice</strong> - nothing banked, nothing recorded'
+        ? '  &rarr;  <strong>practice</strong>, not scored'
         : earned > 0
-          ? '  &rarr;  <strong>+' + earned.toFixed(1) + '</strong> points banked'
-          : '  &rarr;  <strong>nothing banked</strong> - under the ' + stFloor + '% floor') +
+          ? '  &rarr;  <strong>+' + earned.toFixed(1) + '</strong> points'
+          : '  &rarr;  <strong>no points</strong> (needs over ' + stFloor + '%)') +
       '</span></div>';
     wrap.appendChild(meter);
 
@@ -8987,8 +8962,8 @@
         '<div class="form-group"><label class="form-label">Find the words</label>' +
           '<button class="btn btn-outline btn-sm btn-block" id="findLyrics" type="button">' +
           'Search for lyrics</button>' +
-          '<p class="form-hint mt-0">Looks up the title and artist above. ' +
-          'You get a preview before anything lands in the form.</p>' +
+          '<p class="form-hint mt-0">Searches by the title and artist above. ' +
+          'You can check the words before they are added.</p>' +
           '<div id="findNote"></div></div>' +
       '</div>' +
       '<div class="form-group"><label class="form-label">Lyrics</label>' +
@@ -9001,8 +8976,7 @@
       (isEdit ? 'Save changes' : 'Add song') + '</button></div>' +
       (isEdit
         ? '<button class="btn btn-outline btn-block" id="clearDataBtn">Clear song data</button>' +
-          '<p class="form-hint mt-0">Wipes the runs and the score for this song. ' +
-          'The words stay.</p>' +
+          '<p class="form-hint mt-0">Clears the scores for this song. The words stay.</p>' +
           '<button class="btn btn-danger btn-block" id="deleteBtn">Delete song</button>'
         : '');
     appEl.appendChild(wrap);
@@ -9359,8 +9333,7 @@
         var sheet = el('div', 'sheet');
         sheet.appendChild(el('div', 'card-title', 'Clear data for ' + esc(song.title)));
         sheet.appendChild(el('p', 'form-hint mt-0',
-          'The score is worked out from the runs, so clearing them takes the ' +
-          'points with them. There is no undo.'));
+          'The points go with them. This cannot be undone.'));
 
         var picks = [
           ['quiz', 'Quiz data', nQuiz + ' typed run' + (nQuiz === 1 ? '' : 's')],
@@ -9556,7 +9529,7 @@
         '<div class="stat-card"><div class="stat-value">' + perDay.toFixed(1) +
           '</div><div class="stat-label">Points per day</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + Math.round(w.points) +
-          '</div><div class="stat-label">Points banked</div></div>' +
+          '</div><div class="stat-label">Points earned</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + Math.round(pointsNow) +
           '</div><div class="stat-label">On the board now</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + Math.round(everEarned) +
@@ -9598,13 +9571,9 @@
     var covHead = el('div', 'flex-between');
     covHead.appendChild(el('div', 'card-title', 'State of the repertoire'));
     covHead.appendChild(infoDot(
-      'Steaming = hot with a week or more still on the flame, so you can leave ' +
-      'it alone and it will still be resting when you come back. Hot = the ' +
-      'flame is lit but there are fewer than ' + STEAM_DAYS + ' days on it. ' +
-      'Cold = gone cold but still has points on the board, and is losing some ' +
-      'of them every night, more each night it stays there. Frozen = worn all ' +
-      'the way to zero; it owes nothing, so one run restarts it. Never opened ' +
-      '= no attempt on record.'));
+      'Steaming: hot for ' + STEAM_DAYS + ' days or more. Hot: hot for fewer. ' +
+      'Cold: losing points each night. Frozen: back to zero. Never opened: not ' +
+      'played yet.'));
     cov.appendChild(covHead);
     var covBar = el('div', 'level-mix');
     var buckets = [['steam', bSteam], ['hot', bHot], ['warm', bWarm],
@@ -9645,15 +9614,14 @@
     var dist = el('div', 'card-block');
     var dh = el('div', 'flex-between');
     dh.appendChild(el('div', 'card-title', 'Where your points sit'));
-    dh.appendChild(infoDot('Every song with points on the board, tallest first. ' +
-      'A cold song loses more every night it stays cold, so this is a picture of ' +
-      'recent work rather than of everything you have ever done.'));
+    dh.appendChild(infoDot('Every song with points, most first. Cold songs lose ' +
+      'points each night, so this shows your recent work.'));
     dist.appendChild(dh);
     var withPts = [];
     for (var w2 = 0; w2 < quizzed.length; w2++) if (quizzed[w2].score > 0) withPts.push(quizzed[w2]);
     withPts.sort(function (a, b) { return b.score - a.score; });
     if (!withPts.length) {
-      dist.appendChild(el('p', 'form-hint mt-0', 'Everything has decayed to zero. Time to quiz something.'));
+      dist.appendChild(el('p', 'form-hint mt-0', 'Every song is back to zero. Take a quiz to start again.'));
     } else {
       // How many bars. Twelve was a guess that stopped being right the moment
       // the library outgrew it, so it is a choice now, and it sticks.
@@ -9780,8 +9748,8 @@
       var topRuns = (modeCount.blind || 0) + (modeCount.hard || 0);
       mix.appendChild(el('p', 'form-hint',
         topRuns === 0
-          ? 'You have never taken the top two rungs, which is where the points are.'
-          : Math.round((topRuns / totalLv) * 100) + '% of your runs are Medium or Hard.'));
+          ? 'You have not tried Medium or Hard yet. They are worth the most.'
+          : Math.round((topRuns / totalLv) * 100) + '% of your quizzes are Medium or Hard.'));
       wrap.appendChild(mix);
     }
 
@@ -9797,11 +9765,7 @@
         var phd = el('div', 'flex-between');
         phd.appendChild(el('div', 'card-title', 'Pace, phone against PC'));
         phd.appendChild(infoDot(
-          'Median seconds per graded word, across every song - dividing by ' +
-          'length is the only way times from a two-verse song and a ' +
-          'six-verse one can sit in the same column. The two devices are ' +
-          'never mixed: pooling them would read as "you are slow at Blind" ' +
-          'when all it means is that you do Blind on your phone.'));
+          'Your usual time per word, across every song, with phone and PC kept separate.'));
         pc.appendChild(phd);
         pc.appendChild(ptbl);
 
@@ -9820,8 +9784,7 @@
           pc.appendChild(el('p', 'form-hint',
             'Overall you are <strong>' + ratio.toFixed(2) + ' times</strong> ' +
             (slower ? 'slower on your phone than on your PC' : 'slower on your PC than on your phone') +
-            ' - ' + pAvg.toFixed(2) + 's a word against ' + dAvg.toFixed(2) + '. ' +
-            'That gap is exactly why the two are scored apart.'));
+            ' (' + pAvg.toFixed(2) + 's a word against ' + dAvg.toFixed(2) + ').'));
         }
         wrap.appendChild(pc);
       }
@@ -9837,11 +9800,8 @@
       var dh = el('div', 'flex-between');
       dh.appendChild(el('div', 'card-title', 'Bleeding fastest (' + dueSoon.length + ')'));
       dh.appendChild(infoDot(
-        'Cold songs that still have points, worst first. The number is what ' +
-        'each one loses tonight if you leave it - and that figure grows every ' +
-        'night it stays cold. Quiz one and what you bank pays the rate off ' +
-        'before it buys any rest days back, so these are the cheapest places ' +
-        'to stop the bleeding.'));
+        'Cold songs with points left, worst first. The number is what each one ' +
+        'loses tonight. A quiz stops the loss.'));
       due.appendChild(dh);
       for (var d2 = 0; d2 < Math.min(8, dueSoon.length); d2++) {
         due.appendChild(insightRow(dueSoon[d2], '-' + rateText(dueSoon[d2].coldRate) + '/night'));
@@ -9855,8 +9815,7 @@
       var cold = el('div', 'card-block');
       var ch = el('div', 'flex-between');
       ch.appendChild(el('div', 'card-title', 'Frozen (' + spent.length + ')'));
-      ch.appendChild(infoDot('Worn all the way back to zero. They owe nothing, so ' +
-        'one quiz on any of these starts it moving again from a standing start.'));
+      ch.appendChild(infoDot('Back to zero. One quiz gets any of these going again.'));
       cold.appendChild(ch);
       for (var c2 = 0; c2 < Math.min(8, spent.length); c2++) {
         cold.appendChild(insightRow(spent[c2], agoText(spent[c2].daysSince)));
@@ -9883,9 +9842,7 @@
       var artHead = el('div', 'flex-between');
       artHead.appendChild(el('div', 'card-title', 'By artist (' + artistRows.length + ')'));
       artHead.appendChild(infoDot(
-        'Points banked on that artist divided by how many of their songs you ' +
-        'have, so a writer with three songs is not flattered against one with ' +
-        'thirty. Artists with nothing on the board are left out.'));
+        'Average points per song for each artist. Artists with no points are left out.'));
       art.appendChild(artHead);
       for (var r2 = 0; r2 < artistRows.length; r2++) {
         var ar = artistRows[r2];
@@ -9931,14 +9888,8 @@
     var head = el('div', 'flex-between');
     head.appendChild(el('div', 'card-title', 'Games and quizzes'));
     head.appendChild(infoDot(
-      'One game or quiz at a time, counted across every song. Time left is ' +
-      'the share of the countdown still unspent when the board was graded, ' +
-      'averaged - the game limits are rates times the length of the song, so ' +
-      'raw seconds from two different songs cannot be compared and the share ' +
-      'can. It is the number the timers are tuned from: high means the clock ' +
-      'is not doing any work, near zero means the level is being decided by ' +
-      'how fast you tap rather than by what you remember. Practice runs and ' +
-      'forfeits are left out of all of it.'));
+      'One game or quiz at a time, across every song. Time left is how much of ' +
+      'the clock was unused, on average. Practice runs are left out.'));
     box.appendChild(head);
 
     var rows = S.modeStats || [];
@@ -10017,18 +9968,13 @@
       if (pick.game) {
         var timed = r ? r.timedRuns : 0;
         body.appendChild(el('p', 'form-hint mt-0', timed
-          ? 'Time left is averaged over ' + timed + ' timed run' +
-            (timed === 1 ? '' : 's') + '. The dial behind it is ' +
+          ? 'From ' + timed + ' timed game' + (timed === 1 ? '' : 's') + '. The clock gives ' +
             esc(String(gameDials(pick.mode, pick.level).secsPer)) + 's per ' +
-            esc(gameUnit(pick.mode)) + ', under gear &rarr; Games.' +
-            (timed < 5 ? ' Too few runs to tune anything on yet.' : '')
-          : 'No timed runs on this level yet - practice runs build no clock, and ' +
-            'runs from before 1.50 were never asked what was left on theirs.'));
+            esc(gameUnit(pick.mode)) + ' (Settings, Games and quizzes).'
+          : 'No timed games at this level yet.'));
       } else if (n) {
         body.appendChild(el('p', 'form-hint mt-0',
-          'A quiz is timed against a stopwatch rather than a countdown, so there ' +
-          'is nothing left on the clock to report - the median above is how long ' +
-          'the typing actually takes.'));
+          'Quizzes use a stopwatch, so there is no time left to show.'));
       }
     }
 
