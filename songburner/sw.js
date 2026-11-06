@@ -22,18 +22,47 @@ self.addEventListener('activate', function (e) {
   }).then(function () { return self.clients.claim(); }));
 });
 
+/* Network first, but a slow connection does not hold the app hostage: after
+   SLOW ms the saved copy is used if there is one, and the network answer, when
+   it comes, still refreshes the saved copy for next time. */
+var SLOW = 2500;
+/* Once one request has waited that long, the connection is bad: for the next
+   little while everything else that is saved is served at once instead of
+   each file waiting its own 2.5 seconds. */
+var slowUntil = 0;
+
 self.addEventListener('fetch', function (e) {
   var req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  e.respondWith(fetch(req).then(function (res) {
+  var url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  // The sign-in page sits behind Cloudflare Access: always the network, never a saved copy.
+  if (url.pathname.indexOf('/songburner/account/') === 0) return;
+  var net = fetch(req).then(function (res) {
     if (res.ok) {
       var copy = res.clone();
       caches.open(CACHE).then(function (c) { c.put(req, copy); });
     }
     return res;
-  }).catch(function () {
+  });
+  var cached = function () {
     return caches.match(req, { ignoreSearch: true }).then(function (hit) {
-      return hit || caches.match('./');
+      return hit || (req.mode === 'navigate' ? caches.match('./') : undefined);
+    });
+  };
+  e.respondWith(new Promise(function (resolve, reject) {
+    var done = false;
+    function finish(res) { if (!done && res) { done = true; resolve(res); } }
+    var timer = setTimeout(function () {
+      slowUntil = Date.now() + 15000;
+      cached().then(finish);
+    }, Date.now() < slowUntil ? 0 : SLOW);
+    net.then(function (res) { clearTimeout(timer); slowUntil = 0; finish(res); }, function (err) {
+      clearTimeout(timer);
+      cached().then(function (hit) {
+        if (hit) finish(hit);
+        else if (!done) { done = true; reject(err); }
+      });
     });
   }));
+  e.waitUntil(net.catch(function () {}));
 });

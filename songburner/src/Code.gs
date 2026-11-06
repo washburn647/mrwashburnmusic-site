@@ -14,7 +14,7 @@
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'alpha 1.70';
+var BUILD    = 'beta 1.0';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -1042,17 +1042,17 @@ var NL_CHAR  = String.fromCharCode(10);
 var QUIZ_MODES = [
   { id: 'verseSort',    kind: 'game', family: 'sort',     variant: 'Verses', unit: 'verse',
     label: 'Order Verses',     full: 'Order Verses',
-    blurb: 'Put the sections back in order. Some are lifted from other songs, some are this song with the words tampered with - throw both out.' },
+    blurb: 'Put the sections back in order. Throw out any that do not belong.' },
   { id: 'lineSort',     kind: 'game', family: 'sort',     variant: 'Lines',  unit: 'line',
     label: 'Order Lines',      full: 'Order Lines',
-    blurb: 'The same idea, line by line inside one section. Some strays are this song, from another part of it.' },
+    blurb: 'Put the lines of each section back in order. Throw out any that do not belong.' },
 
   { id: 'verseOrder',   kind: 'game', family: 'build',    variant: 'Verses', unit: 'verse',
     label: 'Build Verses',     full: 'Build Verses',
-    blurb: 'One at a time: which section comes next? The wrong answers include tampered copies of your own.' },
+    blurb: 'Pick the section that comes next.' },
   { id: 'lineOrder',    kind: 'game', family: 'build',    variant: 'Lines',  unit: 'line',
     label: 'Build Lines',      full: 'Build Lines',
-    blurb: 'One at a time: which line comes next?' },
+    blurb: 'Pick the line that comes next.' },
 
   /* THE BIGGER CHUNK GOES ON THE LEFT, in every family. Order and Build read
      Verses then Lines; Scramble and Impostor used to read Words then Lines,
@@ -1061,24 +1061,24 @@ var QUIZ_MODES = [
      not moved - only the order they are listed in - so no history changes. */
   { id: 'lineScramble', kind: 'game', family: 'scramble', variant: 'Lines',  unit: 'line',
     label: 'Scramble Lines',   full: 'Scramble Lines',
-    blurb: 'The whole song, with lines lifted out of it. Put them back - the bank holds a few that were never there.' },
+    blurb: 'Put the missing lines back. A few extras never belonged.' },
   { id: 'wordScramble', kind: 'game', family: 'scramble', variant: 'Words',  unit: 'word',
     label: 'Scramble Words',   full: 'Scramble Words',
-    blurb: 'Words are lifted out of every section. Tap them back where they belong - the bank holds a few that never belonged.' },
+    blurb: 'Put the missing words back. A few extras never belonged.' },
 
   { id: 'lineImpostor', kind: 'game', family: 'impostor', variant: 'Lines',  unit: 'line',
     label: 'Impostor Lines',   full: 'Impostor Lines',
-    blurb: 'The whole song, no extra rows, some lines wrong. Tapping a line swaps it - leave the page reading right.' },
+    blurb: 'Some lines are wrong. Tap a line to swap it until the song reads right.' },
   { id: 'wordImpostor', kind: 'game', family: 'impostor', variant: 'Words',  unit: 'word',
     label: 'Impostor Words',   full: 'Impostor Words',
-    blurb: 'The whole song, with words swapped for fakes. Tapping a word swaps it again - leave the page reading right.' },
+    blurb: 'Some words are wrong. Tap a word to swap it until the song reads right.' },
 
   { id: 'firstLines',   kind: 'quiz', unit: 'word',  tier: 0,
     label: 'Beginner - Blank Lines', full: 'Beginner - Blank Lines',
-    blurb: 'One line taken out of every section, with the rest of it around you. The blanks show you its shape.' },
+    blurb: 'One line is missing from each section. Type it back in.' },
   { id: 'easy',         kind: 'quiz', unit: 'word',  tier: 0,
     label: 'Beginner - Opening Words', full: 'Beginner - Opening Words',
-    blurb: 'The opening words of each line are showing.' },
+    blurb: 'The first words of each line are showing.' },
   { id: 'medium',       kind: 'quiz', unit: 'word',  tier: 1, label: 'Easy', full: 'Easy',
     /* Deliberately vague as of 1.51: what this rung shows is four dials now,
        and a blurb that named one setting would be wrong the moment any of them
@@ -1086,9 +1086,9 @@ var QUIZ_MODES = [
        letterRuleText. */
     blurb: 'Some of the letters of every word are showing.' },
   { id: 'hard',         kind: 'quiz', unit: 'word',  tier: 2, label: 'Medium', full: 'Medium',
-    blurb: 'A blank for every letter, and nothing else.' },
+    blurb: 'A blank for every letter.' },
   { id: 'blind',        kind: 'quiz', unit: 'word',  tier: 3, label: 'Hard', full: 'Hard',
-    blurb: 'No blanks, no shape, no help. Just an empty line.' }
+    blurb: 'Just an empty line.' }
 ];
 
 /* The four families, in the order the picker lays them out. Each is one card
@@ -1426,24 +1426,35 @@ var GAME_LEVELS = ['easy', 'medium', 'hard'];
  * from this table and so are the defaults, so a game can never be tunable in
  * one place and not the other.
  *
- *   editN    how many tampered copies of this song's own material to plant
- *   editPct  how much of a tampered unit gets swapped for fake words. HIGH is
- *            EASY: a verse with a third of its words wrong is obvious on
- *            sight, one with a tenth wrong has to be read
- *   borrowN  how many units planted that are NOT this song in this place -
- *            split between lines borrowed from other songs and decoys, which
- *            are this song's own lines shown somewhere they do not belong
- *   decoyPct what share of that split is decoys rather than borrowed. A
- *            borrowed line is foreign and reads foreign, so it is the easy
- *            catch; a decoy is in your own handwriting and has to be placed,
- *            which is why the harder levels lean on it
- *   missPct  Scramble: share of the words (or lines) lifted out to be put back
- *   extraN   Scramble Words: words in the bank that belong to nothing
+ * WRONG PIECES ARE ONE COUNT AND A MIX - beta 1.0.
+ *
+ * It used to be three dials that had to be multiplied out in your head: how
+ * many tampered copies, how many planted units, and what share of the planted
+ * ones were decoys. What anybody actually wants to know is how many wrong
+ * pieces there are and what they are made of, so that is what is stored now:
+ *
+ *   wrongN   how many wrong pieces, as a range - a fixed count is a tell
+ *   mix      what each one is, as shares of 100, drawn per piece so a level
+ *            never settles into a recipe. The kinds a game can make are listed
+ *            in its `kinds`:
+ *              altered       this song with some words swapped. Caught by
+ *                            reading, not by recognising
+ *              other         lifted whole out of another song. The easy catch
+ *              place         this song, untouched, somewhere it does not go.
+ *                            Only knowing the song catches it
+ *              alteredOther  another song with words swapped as well
+ *              own / otherW  the WORD games: a fake word taken from this song
+ *                            or from the other songs
+ *   editPct  how much of an altered piece is swapped, as a range. HIGH is
+ *            EASY: a verse a third wrong reads as wrong on sight
+ *   missN    Scramble: how many go missing - words per verse, or lines over the
+ *            whole song
+ *   extraN   Scramble Words: extra words in the bank that belong nowhere
  *   trayN    Scramble: how many chips are ON THE TRAY at once. The deck is
  *            unchanged - every missing word or line is still in it, plus the
  *            ringers - and this is the size of the WINDOW onto it. More is
  *            harder, because the haystack is bigger; see makeTray
- *   fakePct  Impostor: share of the units swapped for fakes
+ *   fakePct  Impostor: share of the units swapped for fakes, as a range
  *   fakesPer Impostor: how many wrong ones hide behind each unit. Tapping
  *            walks the ring, so ONE is the easy end - a tap on a planted word
  *            lands straight on the truth - and more means a tap is a guess.
@@ -1455,34 +1466,37 @@ var GAME_LEVELS = ['easy', 'medium', 'hard'];
  *
  * THE FLOOR IS PER LEVEL, not one number for the whole app. A floor is a
  * statement about how hard the thing is - 75% of an Easy board you can half
- * read off the page is not the achievement 75% of a Hard one is - so it lives
- * with the rest of that level's difficulty rather than sitting above all of
- * them. Same reason the options count sits on the two games that ask
- * questions: four options at Easy and four at Hard were never the same dial.
- *
- * The N dials are ranges - a fixed count is a tell after two rounds.
+ * read off the page is not the achievement 75% of a Hard one is.
  *
  * THE TIME LIMIT IS A RATE, NOT A NUMBER. A two-verse song and a nine-verse
  * one cannot share a stopwatch, so each game states what it charges per unit of
  * whatever it walks you through - seconds per verse, per line, or per word -
  * and the limit for a given song is that rate times what the song actually
  * holds. `unit` says which count it multiplies.
+ *
+ * WHY SOME GAMES LACK A KIND. Order Verses and Scramble Lines put the whole
+ * song on the board, so a line of this song from somewhere else is sitting
+ * there in its real place for you to see - "place" stops being a question.
  */
+var LINE_KINDS = ['altered', 'other', 'place', 'alteredOther'];
+var WORD_KINDS = ['own', 'otherW'];
 var GAME_SPEC = {
-  verseSort:    { unit: 'section', dials: ['editN', 'editPct', 'borrowN', 'floor', 'secsPer'] },
-  lineSort:     { unit: 'line',    dials: ['editN', 'editPct', 'borrowN', 'decoyPct', 'floor', 'secsPer'] },
-  verseOrder:   { unit: 'section', dials: ['editN', 'editPct', 'borrowN', 'decoyPct', 'choiceCount', 'floor', 'secsPer'] },
-  lineOrder:    { unit: 'line',    dials: ['editN', 'editPct', 'borrowN', 'decoyPct', 'choiceCount', 'floor', 'secsPer'] },
-  wordScramble: { unit: 'word',    dials: ['missPct', 'extraN', 'trayN', 'floor', 'secsPer'] },
-  /* NO DECOY DIAL, for exactly the reason Order Verses has none: the whole
-     song is on the board, so a line of this song from somewhere else is
-     sitting there in its real place for you to see. It stops being a question.
-     What is left is BORROWED - foreign lines, the easy reject - and TAMPERED
-     copies of the very lines that are missing, which is the hard one, because
-     the only way to tell is to know the line. */
-  lineScramble: { unit: 'line',    dials: ['missPct', 'borrowN', 'editN', 'editPct', 'trayN', 'floor', 'secsPer'] },
-  wordImpostor: { unit: 'word',    dials: ['fakePct', 'fakesPer', 'floor', 'secsPer'] },
-  lineImpostor: { unit: 'line',    dials: ['fakePct', 'fakesPer', 'editN', 'editPct', 'decoyPct', 'floor', 'secsPer'] }
+  verseSort:    { unit: 'section', kinds: ['altered', 'other', 'alteredOther'],
+                  dials: ['wrongN', 'mix', 'editPct', 'floor', 'secsPer'] },
+  lineSort:     { unit: 'line',    kinds: LINE_KINDS,
+                  dials: ['wrongN', 'mix', 'editPct', 'floor', 'secsPer'] },
+  verseOrder:   { unit: 'section', kinds: LINE_KINDS,
+                  dials: ['wrongN', 'mix', 'editPct', 'choiceCount', 'floor', 'secsPer'] },
+  lineOrder:    { unit: 'line',    kinds: LINE_KINDS,
+                  dials: ['wrongN', 'mix', 'editPct', 'choiceCount', 'floor', 'secsPer'] },
+  wordScramble: { unit: 'word',    kinds: WORD_KINDS,
+                  dials: ['missN', 'extraN', 'mix', 'trayN', 'floor', 'secsPer'] },
+  lineScramble: { unit: 'line',    kinds: ['altered', 'other', 'alteredOther'],
+                  dials: ['missN', 'wrongN', 'mix', 'editPct', 'trayN', 'floor', 'secsPer'] },
+  wordImpostor: { unit: 'word',    kinds: WORD_KINDS,
+                  dials: ['fakePct', 'mix', 'fakesPer', 'floor', 'secsPer'] },
+  lineImpostor: { unit: 'line',    kinds: LINE_KINDS,
+                  dials: ['fakePct', 'mix', 'editPct', 'fakesPer', 'floor', 'secsPer'] }
 };
 
 /* A quiz has no levels - the mask IS the level - so it gets one set of dials
@@ -1561,104 +1575,114 @@ function letterRuleOf(settings) {
   };
 }
 
-/* Ranges, percentages, rates and point values, per game per level. Built rather
-   than typed out: the games share one shape and the exceptions are spelled out
-   underneath. */
+/* Ranges, mixes, rates and point values, per game per level - beta 1.0.
+   Typed out per game rather than built from one shared shape, because since
+   the mix arrived the games no longer share one. */
 function defaultGameSettings() {
-  /* decoyPct climbs with the level for the same reason editPct falls: the
-     easy rungs plant material that announces itself, the hard ones plant
-     material you can only place by knowing where it really goes. */
-  var shared = {
-    easy:   { pts: 1, editN: [0, 1], editPct: 30, borrowN: [0, 1], decoyPct: 20,
-              floor: POINTS_FLOOR, choiceCount: CHOICE_COUNT },
-    medium: { pts: 2, editN: [1, 2], editPct: 20, borrowN: [1, 2], decoyPct: 50,
-              floor: POINTS_FLOOR, choiceCount: CHOICE_COUNT },
-    hard:   { pts: 3, editN: [2, 3], editPct: 10, borrowN: [2, 3], decoyPct: 80,
-              floor: POINTS_FLOOR, choiceCount: CHOICE_COUNT }
-  };
+  function lv3(fn) { return { easy: fn(0), medium: fn(1), hard: fn(2) }; }
+  var PTS = [1, 2, 3];
+  /* The altered share falls as the level climbs for the same reason editPct
+     does, and "place" climbs: the easy rungs plant material that announces
+     itself, the hard ones plant material you can only place by knowing where
+     it really goes. */
+  var WRONG = [[0, 2], [2, 4], [4, 6]];
+  var EDIT  = [[25, 35], [15, 25], [5, 15]];
+  var LINE_MIX = [{ altered: 50, other: 40, place: 10, alteredOther: 0 },
+                  { altered: 50, other: 25, place: 25, alteredOther: 0 },
+                  { altered: 50, other: 10, place: 40, alteredOther: 0 }];
+  function base(i, secs) {
+    return { pts: PTS[i], floor: POINTS_FLOOR, secsPer: secs[i] };
+  }
+  function copyMix(m) { var o = {}; for (var k in m) if (m.hasOwnProperty(k)) o[k] = m[k]; return o; }
   /* Seconds per unit, easy / medium / hard. Reading a whole verse off a card
      costs more than glancing at a line, and a line costs more than a word, so
-     the three scales are an order of magnitude apart. Every one of these is a
-     starting guess and every one is tunable. */
-  var rates = {
-    verseSort:    [22, 16, 11],     // per section, and you must order them all
-    lineSort:     [7, 5, 3.5],      // per line, one board per section
-    verseOrder:   [26, 19, 13],     // per section: a question each, whole verses to read
-    lineOrder:    [11, 8, 5.5],     // per line: a question each
-    wordScramble: [1.6, 1.3, 1],    // per word in the song
-    lineScramble: [9, 7, 5],        // per line in the song
-    wordImpostor: [1.3, 1, 0.8],    // per word: every one is a judgement
-    lineImpostor: [7, 5, 3.5]       // per line
+     the three scales are an order of magnitude apart. */
+  return {
+    verseSort: lv3(function (i) {
+      var c = base(i, [22, 16, 11]);
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice();
+      c.mix = { altered: 50, other: 50, alteredOther: 0 };
+      return c;
+    }),
+    lineSort: lv3(function (i) {
+      var c = base(i, [7, 5, 3.5]);
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice(); c.mix = copyMix(LINE_MIX[i]);
+      return c;
+    }),
+    verseOrder: lv3(function (i) {
+      var c = base(i, [26, 19, 13]);
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice(); c.mix = copyMix(LINE_MIX[i]);
+      c.choiceCount = CHOICE_COUNT;
+      return c;
+    }),
+    lineOrder: lv3(function (i) {
+      var c = base(i, [11, 8, 5.5]);
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice(); c.mix = copyMix(LINE_MIX[i]);
+      c.choiceCount = CHOICE_COUNT;
+      return c;
+    }),
+    /* HOW BIG THE TRAY IS - 1.63. More is harder: a bigger haystack, and less
+       of the verse confirmed for you at any one moment. See makeTray. */
+    wordScramble: lv3(function (i) {
+      var c = base(i, [1.6, 1.3, 1]);
+      c.missN = [[2, 3], [3, 5], [5, 8]][i];
+      c.extraN = [[0, 2], [2, 4], [6, 8]][i];
+      c.mix = { own: 50, otherW: 50 };
+      c.trayN = [8, 12, 16][i];
+      return c;
+    }),
+    lineScramble: lv3(function (i) {
+      var c = base(i, [9, 7, 5]);
+      c.missN = [[2, 4], [4, 7], [7, 10]][i];
+      c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice();
+      c.mix = { altered: 50, other: 50, alteredOther: 0 };
+      c.trayN = [8, 12, 16][i];
+      return c;
+    }),
+    /* Impostor grades every unit as a judgement, so sitting on your hands
+       scores exactly the share NOT faked. Fake too few and doing nothing clears
+       the floor, which is why the harder levels fake MORE, not fewer. A share,
+       not a count, because the board is the whole song. */
+    wordImpostor: lv3(function (i) {
+      var c = base(i, [1.3, 1, 0.8]);
+      c.fakePct = [[20, 30], [30, 40], [40, 50]][i];
+      c.mix = { own: 50, otherW: 50 };
+      c.fakesPer = i + 1;
+      return c;
+    }),
+    lineImpostor: lv3(function (i) {
+      var c = base(i, [7, 5, 3.5]);
+      c.fakePct = [[25, 35], [35, 45], [45, 55]][i];
+      c.editPct = EDIT[i].slice();
+      c.mix = [{ altered: 20, other: 65, place: 15, alteredOther: 0 },
+               { altered: 35, other: 35, place: 30, alteredOther: 0 },
+               { altered: 45, other: 10, place: 45, alteredOther: 0 }][i];
+      c.fakesPer = i + 1;
+      return c;
+    })
   };
-  var out = {};
-  for (var id in GAME_SPEC) {
-    if (!GAME_SPEC.hasOwnProperty(id)) continue;
-    out[id] = {};
-    for (var i = 0; i < GAME_LEVELS.length; i++) {
-      var lv = GAME_LEVELS[i];
-      var src = shared[lv], cfg = { pts: src.pts };
-      var dials = GAME_SPEC[id].dials;
-      for (var d = 0; d < dials.length; d++) {
-        var k = dials[d];
-        if (src[k] !== undefined) {
-          cfg[k] = (src[k] instanceof Array) ? src[k].slice() : src[k];
-        }
-      }
-      cfg.secsPer = rates[id][i];
-      out[id][lv] = cfg;
-    }
-  }
-  // Scramble: more of the song gone, and more junk in the bank.
-  out.wordScramble.easy.missPct   = 20;  out.wordScramble.easy.extraN   = [0, 1];
-  out.wordScramble.medium.missPct = 40;  out.wordScramble.medium.extraN = [1, 2];
-  out.wordScramble.hard.missPct   = 60;  out.wordScramble.hard.extraN   = [3, 4];
+}
 
-  /* HOW BIG THE TRAY IS - 1.63. A long verse used to put every missing word on
-     screen at once, which on Hard is thirty-odd chips and stops being a memory
-     game some way before it stops being a reading exercise. The deck is
-     unchanged; this is how much of it you can see.
-     MORE IS HARDER, so the numbers climb with the level - a bigger haystack,
-     and less of the verse confirmed for you at any one moment. It also cuts the
-     other way at the end of a board: the tray used to shrink as you spent it,
-     so the last few words were a choice of three. A window stays the size it
-     is until the deck itself runs out. */
-  out.wordScramble.easy.trayN   = 8;
-  out.wordScramble.medium.trayN = 12;
-  out.wordScramble.hard.trayN   = 16;
-  out.lineScramble.easy.trayN   = 8;
-  out.lineScramble.medium.trayN = 12;
-  out.lineScramble.hard.trayN   = 16;
-  // Scramble Lines takes the same shares, applied to lines rather than words,
-  // and fills its bank with tampered and borrowed lines instead of odd words.
-  out.lineScramble.easy.missPct   = 20;
-  out.lineScramble.medium.missPct = 40;
-  out.lineScramble.hard.missPct   = 60;
-  // Impostor Words grades every word as a judgement, so sitting on your hands
-  // scores exactly the share NOT swapped. Below 25% doing nothing would clear
-  // the 75% floor and bank points, which is why easy starts there and the
-  // harder levels swap MORE, not fewer.
-  out.wordImpostor.easy.fakePct   = 25;
-  out.wordImpostor.medium.fakePct = 35;
-  out.wordImpostor.hard.fakePct   = 45;
-  /* Line Impostor is a share now for exactly the same reason. It shows the
-     WHOLE song with no extra rows, so a fixed count of wrong lines would mean
-     a forty-line song was 92% right for doing nothing at all - over the floor,
-     banking points for sitting still. A share cannot drift with song length.
-     editN is what is left of the old count: how many of those wrong lines are
-     this song's own words meddled with, the rest splitting borrowed/decoy. */
-  out.lineImpostor.easy.fakePct   = 30;
-  out.lineImpostor.medium.fakePct = 40;
-  out.lineImpostor.hard.fakePct   = 50;
-  /* HOW MANY HIDE BEHIND EACH ONE. A tap walks the ring, so the count of
-     fakes behind a unit is the count of taps a wrong one can cost you - and
-     with one behind it, a tap on something you know is wrong lands on the
-     answer. That is the easy end by construction. */
-  out.wordImpostor.easy.fakesPer   = 1;
-  out.wordImpostor.medium.fakesPer = 2;
-  out.wordImpostor.hard.fakesPer   = 3;
-  out.lineImpostor.easy.fakesPer   = 1;
-  out.lineImpostor.medium.fakesPer = 2;
-  out.lineImpostor.hard.fakesPer   = 3;
+/**
+ * A mix, cleaned: only the kinds this game makes, no negatives, summing to
+ * exactly 100. All zeros, or nothing usable, falls back.
+ */
+function mixOf(v, kinds, fallback) {
+  if (!v || typeof v !== 'object' || v instanceof Array) return fallback;
+  var out = {}, tot = 0, i;
+  for (i = 0; i < kinds.length; i++) {
+    var n = num(v[kinds[i]], 0, 100, 0);
+    out[kinds[i]] = n;
+    tot += n;
+  }
+  if (tot <= 0) return fallback;
+  var sum = 0, big = kinds[0];
+  for (i = 0; i < kinds.length; i++) {
+    out[kinds[i]] = Math.round(out[kinds[i]] * 100 / tot);
+    sum += out[kinds[i]];
+    if (out[kinds[i]] > out[big]) big = kinds[i];
+  }
+  out[big] += 100 - sum;
   return out;
 }
 
@@ -2053,23 +2077,26 @@ function computeSettings() {
         var mine = s.games[g][lv], theirs = stored.games[g][lv];
         if (!theirs) continue;
         mine.pts = num(theirs.pts, 0, 1000, mine.pts);
-        if (mine.editPct !== undefined) mine.editPct = num(theirs.editPct, 5, 100, mine.editPct);
-        if (mine.missPct !== undefined) mine.missPct = num(theirs.missPct, 5, 100, mine.missPct);
-        if (mine.fakePct !== undefined) mine.fakePct = num(theirs.fakePct, 5, 100, mine.fakePct);
         /* A NEW DIAL DOES NOT NEED A REVISION BUMP. It is absent from every
-           blob written before it existed, num() falls back, and the level
+           blob written before it existed, the check falls back, and the level
            takes the default - which is what a bump would have done anyway,
-           except a bump would also have thrown away every dial he HAD set. */
+           except a bump would also have thrown away every dial he HAD set.
+           The beta 1.0 dials (wrongN, mix, missN, and editPct and fakePct as
+           ranges) arrived this way: an old blob's editN, borrowN and decoyPct
+           are simply no longer read, and a plain-number editPct is not a
+           range, so it falls back too. */
+        if (mine.editPct !== undefined) mine.editPct = range(theirs.editPct, 5, 100, mine.editPct);
+        if (mine.fakePct !== undefined) mine.fakePct = range(theirs.fakePct, 5, 100, mine.fakePct);
+        if (mine.wrongN  !== undefined) mine.wrongN  = range(theirs.wrongN, 0, 8, mine.wrongN);
+        if (mine.missN   !== undefined) mine.missN   = range(theirs.missN, 1, 40, mine.missN);
+        if (mine.extraN  !== undefined) mine.extraN  = range(theirs.extraN, 0, 12, mine.extraN);
+        if (mine.mix     !== undefined) mine.mix     = mixOf(theirs.mix, GAME_SPEC[g].kinds, mine.mix);
         if (mine.fakesPer !== undefined) mine.fakesPer = num(theirs.fakesPer, 1, 8, mine.fakesPer, true);
-        if (mine.decoyPct !== undefined) mine.decoyPct = num(theirs.decoyPct, 0, 100, mine.decoyPct);
         if (mine.floor !== undefined) mine.floor = num(theirs.floor, 0, 99, mine.floor);
         if (mine.choiceCount !== undefined) {
           mine.choiceCount = num(theirs.choiceCount, 2, 8, mine.choiceCount, true);
         }
         if (mine.secsPer !== undefined) mine.secsPer = num(theirs.secsPer, 0.1, 600, mine.secsPer);
-        if (mine.editN   !== undefined) mine.editN   = range(theirs.editN, 0, 6, mine.editN);
-        if (mine.borrowN !== undefined) mine.borrowN = range(theirs.borrowN, 0, 6, mine.borrowN);
-        if (mine.extraN  !== undefined) mine.extraN  = range(theirs.extraN, 0, 12, mine.extraN);
         if (mine.trayN   !== undefined) mine.trayN   = num(theirs.trayN, 2, 40, mine.trayN, true);
       }
     }
@@ -4222,7 +4249,9 @@ button { font-family: inherit; }
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 12px; background: var(--ink); color: var(--paper);
+  padding: calc(14px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+           14px max(12px, env(safe-area-inset-left, 0px));
+  background: var(--ink); color: var(--paper);
   position: sticky; top: 0; z-index: 20;
 }
 .brand {
@@ -4237,11 +4266,14 @@ button { font-family: inherit; }
 .icon-btn:hover { background: rgba(239,234,224,0.1); }
 .icon-btn[hidden] { visibility: hidden; display: flex; }
 
-.app { flex: 1; max-width: 680px; width: 100%; margin: 0 auto; padding: 18px 16px 110px; }
+.app { flex: 1; max-width: 680px; width: 100%; margin: 0 auto;
+  padding: 18px 16px calc(110px + env(safe-area-inset-bottom, 0px)); }
 
 .tabbar {
   position: fixed; bottom: 0; left: 0; right: 0; display: flex;
-  background: var(--ink); padding: 8px; z-index: 20;
+  background: var(--ink); z-index: 20;
+  padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px))
+           max(8px, env(safe-area-inset-left, 0px));
   border-top: 1px solid rgba(199,154,62,0.25);
 }
 .tab-btn {
@@ -4314,6 +4346,75 @@ button { font-family: inherit; }
   font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer;
 }
 .text-link-danger { color: var(--incorrect); }
+.acct-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.acct-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--teal); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; flex: none; text-transform: uppercase; }
+.acct-mail { font-weight: 600; overflow-wrap: anywhere; }
+.acct-state { font-size: 13px; color: var(--text-muted); }
+.acct-state.is-bad { color: var(--incorrect); }
+.acct-btns { display: flex; gap: 8px; }
+.acct-btns .btn { flex: 1; }
+.beta-pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; background: var(--gold-soft); color: var(--ink); border-radius: 999px; padding: 2px 8px; }
+/* ============ Settings sections - beta 1.0 ============ */
+.set-sec { background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius-m);
+  margin-bottom: 12px; }
+.set-sec.is-danger { border-color: var(--incorrect-bg); }
+.set-sum { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+.set-sum::-webkit-details-marker { display: none; }
+.set-chev { width: 9px; height: 9px; border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted);
+  transform: rotate(-45deg); transition: transform 0.15s; flex: none; }
+.set-sec[open] > .set-sum .set-chev { transform: rotate(45deg); }
+.set-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink); font-weight: 500; }
+.set-peek { margin-left: auto; font-size: 12px; color: var(--text-muted); text-align: right; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-body { padding: 0 16px 16px; display: grid; gap: 12px; }
+.set-body > * { margin: 0; }
+.set-stack { display: grid; gap: 12px; }
+.set-stack > * { margin: 0; }
+.set-row-top { display: flex; align-items: baseline; gap: 10px; }
+.set-lbl { font-weight: 600; font-size: 15px; color: var(--text-ink); }
+.set-val { margin-left: auto; font-family: var(--font-mono); font-size: 14px; color: var(--teal-deep);
+  font-variant-numeric: tabular-nums; }
+.set-sub { font-size: 13px; color: var(--text-muted); line-height: 1.45; margin: 0; }
+.set-sub.is-bad { color: var(--incorrect); }
+.set-eg { font-size: 13px; line-height: 1.45; margin: 0; background: var(--paper); border-radius: var(--radius-s);
+  padding: 8px 10px; color: var(--text-ink); }
+.set-eg strong { color: var(--teal-deep); }
+.set-mask { font-family: var(--font-mono); letter-spacing: 0.04em; }
+.set-hr { height: 1px; background: var(--border); }
+.set-toggle { margin: 0; }
+.set-kv { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.set-kv-name { font-size: 14px; font-weight: 500; flex: 1 1 140px; min-width: 0; color: var(--text-ink); }
+.set-kv-in { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.set-kv-in .num-input { width: 58px; flex: 0 0 58px; }
+.set-kv-in .set-select { width: auto; margin: 0; }
+.set-unit { font-size: 13px; color: var(--text-muted); }
+.set-body > .btn + .btn { margin-top: -4px; }
+.set-body > a.btn { text-align: center; text-decoration: none; box-sizing: border-box; }
+.set-body > .side-toggle, .set-stack > .side-toggle { margin-bottom: 0; }
+.set-rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.set-ring { display: grid; justify-items: center; gap: 2px; padding: 8px 2px 6px; background: #fff;
+  border: 1px solid var(--border); border-radius: 12px; cursor: pointer; color: var(--ink); font: inherit; }
+.set-ring.on { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
+.set-ring-head { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); }
+.set-ring-cap { font-size: 11px; color: var(--text-muted); text-align: center; }
+.ring-num { font: 600 8px var(--font-mono); fill: var(--ink); }
+.set-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; }
+.set-lg { display: inline-flex; align-items: center; gap: 6px; }
+.set-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.set-lvbox { display: grid; gap: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.set-lvbox > * { margin: 0; }
+.set-lv-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--teal-deep); }
+.set-mix { display: grid; gap: 6px; }
+.set-mix-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) minmax(0, 1.2fr) 40px; align-items: center;
+  gap: 8px; font-size: 13px; }
+.set-mix-row .decay-slider { margin: 0; }
+.set-mix-val { font: 500 13px var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.set-wrap .medal-dial-grid { margin: 0; }
 .manage-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; min-height: 18px; }
 
 .search-input {
@@ -4685,13 +4786,13 @@ a.btn-icon { text-decoration: none; }
 .trend-badge.mid { background: var(--missing-bg); color: #8a6d1f; }
 
 .toast {
-  position: fixed; top: 14px; left: 50%;
-  transform: translateX(-50%) translateY(-160%);
+  position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 50%;
+  transform: translateX(-50%) translateY(-160%); visibility: hidden;
   background: var(--ink); color: var(--paper); padding: 10px 18px;
   border-radius: 999px; font-size: 13px; z-index: 100;
-  transition: transform 0.25s ease; border: 1px solid var(--gold); pointer-events: none;
+  transition: transform 0.25s ease, visibility 0.25s; border: 1px solid var(--gold); pointer-events: none;
 }
-.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.show { transform: translateX(-50%) translateY(0); visibility: visible; }
 .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); font-family: var(--font-mono); font-size: 13px; }
 .footer-build { text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); padding: 20px 0 6px; letter-spacing: 0.08em; }
 .mt-0 { margin-top: 0; }
@@ -4872,7 +4973,7 @@ a.btn-icon { text-decoration: none; }
 }
 .sheet {
   background: var(--paper-card); border-radius: var(--radius-l) var(--radius-l) 0 0;
-  padding: 18px 18px 26px; width: 100%; max-width: 680px;
+  padding: 18px 18px calc(26px + env(safe-area-inset-bottom, 0px)); width: 100%; max-width: 680px;
   max-height: 74vh; overflow-y: auto; box-shadow: var(--shadow);
 }
 @media (min-width: 680px) {
@@ -7196,6 +7297,26 @@ body {
     return m + ':' + (r < 10 ? '0' : '') + r;
   }
 
+  /* On mrwashburnmusic.com, host.js stands in for Google: there is no Sheet
+     and no Doc to import from, and songs come in by hand or from a backup. */
+  var ON_WEB = !!window.SONGBURNER_WEB;
+
+  /* The closed-beta cloud copy, from host.js. Null in the Sheets version. */
+  function cloud() {
+    return (ON_WEB && window.SongBurnerHost && window.SongBurnerHost.cloud) || null;
+  }
+  var syncState = { state: '', at: 0, message: '' };
+
+  function syncedText(ms) {
+    if (!ms) return 'Not synced yet';
+    var mins = Math.round((Date.now() - ms) / 60000);
+    if (mins < 1) return 'Synced just now';
+    if (mins < 60) return 'Synced ' + mins + ' min ago';
+    var hrs = Math.round(mins / 60);
+    if (hrs < 24) return 'Synced ' + hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+    return 'Synced ' + fmtDate(ms);
+  }
+
   /* ---------- state ---------- */
   var S = {
     build: '', songs: [], lists: [], lastImport: '', docUrl: '', docTitle: '',
@@ -7857,8 +7978,8 @@ body {
     sheet.appendChild(el('div', 'card-title', esc(idx.title)));
     sheet.appendChild(el('p', 'form-hint mt-0',
       esc(mode ? mode.label : modeId) +
-      (gameUsed(idx, modeId) ? '  &middot;  taken for credit today, practice only'
-                             : '  &middot;  today is still open')));
+      (gameUsed(idx, modeId) ? '  &middot;  played for points today'
+                             : '  &middot;  ready to play for points')));
 
     for (var L = 0; L < LEVELS.length; L++) {
       (function (lv) {
@@ -8228,12 +8349,8 @@ body {
     var head = el('div', 'flex-between');
     head.appendChild(el('div', 'card-title', 'Medals'));
     head.appendChild(infoDot(
-      'A medal multiplies the hot share on this song - the slice of a quiz’s ' +
-      'points that turns into rest days. Bronze doubles it, silver trebles it, ' +
-      'gold is four times and platinum five, so a song you have finished holds ' +
-      'its heat far longer off the same run. It never changes the points ' +
-      'themselves: those are the record of what you did. Each tier needs every ' +
-      'tier below it, so the list only ever fills from the top down.'));
+      'A medal makes every quiz on this song earn more rest days. Your points ' +
+      'stay the same. Medals are earned in order, starting with bronze.'));
     box.appendChild(head);
 
     var earned = (m && m.earned) || {};
@@ -8273,9 +8390,8 @@ body {
     }
     var best = bestMedal({ medals: m });
     box.appendChild(el('p', 'form-hint mt-0', best
-      ? 'Holding ' + MEDAL_TEXT[best] + '. Rest days on this song are bought at ' +
-        medalX(best) + ' times the usual share.'
-      : 'No medal yet, so rest days here are bought at the plain rate.'));
+      ? MEDAL_TEXT[best] + ': quizzes here earn ' + medalX(best) + ' times the rest days.'
+      : 'No medal yet.'));
     return box;
   }
 
@@ -8823,11 +8939,25 @@ body {
         retry.addEventListener('click', function () { boot(1); });
         wrap.appendChild(retry);
       } else {
-        wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
-          'Import your songbook from Google Docs to get started.</div>';
-        var imp = el('button', 'btn btn-gold btn-block', 'Import from Doc');
-        imp.addEventListener('click', function () { go('settings'); });
-        wrap.appendChild(imp);
+        if (ON_WEB) {
+          wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
+            'Add your first song to get started.</div>';
+          var add1 = el('button', 'btn btn-gold btn-block', 'Add a song');
+          add1.addEventListener('click', function () { resetTo('add'); });
+          wrap.appendChild(add1);
+          var rest = el('a', 'btn btn-outline btn-block', 'Restore a backup');
+          rest.href = 'backup/';
+          rest.style.marginTop = '10px';
+          rest.style.textAlign = 'center';
+          rest.style.textDecoration = 'none';
+          wrap.appendChild(rest);
+        } else {
+          wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
+            'Import your songbook from Google Docs to get started.</div>';
+          var imp = el('button', 'btn btn-gold btn-block', 'Import from Doc');
+          imp.addEventListener('click', function () { go('settings'); });
+          wrap.appendChild(imp);
+        }
       }
       appEl.appendChild(wrap);
       buildFooter();
@@ -9898,9 +10028,9 @@ body {
       if (S.heatOn) {
         var hsum = heatSummary(song);
         wrap.appendChild(el('p', 'form-hint mt-0 heat-note', hsum.seen
-          ? 'Painted from ' + hsum.seen + ' of ' + hsum.total + ' words' +
+          ? 'Based on ' + hsum.seen + ' of ' + hsum.total + ' words' +
             (hsum.worst ? '  &middot;  weakest: ' + esc(hsum.worst) : '')
-          : 'Nothing tested yet. Take a quiz on this song and the shading fills in.'));
+          : 'Take a quiz to see which words need work.'));
       }
       var heatMap = S.heatOn ? heatIndexMap(song) : null;
 
@@ -9978,15 +10108,11 @@ body {
         head2.appendChild(el('div', 'card-title', 'Score'));
         // the explanation lives behind this rather than sprawling on the page
         head2.appendChild(infoDot(
-          'Each quiz banks points for the mode you picked, but only above ' +
-          cfg.floor + '% accuracy - at or below that a run is worth nothing, and ' +
-          'from there it climbs straight to the full value at 100%. ' +
-          'A quiz also makes the song HOT, for ' + (cfg.hotPct || 10) + '% of the points ' +
-          'banked, in days. Hot songs lose nothing. When the flame runs out the song ' +
-          'goes COLD and starts losing ' + cfg.decay + ' a night, then twice that, then ' +
-          'three times - neglect compounds. Practising a cold song pays that rate ' +
-          'down before it buys any hot days back. You have banked ' +
-          song.totalEarned + ' points on this song all told.'));
+          'A quiz earns points when you score above ' + cfg.floor + '%, up to full ' +
+          'points at 100%. It also keeps the song hot for a few days, and a hot song ' +
+          'keeps its points. After that it goes cold and loses ' + cfg.decay + ' a night, ' +
+          'a little more each night, until you quiz it again. You have earned ' +
+          song.totalEarned + ' points on this song in all.'));
         card.appendChild(head2);
 
         // the card badge again, at reading size
@@ -10032,13 +10158,9 @@ body {
           var thd = el('div', 'flex-between');
           thd.appendChild(el('div', 'card-title', 'Pace on this song'));
           thd.appendChild(infoDot(
-            'Your median time at each quiz level, phone and PC kept apart ' +
-            'because they are not the same measurement. The small number is ' +
-            'how many runs are behind it. Games are not timed.' +
-            (scfg.speedMod
-              ? ' A dot means the timer box is unlocked for that level here, so ' +
-                'you can choose to let your pace move what a run banks.'
-              : ' Pace is set to information only, so none of it is touching your score.')));
+            'Your usual time at each quiz level, with phone and PC kept separate. ' +
+            'The small number is how many quizzes it comes from.' +
+            (scfg.speedMod ? ' A dot means speed can count toward your score at that level.' : '')));
           tc.appendChild(thd);
           tc.appendChild(tbl);
           wrap.appendChild(tc);
@@ -10142,7 +10264,7 @@ body {
             var ptsTitle = owed > 0
               ? 'worth ' + gross.toFixed(1) + ', and ' + owed.toFixed(1) +
                 ' of it cleared what the song owed'
-              : 'points banked';
+              : 'points earned';
             var row = el('div', 'log-row');
             row.innerHTML =
               '<span class="log-date">' + esc(fmtDate(at.date)) + '</span>' +
@@ -10863,7 +10985,7 @@ body {
               var opener = opensThis(idx, mode.id);
               var om = opener ? modeById(opener) : null;
               col.appendChild(el('p', 'fam-blocked',
-                om ? 'Opens when you bank points on ' + esc(om.label) + '.'
+                om ? 'Opens after you earn points on ' + esc(om.label) + '.'
                    : 'Not open on this song yet.'));
             }
             for (var L = 0; L < LEVELS.length; L++) {
@@ -10944,11 +11066,11 @@ body {
     if (gameShut(idx, mode.id)) {
       var opener = opensThis(idx, mode.id);
       var om = opener ? modeById(opener) : null;
-      return om ? 'Bank points on ' + om.label + ' to open ' + mode.label + '.'
+      return om ? 'Earn points on ' + om.label + ' to open ' + mode.label + '.'
                 : mode.label + ' is not open on this song yet.';
     }
     var below = LEVELS[Math.max(0, levelIdx(lv) - 1)];
-    return 'Bank points on ' + LEVEL_LABEL[below] + ' to open this.';
+    return 'Earn points on ' + LEVEL_LABEL[below] + ' to open this.';
   }
 
   function renderModePicker(song, idx) {
@@ -10959,9 +11081,9 @@ body {
       '<p class="section-eyebrow">' + (isGameShelf ? 'Games' : 'Quiz') + '</p>' +
       '<h2 class="section-title mt-0">' + esc(song.title) + '</h2>' +
       '<p class="text-muted">' + (S.pickKind === 'game'
-        ? 'One scoring run per game per day. Practice as much as you like.'
+        ? 'Each game scores once a day. Practice as much as you like.'
         : S.pickKind === 'quiz'
-          ? 'One scoring quiz per song per day - you choose which. Practice is unlimited.'
+          ? 'One quiz a day on each song scores. Practice as much as you like.'
           : 'Pick how hard you want it. You are locked in once you start.') + '</p>';
     wrap.appendChild(intro);
 
@@ -10995,13 +11117,11 @@ body {
       if (beginnerShut(idx)) {
         var nLeft = easyLeft(idx);
         wrap.appendChild(el('p', 'day-spent quiz-gate',
-          'The quizzes open once you have passed every game on Easy - ' +
-          nLeft + ' still to go. Typing a song back from memory is a long way ' +
-          'from tapping cards into order, and the games are how you get there.'));
+          'Pass every game on Easy to open the quizzes. ' + nLeft + ' to go.'));
       }
       if (spent) {
         wrap.appendChild(el('p', 'day-spent',
-          'Today is already spent on this song. Anything below can still be practised.'));
+          'You quizzed this song for points today. You can still practice.'));
       }
 
       function timerCell(m) {
@@ -11040,11 +11160,8 @@ body {
 
       /** Why a quiz rung will not open, in the words that say what to do. */
       function quizWhy(m) {
-        if (beginnerShut(idx)) {
-          var n = easyLeft(idx);
-          return 'Pass every game on Easy first - ' + n + ' to go.';
-        }
-        return 'Bank points on ' + QUIZ_TIER_NAME[Math.max(0, (m.tier || 0) - 1)] +
+        if (beginnerShut(idx)) return m.blurb;   // the reason is said once, above the cards
+        return 'Earn points on ' + QUIZ_TIER_NAME[Math.max(0, (m.tier || 0) - 1)] +
                ' to open this.';
       }
 
@@ -11105,8 +11222,8 @@ body {
     }
 
     wrap.appendChild(el('p', 'form-hint',
-      'Anything at or below ' + floorPct + '% banks nothing. Bank points to open the ' +
-      'next rung. Times are your ' + esc(timingLabel(dev)) + ' runs only.'));
+      'Score above ' + floorPct + '% to earn points. Earn points to open the next level. ' +
+      'Times are from your ' + esc(timingLabel(dev)) + '.'));
     appEl.appendChild(wrap);
     buildFooter();
   }
@@ -11137,9 +11254,9 @@ body {
       var b1 = el('button', 'mode-card');
       b1.type = 'button';
       b1.innerHTML = '<div class="mode-body"><div class="mode-name">Play for points</div>' +
-        '<div class="mode-blurb">Timed: ' + esc(fmtLimit(lim)) + ' for this song. Worth ' +
-        pts + ' point' + (pts === 1 ? '' : 's') + ' at a flawless run. This is today, ' +
-        'and backing out forfeits it.</div></div>';
+        '<div class="mode-blurb">' + esc(fmtLimit(lim)) + ' on the clock, up to ' +
+        pts + ' point' + (pts === 1 ? '' : 's') + '. Leaving early uses up ' +
+        'today’s turn.</div></div>';
       b1.addEventListener('click', function () {
         back.remove();
         S.quizMode = mode.id;
@@ -11148,15 +11265,13 @@ body {
       sheet.appendChild(b1);
     } else {
       sheet.appendChild(el('p', 'form-hint mt-0',
-        'You have already taken ' + esc(mode.label) + ' for credit today. It comes ' +
-        'back tomorrow.'));
+        'You played ' + esc(mode.label) + ' for points today. Try again tomorrow.'));
     }
 
     var b2 = el('button', 'mode-card');
     b2.type = 'button';
     b2.innerHTML = '<div class="mode-body"><div class="mode-name">Practice</div>' +
-      '<div class="mode-blurb">No clock and no pressure. Nothing is banked, nothing ' +
-      'is recorded, and it opens no new levels.</div></div>';
+      '<div class="mode-blurb">No clock, and nothing is scored.</div></div>';
     b2.addEventListener('click', function () {
       back.remove();
       S.quizMode = mode.id;
@@ -11183,8 +11298,8 @@ body {
       var b1 = el('button', 'mode-card');
       b1.type = 'button';
       b1.innerHTML = '<div class="mode-body"><div class="mode-name">Take it for credit</div>' +
-        '<div class="mode-blurb">Worth up to ' + modePoints(m.id) + ' points. This is your ' +
-        'one scoring quiz on this song today, and backing out forfeits it.</div></div>';
+        '<div class="mode-blurb">Up to ' + modePoints(m.id) + ' points. One a day per ' +
+        'song, and leaving early uses it up.</div></div>';
       b1.addEventListener('click', function () {
         back.remove();
         S.quizVariant = variant;
@@ -11194,14 +11309,13 @@ body {
       sheet.appendChild(b1);
     } else {
       sheet.appendChild(el('p', 'form-hint mt-0',
-        'Today is already spent on this song. Practice is still open.'));
+        'You quizzed this song for points today. Try again tomorrow.'));
     }
 
     var b2 = el('button', 'mode-card');
     b2.type = 'button';
     b2.innerHTML = '<div class="mode-body"><div class="mode-name">Practice</div>' +
-      '<div class="mode-blurb">Nothing banked, nothing recorded, no new levels opened.' +
-      '</div></div>';
+      '<div class="mode-blurb">Nothing is scored.</div></div>';
     b2.addEventListener('click', function () {
       back.remove();
       S.quizVariant = variant;
@@ -11235,9 +11349,7 @@ body {
     var sheet = el('div', 'sheet');
     sheet.appendChild(el('div', 'card-title', 'Which line goes missing?'));
     sheet.appendChild(el('p', 'form-hint mt-0',
-      'One line is taken out of every verse and chorus and you type it back, ' +
-      'with the rest of the section around it and a blank for every letter of ' +
-      'the line that is gone.'));
+      'One line from each section is missing. Type it back in.'));
 
     var opts = [['r', 'A different one each time',
                  'Random within every section. The one to play when you know the song.']];
@@ -11386,7 +11498,7 @@ body {
     wrap.appendChild(gameHead(song, mode, level, note));
     if (S.practiceRun) {
       wrap.appendChild(el('p', 'practice-note',
-        'Practice run - no clock, and nothing is banked.'));
+        'Practice. Nothing is scored.'));
       return wrap;
     }
     var clock = startGameClock(timeLimitFor(songById(song.id), mode, level), expire);
@@ -11477,6 +11589,40 @@ body {
     if (!(r instanceof Array) || r.length !== 2) return 0;
     var a = Math.min(r[0], r[1]), b = Math.max(r[0], r[1]);
     return a + Math.floor(Math.random() * (b - a + 1));
+  }
+
+  /** A percentage out of a dial that is a [min, max] range - or, in a blob
+      from before beta 1.0, a plain number. Drawn fresh each time it is read,
+      so two altered lines on one board are not altered by the same amount. */
+  function pctOf(r) {
+    if (r instanceof Array) return pickCount(r);
+    var n = Number(r);
+    return isNaN(n) ? 20 : n;
+  }
+
+  /**
+   * WHAT ONE WRONG PIECE IS, drawn from the level's mix - beta 1.0. Per piece
+   * rather than divided out, so a level never settles into a fixed recipe:
+   * over many boards the shares land where the dials put them, on any one
+   * board they wander.
+   */
+  function mixPick(mix) {
+    var kinds = [], tot = 0, k;
+    for (k in mix) if (mix.hasOwnProperty(k) && mix[k] > 0) { kinds.push(k); tot += mix[k]; }
+    if (!kinds.length) return 'altered';
+    var roll = Math.random() * tot;
+    for (var i = 0; i < kinds.length; i++) {
+      roll -= mix[kinds[i]];
+      if (roll < 0) return kinds[i];
+    }
+    return kinds[kinds.length - 1];
+  }
+  /** How many wrong pieces of each kind, for one board or one question. */
+  function wrongMix(d, n) {
+    var out = { altered: 0, other: 0, place: 0, alteredOther: 0, own: 0, otherW: 0 };
+    if (n === undefined) n = pickCount(d.wrongN);
+    for (var i = 0; i < n; i++) out[mixPick(d.mix || { altered: 1 })]++;
+    return out;
   }
 
   /* Per game per level now: four options at Easy and four at Hard were never
@@ -12093,8 +12239,7 @@ body {
       binWrap.innerHTML = '';
       if (twins) {
         binWrap.appendChild(el('p', 'twin-note',
-          'This one repeats itself - where two cards read the same, either can ' +
-          'go in either place.'));
+          'Cards that read the same can go in either place.'));
       }
       binWrap.appendChild(el('p', 'section-eyebrow',
         (binName || 'Not in this song') + ' (' + binned.length + ')'));
@@ -12207,7 +12352,7 @@ body {
 
     var wrap = gameShell(song, mode, level, note, finish);
     wrap.appendChild(el('p', 'drag-hint',
-      'Drag by the dots to reorder. The cross throws a card out.'));
+      'Drag by the dots. Tap the cross to throw a card out.'));
     wrap.appendChild(w.node);
     appEl.appendChild(wrap);
 
@@ -12446,6 +12591,17 @@ body {
    * punctuation. The comma stays put because it belongs to the line, not to
    * the word that happens to be sitting in front of it.
    */
+  /** The same, split: words of this song only, and of the other songs only.
+      The word games draw each fake from one or the other by their mix. */
+  function ownWordPool(song) { return wordPool(song, { lines: [] }); }
+  function otherWordPool(decoys) { return wordPool({ sections: [] }, decoys); }
+  /** The pool a word-game kind draws from, or the whole pool if that half is
+      empty - a song with no neighbours still has to make a board. */
+  function poolFor(kind, pools) {
+    var p = kind === 'own' ? pools.own : kind === 'otherW' ? pools.other : pools.all;
+    return (p && p.length) ? p : pools.all;
+  }
+
   function fakeWord(raw, pool, atStart) {
     var rep2 = pickImpostor(bareWord(raw), pool, atStart);
     if (!rep2) return null;
@@ -12478,7 +12634,7 @@ body {
       rows.push(row);
     }
     if (!flat.length) return null;
-    var picks = shuffled(flat).slice(0, shareOf(flat.length, pct));
+    var picks = shuffled(flat).slice(0, shareOf(flat.length, pctOf(pct)));
     var swapped = 0;
     for (var p = 0; p < picks.length; p++) {
       var rep2 = fakeWord(picks[p].text, pool, picks[p].atStart);
@@ -12512,14 +12668,24 @@ body {
         items.push({ key: 'r' + i, real: true, kind: secs[i].type,
                      peek: secs[i].lines.join(NL) });
       }
-      var borrowed = shuffled(shapedVerses(song, decoys.verses))
-        .slice(0, pickCount(d.borrowN));
+      var wm = wrongMix(d);
+      var shaped = shuffled(shapedVerses(song, decoys.verses));
+      var borrowed = shaped.slice(0, wm.other);
       for (i = 0; i < borrowed.length; i++) {
         ringers.push({ key: 'b' + i, real: false, kind: borrowed[i].type || 'verse',
                        from: 'from ' + (borrowed[i].from || 'another song'),
                        peek: borrowed[i].lines.join(NL) });
       }
-      var srcs = shuffled(secs), nEdit = pickCount(d.editN);
+      // another song, altered: the verses not already lifted whole come first
+      for (i = 0; i < wm.alteredOther && shaped.length; i++) {
+        var bv = shaped[(wm.other + i) % shaped.length];
+        var bent = tamper(bv.lines, d.editPct, pool);
+        if (!bent) continue;
+        ringers.push({ key: 'x' + i, real: false, kind: bv.type || 'verse',
+                       from: 'from ' + (bv.from || 'another song') + ', with words changed',
+                       peek: bent.join(NL) });
+      }
+      var srcs = shuffled(secs), nEdit = wm.altered;
       for (i = 0; i < nEdit && srcs.length; i++) {
         var base = srcs[i % srcs.length];
         var faked = tamper(base.lines, d.editPct, pool);
@@ -12530,7 +12696,7 @@ body {
       }
       runSortGame(song, idx, mode, level, items, ringers, ['You put', 'The song'],
         ringers.length
-          ? 'Put the sections in order. Some of these are not in this song at all, and some are it with the words tampered with.'
+          ? 'Put the sections in order. Throw out any that do not belong.'
           : 'Put the sections in order.');
       return;
     }
@@ -12565,7 +12731,7 @@ body {
           }
         }
         elsewhere = shuffled(elsewhere);
-        var plant = plantSplit(pickCount(d.borrowN), d.decoyPct);
+        var wm = wrongMix(d), plant = { borrow: wm.other, decoy: wm.place };
         for (k = 0; k < plant.borrow && used < spare.length; k++, used++) {
           rings.push({ key: 'b' + used, real: false, kind: 'line',
                        from: 'from ' + (spare[used].from || 'another song'),
@@ -12576,7 +12742,7 @@ body {
                        from: 'this song, but it belongs in ' + elsewhere[k].label,
                        peek: elsewhere[k].t });
         }
-        var ne = pickCount(d.editN), mine = shuffled(sec.lines);
+        var ne = wm.altered, mine = shuffled(sec.lines);
         for (k = 0; k < ne; k++) {
           var faked2 = tamper([mine[k % mine.length]], d.editPct, pool);
           if (!faked2) continue;
@@ -12584,13 +12750,20 @@ body {
                        from: 'this song, with words changed',
                        peek: faked2[0] });
         }
+        for (k = 0; k < wm.alteredOther && used < spare.length; k++, used++) {
+          var bent2 = tamper([spare[used].t], d.editPct, pool);
+          if (!bent2) continue;
+          rings.push({ key: 'x' + used, real: false, kind: 'line',
+                       from: 'from ' + (spare[used].from || 'another song') + ', with words changed',
+                       peek: bent2[0] });
+        }
         var w = sortWidget(its, rings, 'Not in this section');
         steps.push({ label: sec.label, node: w.node, grade: w.grade });
       })(secs[s2], s2);
     }
     if (!steps.length) { toast('No section here has more than one line'); back(); return; }
     runStepGame(song, idx, mode, level, steps, ['You put', 'The song'],
-      'Put each section back in order. Drag by the dots. Throw out anything that does not belong in it - some of the strays are this song, from somewhere else in it.');
+      'Put each section back in order. Throw out any lines that do not belong.');
   }
 
   /* ---------- Verse Order / Line Order ---------- */
@@ -12621,12 +12794,16 @@ body {
               for (var k = 0; k < secs.length; k++) {
                 if (k !== n) otherSecs.push(secs[k].lines);
               }
-              var tampered = tamperedSet(secs[n].lines, otherSecs, pickCount(d.editN),
+              var wm = wrongMix(d);
+              var tampered = tamperedSet(secs[n].lines, otherSecs, wm.altered,
                                          d.editPct, pool);
-              var plant = plantSplit(pickCount(d.borrowN), d.decoyPct);
-              var lifted = [], picks = shuffled(borrowPool).slice(0, plant.borrow);
-              for (k = 0; k < picks.length; k++) lifted.push(picks[k].lines.join(NL));
-              return orderOptions(seq[n], seq.slice(), tampered, lifted, plant.decoy,
+              var lifted = [], picks = shuffled(borrowPool).slice(0, wm.other + wm.alteredOther);
+              for (k = 0; k < picks.length; k++) {
+                if (k < wm.other) { lifted.push(picks[k].lines.join(NL)); continue; }
+                var bentV = tamper(picks[k].lines, d.editPct, pool);
+                if (bentV) tampered.push(bentV.join(NL));
+              }
+              return orderOptions(seq[n], seq.slice(), tampered, lifted, wm.place,
                                   mode, level);
             }
           });
@@ -12661,10 +12838,15 @@ body {
               for (var k = 0; k < linePool.length; k++) {
                 if (linePool[k] !== ans) otherLines.push([linePool[k]]);
               }
-              var tamp = tamperedSet([ans], otherLines, pickCount(d.editN), d.editPct, pool);
-              var plant = plantSplit(pickCount(d.borrowN), d.decoyPct);
-              var lift = shuffled(farLines).slice(0, plant.borrow);
-              return orderOptions(ans, linePool.slice(), tamp, lift, plant.decoy,
+              var wm = wrongMix(d);
+              var tamp = tamperedSet([ans], otherLines, wm.altered, d.editPct, pool);
+              var far2 = shuffled(farLines);
+              var lift = far2.slice(0, wm.other);
+              for (var b2 = 0; b2 < wm.alteredOther && wm.other + b2 < far2.length; b2++) {
+                var bentL = tamper([far2[wm.other + b2]], d.editPct, pool);
+                if (bentL) tamp.push(bentL[0]);
+              }
+              return orderOptions(ans, linePool.slice(), tamp, lift, wm.place,
                                   mode, level);
             }
           });
@@ -12685,13 +12867,14 @@ body {
    */
   function startScramble(song, idx, mode, level, decoys) {
     var d = gameDials(mode, level);
-    var pool = wordPool(song, decoys);
+    var pools = { all: wordPool(song, decoys), own: ownWordPool(song),
+                  other: otherWordPool(decoys) };
     var secs = realSections(song);
     if (!secs.length) { toast('Nothing to play here'); back(); return; }
 
     var steps = [];
     for (var s = 0; s < secs.length; s++) {
-      steps.push(scrambleStep(secs[s], d.missPct, pickCount(d.extraN), pool, d.trayN));
+      steps.push(scrambleStep(secs[s], d.missN, pickCount(d.extraN), pools, d.trayN, d.mix));
     }
     runStepGame(song, idx, mode, level, steps, ['You put', 'The song']);
   }
@@ -12718,7 +12901,7 @@ body {
    * The tray holds a fixed number of chips and REFILLS as you spend them, so
    * the number left on it never counts down the blanks for you.
    */
-  function scrambleStep(sec, pct, extras, pool, cap) {
+  function scrambleStep(sec, miss, extras, pools, cap, mix) {
     var rows = [];                                   // per line: array of words
     var flat = [];                                   // every word, in reading order
     for (var l = 0; l < sec.lines.length; l++) {
@@ -12733,7 +12916,11 @@ body {
       }
       rows.push(row);
     }
-    var take = shareOf(flat.length, pct);
+    /* A COUNT PER VERSE as of beta 1.0, not a share: "three words gone" is
+       the thing you can picture. Never the whole verse and never none of it. */
+    var take = pickCount(miss);
+    if (take > flat.length - 1) take = flat.length - 1;
+    if (take < 1) take = 1;
     var picks = shuffled(flat).slice(0, take);
     var slots = [];
     for (var p = 0; p < picks.length; p++) picks[p].hidden = true;
@@ -12748,17 +12935,16 @@ body {
        matters here is that the word the first unfilled blank wants is never
        allowed to be outside it, which is the guarantee 1.31a was reaching for
        when it stopped holding real words back at all.
-       The deck is built exactly as it was: every missing word, plus two ringers
-       per extraN. What changed is only how many of them you can see. */
+       The deck is every missing word plus extraN ringers, each one a word of
+       this song or of another by the level's mix - beta 1.0. */
     var deck = [];
     for (var q = 0; q < slots.length; q++) deck.push(slots[q].expected.toLowerCase());
     for (var x = 0; x < extras && slots.length; x++) {
-      for (var t2 = 0; t2 < 2; t2++) {
-        var seed = slots[Math.floor(Math.random() * slots.length)].expected;
-        var fake = pickImpostor(seed, pool);
-        if (!fake) continue;
-        deck.push(bareWord(fake).toLowerCase());
-      }
+      var seed = slots[Math.floor(Math.random() * slots.length)].expected;
+      var fake = pickImpostor(seed, poolFor(mixPick(mix || { own: 1 }), pools)) ||
+                 pickImpostor(seed, pools.all);
+      if (!fake) continue;
+      deck.push(bareWord(fake).toLowerCase());
     }
     /** The blank a tapped chip would drop into, which is the only one the
         board owes an answer for. */
@@ -13017,18 +13203,17 @@ body {
 
     /* Which lines come out, over the whole song. Addressed by section and line
        so the board can be rebuilt from the song rather than from a flat list. */
-    var gaps = {}, slots = [], totalLines = 0;
+    /* A COUNT OVER THE WHOLE SONG as of beta 1.0, drawn from the level's
+       range, and spread wherever chance puts it - so some verses come through
+       whole and you have to look at each one to find out. */
+    var gaps = {}, slots = [], totalLines = 0, every = [];
     for (i = 0; i < secs.length; i++) {
-      var lines = secs[i].lines;
-      totalLines += lines.length;
-      var n = Math.floor(lines.length * d.missPct / 100 + Math.random());
-      if (n > lines.length) n = lines.length;
-      if (n < 0) n = 0;
-      var order = [];
-      for (j = 0; j < lines.length; j++) order.push(j);
-      var take = shuffled(order).slice(0, n);
-      for (j = 0; j < take.length; j++) gaps[i + ':' + take[j]] = true;
+      totalLines += secs[i].lines.length;
+      for (j = 0; j < secs[i].lines.length; j++) every.push(i + ':' + j);
     }
+    var nMiss = Math.min(pickCount(d.missN), Math.max(1, totalLines - 1));
+    var lift = shuffled(every).slice(0, nMiss);
+    for (j = 0; j < lift.length; j++) gaps[lift[j]] = true;
     // a run with nothing at all to do is not a run
     var any = false;
     for (var g0 in gaps) if (gaps.hasOwnProperty(g0)) any = true;
@@ -13076,13 +13261,17 @@ body {
        word swapped, which is the only kind of ringer this board can still make
        hard: the whole song is visible, so anything of yours from elsewhere is
        sitting there in its proper place. */
-    var far = shuffled(decoys.lines || []);
-    var want = pickCount(d.borrowN);
-    for (i = 0; i < far.length && deck.length - realCount < want; i++) plant(far[i].t);
-    var ne = pickCount(d.editN), mine = shuffled(slots.slice());
+    var far = shuffled(decoys.lines || []), farAt = 0;
+    var wm = wrongMix(d);
+    for (i = 0; i < wm.other && farAt < far.length; i++) plant(far[farAt++].t);
+    var ne = wm.altered, mine = shuffled(slots.slice());
     for (i = 0; i < ne && mine.length; i++) {
       var faked = tamper([mine[i % mine.length].expected], d.editPct, pool);
       if (faked) plant(faked[0]);
+    }
+    for (i = 0; i < wm.alteredOther && farAt < far.length; i++) {
+      var bentS = tamper([far[farAt++].t], d.editPct, pool);
+      if (bentS) plant(bentS[0]);
     }
     /* THE TRAY IS A WINDOW ONTO THIS, NOT THE WHOLE OF IT - 1.63. See makeTray.
        The gap it guarantees an answer for is the first unfilled one in reading
@@ -13207,9 +13396,8 @@ body {
     };
 
     runStepGame(song, idx, mode, level, [step], ['You put', 'The song'],
-      slots.length + ' line' + (slots.length === 1 ? '' : 's') + ' have been lifted ' +
-      'out of the song, and the bank at the foot holds a few that were never in ' +
-      'it. Tap a line then tap its gap, or a gap then its line.');
+      'Tap a line, then the gap it belongs in. A few lines at the bottom never ' +
+      'belonged.');
   }
 
   /* ---------- Word Impostor / Line Impostor ---------- */
@@ -13346,7 +13534,7 @@ body {
      instruction for a button that is not there. */
   function ringBackHint() {
     return deviceNow() === 'phone' ? ''
-      : '  Right-click to go back one.';
+      : ' Right-click to go back one.';
   }
 
   function startImpostor(song, idx, mode, level, decoys, unit) {
@@ -13354,12 +13542,13 @@ body {
     var secs = realSections(song);
     if (!secs.length) { toast('Nothing to play here'); back(); return; }
     var pool = wordPool(song, decoys);
+    var pools = { all: pool, own: ownWordPool(song), other: otherWordPool(decoys) };
     /* Words walk the song a section at a time and so come back as a LIST;
        lines still put the whole song on one board, because the question there
        is which line does not belong, and a line only reads as wrong against
        the lines around it. */
     var step = unit === 'word'
-      ? wordImpostorBoard(secs, d, pool)
+      ? wordImpostorBoard(secs, d, pools)
       : lineImpostorBoard(secs, d, decoys, pool);
     if (!step || (step.length === 0)) {
       toast('Not enough material for that here'); back(); return;
@@ -13367,8 +13556,8 @@ body {
     var steps = (unit === 'word') ? step : [step];
     runStepGame(song, idx, mode, level, steps, ['You left', 'The song'],
       unit === 'word'
-        ? 'Every word can be tapped, and tapping swaps it for another. Leave the page reading the way the song does.' + ringBackHint()
-        : 'Every line can be tapped, and tapping swaps it for another. Leave the page reading the way the song does.' + ringBackHint());
+        ? 'Tap a word to swap it. Stop when the song reads right.' + ringBackHint()
+        : 'Tap a line to swap it. Stop when the song reads right.' + ringBackHint());
   }
 
   /** The song laid out with a heading over each section. */
@@ -13400,8 +13589,8 @@ body {
    * the game at all. A section too short to plant anything in is dropped rather
    * than shown clean, for the reason above.
    */
-  function wordImpostorBoard(secs, d, pool) {
-    var pct = d.fakePct, nFakes = fakesPerOf(d);
+  function wordImpostorBoard(secs, d, pools) {
+    var nFakes = fakesPerOf(d), pool = pools.all;
     var steps = [];
 
     for (var si = 0; si < secs.length; si++) {
@@ -13430,12 +13619,24 @@ body {
           // an untouched word shows the truth, wherever the shuffle put it
           c1.at = c1.start = truthAt(c1.ring, c1.truth);
         }
-        var planted = shuffled(real).slice(0, Math.max(1, shareOf(real.length, pct)));
+        var planted = shuffled(real).slice(0, Math.max(1, shareOf(real.length, pctOf(d.fakePct))));
         var swapped = 0;
         for (w = 0; w < planted.length; w++) {
-          if (planted[w].ring.length < 2) continue;
-          planted[w].at = ringStart(planted[w].ring, true, planted[w].truth);
-          planted[w].start = planted[w].at;
+          var pc = planted[w];
+          /* The fake on show is from this song or another by the mix; the
+             rest of its ring stays as it was built. */
+          var shown = fakeWord(pc.truth, poolFor(mixPick(d.mix || { own: 1 }), pools), pc.atStart);
+          if (shown && pc.ring.indexOf(shown) === -1) {
+            var rest = [shown];
+            for (var rr = 0; rr < pc.ring.length; rr++) {
+              if (pc.ring[rr] !== pc.truth && rest.length < nFakes) rest.push(pc.ring[rr]);
+            }
+            pc.ring = makeRing(pc.truth, rest);
+          }
+          if (pc.ring.length < 2) continue;
+          var at = shown ? pc.ring.indexOf(shown) : -1;
+          pc.at = at > -1 && at !== truthAt(pc.ring, pc.truth) ? at : ringStart(pc.ring, true, pc.truth);
+          pc.start = pc.at;
           swapped++;
         }
         if (!swapped) return;
@@ -13630,20 +13831,22 @@ body {
        three would be 8% of a long one and 60% of a short one. editN is what is
        left of the old count: how many of those are this song tampered with.
        The rest split borrowed/decoy on the decoy dial. */
-    var planted = shuffled(cells).slice(0, shareOf(cells.length, d.fakePct));
-    var nTamper = Math.min(pickCount(d.editN), planted.length);
-    var plant = plantSplit(planted.length - nTamper, d.decoyPct);
-    var kinds = [];
-    for (i = 0; i < nTamper; i++) kinds.push('tampered');
-    for (i = 0; i < plant.borrow; i++) kinds.push('borrowed');
-    for (i = 0; i < plant.decoy; i++) kinds.push('decoy');
-    kinds = shuffled(kinds);
+    var planted = shuffled(cells).slice(0, shareOf(cells.length, pctOf(d.fakePct)));
+    var MIX_AS = { altered: 'tampered', other: 'borrowed', place: 'decoy',
+                   alteredOther: 'bent' };
+    function bentFake() {
+      var b = borrowedFake();
+      if (!b) return null;
+      var f2 = tamper([b], d.editPct, pool);
+      return f2 ? f2[0] : null;
+    }
 
     var swapped = 0;
     for (i = 0; i < planted.length; i++) {
-      var c = planted[i], kind = kinds[i] || 'tampered';
+      var c = planted[i], kind = MIX_AS[mixPick(d.mix || { altered: 1 })] || 'tampered';
       var f = kind === 'borrowed' ? borrowedFake()
             : kind === 'decoy'    ? decoyFake(c)
+            : kind === 'bent'     ? bentFake()
                                   : tamperedFake(c);
       if (!f) f = anyFake(c);
       if (!f) continue;
@@ -14797,10 +15000,10 @@ body {
       (p.level ? '  &middot;  ' + esc(LEVEL_LABEL[p.level] || p.level) : '') + '</span>' +
       '<span id="earnedNote">' +
       (p.practice
-        ? '  &rarr;  <strong>practice</strong> - nothing banked, nothing recorded'
+        ? '  &rarr;  <strong>practice</strong>, not scored'
         : earned > 0
-          ? '  &rarr;  <strong>+' + earned.toFixed(1) + '</strong> points banked'
-          : '  &rarr;  <strong>nothing banked</strong> - under the ' + stFloor + '% floor') +
+          ? '  &rarr;  <strong>+' + earned.toFixed(1) + '</strong> points'
+          : '  &rarr;  <strong>no points</strong> (needs over ' + stFloor + '%)') +
       '</span></div>';
     wrap.appendChild(meter);
 
@@ -15256,8 +15459,8 @@ body {
         '<div class="form-group"><label class="form-label">Find the words</label>' +
           '<button class="btn btn-outline btn-sm btn-block" id="findLyrics" type="button">' +
           'Search for lyrics</button>' +
-          '<p class="form-hint mt-0">Looks up the title and artist above. ' +
-          'You get a preview before anything lands in the form.</p>' +
+          '<p class="form-hint mt-0">Searches by the title and artist above. ' +
+          'You can check the words before they are added.</p>' +
           '<div id="findNote"></div></div>' +
       '</div>' +
       '<div class="form-group"><label class="form-label">Lyrics</label>' +
@@ -15270,8 +15473,7 @@ body {
       (isEdit ? 'Save changes' : 'Add song') + '</button></div>' +
       (isEdit
         ? '<button class="btn btn-outline btn-block" id="clearDataBtn">Clear song data</button>' +
-          '<p class="form-hint mt-0">Wipes the runs and the score for this song. ' +
-          'The words stay.</p>' +
+          '<p class="form-hint mt-0">Clears the scores for this song. The words stay.</p>' +
           '<button class="btn btn-danger btn-block" id="deleteBtn">Delete song</button>'
         : '');
     appEl.appendChild(wrap);
@@ -15628,8 +15830,7 @@ body {
         var sheet = el('div', 'sheet');
         sheet.appendChild(el('div', 'card-title', 'Clear data for ' + esc(song.title)));
         sheet.appendChild(el('p', 'form-hint mt-0',
-          'The score is worked out from the runs, so clearing them takes the ' +
-          'points with them. There is no undo.'));
+          'The points go with them. This cannot be undone.'));
 
         var picks = [
           ['quiz', 'Quiz data', nQuiz + ' typed run' + (nQuiz === 1 ? '' : 's')],
@@ -15825,7 +16026,7 @@ body {
         '<div class="stat-card"><div class="stat-value">' + perDay.toFixed(1) +
           '</div><div class="stat-label">Points per day</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + Math.round(w.points) +
-          '</div><div class="stat-label">Points banked</div></div>' +
+          '</div><div class="stat-label">Points earned</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + Math.round(pointsNow) +
           '</div><div class="stat-label">On the board now</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + Math.round(everEarned) +
@@ -15867,13 +16068,9 @@ body {
     var covHead = el('div', 'flex-between');
     covHead.appendChild(el('div', 'card-title', 'State of the repertoire'));
     covHead.appendChild(infoDot(
-      'Steaming = hot with a week or more still on the flame, so you can leave ' +
-      'it alone and it will still be resting when you come back. Hot = the ' +
-      'flame is lit but there are fewer than ' + STEAM_DAYS + ' days on it. ' +
-      'Cold = gone cold but still has points on the board, and is losing some ' +
-      'of them every night, more each night it stays there. Frozen = worn all ' +
-      'the way to zero; it owes nothing, so one run restarts it. Never opened ' +
-      '= no attempt on record.'));
+      'Steaming: hot for ' + STEAM_DAYS + ' days or more. Hot: hot for fewer. ' +
+      'Cold: losing points each night. Frozen: back to zero. Never opened: not ' +
+      'played yet.'));
     cov.appendChild(covHead);
     var covBar = el('div', 'level-mix');
     var buckets = [['steam', bSteam], ['hot', bHot], ['warm', bWarm],
@@ -15914,15 +16111,14 @@ body {
     var dist = el('div', 'card-block');
     var dh = el('div', 'flex-between');
     dh.appendChild(el('div', 'card-title', 'Where your points sit'));
-    dh.appendChild(infoDot('Every song with points on the board, tallest first. ' +
-      'A cold song loses more every night it stays cold, so this is a picture of ' +
-      'recent work rather than of everything you have ever done.'));
+    dh.appendChild(infoDot('Every song with points, most first. Cold songs lose ' +
+      'points each night, so this shows your recent work.'));
     dist.appendChild(dh);
     var withPts = [];
     for (var w2 = 0; w2 < quizzed.length; w2++) if (quizzed[w2].score > 0) withPts.push(quizzed[w2]);
     withPts.sort(function (a, b) { return b.score - a.score; });
     if (!withPts.length) {
-      dist.appendChild(el('p', 'form-hint mt-0', 'Everything has decayed to zero. Time to quiz something.'));
+      dist.appendChild(el('p', 'form-hint mt-0', 'Every song is back to zero. Take a quiz to start again.'));
     } else {
       // How many bars. Twelve was a guess that stopped being right the moment
       // the library outgrew it, so it is a choice now, and it sticks.
@@ -16049,8 +16245,8 @@ body {
       var topRuns = (modeCount.blind || 0) + (modeCount.hard || 0);
       mix.appendChild(el('p', 'form-hint',
         topRuns === 0
-          ? 'You have never taken the top two rungs, which is where the points are.'
-          : Math.round((topRuns / totalLv) * 100) + '% of your runs are Medium or Hard.'));
+          ? 'You have not tried Medium or Hard yet. They are worth the most.'
+          : Math.round((topRuns / totalLv) * 100) + '% of your quizzes are Medium or Hard.'));
       wrap.appendChild(mix);
     }
 
@@ -16066,11 +16262,7 @@ body {
         var phd = el('div', 'flex-between');
         phd.appendChild(el('div', 'card-title', 'Pace, phone against PC'));
         phd.appendChild(infoDot(
-          'Median seconds per graded word, across every song - dividing by ' +
-          'length is the only way times from a two-verse song and a ' +
-          'six-verse one can sit in the same column. The two devices are ' +
-          'never mixed: pooling them would read as "you are slow at Blind" ' +
-          'when all it means is that you do Blind on your phone.'));
+          'Your usual time per word, across every song, with phone and PC kept separate.'));
         pc.appendChild(phd);
         pc.appendChild(ptbl);
 
@@ -16089,8 +16281,7 @@ body {
           pc.appendChild(el('p', 'form-hint',
             'Overall you are <strong>' + ratio.toFixed(2) + ' times</strong> ' +
             (slower ? 'slower on your phone than on your PC' : 'slower on your PC than on your phone') +
-            ' - ' + pAvg.toFixed(2) + 's a word against ' + dAvg.toFixed(2) + '. ' +
-            'That gap is exactly why the two are scored apart.'));
+            ' (' + pAvg.toFixed(2) + 's a word against ' + dAvg.toFixed(2) + ').'));
         }
         wrap.appendChild(pc);
       }
@@ -16106,11 +16297,8 @@ body {
       var dh = el('div', 'flex-between');
       dh.appendChild(el('div', 'card-title', 'Bleeding fastest (' + dueSoon.length + ')'));
       dh.appendChild(infoDot(
-        'Cold songs that still have points, worst first. The number is what ' +
-        'each one loses tonight if you leave it - and that figure grows every ' +
-        'night it stays cold. Quiz one and what you bank pays the rate off ' +
-        'before it buys any rest days back, so these are the cheapest places ' +
-        'to stop the bleeding.'));
+        'Cold songs with points left, worst first. The number is what each one ' +
+        'loses tonight. A quiz stops the loss.'));
       due.appendChild(dh);
       for (var d2 = 0; d2 < Math.min(8, dueSoon.length); d2++) {
         due.appendChild(insightRow(dueSoon[d2], '-' + rateText(dueSoon[d2].coldRate) + '/night'));
@@ -16124,8 +16312,7 @@ body {
       var cold = el('div', 'card-block');
       var ch = el('div', 'flex-between');
       ch.appendChild(el('div', 'card-title', 'Frozen (' + spent.length + ')'));
-      ch.appendChild(infoDot('Worn all the way back to zero. They owe nothing, so ' +
-        'one quiz on any of these starts it moving again from a standing start.'));
+      ch.appendChild(infoDot('Back to zero. One quiz gets any of these going again.'));
       cold.appendChild(ch);
       for (var c2 = 0; c2 < Math.min(8, spent.length); c2++) {
         cold.appendChild(insightRow(spent[c2], agoText(spent[c2].daysSince)));
@@ -16152,9 +16339,7 @@ body {
       var artHead = el('div', 'flex-between');
       artHead.appendChild(el('div', 'card-title', 'By artist (' + artistRows.length + ')'));
       artHead.appendChild(infoDot(
-        'Points banked on that artist divided by how many of their songs you ' +
-        'have, so a writer with three songs is not flattered against one with ' +
-        'thirty. Artists with nothing on the board are left out.'));
+        'Average points per song for each artist. Artists with no points are left out.'));
       art.appendChild(artHead);
       for (var r2 = 0; r2 < artistRows.length; r2++) {
         var ar = artistRows[r2];
@@ -16200,14 +16385,8 @@ body {
     var head = el('div', 'flex-between');
     head.appendChild(el('div', 'card-title', 'Games and quizzes'));
     head.appendChild(infoDot(
-      'One game or quiz at a time, counted across every song. Time left is ' +
-      'the share of the countdown still unspent when the board was graded, ' +
-      'averaged - the game limits are rates times the length of the song, so ' +
-      'raw seconds from two different songs cannot be compared and the share ' +
-      'can. It is the number the timers are tuned from: high means the clock ' +
-      'is not doing any work, near zero means the level is being decided by ' +
-      'how fast you tap rather than by what you remember. Practice runs and ' +
-      'forfeits are left out of all of it.'));
+      'One game or quiz at a time, across every song. Time left is how much of ' +
+      'the clock was unused, on average. Practice runs are left out.'));
     box.appendChild(head);
 
     var rows = S.modeStats || [];
@@ -16286,18 +16465,13 @@ body {
       if (pick.game) {
         var timed = r ? r.timedRuns : 0;
         body.appendChild(el('p', 'form-hint mt-0', timed
-          ? 'Time left is averaged over ' + timed + ' timed run' +
-            (timed === 1 ? '' : 's') + '. The dial behind it is ' +
+          ? 'From ' + timed + ' timed game' + (timed === 1 ? '' : 's') + '. The clock gives ' +
             esc(String(gameDials(pick.mode, pick.level).secsPer)) + 's per ' +
-            esc(gameUnit(pick.mode)) + ', under gear &rarr; Games.' +
-            (timed < 5 ? ' Too few runs to tune anything on yet.' : '')
-          : 'No timed runs on this level yet - practice runs build no clock, and ' +
-            'runs from before 1.50 were never asked what was left on theirs.'));
+            esc(gameUnit(pick.mode)) + ' (Settings, Games and quizzes).'
+          : 'No timed games at this level yet.'));
       } else if (n) {
         body.appendChild(el('p', 'form-hint mt-0',
-          'A quiz is timed against a stopwatch rather than a countdown, so there ' +
-          'is nothing left on the clock to report - the median above is how long ' +
-          'the typing actually takes.'));
+          'Quizzes use a stopwatch, so there is no time left to show.'));
       }
     }
 
@@ -16364,128 +16538,146 @@ body {
   }
 
   /* ============================================================
-     Settings
+     Settings - beta 1.0
      ------------------------------------------------------------
-     Six cards, in the order you actually reach for them: the songbook, then
-     scoring, then the two shelves that are worth points, then the stopwatch,
-     then the machine you are on, then the things you cannot undo.
+     EIGHT SECTIONS THAT FOLD SHUT, in the order you reach for them: the
+     account, your songs, practice, the timer, games and quizzes, fine tuning,
+     this device, and the things you cannot undo. Each one shows its current
+     setting on its folded line, so the screen opens short and still tells you
+     where everything stands.
 
-     Games AND quizzes are one thing at a time behind a single dropdown. Eight
-     games times three levels times six dials, plus five quizzes, is a hundred
-     and fifty-odd controls, and a screen with a hundred and fifty controls on
-     it is not a settings screen, it is a wall.
+     ONE LINE UNDER EACH CONTROL. The long explanations that used to sit under
+     every dial are gone; where a number needs one, it gets one example in
+     plain numbers instead, worked out from the dial as it stands.
 
-     A quiz draws one card rather than three: the mask IS its difficulty, so it
-     has no levels to tune - only what it is worth and what it has to beat.
+     GAMES ARE ONE THING AT A TIME behind a single dropdown, as before. Each
+     level draws a ring showing what its wrong pieces are made of, with the
+     count in the middle; tap a ring to tune that level. Built from the
+     approved mockup - see DESIGN.md.
      ============================================================ */
 
-  /* What each dial is called and how it is drawn. The server decides which of
-     these a given game HAS - a level object only carries its own keys - so
-     this table never has to be kept in step with the game list. */
-  /* Roughly: what it is worth, how long you get, HOW MUCH is wrong or missing,
-     then what the wrong material is made of. A card that opens with the dial
-     that decides the shape of the board reads in the order you think in. */
-  var DIAL_ORDER = ['pts', 'floor', 'secsPer', 'fakePct', 'fakesPer', 'missPct',
-                    'editN', 'editPct', 'borrowN', 'decoyPct', 'extraN', 'trayN',
-                    'choiceCount',
-                    /* The Easy rung's four, in the order you decide them:
-                       which letters, then over what, then how many. The count
-                       and the share sit next to each other because only one of
-                       them is live at a time and seeing the dead one greyed
-                       beside its replacement is how you learn which is which. */
-                    'letterPick', 'letterScope', 'letterCount', 'letterPct'];
-  var DIAL_META = {
-    pts:     { label: 'Worth', kind: 'num', min: 0, max: 1000,
-               sub: 'points a flawless run banks' },
-    floor:   { label: 'Floor', kind: 'pct', min: 0, max: 99,
-               sub: 'at or under this a run banks nothing at all; halfway ' +
-                    'between it and 100 banks half the value' },
-    choiceCount: { label: 'Options', kind: 'num', min: 2, max: 8,
-               sub: 'answers offered per question, so a pure guess is worth ' +
-                    'one in this many. A floor, not a cap - if the level plants ' +
-                    'more wrong answers than will fit, the list grows' },
-    editN:   { label: 'Tampered', kind: 'range', min: 0, max: 6,
-               sub: 'copies of this song with some words swapped for fakes' },
-    editPct: { label: 'How tampered', kind: 'pct', min: 5, max: 100,
-               sub: 'share of the words swapped - a HIGHER share is easier to catch' },
-    borrowN: { label: 'Planted', kind: 'range', min: 0, max: 6,
-               sub: 'units that do not belong here. Where there is a Decoys ' +
-                    'dial below, it splits these between lines borrowed from ' +
-                    'other songs and this song in the wrong place' },
-    decoyPct: { label: 'Decoys', kind: 'pct', min: 0, max: 100,
-               sub: 'of the planted material that is not tampered with: 0 is all ' +
-                    'BORROWED from other songs, 100 is all DECOY - a line this ' +
-                    'song really does sing, in the wrong place. The decoy is the ' +
-                    'harder catch, because nothing about it is wrong except where ' +
-                    'it is' },
-    /* Read against the game's unit - see dialGrid. Words for Scramble Words,
-       lines for Scramble Lines. */
-    missPct: { label: 'Units missing', kind: 'pct', min: 5, max: 100,
-               sub: 'lifted out for you to put back' },
-    extraN:  { label: 'Extra words', kind: 'range', min: 0, max: 12,
-               sub: 'in the bank, belonging nowhere' },
-    /* Read against the unit like missPct is - see dialGrid. */
-    trayN:   { label: 'On the tray', kind: 'num', min: 2, max: 40,
-               sub: 'at once. The deck is unchanged - everything missing is ' +
-                    'still in it, plus the ringers - this is how much of it you ' +
-                    'can see. MORE IS HARDER: a bigger haystack, and less of ' +
-                    'the song confirmed for you at any one moment. The word the ' +
-                    'next gap wants is always on the tray, so a smaller one ' +
-                    'never makes a board unwinnable' },
-    fakePct: { label: 'Share faked', kind: 'pct', min: 5, max: 100,
-               sub: 'doing nothing at all scores whatever is left' },
-    fakesPer: { label: 'Behind each', kind: 'num', min: 1, max: 8,
-               sub: 'wrong ones hidden behind every one you can tap. ONE is ' +
-                    'the easy end - a tap on something you know is wrong lands ' +
-                    'straight on the answer - and three means the tap is a ' +
-                    'guess of its own' },
-    secsPer: { label: 'Seconds each', kind: 'rate', min: 0.1, max: 600,
-               sub: 'the time limit is this times what the song holds' },
-    letterPick: { label: 'Which letters', kind: 'choice',
-               options: [['random', 'At random'], ['first', 'From the start']],
-               sub: 'a letter from the MIDDLE of a word is the better prompt: ' +
-                    'a first letter is often guessable from the line before it, ' +
-                    'which turns the rung into a crossword you can solve ' +
-                    'without the song' },
-    letterScope: { label: 'Counted over', kind: 'choice',
-               options: [['word', 'Each word - a flat count'],
-                         ['line', 'Each line - a share'],
-                         ['verse', 'Each verse - a share'],
-                         ['song', 'The whole song - a share']],
-               sub: 'a flat count gives every word the same help; a share ' +
-                    'spreads a budget of letters across the unit in proportion ' +
-                    'to how long each word is, so the long words get more' },
-    letterCount: { label: 'Letters per word', kind: 'num', min: 0, max: 12,
-               sub: 'when counted over each word. A word shorter than this ' +
-                    'shows all of itself and no more' },
-    letterPct: { label: 'Share of letters', kind: 'pct', min: 0, max: 100,
-               sub: 'when counted over a line, a verse or the song' }
+  /* What each kind of wrong piece is called, and its colour in the rings. */
+  var KIND_META = {
+    altered:      { label: 'This song, altered',     color: '#C79A3E' },
+    other:        { label: 'Another song',           color: '#2F6E62' },
+    place:        { label: 'This song, wrong place', color: '#6282A5' },
+    alteredOther: { label: 'Another song, altered',  color: '#B35C3C' },
+    own:          { label: 'Words from this song',   color: '#C79A3E' },
+    otherW:       { label: 'Words from other songs', color: '#2F6E62' }
   };
+  var LEVEL_WORD = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+
+  /** One folding section. peek is the current setting, shown when shut. */
+  function setSection(id, name, peek, extra) {
+    if (!S.setOpen) S.setOpen = { games: true };
+    var d = el('details', 'set-sec' + (extra ? ' ' + extra : ''));
+    if (S.setOpen[id]) d.open = true;
+    var sum = el('summary', 'set-sum',
+      '<span class="set-chev"></span><span class="set-name">' + esc(name) + '</span>' +
+      '<span class="set-peek"></span>');
+    d.appendChild(sum);
+    var body = el('div', 'set-body');
+    d.appendChild(body);
+    d.addEventListener('toggle', function () { S.setOpen[id] = d.open; });
+    var peekEl = sum.querySelector('.set-peek');
+    function setPeek(t) { peekEl.textContent = t || ''; }
+    setPeek(peek);
+    return { node: d, body: body, peek: setPeek };
+  }
+
+  /* ---------------- account (closed beta) ---------------- */
+  function accountCard() {
+    var cl = cloud();
+    var sec = setSection('acc', 'Account', '');
+    var card = sec.node, body = sec.body;
+
+    function paint() {
+      var acc = cl.account();
+      body.innerHTML = '';
+      if (!acc || acc.expired) {
+        sec.peek(acc && acc.expired ? 'Signed out' : 'Not signed in');
+        body.appendChild(el('div', '', '<span class="beta-pill">Closed beta</span>'));
+        body.appendChild(el('p', 'set-sub', acc && acc.expired
+          ? 'Sign in again to keep syncing.'
+          : 'Sign in to keep your songs and progress on every device.'));
+        var inBtn = el('button', 'btn btn-primary btn-block', 'Sign in');
+        inBtn.addEventListener('click', function () { cl.signIn(); });
+        body.appendChild(inBtn);
+        return;
+      }
+      sec.peek(syncState.state === 'error' ? 'Not synced' : 'Synced');
+      var row = el('div', 'acct-row');
+      row.appendChild(el('div', 'acct-avatar', esc(acc.email.charAt(0))));
+      var who = el('div');
+      who.appendChild(el('div', 'acct-mail', esc(acc.email)));
+      var stateText = syncState.state === 'syncing' ? 'Syncing...'
+        : syncState.state === 'error' ? (syncState.message || 'Could not sync')
+        : syncedText(acc.lastSync);
+      who.appendChild(el('div', 'acct-state' + (syncState.state === 'error' ? ' is-bad' : ''), esc(stateText)));
+      row.appendChild(who);
+      body.appendChild(row);
+
+      var btns = el('div', 'acct-btns');
+      var syncBtn = el('button', 'btn btn-outline', 'Sync now');
+      syncBtn.disabled = syncState.state === 'syncing';
+      syncBtn.addEventListener('click', function () { cl.syncNow().catch(function () {}); });
+      var outBtn = el('button', 'btn btn-outline', 'Sign out');
+      outBtn.addEventListener('click', function () {
+        if (!confirm('Sign out of Song Burner?')) return;
+        var wipe = confirm('Also remove your songs from this device?' + NL + NL +
+          'Choose OK on a shared computer. Your cloud copy stays either way.');
+        cl.signOut(wipe).catch(function (e) { toast(e.message); });
+      });
+      btns.appendChild(syncBtn);
+      btns.appendChild(outBtn);
+      body.appendChild(btns);
+
+      var del = el('button', 'text-link-btn text-link-danger', 'Delete my cloud copy');
+      del.addEventListener('click', function () {
+        if (!confirm('Delete your songs and scores from the cloud and sign out?' + NL + NL +
+                     'The songs on this device stay here.')) return;
+        cl.deleteCloud().then(function () { return cl.signOut(false); })
+          .catch(function (e) { toast(e.message); });
+      });
+      body.appendChild(del);
+    }
+    /* Repainted by sync news while the card is on screen, and dropped after. */
+    S.paintAccount = function () {
+      if (!card.isConnected) { S.paintAccount = null; return; }
+      paint();
+    };
+    paint();
+    /* Signed out: ask once whether cloud sync is switched on on the site at
+       all, and stay out of the way until it is. */
+    if (!cl.account()) {
+      card.style.display = 'none';
+      cl.checkSignIn().then(function () {
+        card.style.display = '';
+        paint();
+        cl.syncNow().catch(function () {});
+      }, function (e) {
+        if (e && e.code !== 'off') card.style.display = '';
+      });
+    }
+    return card;
+  }
 
   VIEWS.settings = function () {
     S.settingsDirty = false;      // a freshly drawn screen has nothing staged
-    var wrap = el('div');
+    var wrap = el('div', 'set-wrap');
     wrap.appendChild(el('p', 'section-eyebrow', 'Setup'));
     wrap.appendChild(el('h2', 'section-title', 'Settings'));
+    S.paintAccount = null;
+    if (cloud()) wrap.appendChild(accountCard());
 
     /**
      * NOTHING ON THIS SCREEN WRITES UNTIL YOU SAY SO.
      *
-     * Every control used to post the moment it changed, which meant dragging a
-     * slider from 1 to 8 wrote eight times, each one dropping every cached song
-     * and rebuilding the index, and each one toasting "Saved" over the last.
-     * Worse, there was no way to try a number and change your mind: the trying
-     * WAS the committing.
-     *
-     * So an edit is staged. It is applied to the local copy straight away, so
-     * the screen keeps showing what you typed and every computed line under a
-     * dial recomputes off it, and it is merged into one patch that the Save
-     * button posts in a single write. Discard throws the patch away and pulls
-     * the stored settings back.
-     *
-     * The RESETS are the exception and stay immediate: they are already behind
-     * a confirm, they replace whole blocks rather than single dials, and half a
-     * reset is not a thing anyone wants staged.
+     * An edit is staged: applied to the local copy straight away, so every
+     * example under a dial recomputes off it, and merged into one patch that
+     * the Save button posts in a single write. Discard throws the patch away
+     * and pulls the stored settings back. The resets are the exception and
+     * stay immediate: they are already behind a confirm.
      */
     var pending = null;
 
@@ -16502,12 +16694,14 @@ body {
         }
       }
     }
+    /* A mix is one setting however many kinds it has, so it counts once. */
     function countEdits(o, n) {
       n = n || 0;
       for (var k in o) {
         if (!o.hasOwnProperty(k)) continue;
         var v = o[k];
-        if (v && typeof v === 'object' && !(v instanceof Array)) n = countEdits(v, n);
+        if (k === 'mix') n++;
+        else if (v && typeof v === 'object' && !(v instanceof Array)) n = countEdits(v, n);
         else n++;
       }
       return n;
@@ -16525,7 +16719,7 @@ body {
       var n = pending ? countEdits(pending) : 0;
       S.settingsDirty = n > 0;
       saveBar.style.display = n ? '' : 'none';
-      saveWord.textContent = n + (n === 1 ? ' unsaved change' : ' unsaved changes');
+      saveWord.textContent = n + ' unsaved';
     }
 
     /** Stage an edit. Applied locally at once; written only on Save. */
@@ -16553,8 +16747,7 @@ body {
         toast('Saved');
       }, function (e) {
         /* TWO-ARGUMENT then. A throw while repainting a successful save must
-           not report the save as failed and leave the patch staged - that is
-           how you get the same edit written twice. */
+           not report the save as failed and leave the patch staged. */
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
         if (after) after();
@@ -16574,176 +16767,150 @@ body {
       refreshIndex().then(function () { render(); }, function () { render(); });
     });
 
-    /* ---------------- the songbook ---------------- */
-    /* WHERE THE SONGBOOK IS, SET FROM IN HERE - 1.60. It used to be a constant
-       at the top of the file, which made the app one person's app: anyone else
-       installing it had to edit code they had no reason to open, and had no
-       way at all to move their doc later without a redeploy. It lives in Meta
-       now, beside every other setting.
-
-       A blank songbook is a FIRST-CLASS STATE, not an error. Songs can be
-       added by hand and the words looked up, so an install with no doc is a
-       working install - the import panel just has nothing to import from, and
-       says so instead of offering a button that can only fail. */
-    var imp = el('div', 'card-block');
-    imp.appendChild(el('div', 'card-title', 'Songbook'));
-
-    var docNow = el('p', 'form-hint mt-0');
-    imp.appendChild(docNow);
-
-    var docIn = el('input', 'form-input');
-    docIn.type = 'url';
-    docIn.placeholder = 'Paste the link to your Google Doc';
-    docIn.value = '';
-    var docRow = el('div', 'input-with-btn');
-    var docSave = el('button', 'find-btn', 'Save');
-    docSave.type = 'button';
-    docRow.appendChild(docIn);
-    docRow.appendChild(docSave);
-
-    var docGroup = el('div', 'form-group');
-    docGroup.appendChild(docRow);
-    docGroup.appendChild(el('p', 'form-hint mt-0',
-      'Open your songbook in Google Docs and copy the address bar. It has to be a ' +
-      'document your own account can open.'));
-    imp.appendChild(docGroup);
-
-    var status = el('div');
-    var btn = el('button', 'btn btn-gold btn-block', 'Import new songs from Doc');
-
-    /* One repaint for both halves of the panel, because setting the doc is
-       what turns the import on and clearing it is what turns it off. */
-    function paintDoc() {
-      docNow.innerHTML = S.docUrl
-        ? 'Reading from <a href="' + esc(S.docUrl) + '" target="_blank" rel="noopener">' +
-          esc(S.docTitle || 'your songbook') + '</a>. Import pulls anything not already ' +
-          'here, matched on title - re-ordering the doc does not matter, and songs you ' +
-          'have edited in the app are left alone.'
-        : 'No songbook set. Point the app at a Google Doc and it can bulk-import from it. ' +
-          'Without one you can still add songs by hand, words and all.';
-      btn.disabled = !S.docUrl;
-      btn.style.display = S.docUrl ? '' : 'none';
-      docSave.textContent = S.docUrl ? 'Change' : 'Save';
-    }
-
-    docSave.addEventListener('click', function () {
-      var val = docIn.value.trim();
-      if (!val) { toast('Paste the link to your Google Doc first'); return; }
-      docSave.disabled = true;
-      docSave.textContent = 'Checking...';
-      api('setDoc', { url: val }).then(function (r) {
-        S.docUrl = r.docUrl;
-        S.docTitle = r.docTitle;
-        docIn.value = '';
-        docSave.disabled = false;
-        paintDoc();
-        toast('Songbook set: ' + r.docTitle);
-      }).catch(function (e) {
-        docSave.disabled = false;
-        paintDoc();
-        toast(e.message);
+    /* A number box. onChange gets the number, already clamped. */
+    function numBox(value, min, max, step, onChange, label) {
+      var input = el('input', 'num-input');
+      input.type = 'number';
+      input.min = String(min); input.max = String(max); input.step = String(step || 1);
+      input.value = String(value);
+      if (label) input.setAttribute('aria-label', label);
+      input.addEventListener('change', function () {
+        var v = Number(input.value);
+        if (isNaN(v)) v = min;
+        if (v < min) v = min;
+        if (v > max) v = max;
+        input.value = String(v);
+        onChange(v);
       });
-    });
-    btn.addEventListener('click', function () {
-      // The whole import is a single server call, so there is no percentage to
-      // report - nothing streams back until it is finished. What we can honestly
-      // show is that it is alive and how long it has been going.
-      var started = Date.now();
-      var timer = null;
-      btn.disabled = true;
-      status.innerHTML =
-        '<div class="progress-track"><div class="progress-worm"></div></div>' +
-        '<p class="form-hint mt-0" id="impNote">Reading the document...</p>';
-      var note = status.querySelector('#impNote');
-      function tick() {
-        var secs = Math.round((Date.now() - started) / 1000);
-        btn.textContent = 'Importing... ' + secs + 's';
-        if (note) {
-          note.textContent = secs < 12
-            ? 'Reading the document...'
-            : 'Still reading - the songbook is long, this takes a while.';
-        }
-      }
-      tick();
-      timer = setInterval(tick, 1000);
-
-      function stop() {
-        clearInterval(timer);
-        btn.disabled = false;
-        btn.textContent = 'Import new songs from Doc';
-      }
-
-      api('importDoc', { replaceAll: false }).then(function (r) {
-        return refreshIndex().then(function () { return r; });
-      }).then(function (r) {
-        var secs = Math.round((Date.now() - started) / 1000);
-        stop();
-        var msg = '<div class="import-done"><div class="import-done-head">Done in ' +
-          secs + 's</div>' +
-          '<p class="form-hint mt-0">Read <strong>' + r.parsed + '</strong> songs in the doc. ' +
-          'Added <strong>' + r.added + '</strong>, already had ' + r.skipped + '.</p>';
-        if (r.added && r.addedTitles && r.addedTitles.length) {
-          msg += '<p class="form-hint"><strong>New:</strong> ' +
-            esc(r.addedTitles.join(', ')) + '</p>';
-        }
-        if (r.flagged) {
-          msg += '<p class="form-hint">' + r.flagged + ' need a chorus tagged (they say ' +
-            '"Chorus" but never indented one). They carry a flag in the library.</p>';
-        }
-        msg += '</div>';
-        status.innerHTML = msg;
-        if (r.added) {
-          var see = el('button', 'btn btn-primary btn-block btn-sm', 'See them in the Pantry');
-          see.style.marginTop = '8px';
-          see.addEventListener('click', function () { resetTo('library'); });
-          status.appendChild(see);
-        }
-        toast(r.added ? 'Imported ' + r.added + ' songs' : 'Nothing new in the doc');
-      }).catch(function (e) {
-        stop();
-        status.innerHTML = '<p class="form-hint" style="color:var(--incorrect)">' +
-          esc(e.message) + '</p>';
-      });
-    });
-    imp.appendChild(btn);
-    imp.appendChild(status);
-    imp.appendChild(el('p', 'form-hint',
-      S.lastImport ? 'Last import: ' + esc(S.lastImport) : 'Never imported.'));
-    paintDoc();
-
-    var links = el('p', 'form-hint');
-    var linkHtml = [];
-    if (S.sheetUrl) {
-      linkHtml.push('<a href="' + esc(S.sheetUrl) +
-        '" target="_blank" rel="noopener" class="text-link-btn">Open the data sheet</a>');
+      return input;
     }
-    links.innerHTML = linkHtml.join('&nbsp;&nbsp;&middot;&nbsp;&nbsp;');
-    imp.appendChild(links);
-    wrap.appendChild(imp);
+    /* A labelled row: name on the left, controls on the right. */
+    function kvRow(name, controls, unit) {
+      var row = el('div', 'set-kv');
+      row.appendChild(el('span', 'set-kv-name', esc(name)));
+      var right = el('span', 'set-kv-in');
+      for (var i = 0; i < controls.length; i++) {
+        if (typeof controls[i] === 'string') right.appendChild(el('span', 'set-unit', controls[i]));
+        else right.appendChild(controls[i]);
+      }
+      if (unit) right.appendChild(el('span', 'set-unit', esc(unit)));
+      row.appendChild(right);
+      return row;
+    }
+    function slider(min, max, step, value, label) {
+      var s = el('input', 'decay-slider');
+      s.type = 'range';
+      s.min = String(min); s.max = String(max); s.step = String(step);
+      s.value = String(value);
+      s.setAttribute('aria-label', label);
+      return s;
+    }
+    function divider() { return el('div', 'set-hr'); }
 
-    /* ---------------- scoring: hot, cold, and the floor ---------------- */
-    var sc = el('div', 'card-block');
-    var scHead = el('div', 'flex-between');
-    scHead.appendChild(el('div', 'card-title', 'Scoring'));
-    scHead.appendChild(infoDot(
-      'A run banks its value scaled by how far above the floor you scored. ' +
-      'At or below the floor it banks nothing; at 100% it banks the full value. ' +
-      'Whatever it banks pays down the nightly loss first. A QUIZ then turns ' +
-      'what is left into rest days at the share below, and a hot song loses ' +
-      'nothing. A GAME stops at paying the loss down: clear it outright and the ' +
-      'song is hot for today only, which buys back the one free night before ' +
-      'the cold bites again. A game can never add a day, nor extend a song that ' +
-      'is already hot. Once the flame is out the loss climbs by the cold step ' +
-      'every night until the score is gone. Changing anything here rescores ' +
-      'every song and its whole history at once, because points are computed ' +
-      'from accuracy and mode, never stored.'));
-    sc.appendChild(scHead);
+    /* ---------------- your songs ---------------- */
+    var songsSec = setSection('data', 'Your songs', S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's'));
+    if (ON_WEB) {
+      /* All three live on the backup page, which does each of them. */
+      var links = [['Download a backup'], ['Restore a backup'], ['Move in from Google Sheets']];
+      for (var bl = 0; bl < links.length; bl++) {
+        var a = el('a', 'btn btn-outline btn-block', links[bl][0]);
+        a.href = 'backup/';
+        songsSec.body.appendChild(a);
+      }
+    } else {
+      /* THE SONGBOOK, on the Google version only: a blank songbook is a
+         working install, since songs can be added by hand. */
+      var docNow = el('p', 'set-sub');
+      songsSec.body.appendChild(docNow);
+      var docIn = el('input', 'form-input');
+      docIn.type = 'url';
+      docIn.placeholder = 'Link to your Google Doc';
+      var docRow = el('div', 'input-with-btn');
+      var docSave = el('button', 'find-btn', 'Save');
+      docSave.type = 'button';
+      docRow.appendChild(docIn);
+      docRow.appendChild(docSave);
+      songsSec.body.appendChild(docRow);
+      var status = el('div');
+      var btn = el('button', 'btn btn-gold btn-block', 'Import new songs');
 
-    /**
-     * Mirrors the server's nightsToZero so these blurbs tell the truth rather
-     * than the old score/decay arithmetic, which stopped being right the
-     * moment the loss started compounding.
-     */
+      function paintDoc() {
+        docNow.innerHTML = S.docUrl
+          ? 'Songbook: <a href="' + esc(S.docUrl) + '" target="_blank" rel="noopener">' +
+            esc(S.docTitle || 'your Google Doc') + '</a>'
+          : 'No songbook set.';
+        btn.disabled = !S.docUrl;
+        btn.style.display = S.docUrl ? '' : 'none';
+        docSave.textContent = S.docUrl ? 'Change' : 'Save';
+      }
+      docSave.addEventListener('click', function () {
+        var val = docIn.value.trim();
+        if (!val) { toast('Paste the link to your Google Doc first'); return; }
+        docSave.disabled = true;
+        docSave.textContent = 'Checking...';
+        api('setDoc', { url: val }).then(function (r) {
+          S.docUrl = r.docUrl;
+          S.docTitle = r.docTitle;
+          docIn.value = '';
+          docSave.disabled = false;
+          paintDoc();
+          toast('Songbook set: ' + r.docTitle);
+        }).catch(function (e) {
+          docSave.disabled = false;
+          paintDoc();
+          toast(e.message);
+        });
+      });
+      btn.addEventListener('click', function () {
+        var started = Date.now();
+        btn.disabled = true;
+        status.innerHTML = '<div class="progress-track"><div class="progress-worm"></div></div>';
+        function tick() { btn.textContent = 'Importing... ' + Math.round((Date.now() - started) / 1000) + 's'; }
+        tick();
+        var timer = setInterval(tick, 1000);
+        function stop() {
+          clearInterval(timer);
+          btn.disabled = false;
+          btn.textContent = 'Import new songs';
+        }
+        api('importDoc', { replaceAll: false }).then(function (r) {
+          return refreshIndex().then(function () { return r; });
+        }).then(function (r) {
+          stop();
+          var msg = '<p class="set-sub">Added <strong>' + r.added + '</strong>, already had ' +
+            r.skipped + '.</p>';
+          if (r.added && r.addedTitles && r.addedTitles.length) {
+            msg += '<p class="set-sub">' + esc(r.addedTitles.join(', ')) + '</p>';
+          }
+          if (r.flagged) msg += '<p class="set-sub">' + r.flagged + ' need a chorus tagged.</p>';
+          status.innerHTML = msg;
+          toast(r.added ? 'Imported ' + r.added + ' songs' : 'Nothing new in the doc');
+        }).catch(function (e) {
+          stop();
+          status.innerHTML = '<p class="set-sub is-bad">' + esc(e.message) + '</p>';
+        });
+      });
+      songsSec.body.appendChild(btn);
+      songsSec.body.appendChild(status);
+      paintDoc();
+      if (S.sheetUrl) {
+        var sheetA = el('a', 'text-link-btn', 'Open the data sheet');
+        sheetA.href = S.sheetUrl; sheetA.target = '_blank'; sheetA.rel = 'noopener';
+        songsSec.body.appendChild(sheetA);
+      }
+    }
+    /* Songs still waiting on a chorus, where they can be found. */
+    var flaggedSongs = [];
+    for (var fi = 0; fi < S.songs.length; fi++) if (S.songs[fi].needsChorusTag) flaggedSongs.push(S.songs[fi]);
+    if (flaggedSongs.length) {
+      songsSec.body.appendChild(el('div', 'set-lbl', 'Needs a chorus tagged (' + flaggedSongs.length + ')'));
+      songsSec.body.appendChild(el('p', 'set-sub', 'Open one and tap the block that is the chorus.'));
+      for (var fj = 0; fj < flaggedSongs.length; fj++) songsSec.body.appendChild(insightRowPlain(flaggedSongs[fj]));
+    }
+    wrap.appendChild(songsSec.node);
+
+    /* ---------------- practice: cooling and rest days ---------------- */
+    /** Mirrors the server's nightsToZero so the examples tell the truth. */
     function nightsToZero(score, hotDays, y) {
       if (score <= 0) return 0;
       if (y <= 0) return null;
@@ -16756,391 +16923,128 @@ body {
       }
       return nights;
     }
-
-    /* Quizzes only - a game never buys a rest day at all. */
-    function hotDaysFor(points, pct) { return Math.round(points * pct / 100); }
-
-    /* cold step */
-    var decayVal = el('div', 'mastery-head');
-    var decayNote = el('p', 'form-hint mt-0');
-    function decayBlurb(d) {
-      if (d === 0) return 'Nothing ever goes cold - a song rests forever once the flame is out.';
-      var pct = S.settings.hotPct === undefined ? 10 : S.settings.hotPct;
-      var out = [];
-      for (var i = 0; i < S.modes.length; i++) {
-        var m = S.modes[i];
-        if (m.id !== 'medium' && m.id !== 'hard' && m.id !== 'blind') continue;
-        var p = modePoints(m.id) || 0;
-        var hd = hotDaysFor(p, pct);
-        out.push(m.label + ' (' + p + ') rests ' + hd + 'd then is spent after ' +
-                 nightsToZero(p, hd, d) + 'd');
-      }
-      return 'One flawless run, then left alone: ' + out.join('; ') + '.';
+    function hotPctNow() { return S.settings.hotPct === undefined ? 10 : S.settings.hotPct; }
+    /* The top quiz, because it is the run these dials are really about. */
+    function topQuiz() {
+      var m = modeById('blind');
+      return { label: m ? m.label : 'Hard', pts: modePoints('blind') || 50 };
     }
-    function paintDecay(d) {
-      decayVal.innerHTML = '<div class="mastery-num">' + d + '</div>' +
-        '<div><div class="mastery-word">cold step</div>' +
-        '<div class="insight-song-sub">a cold song loses this much the first night, ' +
-        'twice it the next, then three times. Always a whole number - what a run ' +
-        'pays off the rate is rounded, so no song ever sits at "losing 0.7 tonight"' +
-        '</div></div>';
-      decayNote.textContent = decayBlurb(d);
-    }
-    paintDecay(S.settings.decay);
-    sc.appendChild(decayVal);
 
-    var slider = el('input', 'decay-slider');
-    slider.type = 'range';
-    slider.min = '0'; slider.max = '5'; slider.step = '1';
-    slider.value = String(S.settings.decay);
-    slider.addEventListener('input', function () { paintDecay(Number(slider.value)); });
-    slider.addEventListener('change', function () {
-      pushSettings({ decay: Number(slider.value) }, function () {
-        slider.value = String(S.settings.decay);
-        paintDecay(S.settings.decay);
-        paintHot(S.settings.hotPct);
+    var prac = setSection('prac', 'Practice', '');
+    function pracPeek() { prac.peek('Cooling ' + S.settings.decay + ' · ' + hotPctNow() + '% rest'); }
+
+    var coolVal = el('span', 'set-val');
+    var coolHead = el('div', 'set-row-top');
+    coolHead.appendChild(el('span', 'set-lbl', 'Cooling speed'));
+    coolHead.appendChild(coolVal);
+    var coolSlider = slider(0, 5, 1, S.settings.decay, 'Cooling speed');
+    var coolEg = el('p', 'set-eg');
+    function paintCool(d) {
+      coolVal.textContent = String(d);
+      var t = topQuiz(), hot = Math.round(t.pts * hotPctNow() / 100);
+      coolEg.innerHTML = d === 0 ? 'Songs never cool down.'
+        : 'After one perfect ' + esc(t.label) + ' quiz, a song stays hot for <strong>' + hot +
+          '</strong> days and burns out after <strong>' + nightsToZero(t.pts, hot, d) + '</strong>.';
+    }
+    coolSlider.addEventListener('input', function () { paintCool(Number(coolSlider.value)); });
+    coolSlider.addEventListener('change', function () {
+      pushSettings({ decay: Number(coolSlider.value) }, function () {
+        paintCool(S.settings.decay); paintRest(hotPctNow()); pracPeek();
       });
     });
-    sc.appendChild(slider);
-    sc.appendChild(decayNote);
+    prac.body.appendChild(coolHead);
+    prac.body.appendChild(coolSlider);
+    prac.body.appendChild(el('p', 'set-sub',
+      'How much a cold song loses on its first night. Each night after, it loses a bit more.'));
+    prac.body.appendChild(coolEg);
+    prac.body.appendChild(divider());
 
-    /* hot days */
-    var hotNote = el('p', 'form-hint');
-    function paintHot(h) {
-      if (!h) {
-        hotNote.innerHTML = 'Hot days <strong>0%</strong> &mdash; no quiz ever buys a ' +
-          'rest day, so every song is cold the morning after.';
-        return;
-      }
-      var b = modePoints('blind') || 100;
-      var days = hotDaysFor(b, h);
-      hotNote.innerHTML = 'Hot days <strong>' + h + '%</strong> &mdash; a QUIZ keeps a song ' +
-        'safe for this share of what it banked, rounded to whole days. At ' + h + '%, ' +
-        'a flawless Blind quiz (' + b + ') buys ' + days + ' day' + (days === 1 ? '' : 's') +
-        ', and a quiz has to bank ' + Math.ceil(50 / h) + ' points to buy even one. ' +
-        'Games are not on this dial at all - they only ever buy the day they are ' +
-        'played on.';
+    var restVal = el('span', 'set-val');
+    var restHead = el('div', 'set-row-top');
+    restHead.appendChild(el('span', 'set-lbl', 'Rest days from quizzes'));
+    restHead.appendChild(restVal);
+    var restSlider = slider(0, 50, 1, hotPctNow(), 'Rest days from quizzes');
+    var restEg = el('p', 'set-eg');
+    function paintRest(h) {
+      restVal.textContent = h + '%';
+      var t = topQuiz(), days = Math.round(t.pts * h / 100);
+      restEg.innerHTML = h === 0 ? 'Quizzes never earn days off.'
+        : 'A perfect ' + esc(t.label) + ' quiz (' + t.pts + ' points) earns <strong>' + days +
+          '</strong> day' + (days === 1 ? '' : 's') + ' off.';
     }
-    paintHot(S.settings.hotPct);
-    var hSlider = el('input', 'decay-slider');
-    hSlider.type = 'range';
-    hSlider.min = '0'; hSlider.max = '50'; hSlider.step = '1';
-    hSlider.value = String(S.settings.hotPct === undefined ? 10 : S.settings.hotPct);
-    hSlider.addEventListener('input', function () { paintHot(Number(hSlider.value)); });
-    hSlider.addEventListener('change', function () {
-      pushSettings({ hotPct: Number(hSlider.value) }, function () {
-        hSlider.value = String(S.settings.hotPct);
-        paintHot(S.settings.hotPct);
-        paintDecay(S.settings.decay);
+    restSlider.addEventListener('input', function () { paintRest(Number(restSlider.value)); });
+    restSlider.addEventListener('change', function () {
+      pushSettings({ hotPct: Number(restSlider.value) }, function () {
+        paintRest(hotPctNow()); paintCool(S.settings.decay); paintMedals(); pracPeek();
       });
     });
-    sc.appendChild(hSlider);
-    sc.appendChild(hotNote);
+    prac.body.appendChild(restHead);
+    prac.body.appendChild(restSlider);
+    prac.body.appendChild(el('p', 'set-sub', 'The share of a quiz score that turns into days off.'));
+    prac.body.appendChild(restEg);
+    paintCool(S.settings.decay);
+    paintRest(hotPctNow());
+    pracPeek();
+    wrap.appendChild(prac.node);
 
-    /* ---------------- the hot share, and what each medal does to it -------
-     *
-     * ONE INTERFACE, BECAUSE IT IS ONE NUMBER - 1.63. The share above and the
-     * four multipliers below are not two settings that happen to sit near each
-     * other; they are a base and its coefficients, and the only figure that
-     * matters is their product. Tuning them on separate screens means doing
-     * that multiplication in your head every time, against a points value you
-     * also have to remember - which is how the medals came to be worth
-     * whatever they were worth rather than what anybody chose.
-     *
-     * So the table states the product. Every row is a real sentence about a
-     * real run: a flawless quiz at the top rung, on a song holding that medal,
-     * buys THIS many days. Change any dial and every row moves.
-     *
-     * The rows are days, not multipliers, because a multiplier is the input
-     * and days are the thing you are actually deciding about. Three times of
-     * something is not a quantity anybody has an opinion about; eleven days
-     * versus fifteen is.
-     */
-    var mmHead = el('div', 'flex-between');
-    mmHead.appendChild(el('div', 'card-title mt-12', 'What a medal is worth'));
-    mmHead.appendChild(infoDot(
-      'A medal multiplies the hot share above, and nothing else. It never ' +
-      'changes what a run is worth in points - those are the record of what ' +
-      'you did, and multiplying them would rewrite your history the moment a ' +
-      'medal landed. Rest days are a claim about the future, which is the ' +
-      'right tense for a reward. Each tier replaces the one below rather than ' +
-      'stacking on it, so a platinum song converts at the platinum rate and ' +
-      'not at two times three times four times five.'));
-    sc.appendChild(mmHead);
-
-    var mmGrid = el('div', 'medal-dial-grid');
-    var mmNote = el('p', 'form-hint mt-0');
-
-    function mmValue(tier) {
-      var m = S.settings && S.settings.medalMult;
-      var v = m ? Number(m[tier]) : NaN;
-      return (v >= 0) ? v : (MEDAL_X_DEFAULT[tier] || 1);
-    }
-    /* The top quiz rung, because it is the run these dials are really about -
-       the one somebody takes on a song they have finished. Falls back to a
-       plain hundred if the ladder has been renamed out from under it. */
-    function topQuizPoints() { return modePoints('blind') || 100; }
-
-    function paintMedalDials() {
-      var pct = S.settings.hotPct === undefined ? 10 : S.settings.hotPct;
-      var pts = topQuizPoints();
-      var plain = Math.round(pts * pct / 100);
-      var topMode = modeById('blind');
-      var rows = 'A flawless ' + esc(topMode ? topMode.label : 'top') + ' quiz (' + pts +
-        ' points) buys <strong>' + plain + ' day' + (plain === 1 ? '' : 's') +
-        '</strong> on a song with no medal';
-      var bits = [];
-      for (var i = 0; i < MEDAL_ORDER.length; i++) {
-        var t = MEDAL_ORDER[i];
-        var days = Math.round(pts * (pct * mmValue(t)) / 100);
-        bits.push(esc(MEDAL_TEXT[t]) + ' ' + days);
-      }
-      mmNote.innerHTML = rows + ', and then ' + bits.join(', ') + '. ' +
-        (pct ? '' : 'The share above is zero, so no medal can buy anything.');
-    }
-
-    function medalDialRow(tier) {
-      var cell = el('div', 'medal-dial');
-      cell.innerHTML = '<span class="medal-dial-disc">' + medalSvg(tier, 18) + '</span>' +
-        '<span class="medal-dial-name">' + esc(MEDAL_TEXT[tier]) + '</span>';
-      var input = el('input', 'num-input');
-      input.type = 'number';
-      input.min = '1'; input.max = '20'; input.step = '1';
-      input.value = String(mmValue(tier));
-      input.addEventListener('change', function () {
-        var patchM = { medalMult: {} };
-        patchM.medalMult[tier] = Number(input.value);
-        pushSettings(patchM, function () {
-          input.value = String(mmValue(tier));
-          paintMedalDials();
-          paintHot(S.settings.hotPct);
-          paintDecay(S.settings.decay);
-        });
-      });
-      cell.appendChild(input);
-      return cell;
-    }
-    for (var mi = 0; mi < MEDAL_ORDER.length; mi++) {
-      mmGrid.appendChild(medalDialRow(MEDAL_ORDER[mi]));
-    }
-    sc.appendChild(mmGrid);
-    paintMedalDials();
-    sc.appendChild(mmNote);
-
-    /* Repainting the medal table whenever the base moves, so the two halves of
-       one interface can never be showing different arithmetic. */
-    hSlider.addEventListener('change', paintMedalDials);
-
-    var mmReset = el('button', 'btn btn-outline btn-sm', 'Back to 2 / 3 / 4 / 5');
-    mmReset.addEventListener('click', function () {
-      pushSettings({ reset: 'medals' }, function () {
-        render();
-        toast('Medal multipliers reset');
-      });
-    });
-    sc.appendChild(mmReset);
-
-    /* THE FLOOR IS NOT HERE ANY MORE. One number for the whole app said that
-       75% of an Easy board and 75% of a Hard one were the same achievement,
-       which they never were. Every game level and every quiz carries its own,
-       under Games and quizzes below. */
-    sc.appendChild(el('p', 'form-hint',
-      'The floor - what a run has to beat to bank anything - is set per level, ' +
-      'down in Games and quizzes.'));
-
-    /* ---------------- the heatmap ----------------
-       Four dials, printed in the unit you think in rather than as the raw
-       constants they are. The asymmetry between sting and mend is what decides
-       whether the map nags you or forgives you too quickly, and that is far
-       easier to FEEL than to reason about - so the consequence is computed and
-       printed underneath, the same way the floor dial states what it banks. */
-    sc.appendChild(el('div', 'set-group-title', 'The heatmap'));
-    sc.appendChild(el('p', 'form-hint mt-0',
-      'Every word, line and verse of a song starts at 100 and only moves when a ' +
-      'run says something about it. The lyric sheet shades the weak ones. ' +
-      'It carries no score and never will - it is there to look at, not to clear.'));
-
-    var heatNote = el('p', 'form-hint');
-    function heatDials() {
-      var st = S.settings || {};
-      return {
-        sting: st.sting === undefined ? 35 : Number(st.sting),
-        mend: st.mend === undefined ? 18 : Number(st.mend),
-        gameWeight: st.gameWeight === undefined ? 40 : Number(st.gameWeight),
-        fade: st.fade === undefined ? 90 : Number(st.fade)
-      };
-    }
-    /** How many clean runs it takes to climb back over 90 from one miss. */
-    function heatRecovery(sting, mend) {
-      var v = 100 - sting, n = 0;
-      while (v < 90 && n < 99) { v = v + (100 - v) * (mend / 100); n++; }
-      return n;
-    }
-    function paintHeatNote() {
-      var d = heatDials();
-      heatNote.innerHTML =
-        'A word at 100 that you miss drops to <strong>' + (100 - d.sting) +
-        '</strong>, and takes about <strong>' + heatRecovery(d.sting, d.mend) +
-        '</strong> clean runs to climb back over 90. A game moves it ' +
-        d.gameWeight + '% as far as a quiz does, and anything you have not ' +
-        'been asked in ' + d.fade + ' days counts half as much.';
-    }
-
-    function heatRow(key, label, sub, min, max) {
-      var row = el('div', 'dial-row');
-      var name = el('div', 'dial-name');
-      name.innerHTML = '<span>' + esc(label) + '</span>' +
-        '<span class="dial-sub">' + esc(sub) + '</span>';
-      row.appendChild(name);
-      var input = el('input', 'num-input');
-      input.type = 'number';
-      input.min = String(min); input.max = String(max); input.step = '1';
-      input.value = String(heatDials()[key]);
-      input.addEventListener('change', function () {
-        var patch = {};
-        patch[key] = Number(input.value);
-        pushSettings(patch, function () {
-          input.value = String(heatDials()[key]);
-          paintHeatNote();
-        });
-      });
-      row.appendChild(input);
-      return row;
-    }
-
-    sc.appendChild(heatRow('sting', 'A mistake stings',
-      'how far a wrong answer pulls a standing down, per cent of what is left',
-      1, 100));
-    sc.appendChild(heatRow('mend', 'A clean run mends',
-      'and how far a right one pulls it back up', 1, 100));
-    sc.appendChild(heatRow('gameWeight', 'A game is worth',
-      'per cent of what a quiz is worth. Quizzes are the better evidence',
-      0, 100));
-    sc.appendChild(heatRow('fade', 'Half-forgotten after',
-      'days, after which an observation counts half as much. The shading goes ' +
-      'pale rather than pretending it still knows', 7, 3650));
-    paintHeatNote();
-    sc.appendChild(heatNote);
-
-    wrap.appendChild(sc);
-
-    /* ---------------- the stopwatch ---------------- */
-    var tc = el('div', 'card-block');
-    var tHead = el('div', 'flex-between');
-    tHead.appendChild(el('div', 'card-title', 'The timer'));
-    tHead.appendChild(infoDot(
-      'Every quiz is timed, with the clock stopped whenever the app is in the ' +
-      'background - one walk-away run would otherwise poison a median for good. ' +
-      'But the clock only MOVES your points on a run where you ticked its box in ' +
-      'the picker, and that box only unlocks once you have enough runs at that ' +
-      'level on that machine to have a real median to be measured against. ' +
-      'Games are not on this dial at all - they run against a countdown instead, ' +
-      'tuned per game under Games.'));
-    tc.appendChild(tHead);
-
-    var speedNote = el('p', 'form-hint mt-0');
-    function paintSpeed() {
-      var on = !!S.settings.speedMod;
-      var sw = S.settings.speedSwing === undefined ? 20 : S.settings.speedSwing;
-      var blind = modePoints('blind') || 100;
-      var mn = S.settings.timerMin || 5;
-      speedNote.innerHTML = on
-        ? 'Unlocks after <strong>' + mn + '</strong> runs at a level. Swing <strong>' +
-          sw + '%</strong> &mdash; on a run where you tick the timer, ' +
-          'twice your average speed earns the full ' + sw + '%, twice as slow gives it ' +
-          'all back, and running at your average changes nothing at all. A flawless ' +
-          'Blind (' + blind + ') would pay <strong>' + (blind * (1 + sw / 100)).toFixed(1) +
-          '</strong> at double speed and <strong>' + (blind * (1 - sw / 100)).toFixed(1) +
-          '</strong> at half. Untick it and the run is scored on accuracy alone.'
-        : 'Pace is recorded and shown everywhere, but the tick box is hidden and no ' +
-          'run is scored on it.';
-    }
-
-    var minRow = el('div', 'points-row');
-    minRow.innerHTML = '<span class="points-name">Runs before it unlocks</span>';
-    var minInput = el('input', 'points-input');
-    minInput.type = 'number';
-    minInput.min = '1'; minInput.max = '50'; minInput.step = '1';
-    minInput.value = String(S.settings.timerMin || 5);
-    minInput.addEventListener('change', function () {
-      pushSettings({ timerMin: Number(minInput.value) }, function () {
-        minInput.value = String(S.settings.timerMin);
-        paintSpeed();
-      });
-    });
-    minRow.appendChild(minInput);
-    tc.appendChild(minRow);
-
-    var toggle = el('label', 'checkbox-row');
+    /* ---------------- the timer ---------------- */
+    var tm = setSection('timer', 'Timer', '');
+    function swingNow() { return S.settings.speedSwing === undefined ? 20 : S.settings.speedSwing; }
+    function timerPeek() { tm.peek(S.settings.speedMod ? 'On · ±' + swingNow() + '%' : 'Off'); }
+    var toggle = el('label', 'checkbox-row set-toggle');
     toggle.innerHTML = '<input type="checkbox"' + (S.settings.speedMod ? ' checked' : '') +
-      '><span>Offer the timer on quizzes</span>';
+      '><span class="set-lbl">Count speed in quiz scores</span>';
+    var timerMore = el('div', 'set-stack');
     toggle.querySelector('input').addEventListener('change', function (ev) {
       var boxEl = ev.target;
       pushSettings({ speedMod: boxEl.checked }, function () {
         boxEl.checked = !!S.settings.speedMod;
-        paintSpeed();
+        timerMore.style.display = S.settings.speedMod ? '' : 'none';
+        timerPeek();
       });
     });
-    tc.appendChild(toggle);
+    tm.body.appendChild(toggle);
 
-    var swSlider = el('input', 'decay-slider');
-    swSlider.type = 'range';
-    swSlider.min = '0'; swSlider.max = '50'; swSlider.step = '5';
-    swSlider.value = String(S.settings.speedSwing === undefined ? 20 : S.settings.speedSwing);
-    swSlider.addEventListener('input', function () {
-      var was = S.settings.speedSwing;
-      S.settings.speedSwing = Number(swSlider.value);
-      paintSpeed();
-      S.settings.speedSwing = was;
-    });
+    var swVal = el('span', 'set-val');
+    var swHead = el('div', 'set-row-top');
+    swHead.appendChild(el('span', 'set-lbl', 'Speed bonus'));
+    swHead.appendChild(swVal);
+    var swSlider = slider(0, 50, 5, swingNow(), 'Speed bonus');
+    var swEg = el('p', 'set-eg');
+    function paintSwing(sw) {
+      swVal.textContent = '±' + sw + '%';
+      var t = topQuiz();
+      swEg.innerHTML = 'A perfect ' + esc(t.label) + ' quiz scores <strong>' +
+        Math.round(t.pts * (1 + sw / 100)) + '</strong> at double your usual speed and <strong>' +
+        Math.round(t.pts * (1 - sw / 100)) + '</strong> at half.';
+    }
+    swSlider.addEventListener('input', function () { paintSwing(Number(swSlider.value)); });
     swSlider.addEventListener('change', function () {
       pushSettings({ speedSwing: Number(swSlider.value) }, function () {
-        swSlider.value = String(S.settings.speedSwing);
-        paintSpeed();
+        paintSwing(swingNow()); timerPeek();
       });
     });
-    tc.appendChild(swSlider);
-    paintSpeed();
-    tc.appendChild(speedNote);
-    wrap.appendChild(tc);
+    timerMore.appendChild(swHead);
+    timerMore.appendChild(swSlider);
+    timerMore.appendChild(el('p', 'set-sub', 'The most a fast quiz can add, or a slow one can take away.'));
+    timerMore.appendChild(swEg);
+    timerMore.appendChild(kvRow('Quizzes before it counts', [
+      numBox(S.settings.timerMin || 5, 1, 50, 1, function (v) {
+        pushSettings({ timerMin: v });
+      }, 'Quizzes before it counts')]));
+    timerMore.appendChild(el('p', 'set-sub', 'At each level, so there is a usual speed to compare against.'));
+    timerMore.style.display = S.settings.speedMod ? '' : 'none';
+    tm.body.appendChild(timerMore);
+    paintSwing(swingNow());
+    timerPeek();
+    wrap.appendChild(tm.node);
 
-    /* ---------------- the games, one at a time ---------------- */
-    var gm = el('div', 'card-block');
-    var gmHead = el('div', 'flex-between');
-    gmHead.appendChild(el('div', 'card-title', 'Games and quizzes'));
-    gmHead.appendChild(infoDot(
-      'Games pay down a song nightly loss and nothing more. Clear it outright ' +
-      'and the song is hot for that day only; a game can never buy a rest day ' +
-      'or extend one. That is deliberate - they are a holding action between ' +
-      'real sittings, and quizzes are how a song actually climbs. ' +
-      'Three levels each, and the level is chosen on the card when you start a ' +
-      'game. TAMPERED material is this song with words swapped for fakes - a ' +
-      'higher swap share is EASIER, because a verse a third wrong reads as wrong ' +
-      'at a glance. BORROWED material is lifted whole out of another song, ' +
-      'matched on line count so it does not stand out by shape alone. A DECOY ' +
-      'is the third kind and the hardest: a line this song really does sing, ' +
-      'untouched, put somewhere it does not go - nothing about it is wrong but ' +
-      'where it is, so the only way to catch it is to know the song. The Planted ' +
-      'count and the Decoys share split those two between them. Both Impostor ' +
-      'games are the odd ones: every unit is a judgement over the whole song, ' +
-      'so doing nothing scores exactly the share you did not fake - which is ' +
-      'why their harder levels fake MORE, not fewer.'));
-    gm.appendChild(gmHead);
-
+    /* ---------------- games and quizzes, one at a time ---------------- */
     /**
-     * WHAT THE DROPDOWN LISTS IS THE THING, NOT THE SIDE OF IT.
-     *
-     * Order Verses and Order Lines are one game asked of two different units,
-     * and so are the other three pairs - they share a blurb, they share the
-     * shape of their dials, and you tune one because you have just been
-     * annoyed by the other. Thirteen entries in a list, eight of them halves
-     * of something, made you hunt for a pair the picker has always drawn side
-     * by side. Four families and four rungs, with the two halves on a switch
-     * underneath, is the same set of dials in a list you can read.
-     *
-     * The two Beginner quizzes go the same way for the same reason: they are
-     * alternatives at one height, not steps, which is exactly how the picker
-     * shows them.
+     * WHAT THE DROPDOWN LISTS IS THE THING, NOT THE SIDE OF IT. Order Verses
+     * and Order Lines are one game asked of two units, so the list has four
+     * families and the quiz rungs, with the two halves on a switch underneath.
+     * The two Beginner quizzes go together the same way.
      */
     function tuneGroups() {
       var out = [], quizzes = [], begin = [], fams = S.families || [], i, j, m;
@@ -17149,16 +17053,12 @@ body {
         for (j = 0; j < S.modes.length; j++) {
           if (S.modes[j].family === fams[i].id) ids.push(S.modes[j].id);
         }
-        if (ids.length) {
-          out.push({ id: 'f_' + fams[i].id, kind: 'game', label: fams[i].label, ids: ids });
-        }
+        if (ids.length) out.push({ id: 'f_' + fams[i].id, kind: 'game', label: fams[i].label, ids: ids });
       }
-      if (!out.length) {                       // no families declared: one each
+      if (!out.length) {
         for (j = 0; j < S.modes.length; j++) {
           m = S.modes[j];
-          if (m.kind === 'game') {
-            out.push({ id: 'g_' + m.id, kind: 'game', label: m.label, ids: [m.id] });
-          }
+          if (m.kind === 'game') out.push({ id: 'g_' + m.id, kind: 'game', label: m.label, ids: [m.id] });
         }
       }
       for (j = 0; j < S.modes.length; j++) {
@@ -17168,13 +17068,9 @@ body {
           else quizzes.push({ id: 'q_' + m.id, kind: 'quiz', label: m.label, ids: [m.id] });
         }
       }
-      if (begin.length) {
-        quizzes.unshift({ id: 'q_beginner', kind: 'quiz', label: 'Beginner', ids: begin });
-      }
+      if (begin.length) quizzes.unshift({ id: 'q_beginner', kind: 'quiz', label: 'Beginner', ids: begin });
       return out.concat(quizzes);
     }
-
-    /** What one half of a pair is called, once the family name is off it. */
     function sideLabel(id) {
       var m = modeById(id);
       if (!m) return id;
@@ -17182,18 +17078,17 @@ body {
       var s = String(m.label || id), cut = s.indexOf(' - ');
       return cut === -1 ? s : s.slice(cut + 3);
     }
-
-    function groupOf(id) {
-      var gs = tuneGroups();
-      for (var i = 0; i < gs.length; i++) if (gs[i].ids.indexOf(id) !== -1) return gs[i];
-      return gs[0] || null;
-    }
-
     var allGroups = tuneGroups();
-    if (!S.gameEdit || !groupOf(S.gameEdit)) {
+    function groupOf(id) {
+      for (var i = 0; i < allGroups.length; i++) if (allGroups[i].ids.indexOf(id) !== -1) return allGroups[i];
+      return allGroups[0] || null;
+    }
+    if (!S.gameEdit || !groupOf(S.gameEdit) || groupOf(S.gameEdit).ids.indexOf(S.gameEdit) === -1) {
       S.gameEdit = (allGroups[0] && allGroups[0].ids[0]) || '';
     }
+    if (LEVELS.indexOf(S.gameLv) === -1) S.gameLv = 'easy';
 
+    var gm = setSection('games', 'Games and quizzes', '');
     var gSel = el('select', 'set-select');
     (function () {
       var here = groupOf(S.gameEdit), games = '', quizzes = '';
@@ -17206,276 +17101,249 @@ body {
       gSel.innerHTML = '<optgroup label="Games">' + games + '</optgroup>' +
                        '<optgroup label="Quizzes">' + quizzes + '</optgroup>';
     })();
-    gm.appendChild(gSel);
+    gSel.setAttribute('aria-label', 'Game or quiz');
+    gm.body.appendChild(gSel);
+    var gBody = el('div', 'set-stack');
+    gm.body.appendChild(gBody);
 
-    var gBody = el('div');
-    gm.appendChild(gBody);
-
-    /** One number box - or one dropdown - wired straight to one dial. */
-    function dialInput(gameId, level, key, which, value, meta) {
-      var isQuiz = !isGame(gameId);
-
-      /* A CHOICE DIAL IS A SELECT, not a number box with a legend somewhere
-         else. Two of the Easy rung's four dials are words, and a number
-         standing for a word is the kind of thing you have to keep a table for. */
-      if (meta.kind === 'choice') {
-        var sel = el('select', 'set-select dial-select');
-        var html = '';
-        for (var o = 0; o < meta.options.length; o++) {
-          html += '<option value="' + esc(meta.options[o][0]) + '"' +
-            (String(value) === meta.options[o][0] ? ' selected' : '') + '>' +
-            esc(meta.options[o][1]) + '</option>';
-        }
-        sel.innerHTML = html;
-        sel.value = String(value);
-        sel.addEventListener('change', function () {
-          var patchC = { quizzes: {} };
-          patchC.quizzes[gameId] = {};
-          patchC.quizzes[gameId][key] = sel.value;
-          pushSettings(patchC, drawGame);
-        });
-        return sel;
-      }
-
-      var input = el('input', 'num-input');
-      input.type = 'number';
-      input.min = String(meta.min);
-      input.max = String(meta.max);
-      // a rate of "1 second per word" is far too coarse a step for a rate
-      input.step = meta.kind === 'rate' ? '0.1' : '1';
-      input.value = String(value);
-      input.addEventListener('change', function () {
-        var cur = dialsFor(gameId, level);
-        var next;
-        if (meta.kind === 'range') {
-          var pair = (cur[key] || [0, 0]).slice();
-          pair[which] = Number(input.value);
-          if (pair[0] > pair[1]) { var t = pair[0]; pair[0] = pair[1]; pair[1] = t; }
-          next = pair;
-        } else {
-          next = Number(input.value);
-        }
-        var patch;
-        if (isQuiz) {
-          patch = { quizzes: {} };
-          patch.quizzes[gameId] = {};
-          patch.quizzes[gameId][key] = next;
-        } else {
-          patch = { games: {} };
-          patch.games[gameId] = {};
-          patch.games[gameId][level] = {};
-          patch.games[gameId][level][key] = next;
-        }
-        pushSettings(patch, drawGame);
-      });
-      return input;
+    function gamesPeek() {
+      var grp = groupOf(S.gameEdit);
+      if (!grp) { gm.peek(''); return; }
+      gm.peek(grp.kind === 'quiz' ? grp.label + ' quiz'
+        : grp.label + (grp.ids.length > 1 ? ' ' + sideLabel(S.gameEdit) : ''));
     }
 
-    /**
-     * WHAT THIS LEVEL MAKES OF THIS DIAL, in as few characters as will carry
-     * it. The prose belongs to the dial and is said once; a seconds-per-line
-     * rate and a floor both turn into a different real number at each level,
-     * and THAT belongs under the box it came out of.
-     */
-    function levelNote(gameId, level, key, d) {
-      if (key === 'secsPer') return fmtLimit(timeLimitFor(noteSong(gameId), gameId, level));
-      if (key === 'floor') {
-        var pts = d.pts === undefined ? 0 : d.pts;
-        return Math.round((d[key] + 100) / 2) + '% banks ' + (pts / 2).toFixed(1);
-      }
-      /* A percentage of a song is not a number of blanks until you say which
-         song. Both of these print against a real one, for the same reason the
-         seconds rate does - an abstract share tells you nothing about what the
-         board will look like. */
-      if (key === 'missPct') {
-        var s1 = noteSong(gameId);
-        if (!s1) return '';
-        var n1 = unitCountFor(s1, gameId);
-        return 'about ' + Math.max(1, Math.round(n1 * d[key] / 100)) + ' of ' + n1;
-      }
-      if (key === 'borrowN' && gameId === 'lineScramble') {
-        var s2 = noteSong(gameId);
-        if (!s2) return '';
-        var gaps = Math.max(1, Math.round(unitCountFor(s2, gameId) * d.missPct / 100));
-        var mid = function (r) { return r ? (Number(r[0]) + Number(r[1])) / 2 : 0; };
-        return Math.round(gaps + mid(d.borrowN) + mid(d.editN)) + ' in the bank';
-      }
-      return '';
+    /** The unit a game walks, in the words a person uses. */
+    function unitWords(gameId) {
+      var m = modeById(gameId), u = m ? m.unit : 'line';
+      if (u === 'section' || u === 'verse') return { one: 'verse', many: 'verses' };
+      if (u === 'word') return { one: 'word', many: 'words' };
+      return { one: 'line', many: 'lines' };
     }
-    /** A real song to measure a rate against - an abstract rate means nothing. */
-    function noteSong(gameId) {
-      for (var z = 0; z < S.songs.length; z++) {
-        if (unitCountFor(S.songs[z], gameId) > 0) return S.songs[z];
-      }
-      return null;
+    function rangeText(r) { return r[0] === r[1] ? String(r[0]) : r[0] + '–' + r[1]; }
+    /** Which dial is this game's count of wrong pieces, and how it reads. */
+    function wrongDial(gameId, d) {
+      var u = unitWords(gameId);
+      if (d.fakePct !== undefined) return { key: 'fakePct', min: 5, max: 100, pct: true,
+        label: 'Wrong ' + u.many, cap: '% ' + u.many + ' wrong' };
+      if (gameId === 'wordScramble') return { key: 'extraN', min: 0, max: 12,
+        label: 'Extra words', cap: 'extra words' };
+      return { key: 'wrongN', min: 0, max: 8, label: 'Wrong ' + u.many, cap: 'wrong ' + u.many };
+    }
+    function kindsOf(d) {
+      var out = [];
+      for (var k in (d.mix || {})) if (d.mix.hasOwnProperty(k) && KIND_META[k]) out.push(k);
+      return out;
     }
 
-    /**
-     * ONE GAME, ALL THREE LEVELS, one grid.
-     *
-     * Three separate cards said everything three times: every dial name, and
-     * under it every line of explanation, once per column. Two thirds of the
-     * screen was the same sentence again. The dial is named once across the
-     * full width and its three boxes sit under the three headings, which is
-     * the shape the question actually has - one dial, three answers - and it
-     * is what makes Easy and Hard comparable at a glance.
-     */
-    function dialGrid(gameId) {
-      var grid = el('div', 'dial-grid'), L;
-      for (L = 0; L < LEVELS.length; L++) {
-        (function (lv) {
-          var d = dialsFor(gameId, lv);
-          var pts = d.pts === undefined ? 0 : d.pts;
-          grid.appendChild(el('div', 'dg-head',
-            '<span>' + esc(LEVEL_LABEL[lv]) + '</span><span>' + pts + ' pt' +
-            (pts === 1 ? '' : 's') + '</span>'));
+    /** A ring, one segment per kind, drawn to scale (circumference 100). */
+    function ringSvg(d, kinds, wd) {
+      var at = 25, segs = '';
+      for (var i = 0; i < kinds.length; i++) {
+        var v = Number(d.mix[kinds[i]]) || 0;
+        if (v <= 0) continue;
+        segs += '<circle r="15.915" cx="21" cy="21" fill="none" stroke="' + KIND_META[kinds[i]].color +
+          '" stroke-width="6" stroke-dasharray="' + v + ' ' + (100 - v) +
+          '" stroke-dashoffset="' + at + '"></circle>';
+        at = (at - v + 100) % 100;
+      }
+      var txt = rangeText(d[wd.key]);
+      return '<svg viewBox="0 0 42 42" width="74" height="74" aria-hidden="true">' +
+        '<circle r="15.915" cx="21" cy="21" fill="none" stroke="var(--paper-dim)" stroke-width="6"></circle>' +
+        segs + '<text x="21" y="23.5" text-anchor="middle" class="ring-num"' +
+        (txt.length > 3 ? ' style="font-size:6.5px"' : '') + '>' + esc(txt) + '</text></svg>';
+    }
+
+    /** Change one kind; the others keep their proportions and fill the rest. */
+    function setMix(mix, kinds, kind, v) {
+      v = Math.max(0, Math.min(100, Math.round(v)));
+      var others = [], rest = 0, i;
+      for (i = 0; i < kinds.length; i++) if (kinds[i] !== kind) { others.push(kinds[i]); rest += Number(mix[kinds[i]]) || 0; }
+      var left = 100 - v, out = {}, total = 0;
+      for (i = 0; i < others.length; i++) {
+        var k = others[i];
+        out[k] = Math.round(rest > 0 ? (Number(mix[k]) || 0) * left / rest : left / others.length);
+        total += out[k];
+      }
+      out[kind] = v;
+      if (others.length) {
+        var big = others[0];
+        for (i = 1; i < others.length; i++) if (out[others[i]] > out[big]) big = others[i];
+        out[big] += left - total;
+      }
+      return out;
+    }
+
+    function gamePatch(gameId, level, key, value) {
+      var p = { games: {} };
+      p.games[gameId] = {};
+      p.games[gameId][level] = {};
+      p.games[gameId][level][key] = value;
+      return p;
+    }
+    function quizPatch(gameId, key, value) {
+      var p = { quizzes: {} };
+      p.quizzes[gameId] = {};
+      p.quizzes[gameId][key] = value;
+      return p;
+    }
+    /* A from-to pair of boxes for one range dial. */
+    function rangeBoxes(gameId, level, key, r, min, max, label) {
+      function put(which) {
+        return numBox(r[which], min, max, 1, function (v) {
+          var pair = dialsFor(gameId, level)[key].slice();
+          pair[which] = v;
+          if (pair[0] > pair[1]) pair = [pair[1], pair[0]];
+          pushSettings(gamePatch(gameId, level, key, pair), drawGame);
+        }, label + (which ? ', to' : ', from'));
+      }
+      return [put(0), 'to', put(1)];
+    }
+    function numDial(gameId, level, key, value, min, max, step, label) {
+      return numBox(value, min, max, step, function (v) {
+        pushSettings(isGame(gameId) ? gamePatch(gameId, level, key, v) : quizPatch(gameId, key, v), drawGame);
+      }, label);
+    }
+
+    function drawLevels(gameId) {
+      var u = unitWords(gameId);
+      var lv = S.gameLv, d0 = dialsFor(gameId, 'easy');
+      var kinds = kindsOf(d0), wd = wrongDial(gameId, d0);
+
+      /* the three rings, one per level */
+      var rings = el('div', 'set-rings');
+      for (var L = 0; L < LEVELS.length; L++) {
+        (function (level) {
+          var d = dialsFor(gameId, level);
+          var b = el('button', 'set-ring' + (level === lv ? ' on' : ''),
+            '<span class="set-ring-head">' + LEVEL_WORD[level] + '</span>' + ringSvg(d, kinds, wd) +
+            '<span class="set-ring-cap">' + esc(wd.cap) + '</span>');
+          b.type = 'button';
+          b.setAttribute('aria-pressed', String(level === lv));
+          b.addEventListener('click', function () { S.gameLv = level; drawGame(); });
+          rings.appendChild(b);
         })(LEVELS[L]);
       }
-
-      var first = dialsFor(gameId, LEVELS[0]);
-      for (var k = 0; k < DIAL_ORDER.length; k++) {
-        (function (key) {
-          if (first[key] === undefined) return;
-          var meta = DIAL_META[key];
-          var sub = meta.sub, label = meta.label;
-          /* WORDS MISSING AND LINES MISSING ARE THE SAME DIAL AND NOT THE SAME
-             QUESTION. One table entry, read against the unit the game walks, so
-             Scramble Lines stops asking how many WORDS to lift out of a board
-             that only has lines on it. */
-          if (key === 'missPct') {
-            var mu = modeById(gameId);
-            var isLines = mu && mu.unit === 'line';
-            label = isLines ? 'Lines missing' : 'Words missing';
-            sub = isLines
-              ? 'lifted out of the whole song for you to put back'
-              : 'lifted out of each section for you to put back';
-          }
-          if (key === 'trayN') {
-            var tu = modeById(gameId);
-            label = (tu && tu.unit === 'line') ? 'Lines on the tray' : 'Words on the tray';
-          }
-          if (key === 'secsPer') {
-            var m2 = modeById(gameId), sample = noteSong(gameId);
-            sub = 'per ' + (m2 ? m2.unit : 'unit') + '. ' + (sample
-              ? 'The limits under the boxes are for ' + esc(sample.title) + ', which has ' +
-                unitCountFor(sample, gameId) + '.'
-              : 'No songs to measure against yet.');
-          }
-          var name = el('div', 'dg-name');
-          name.innerHTML = '<span>' + esc(label) +
-            (meta.kind === 'pct' ? ' (%)' : '') + '</span>' +
-            '<span class="dial-sub">' + sub + '</span>';
-          grid.appendChild(name);
-
-          for (var L2 = 0; L2 < LEVELS.length; L2++) {
-            (function (lv2) {
-              var d2 = dialsFor(gameId, lv2);
-              var cell = el('div', 'dg-cell');
-              if (meta.kind === 'range') {
-                cell.appendChild(dialInput(gameId, lv2, key, 0, d2[key][0], meta));
-                cell.appendChild(el('span', 'dial-to', 'to'));
-                cell.appendChild(dialInput(gameId, lv2, key, 1, d2[key][1], meta));
-              } else {
-                cell.appendChild(dialInput(gameId, lv2, key, 0, d2[key], meta));
-              }
-              var note = levelNote(gameId, lv2, key, d2);
-              if (note) cell.appendChild(el('div', 'dg-note', esc(note)));
-              grid.appendChild(cell);
-            })(LEVELS[L2]);
-          }
-        })(DIAL_ORDER[k]);
+      gBody.appendChild(rings);
+      var legend = el('div', 'set-legend');
+      for (var k = 0; k < kinds.length; k++) {
+        legend.appendChild(el('span', 'set-lg', '<span class="set-dot" style="background:' +
+          KIND_META[kinds[k]].color + '"></span>' + esc(KIND_META[kinds[k]].label)));
       }
-      return grid;
-    }
+      gBody.appendChild(legend);
 
-    /** One card of dials, for a quiz - which has one level and so one column. */
-    function dialCard(gameId, level, headLabel) {
-      var d = dialsFor(gameId, level);
-      var card = el('div', 'lvl-card');
-      var head = el('div', 'lvl-card-head');
-      head.innerHTML = '<span>' + esc(headLabel) + '</span>' +
-        '<span>' + (d.pts === undefined ? 0 : d.pts) + ' pt' +
-        (d.pts === 1 ? '' : 's') + '</span>';
-      card.appendChild(head);
-
-      for (var k = 0; k < DIAL_ORDER.length; k++) {
-        (function (key) {
-          if (d[key] === undefined) return;
-          var meta = DIAL_META[key];
-          var row = el('div', 'dial-row');
-          var name = el('div', 'dial-name');
-          var sub = meta.sub;
-          /* ONLY ONE OF THE TWO COUNTS IS LIVE, and the other is greyed rather
-             than hidden. Hiding it would make the row above it look like it had
-             changed the shape of the panel rather than the meaning of one dial,
-             and you would lose the pairing that tells you what the scope
-             actually switched between. */
-          if (key === 'letterCount' || key === 'letterPct') {
-            var ruleNow = letterRuleOf(S.settings);
-            var live = (key === 'letterCount') === (ruleNow.scope === 'word');
-            if (!live) row.className = 'dial-row is-idle';
-          }
-          if (key === 'letterPick' || key === 'letterScope') {
-            row.className = 'dial-row dial-row-choice';
-          }
-          if (key === 'secsPer') {
-            // an abstract rate means nothing; show it against a real song
-            var m2 = modeById(gameId);
-            var unitWord = m2 ? m2.unit : 'unit';
-            var sample = null;
-            for (var z = 0; z < S.songs.length && !sample; z++) {
-              if (unitCountFor(S.songs[z], gameId) > 0) sample = S.songs[z];
-            }
-            sub = 'per ' + unitWord + '. ' + (sample
-              ? esc(sample.title) + ' has ' + unitCountFor(sample, gameId) + ', so ' +
-                fmtLimit(timeLimitFor(sample, gameId, level))
-              : 'no songs to measure against yet');
-          }
-          if (key === 'floor') {
-            // a floor is only meaningful against what the thing is worth
-            var pts = d.pts === undefined ? 0 : d.pts;
-            var half = Math.round((d[key] + 100) / 2);
-            sub = meta.sub + '. Here, ' + half + '% banks ' +
-                  (pts / 2).toFixed(1) + ' of ' + pts + '.';
-          }
-          name.innerHTML = '<span>' + esc(meta.label) +
-            (meta.kind === 'pct' ? ' (%)' : '') + '</span>' +
-            '<span class="dial-sub">' + sub + '</span>';
-          row.appendChild(name);
-          if (meta.kind === 'range') {
-            row.appendChild(dialInput(gameId, level, key, 0, d[key][0], meta));
-            row.appendChild(el('span', 'dial-to', 'to'));
-            row.appendChild(dialInput(gameId, level, key, 1, d[key][1], meta));
-          } else {
-            row.appendChild(dialInput(gameId, level, key, 0, d[key], meta));
-          }
-          card.appendChild(row);
-        })(DIAL_ORDER[k]);
-      }
-      /* THE FOUR DIALS READ BACK AS ONE SENTENCE. Individually they are a
-         pick, a scope and two counts, and the thing you actually want to know
-         is what a line will look like - which is the same sentence the quiz
-         itself prints above the first verse, from the same function. */
-      if (gameId === 'medium') {
-        var lr = letterRuleOf(S.settings);
-        var demo = el('div', 'letter-demo');
-        demo.innerHTML = '<div class="letter-demo-say">' + esc(letterRuleText(lr)) + '</div>';
-        var sample = sampleLineFor();
-        if (sample) {
-          /* Against a real line of a real song, because "2 letters at random"
-             is not a picture until you have seen one. Re-rolled on every
-             repaint by design: a random rule that showed the same letters
-             every time you looked would be misrepresenting itself. */
-          demo.innerHTML += '<div class="letter-demo-line">' +
-            esc(buildOneLineMask(sample, lr)) + '</div>' +
-            '<div class="letter-demo-src">' + esc(sample) + '</div>';
+      /* the chosen level */
+      var d = dialsFor(gameId, lv);
+      var box = el('div', 'set-lvbox');
+      box.appendChild(el('div', 'set-lv-title', LEVEL_WORD[lv] + ' · settings for this level'));
+      box.appendChild(el('div', 'set-lbl', 'What the wrong pieces are'));
+      box.appendChild(el('p', 'set-sub', 'Slide one and the others make room.'));
+      var mixBox = el('div', 'set-mix');
+      var mixSliders = {}, mixVals = {};
+      function paintMixRow() {
+        for (var q = 0; q < kinds.length; q++) {
+          var kk = kinds[q], v = Math.round(Number(d.mix[kk]) || 0);
+          mixSliders[kk].value = String(v);
+          mixVals[kk].textContent = v + '%';
         }
-        card.appendChild(demo);
+        // the ring for this level redraws as you drag
+        var on = rings.querySelector('.set-ring.on svg');
+        if (on) on.outerHTML = ringSvg(d, kinds, wd);
       }
-      return card;
+      for (var m = 0; m < kinds.length; m++) {
+        (function (kind) {
+          var row = el('div', 'set-mix-row');
+          row.appendChild(el('span', 'set-dot', ''));
+          row.lastChild.style.background = KIND_META[kind].color;
+          row.appendChild(el('span', 'set-mix-name', esc(KIND_META[kind].label)));
+          var s = slider(0, 100, 5, Math.round(Number(d.mix[kind]) || 0), KIND_META[kind].label);
+          mixSliders[kind] = s;
+          var val = el('span', 'set-mix-val');
+          mixVals[kind] = val;
+          s.addEventListener('input', function () {
+            d.mix = setMix(d.mix, kinds, kind, Number(s.value));
+            paintMixRow();
+          });
+          s.addEventListener('change', function () {
+            pushSettings(gamePatch(gameId, lv, 'mix', d.mix), drawGame);
+          });
+          row.appendChild(s);
+          row.appendChild(val);
+          mixBox.appendChild(row);
+        })(kinds[m]);
+      }
+      box.appendChild(mixBox);
+      paintMixRow();
+
+      box.appendChild(kvRow(wd.label, rangeBoxes(gameId, lv, wd.key, d[wd.key], wd.min, wd.max, wd.label),
+        wd.pct ? '%' : ''));
+      if (d.missN !== undefined) {
+        var missLabel = u.one === 'word' ? 'Words missing per verse' : 'Lines missing';
+        box.appendChild(kvRow(missLabel, rangeBoxes(gameId, lv, 'missN', d.missN, 1, 40, missLabel)));
+      }
+      if (d.editPct !== undefined) {
+        var swapLabel = 'Words swapped in an altered ' + u.one;
+        box.appendChild(kvRow(swapLabel, rangeBoxes(gameId, lv, 'editPct', d.editPct, 5, 100, swapLabel), '%'));
+      }
+      if (d.fakesPer !== undefined) {
+        box.appendChild(kvRow('Choices behind each',
+          [numDial(gameId, lv, 'fakesPer', d.fakesPer, 1, 8, 1, 'Choices behind each')]));
+      }
+      if (d.choiceCount !== undefined) {
+        box.appendChild(kvRow('Choices per question',
+          [numDial(gameId, lv, 'choiceCount', d.choiceCount, 2, 8, 1, 'Choices per question')]));
+      }
+      if (d.trayN !== undefined) {
+        box.appendChild(kvRow('Shown at once', [numDial(gameId, lv, 'trayN', d.trayN, 2, 40, 1, 'Shown at once')]));
+      }
+      box.appendChild(kvRow('Points', [numDial(gameId, lv, 'pts', d.pts || 0, 0, 1000, 1, 'Points')]));
+      box.appendChild(kvRow('Passing score', [numDial(gameId, lv, 'floor', d.floor, 0, 99, 1, 'Passing score')], '%'));
+      box.appendChild(kvRow('Seconds per ' + u.one,
+        [numDial(gameId, lv, 'secsPer', d.secsPer, 0.1, 600, 0.1, 'Seconds per ' + u.one)]));
+      gBody.appendChild(box);
     }
 
-    /** A real line out of the library, for the Easy rung's preview. */
+    function drawQuiz(gameId) {
+      var d = dialsFor(gameId, '');
+      var box = el('div', 'set-lvbox');
+      box.appendChild(kvRow('Points', [numDial(gameId, '', 'pts', d.pts || 0, 0, 1000, 1, 'Points')]));
+      box.appendChild(kvRow('Passing score', [numDial(gameId, '', 'floor', d.floor, 0, 99, 1, 'Passing score')], '%'));
+      /* THE EASY QUIZ ALSO DECIDES WHICH LETTERS IT SHOWS, and reads them back
+         against a real line, because a rule is not a picture until you see one. */
+      if (d.letterPick !== undefined) {
+        var lr = letterRuleOf(S.settings);
+        var choice = function (key, options, now, label) {
+          var sel = el('select', 'set-select set-select-sm');
+          var html = '';
+          for (var o = 0; o < options.length; o++) {
+            html += '<option value="' + options[o][0] + '"' + (now === options[o][0] ? ' selected' : '') +
+              '>' + esc(options[o][1]) + '</option>';
+          }
+          sel.innerHTML = html;
+          sel.setAttribute('aria-label', label);
+          sel.addEventListener('change', function () { pushSettings(quizPatch(gameId, key, sel.value), drawGame); });
+          return sel;
+        };
+        box.appendChild(kvRow('Letters shown', [choice('letterPick',
+          [['random', 'At random'], ['first', 'From the start']], lr.pick, 'Letters shown')]));
+        box.appendChild(kvRow('Counted over', [choice('letterScope',
+          [['word', 'Each word'], ['line', 'Each line'], ['verse', 'Each verse'], ['song', 'The whole song']],
+          lr.scope, 'Counted over')]));
+        if (lr.scope === 'word') {
+          box.appendChild(kvRow('Letters per word',
+            [numDial(gameId, '', 'letterCount', lr.count, 0, 12, 1, 'Letters per word')]));
+        } else {
+          box.appendChild(kvRow('Share of letters',
+            [numDial(gameId, '', 'letterPct', lr.pct, 0, 100, 1, 'Share of letters')], '%'));
+        }
+        var sample = sampleLineFor();
+        box.appendChild(el('p', 'set-eg', '<span class="set-mask">' + esc(buildOneLineMask(sample, lr)) +
+          '</span><br>' + esc(sample)));
+      }
+      gBody.appendChild(box);
+    }
+
+    /** A real line out of the library, for the Easy quiz preview. */
     function sampleLineFor() {
       for (var i = 0; i < S.songs.length; i++) {
         var cached = S.cache[S.songs[i].id];
@@ -17489,11 +17357,8 @@ body {
       }
       return 'And the whistle blew at nine';
     }
-
-    /* One line masked on its own, for the preview. A line-scope reading of the
-       rule, since a preview of one line cannot honour a verse-wide budget - and
-       showing a line with a verse's worth of letters on it would be a lie in
-       the other direction. */
+    /* One line masked on its own, read at line scope - a preview of one line
+       cannot honour a verse-wide budget. */
     function buildOneLineMask(line, rule) {
       var ws = words(line);
       var lens = [], i;
@@ -17511,14 +17376,11 @@ body {
       var grp = groupOf(S.gameEdit);
       if (!grp) return;
       if (grp.ids.indexOf(S.gameEdit) === -1) S.gameEdit = grp.ids[0];
-
-      // the two halves of a pair, on a switch
       if (grp.ids.length > 1) {
         var tog = el('div', 'side-toggle');
         for (var s = 0; s < grp.ids.length; s++) {
           (function (id) {
-            var b = el('button', 'side-btn' + (id === S.gameEdit ? ' on' : ''),
-                       esc(sideLabel(id)));
+            var b = el('button', 'side-btn' + (id === S.gameEdit ? ' on' : ''), esc(sideLabel(id)));
             b.type = 'button';
             b.addEventListener('click', function () { S.gameEdit = id; drawGame(); });
             tog.appendChild(b);
@@ -17526,20 +17388,9 @@ body {
         }
         gBody.appendChild(tog);
       }
-
-      var gameId = S.gameEdit;
-      var m = modeById(gameId);
-      gBody.appendChild(el('p', 'form-hint mt-0', esc(m ? m.blurb : '')));
-      if (!isGame(gameId)) {
-        // a quiz has no levels - the mask it draws IS its difficulty
-        gBody.appendChild(dialCard(gameId, '', m ? m.label : gameId));
-        return;
-      }
-      /* THREE LEVELS SIDE BY SIDE. Stacked, the only way to compare Easy with
-         Hard - which is the whole reason you are on this screen - was to
-         scroll between them and hold both in your head. Abreast, a dial that
-         is meant to climb with the level either climbs or visibly does not. */
-      gBody.appendChild(dialGrid(gameId));
+      if (isGame(S.gameEdit)) drawLevels(S.gameEdit);
+      else drawQuiz(S.gameEdit);
+      gamesPeek();
     }
     gSel.addEventListener('change', function () {
       for (var i = 0; i < allGroups.length; i++) {
@@ -17549,119 +17400,141 @@ body {
     });
     drawGame();
 
-    /* Options per question used to be one slider shared by every pick-one game
-       at every level, which said that four answers at Easy and four at Hard
-       were the same question. It is a dial on Build Verses and Build Lines now,
-       per level, alongside everything else that makes a level what it is. */
-
-    var gReset = el('button', 'btn btn-outline btn-sm btn-block',
-                    'Put every game back to its defaults');
+    var gResets = el('div', 'acct-btns');
+    var gReset = el('button', 'btn btn-outline btn-sm', 'Reset games');
     gReset.addEventListener('click', function () {
-      if (!confirm('Reset all eight games, at all three levels, to their defaults?' +
+      if (!confirm('Put every game back to its defaults?' +
                    (pending ? NL + NL + 'Your unsaved changes go with them.' : ''))) return;
       pending = null;
       pushSettings({ reset: 'games' }, function () { render(); });
     });
-    gm.appendChild(gReset);
-
-    var qReset = el('button', 'btn btn-outline btn-sm btn-block',
-                    'Put every quiz back to its defaults');
-    qReset.style.marginTop = '8px';
+    var qReset = el('button', 'btn btn-outline btn-sm', 'Reset quizzes');
     qReset.addEventListener('click', function () {
-      if (!confirm('Reset all five quizzes to their default values and floors?' +
+      if (!confirm('Put every quiz back to its defaults?' +
                    (pending ? NL + NL + 'Your unsaved changes go with them.' : ''))) return;
       pending = null;
       pushSettings({ reset: 'points' }, function () { render(); });
     });
-    gm.appendChild(qReset);
-    wrap.appendChild(gm);
+    gResets.appendChild(gReset);
+    gResets.appendChild(qReset);
+    gm.body.appendChild(gResets);
+    wrap.appendChild(gm.node);
 
-    /* ---------------- this machine ---------------- */
-    wrap.appendChild(saveBar);
-    paintSaveBar();
-
-    var pcard = el('div', 'card-block');
-    var phead = el('div', 'flex-between');
-    phead.appendChild(el('div', 'card-title', 'This device'));
-    phead.appendChild(infoDot(
-      'Times are kept per song, per level AND per device. A thumb on glass and ' +
-      'ten fingers on a keyboard are not the same measurement, and this app will ' +
-      'never average the two together.'));
-    pcard.appendChild(phead);
-
-    var devRow = el('div');
-    var devBtns = el('div', 'random-row seg-even');
-    function paintDevice() {
-      var forced = lsGet('device');
-      var live = deviceNow();
-      devRow.innerHTML =
-        '<div class="mastery-head"><div class="mastery-num">' +
-        (live === 'desktop' ? '&#9744;' : '&#9634;') + '</div>' +
-        '<div><div class="mastery-word">' + esc(deviceLabel(live)) + '</div>' +
-        '<div class="insight-song-sub">' +
-        (forced ? 'set by hand, on this device only' : 'detected from the pointer, not the screen size') +
-        ' &middot; timed as ' + esc(timingLabel(timingDevice())) +
-        '</div></div></div>';
+    /* ---------------- fine tuning: medals and the heatmap ---------------- */
+    var fine = setSection('fine', 'Fine tuning', '');
+    fine.body.appendChild(el('div', 'set-lbl', 'Medal bonus'));
+    fine.body.appendChild(el('p', 'set-sub', 'A song with a medal earns this many times the rest days.'));
+    function mmValue(tier) {
+      var m = S.settings && S.settings.medalMult;
+      var v = m ? Number(m[tier]) : NaN;
+      return (v >= 0) ? v : (MEDAL_X_DEFAULT[tier] || 1);
     }
-    function paintDevBtns() {
-      devBtns.innerHTML = '';
+    var mmGrid = el('div', 'medal-dial-grid');
+    var mmEg = el('p', 'set-eg');
+    function paintMedals() {
+      var t = topQuiz(), bits = [];
+      for (var i = 0; i < MEDAL_ORDER.length; i++) {
+        bits.push(esc(MEDAL_TEXT[MEDAL_ORDER[i]]) + ' <strong>' +
+          Math.round(t.pts * hotPctNow() * mmValue(MEDAL_ORDER[i]) / 100) + '</strong>');
+      }
+      mmEg.innerHTML = 'Days off for a perfect ' + esc(t.label) + ' quiz: ' + bits.join(', ') + '.';
+    }
+    for (var mi = 0; mi < MEDAL_ORDER.length; mi++) {
+      (function (tier) {
+        var cell = el('div', 'medal-dial');
+        cell.innerHTML = '<span class="medal-dial-disc">' + medalSvg(tier, 18) + '</span>' +
+          '<span class="medal-dial-name">' + esc(MEDAL_TEXT[tier]) + '</span>';
+        cell.appendChild(numBox(mmValue(tier), 1, 20, 1, function (v) {
+          var patchM = { medalMult: {} };
+          patchM.medalMult[tier] = v;
+          pushSettings(patchM, paintMedals);
+        }, MEDAL_TEXT[tier]));
+        mmGrid.appendChild(cell);
+      })(MEDAL_ORDER[mi]);
+    }
+    fine.body.appendChild(mmGrid);
+    fine.body.appendChild(mmEg);
+    paintMedals();
+    var mmReset = el('button', 'btn btn-outline btn-sm btn-block', 'Back to 2, 3, 4, 5');
+    mmReset.addEventListener('click', function () {
+      pushSettings({ reset: 'medals' }, function () { render(); toast('Medal bonus reset'); });
+    });
+    fine.body.appendChild(mmReset);
+    fine.body.appendChild(divider());
+
+    fine.body.appendChild(el('div', 'set-lbl', 'Lyric heatmap'));
+    fine.body.appendChild(el('p', 'set-sub', 'Shades the words you tend to miss on the lyric sheet.'));
+    function heatDials() {
+      var st = S.settings || {};
+      return {
+        sting: st.sting === undefined ? 35 : Number(st.sting),
+        mend: st.mend === undefined ? 18 : Number(st.mend),
+        gameWeight: st.gameWeight === undefined ? 40 : Number(st.gameWeight),
+        fade: st.fade === undefined ? 90 : Number(st.fade)
+      };
+    }
+    function heatRecovery(sting, mend) {
+      var v = 100 - sting, n = 0;
+      while (v < 90 && n < 99) { v = v + (100 - v) * (mend / 100); n++; }
+      return n;
+    }
+    var heatEg = el('p', 'set-eg');
+    function paintHeat() {
+      var d = heatDials();
+      heatEg.innerHTML = 'One miss drops a word to <strong>' + (100 - d.sting) +
+        '</strong>. About <strong>' + heatRecovery(d.sting, d.mend) + '</strong> clean runs bring it back.';
+    }
+    var heatRows = [['sting', 'A miss lowers a word by', 1, 100, '%'],
+                    ['mend', 'A clean run raises it by', 1, 100, '%'],
+                    ['gameWeight', 'Games count for', 0, 100, '%'],
+                    ['fade', 'Old results fade after', 7, 3650, 'days']];
+    for (var hr = 0; hr < heatRows.length; hr++) {
+      (function (r) {
+        fine.body.appendChild(kvRow(r[1], [numBox(heatDials()[r[0]], r[2], r[3], 1, function (v) {
+          var p = {};
+          p[r[0]] = v;
+          pushSettings(p, paintHeat);
+        }, r[1])], r[4]));
+      })(heatRows[hr]);
+    }
+    fine.body.appendChild(heatEg);
+    paintHeat();
+    wrap.appendChild(fine.node);
+
+    /* ---------------- this device ---------------- */
+    var dev = setSection('dev', 'This device', '');
+    var devBtns = el('div', 'side-toggle');
+    var devNote = el('p', 'set-sub');
+    function paintDevice() {
       var forced = lsGet('device') || '';
-      var opts = [['phone', 'Phone'], ['tablet', 'Tablet'],
-                  ['desktop', 'PC'], ['', 'Auto']];
+      var opts = [['', 'Auto'], ['phone', 'Phone'], ['tablet', 'Tablet'], ['desktop', 'PC']];
+      devBtns.innerHTML = '';
       for (var dv = 0; dv < opts.length; dv++) {
         (function (o) {
-          var on = forced === o[0];
-          var b = el('button', 'btn btn-sm ' + (on ? 'btn-primary' : 'btn-outline'), o[1]);
+          var b = el('button', 'side-btn' + (forced === o[0] ? ' on' : ''), o[1]);
+          b.type = 'button';
           b.addEventListener('click', function () {
             if (o[0]) lsSet('device', o[0]); else lsDrop('device');
-            /* The layout follows the answer immediately, because the setting
-               you just changed is one you can only judge by looking at the
-               screen it changes. */
+            /* The layout follows at once: this is a setting you judge by looking. */
             paintFormFactor();
-            paintDevice(); paintDevBtns();
-            toast('Counting this as a ' + deviceLabel(deviceNow()));
+            paintDevice();
           });
           devBtns.appendChild(b);
         })(opts[dv]);
       }
+      var live = deviceLabel(deviceNow());
+      devNote.textContent = forced ? 'Set to ' + live.toLowerCase() + ' on this device.'
+        : 'Detected as ' + live.toLowerCase() + '.';
+      dev.peek(forced ? live : 'Auto');
     }
-    paintDevice(); paintDevBtns();
-    pcard.appendChild(devRow);
-    pcard.appendChild(devBtns);
-    pcard.appendChild(el('p', 'form-hint',
-      'Detection reads the primary pointer, which a touchscreen laptop or a ' +
-      'tablet with a keyboard can get wrong - hence the override. It applies ' +
-      'to runs from here on; attempts already recorded keep the device they ' +
-      'were taken on.'));
-    pcard.appendChild(el('p', 'form-hint',
-      'Phone and tablet are TIMED TOGETHER - a thumb is a thumb, and splitting ' +
-      'them would halve the evidence behind both medians. The two are told ' +
-      'apart for layout only: the game picker stacks its eight games into one ' +
-      'column on a phone, where there is no room for two side by side, and a ' +
-      'tablet keeps the wider layout a PC gets.'));
-    wrap.appendChild(pcard);
+    dev.body.appendChild(devBtns);
+    dev.body.appendChild(devNote);
+    paintDevice();
+    wrap.appendChild(dev.node);
 
-    /* ---------------- songs still waiting on a chorus ---------------- */
-    var flaggedSongs = [];
-    for (var i = 0; i < S.songs.length; i++) if (S.songs[i].needsChorusTag) flaggedSongs.push(S.songs[i]);
-    if (flaggedSongs.length) {
-      var fc = el('div', 'card-block');
-      fc.appendChild(el('div', 'card-title', 'Waiting on a chorus tag (' + flaggedSongs.length + ')'));
-      fc.appendChild(el('p', 'form-hint mt-0',
-        'Open one and tap the block that is the chorus. Or indent it in the doc and re-import.'));
-      for (var j = 0; j < flaggedSongs.length; j++) fc.appendChild(insightRowPlain(flaggedSongs[j]));
-      wrap.appendChild(fc);
-    }
-
-    /* ---------------- destructive things, behind confirmations ---------------- */
-    var danger = el('div', 'card-block');
-    danger.appendChild(el('div', 'card-title', 'Reset'));
-
-    danger.appendChild(el('p', 'form-hint mt-0',
-      'Clears every quiz attempt and score, for every song. Your songs and lists ' +
-      'are untouched. To clear one song only, open it and use Edit.'));
-    var clearHist = el('button', 'btn btn-danger btn-block btn-sm', 'Clear all quiz history');
-    clearHist.style.marginBottom = '18px';
+    /* ---------------- start over ---------------- */
+    var danger = setSection('reset', 'Start over', '', 'is-danger');
+    var clearHist = el('button', 'btn btn-danger btn-block btn-sm', 'Clear quiz history');
     clearHist.addEventListener('click', function () {
       if (!confirm('Clear all quiz history? Songs and lists stay as they are.')) return;
       clearHist.disabled = true;
@@ -17669,22 +17542,16 @@ body {
         .then(function () { toast('History cleared'); render(); })
         .catch(function (e) { clearHist.disabled = false; toast(e.message); });
     });
-    danger.appendChild(clearHist);
-
-    danger.appendChild(el('p', 'form-hint',
-      'Removes every song and all quiz history, so the doc can be imported clean ' +
-      'after wholesale changes. Lists survive but come back empty. There is no undo ' +
-      'short of re-importing.'));
-    var clearAll = el('button', 'btn btn-danger btn-block btn-sm',
-      'Clear all songs (' + S.songs.length + ')');
+    danger.body.appendChild(clearHist);
+    danger.body.appendChild(el('p', 'set-sub', 'Keeps your songs and lists.'));
+    var clearAll = el('button', 'btn btn-danger btn-block btn-sm', 'Delete all songs');
     clearAll.addEventListener('click', function () {
       if (!S.songs.length) { toast('The library is already empty'); return; }
-      if (!confirm('Delete all ' + S.songs.length + ' songs and every quiz score?' + NL + NL +
-                   'Your Google Doc is not touched - you can re-import afterwards.')) return;
+      if (!confirm('Delete all ' + S.songs.length + ' songs and every quiz score?')) return;
       var typed = prompt('Type ERASE to confirm.');
       if (typed !== 'ERASE') { toast('Cancelled'); return; }
       clearAll.disabled = true;
-      clearAll.textContent = 'Clearing...';
+      clearAll.textContent = 'Deleting...';
       api('clearAllSongs').then(function (r) {
         dropAllSongs();
         return refreshIndex().then(function () { return r; });
@@ -17693,12 +17560,16 @@ body {
         resetTo('settings');
       }).catch(function (e) {
         clearAll.disabled = false;
-        clearAll.textContent = 'Clear all songs';
+        clearAll.textContent = 'Delete all songs';
         toast(e.message);
       });
     });
-    danger.appendChild(clearAll);
-    wrap.appendChild(danger);
+    danger.body.appendChild(clearAll);
+    danger.body.appendChild(el('p', 'set-sub', 'Removes every song and score.'));
+    wrap.appendChild(danger.node);
+
+    wrap.appendChild(saveBar);
+    paintSaveBar();
 
     appEl.appendChild(wrap);
     buildFooter();
@@ -17768,8 +17639,10 @@ body {
     var box = el('div', 'card-block');
     box.innerHTML =
       '<div class="card-title">Could not reach your songbook</div>' +
-      '<p class="form-hint mt-0">Your songs are stored in the Sheet, not on this device, ' +
-      'so nothing has been lost - this is the app failing to read them.</p>' +
+      '<p class="form-hint mt-0">' + (ON_WEB
+        ? 'Your songs are still saved on this device. The app could not open them this time.'
+        : 'Your songs are stored in the Sheet, not on this device, ' +
+          'so nothing has been lost - this is the app failing to read them.') + '</p>' +
       '<p class="form-hint" style="color:var(--incorrect)"><strong>Error:</strong> ' + esc(msg) + '</p>' +
       (attempt > 1 ? '<p class="form-hint">Retried once already.</p>' : '');
     var again = el('button', 'btn btn-primary btn-block', 'Try again');
@@ -17822,6 +17695,23 @@ body {
   }
 
   boot(1);
+
+  /* A sync that changed this device repaints, unless a quiz or game is open:
+     those finish on what they started with, and the next screen is fresh. */
+  if (ON_WEB) {
+    window.addEventListener('songburner:sync', function (ev) {
+      var d = ev.detail || {};
+      syncState = { state: d.state, at: d.at || syncState.at, message: d.message || '' };
+      if (S.paintAccount) S.paintAccount();
+      if (d.state === 'done' && d.changed) {
+        dropAllSongs();
+        refreshIndex().then(function () {
+          var v = route().view;
+          if (['front', 'back', 'library', 'insights', 'settings'].indexOf(v) !== -1) render();
+        }).catch(function () {});
+      }
+    });
+  }
 })();
 </script>
 </body>

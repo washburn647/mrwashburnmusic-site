@@ -1160,6 +1160,11 @@ answer to the wrong question; in Scramble Lines it sits in the tray beside the
 lines that really are missing; in Line Impostor it stands in a slot that belongs
 to something else.
 
+> **Superseded in beta 1.0.** The three dials described below (`editN`,
+> `borrowN`, Decoys %) are now one count and a mix. The kinds of wrong piece are
+> the same, plus one new one; see *Wrong pieces: one count and a mix* under the
+> settings screen. The reasoning below still explains why each kind exists.
+
 **The decoy dial skews the split.** `borrowN` says how many not-here-and-now
 units to plant and **Decoys (%)** decides how many of them are decoys rather
 than borrowed — 0 is all borrowed, 100 all decoy. It climbs with the level for
@@ -2959,6 +2964,52 @@ where a song is handed to the page, never on the way back to the sheet, so a
 re-import that changes the doc's capo line is still picked up. The doc's capo
 line is left out of the grey meta line, since the key line now speaks for it.
 
+## Cloud sync — closed beta, 1.71
+
+Signed-in testers keep their library on the website as well as on the device.
+The server (`/api/songburner/`, worker/index.js) only stores a library and a
+version number; **all the merging is in host.js**, so the Durable Object never
+has to understand a song.
+
+**A three-way merge, by row.** Every tab is keyed on its first column. The
+device keeps a copy of what it and the cloud last agreed on (the *base*, in its
+own IndexedDB database so it never shows up as a tab). A row only one side
+changed takes the change; a row one side deleted and the other left alone stays
+deleted; a row both sides changed keeps the song with the newer `updatedAt`,
+and otherwise this device's copy. Attempts are new rows with new ids, so two
+devices practising the same song never lose a run.
+
+**A device's first sync has no base**, and is a union: nothing on either side
+reads as deleted. Where both have the same row and they differ, the cloud's
+wins, so a fresh install's default settings never overwrite tuned ones. Every
+fresh install also makes its own Front and Back Burner; the first sync keeps the
+cloud's and moves anything filed under the other across, so there is only ever
+one of each.
+
+**A base only counts against the copy it came from.** If the cloud copy is
+deleted or reset, the next sync is a first sync again. Without that rule, a
+device whose base still listed every song would read the empty cloud as "every
+song deleted" and empty itself.
+
+**Versions stop two devices writing over each other.** A PUT carries the
+version it was merged against, a stale one gets 409, and the device merges
+again. The merge and the write to the device happen inside host.js's call
+queue, so no edit lands between reading the device and replacing it.
+
+**When it runs:** on opening the app, coming back from Sign in, Sync now,
+fifteen quiet seconds after any change, and when the app goes to the
+background with a change still waiting. A sync that changed this device
+repaints the screen, except during a quiz or game, which finish on what they
+started with.
+
+**Signing out** asks whether to remove the songs from this device too, for a
+shared computer; that clears the library and the song cache in localStorage.
+**Delete my cloud copy** deletes it and signs out, since staying signed in would
+upload this device again on the next change.
+
+**Privacy.** The Durable Object is named by a hash of the email, which is not
+stored. Nothing about a tester is kept beyond what a backup file holds.
+
 ## Storage, caching and speed
 
 ### Why it is quicker than it was
@@ -3032,6 +3083,68 @@ next open paints the old lyrics. Bump `CACHE_VERSION` if the shape of the stored
 index changes.
 
 ## The settings screen
+
+### Sections that fold shut — beta 1.0
+
+Built from a mockup Kyle reviewed and edited before it went in. Eight sections,
+in the order you reach for them: **Account** (the closed-beta sign-in, web
+only), **Your songs**, **Practice**, **Timer**, **Games and quizzes**, **Fine
+tuning**, **This device**, **Start over**.
+
+- **Each section folds shut and shows its current setting** on the folded line
+  (Cooling 1 · 10% rest, On · ±20%, the game being tuned), so the screen opens
+  short and still says where everything stands. Games and quizzes starts open;
+  what you open stays open while the app is.
+- **One line under each control.** The paragraphs that sat under every dial are
+  gone. Where a number needs explaining it gets **one example in plain
+  numbers**, worked out from the dial as it stands, against the top quiz.
+- **Your songs** on the web is three buttons to the backup page (download,
+  restore, move in from Google Sheets). The Google Doc songbook box only exists
+  on the Google version, where it can work. Songs waiting on a chorus tag are
+  listed here too.
+- **Fine tuning** holds what you set once: the medal bonus and the lyric
+  heatmap's four dials.
+- The save bar, staging and resets are unchanged: nothing writes until Save.
+
+### Wrong pieces: one count and a mix — beta 1.0
+
+Kyle's ask: show, for each level of each game, what the wrong pieces are made
+of, as a picture; and make the amounts ranges.
+
+It used to be three dials you had to multiply out in your head: how many
+tampered copies, how many planted units, and what share of the planted ones
+were decoys. Now each level stores:
+
+- **`wrongN`** — how many wrong pieces, as a range (`fakePct`, a range of shares,
+  on the Impostor games; `extraN`, extra words, on Scramble Words).
+- **`mix`** — what each piece is, as shares of 100. Drawn **per piece**, so a
+  level never settles into a recipe. The kinds a game can make are in its
+  `GAME_SPEC.kinds`:
+  - *This song, altered* — tampered, as before.
+  - *Another song* — borrowed, as before.
+  - *This song, wrong place* — the decoy, as before. Not on Order Verses or
+    Scramble Lines, whose boards show the whole song.
+  - *Another song, altered* — **new**: a borrowed line or verse with words
+    swapped too. Defaults to 0%, so nothing changes until it is turned up.
+  - On the word games, *words from this song* vs *words from other songs*: where
+    the fake words in Scramble Words' bank and Impostor Words' rings come from.
+- **`editPct`** — words swapped in an altered piece, now a range drawn fresh for
+  every piece.
+- **`missN`** — Scramble: **a count** now, not a share. Words missing per verse
+  in Scramble Words (never the whole verse, never none), lines missing over the
+  whole song in Scramble Lines.
+
+On screen each level is a **ring**: one segment per kind, to scale, with the
+count in the middle. Tap a ring to tune that level. Mix sliders rebalance:
+slide one and the others keep their proportions and fill the rest, so the mix
+always adds to 100.
+
+No settings revision bump: an old blob's `editN`, `borrowN` and `decoyPct` are
+simply not read, and a plain-number `editPct` or `fakePct` is not a range, so
+those levels take the new defaults. Points, floors, seconds, trays and the
+quizzes carry over.
+
+### Before beta 1.0
 
 Cards in the order you reach for them: **Songbook**, **Scoring**, **The
 timer**, **Games and quizzes**, **This device**, then **Reset**.
@@ -3158,6 +3271,28 @@ other.
 Quiz values moved from `settings.points[id]` to `settings.quizzes[id] =
 {pts, floor}`, which is the same shape games use. Anything you had set under
 `points` is migrated onto it.
+
+## Running on the website — 1.71
+
+`host.js` sets `window.SONGBURNER_WEB`, and the page reads it once as `ON_WEB`.
+It is for the few places where the Sheets version and the website really
+differ: there is no Google Doc to import from, so an empty library offers
+**Add a song** and **Restore a backup** instead of an import that can only
+fail, and a failed load says the songs are still on this device rather than
+in a Sheet. Anything that is true on both stays one code path.
+
+**Phones with a notch.** The page asks for `viewport-fit=cover` and a
+see-through status bar, so the header, the tab bar, bottom sheets and the toast
+each add the matching `env(safe-area-inset-*)` to their own padding. Without it
+an installed copy on an iPhone draws the header under the clock and the tab bar
+under the home bar.
+
+**Slow connections.** `sw.js` is still network first, so a new build shows up
+on the next open, but it gives the network 2.5 seconds before it serves the
+saved copy. After one request has waited that long, the rest are served from
+the saved copy straight away for fifteen seconds, so a bad connection costs
+2.5 seconds once rather than once per file. It only falls back to the saved
+page for page loads, never for a script or a font.
 
 ## Working on the code
 
