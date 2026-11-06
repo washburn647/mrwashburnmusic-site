@@ -151,7 +151,6 @@ export async function editDeck(start, title = '', { keys = true } = {}) {
         h('div', { class: 'row modes' }, MODES[d.k].filter(([, id]) => keys || id !== 'keys').map(([bit, , icon, label]) => h('label', {},
           h('input', { type: 'checkbox', checked: !!(d.o & bit), onchange: (e) => { d.o = e.target.checked ? d.o | bit : d.o & ~bit; draw(); } }), ` ${icon} ${label}`))),
         h('div', { class: 'row' },
-          h('label', {}, h('input', { type: 'checkbox', checked: !!d.w, onchange: (e) => { d.w = e.target.checked ? 1 : 0; } }), d.k === 't' ? ' 🎤 Sing first, then play' : ' 🗣 Say first, then play'),
           h('label', {}, ' 🎯 ', h('input', { type: 'number', min: 0, max: 500, value: d.g || '', placeholder: '—', class: 'tempo', 'aria-label': 'Goal', onchange: (e) => { d.g = Math.max(0, Math.min(500, Math.round(+e.target.value) || 0)); } }))),
       );
       const ok = (d.k === 'n' ? d.r.length > 0 : d.p.length > 0) && d.o > 0;

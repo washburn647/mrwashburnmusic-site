@@ -88,3 +88,25 @@ dialog .modes label { background: #F6F1E4; border-radius: 10px; padding: 4px 10p
 .results h2 + .rdeck h3 { margin-top: 6px; }
 .sort { font: inherit; border: 0; border-radius: 10px; padding: 8px 10px; background: #F6F1E4; }
 .syncmark { color: #8A8170; font-size: 15px; white-space: nowrap; }
+.chips .next::after { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: #E0A458; vertical-align: middle; }
+.chips .older { border-radius: 999px; padding: 6px 12px; font-size: 15px; background: #fff; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.chips .older.on { background: #2F4A3A; color: #F6F1E4; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.chead { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #8A8170; padding: 0 4px; }
+.cday { min-height: 92px; background: #fff; border-radius: 12px; padding: 4px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cday.out { opacity: .45; }
+.cday.past .centry { opacity: .6; }
+.cday .cnum { align-self: flex-start; font: inherit; font-size: 14px; border: 0; background: transparent; border-radius: 999px; min-width: 28px; height: 28px; cursor: pointer; color: inherit; }
+.cday .cnum:hover { background: #F6F1E4; }
+.cday.today .cnum { background: #2F4A3A; color: #F6F1E4; }
+.centry { font: inherit; font-size: 13px; text-align: left; border: 0; border-radius: 8px; padding: 3px 6px; background: #F6F1E4; color: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.centry.has { background: #E7F4DA; }
+.centry b { font-weight: 600; }
+.calbar h1 { text-align: center; }
+.caldlg h2 { margin: 0 0 8px; font-size: 18px; }
+@media (max-width: 600px) {
+  .cal { gap: 3px; }
+  .cday { min-height: 64px; padding: 2px; }
+  .centry { font-size: 11px; padding: 2px 3px; }
+  .centry b { display: none; }
+}

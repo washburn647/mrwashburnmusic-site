@@ -31,15 +31,19 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
   const modes = C.modesOf(deck);
   const goal = deck.g || 0;
   const body = el('div', { class: 'gbody' });
+  /* The progress track over the card: fills toward the goal (or each ten cards when
+     there's no goal), with a runner on its front edge. */
+  const fill = el('div', { class: 'gfill' });
+  const runner = el('span', { class: 'grunner' }, '🎵');
   const count = el('span', { class: 'gcount' });
-  const meter = el('span', { class: 'gmeter' }, el('i'));
+  const track = el('div', { class: 'gtrack', hidden: true }, el('div', { class: 'grail' }, fill, runner), count);
   const streakEl = el('span', { class: 'gstreak' });
   const doneBtn = el('button', { class: 'gdone', hidden: true, onclick: () => finish() }, '✓');
   const root = el('div', { class: 'game' },
     el('div', { class: 'ptop' },
       el('button', { class: 'close', 'aria-label': 'Close', onclick: () => (s && s.n && !s.ended ? finish() : close()) }, '✕'),
       el('h2', { textContent: title }),
-      el('div', { class: 'gstatus' }, streakEl, meter, count, doneBtn)),
+      el('div', { class: 'gstatus' }, streakEl, doneBtn)),
     body);
   host.append(root);
   document.body.classList.add('playing-piece');
@@ -63,7 +67,7 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
     s = null;
     count.textContent = '';
     streakEl.textContent = '';
-    meter.hidden = true;
+    track.hidden = true;
     doneBtn.hidden = true;
     const keyTag = deck.k !== 'r' && tag();
     body.replaceChildren(el('div', { class: 'gstart' },
@@ -82,7 +86,7 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
   async function begin(mode) {
     const my = ++token;
     s = { mode, n: 0, ok: 0, ms: 0, streak: 0, best: 0, items: {}, last: null, again: [], t0: Date.now(), ended: false };
-    meter.hidden = !goal;
+    track.hidden = false;
     show();
     if (deck.k === 't') {
       body.replaceChildren(el('div', { class: 'gready' }, '🎵'));
@@ -92,8 +96,14 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
   }
 
   function show() {
+    const lap = 10;
+    const part = goal ? Math.min(1, s.n / goal) : (s.n % lap) / lap || (s.n ? 1 : 0);
     count.textContent = goal ? `${s.n} / ${goal}` : String(s.n);
-    meter.firstChild.style.width = `${Math.min(1, goal ? s.n / goal : 0) * 100}%`;
+    fill.style.width = `${part * 100}%`;
+    runner.style.left = `${part * 100}%`;
+    const won = goal ? s.n >= goal : false;
+    runner.textContent = won ? '🏆' : s.streak >= 3 ? '🔥' : '🎵';
+    track.classList.toggle('won', won);
     streakEl.textContent = s.streak >= 2 ? `🔥 ${s.streak}` : '';
     doneBtn.hidden = !s.n;
   }
@@ -125,13 +135,8 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
     const cardEl = el('div', { class: 'gcard in' }, face, deck.k === 't' || s.mode === 'solfa' ? tag() : null);
     const under = el('div', { class: 'gunder' });
     const answer = el('div', { class: 'ganswer' });
-    body.replaceChildren(cardEl, under, answer);
+    body.replaceChildren(track, cardEl, under, answer);
 
-    if (deck.w && C.PLAYED.has(s.mode)) {
-      await new Promise((go) => answer.replaceChildren(el('button', { class: 'gsay', onclick: go },
-        el('span', {}, deck.k === 't' ? '🎤' : '🗣'), el('span', { class: 'gnext' }, '▶'))));
-      if (my !== token) return;
-    }
     const t0 = performance.now();
     const ok = await MODE[s.mode]({ id, cardEl, under, answer, my });
     if (my !== token || ok == null) return;
@@ -153,10 +158,12 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
       it[1]++;
       s.streak++;
       s.best = Math.max(s.best, s.streak);
-      snd.yes();
       bump(cardEl, 'yay');
+      bump(runner, 'jump');
+      bump(count, 'tick');
       if (s.streak % 10 === 0) confetti(40);
     } else {
+      bump(runner, 'oops');
       s.streak = 0;
       snd.no();
       bump(cardEl, 'shake');

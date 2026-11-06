@@ -125,7 +125,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
   const hi = teach ? 200 : Math.min(200, Math.max(...range));
   const st = {
     speed: Math.max(lo, Math.min(hi, setup.s || 100)), transpose: setup.k || 0, names: setup.n || 0, colors: !!setup.c,
-    click: !!setup.x, countIn: setup.ci !== 0, zoom: 0, fingers: { ...(setup.f || {}) }, fo: { ...(setup.fo || {}) },
+    click: !!setup.x, countIn: setup.ci === 1, zoom: 0, fingers: { ...(setup.f || {}) }, fo: { ...(setup.fo || {}) },
     muted: new Set(setup.m || []), hidden: new Set(setup.h || []),
     loop: null, picking: null, section: -1,
   };
@@ -858,7 +858,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     if (st.names) out.n = st.names;
     if (st.colors) out.c = 1;
     if (st.click) out.x = 1;
-    if (!st.countIn) out.ci = 0;
+    if (st.countIn) out.ci = 1;
     if (st.muted.size) out.m = [...st.muted];
     if (st.hidden.size) out.h = [...st.hidden];
     if (Object.keys(st.fingers).length) out.f = { ...st.fingers };
