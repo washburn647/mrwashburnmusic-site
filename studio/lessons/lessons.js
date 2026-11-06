@@ -106,7 +106,7 @@ async function addStudent() {
   const now = Date.now();
   const s = { id: newId(), name: '', instrument: '', day: '', time: '', created: now, updated: now, lessons: [newLesson()] };
   await students.put(s);
-  location.hash = `#/${s.id}`;
+  go(`#/${s.id}`);
 }
 
 /* Restore adds from the file; a student already here is replaced only by a newer copy. */
@@ -354,6 +354,7 @@ async function showStudent(id, lessonId) {
   student = await students.get(id);
   if (!student) { location.hash = '#/'; return; }
   upgrade(student);
+  if (!student.lessons.length) { student.lessons.push(newLesson()); save(); }
   const lesson = student.lessons.find((l) => l.id === lessonId) || currentLesson(student);
   const setTitle = () => { document.title = `${student.name || 'New student'} · Lesson pages`; };
   setTitle();
@@ -486,7 +487,7 @@ async function showStudent(id, lessonId) {
     const { older, recent, future } = lessonGroups(student);
     const chip = (l, extra = '') => h('a', { href: `#/${student.id}/${l.id}`, class: extra || null, 'aria-current': l === lesson ? 'true' : null }, chipLabel(l));
     chips.replaceChildren(
-      older.length ? h('select', { class: `older${older.includes(lesson) ? ' on' : ''}`, 'aria-label': 'Earlier lessons', onchange: (e) => { location.hash = `#/${student.id}/${e.target.value}`; } },
+      older.length ? h('select', { class: `older${older.includes(lesson) ? ' on' : ''}`, 'aria-label': 'Earlier lessons', onchange: (e) => { go(`#/${student.id}/${e.target.value}`); } },
         h('option', { value: '', selected: !older.includes(lesson), disabled: true }, '⋯'),
         older.map((l) => h('option', { value: l.id, selected: l === lesson }, chipLabel(l)))) : null,
       recent ? chip(recent) : null,
@@ -583,7 +584,7 @@ async function showStudent(id, lessonId) {
         student.lessons.push(fresh);
         save();
         await flush();
-        location.hash = `#/${student.id}/${fresh.id}`;
+        go(`#/${student.id}/${fresh.id}`);
       } }, 'New lesson'),
     ),
     h('div', { class: 'bar' },
@@ -611,10 +612,12 @@ async function showStudent(id, lessonId) {
       h('button', { onclick: async () => { await flush(); window.open(`${LOCAL_PAGE}#${await linkPart(student, lesson)}`, '_blank', 'noopener'); } }, 'Open page'),
       h('span', { class: 'grow' }),
       student.lessons.length > 1 && confirmButton('Delete lesson', 'Delete for good?', async () => {
-        student.lessons.splice(student.lessons.indexOf(lesson), 1);
+        const i = student.lessons.indexOf(lesson);
+        if (i < 0 || student.lessons.length < 2) return;
+        student.lessons.splice(i, 1);
         save();
         await flush();
-        location.hash = `#/${student.id}`;
+        go(`#/${student.id}`);
       }),
     ),
   );
@@ -908,7 +911,7 @@ async function showCalendar(month) {
               await students.put(s);
             }
             close();
-            location.hash = `#/${s.id}/${lesson.id}`;
+            go(`#/${s.id}/${lesson.id}`);
           } }, l ? 'Lesson page' : 'Make lesson page')),
         h('div', { class: 'bar' },
           e ? confirmButton('Remove', 'Remove?', async () => {
@@ -928,13 +931,25 @@ async function showCalendar(month) {
 
 /* ---------- Routing ---------- */
 
-async function route() {
-  if (student) { await flush(); student = null; }
-  const [id, lessonId] = location.hash.replace(/^#\/?/, '').split('/');
-  if (id === 'library') showLibrary();
-  else if (id === 'calendar') showCalendar(lessonId);
-  else if (id) showStudent(id, lessonId);
-  else showList();
+/* Go to a page; going to the page already in the address bar draws it again. */
+function go(hash) {
+  if (location.hash === hash) route();
+  else location.hash = hash;
+}
+
+/* One page at a time: a page that's still loading finishes before the next one starts,
+   so a slower one can't draw over it. */
+let routing = Promise.resolve();
+function route() {
+  routing = routing.then(async () => {
+    if (student) { await flush(); student = null; }
+    const [id, lessonId] = location.hash.replace(/^#\/?/, '').split('/');
+    if (id === 'library') await showLibrary();
+    else if (id === 'calendar') await showCalendar(lessonId);
+    else if (id) await showStudent(id, lessonId);
+    else await showList();
+  }).catch((err) => { console.error(err); });
+  return routing;
 }
 
 window.addEventListener('hashchange', route);
