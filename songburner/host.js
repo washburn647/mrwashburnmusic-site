@@ -21,6 +21,9 @@
 (function () {
   'use strict';
 
+  /* Tells the page it is running on the website, not inside Apps Script. */
+  window.SONGBURNER_WEB = true;
+
   var DB_NAME = 'songburner';
   var STORE = 'tabs';
   var ORDER_KEY = '__order';

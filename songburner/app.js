@@ -893,6 +893,10 @@
     return m + ':' + (r < 10 ? '0' : '') + r;
   }
 
+  /* On mrwashburnmusic.com, host.js stands in for Google: there is no Sheet
+     and no Doc to import from, and songs come in by hand or from a backup. */
+  var ON_WEB = !!window.SONGBURNER_WEB;
+
   /* ---------- state ---------- */
   var S = {
     build: '', songs: [], lists: [], lastImport: '', docUrl: '', docTitle: '',
@@ -2520,11 +2524,25 @@
         retry.addEventListener('click', function () { boot(1); });
         wrap.appendChild(retry);
       } else {
-        wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
-          'Import your songbook from Google Docs to get started.</div>';
-        var imp = el('button', 'btn btn-gold btn-block', 'Import from Doc');
-        imp.addEventListener('click', function () { go('settings'); });
-        wrap.appendChild(imp);
+        if (ON_WEB) {
+          wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
+            'Add your first song to get started.</div>';
+          var add1 = el('button', 'btn btn-gold btn-block', 'Add a song');
+          add1.addEventListener('click', function () { resetTo('add'); });
+          wrap.appendChild(add1);
+          var rest = el('a', 'btn btn-outline btn-block', 'Restore a backup');
+          rest.href = 'backup/';
+          rest.style.marginTop = '10px';
+          rest.style.textAlign = 'center';
+          rest.style.textDecoration = 'none';
+          wrap.appendChild(rest);
+        } else {
+          wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
+            'Import your songbook from Google Docs to get started.</div>';
+          var imp = el('button', 'btn btn-gold btn-block', 'Import from Doc');
+          imp.addEventListener('click', function () { go('settings'); });
+          wrap.appendChild(imp);
+        }
       }
       appEl.appendChild(wrap);
       buildFooter();
@@ -11465,8 +11483,10 @@
     var box = el('div', 'card-block');
     box.innerHTML =
       '<div class="card-title">Could not reach your songbook</div>' +
-      '<p class="form-hint mt-0">Your songs are stored in the Sheet, not on this device, ' +
-      'so nothing has been lost - this is the app failing to read them.</p>' +
+      '<p class="form-hint mt-0">' + (ON_WEB
+        ? 'Your songs are still saved on this device. The app could not open them this time.'
+        : 'Your songs are stored in the Sheet, not on this device, ' +
+          'so nothing has been lost - this is the app failing to read them.') + '</p>' +
       '<p class="form-hint" style="color:var(--incorrect)"><strong>Error:</strong> ' + esc(msg) + '</p>' +
       (attempt > 1 ? '<p class="form-hint">Retried once already.</p>' : '');
     var again = el('button', 'btn btn-primary btn-block', 'Try again');

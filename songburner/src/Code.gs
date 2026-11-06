@@ -14,7 +14,7 @@
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'alpha 1.70';
+var BUILD    = 'alpha 1.71';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -4222,7 +4222,9 @@ button { font-family: inherit; }
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 12px; background: var(--ink); color: var(--paper);
+  padding: calc(14px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+           14px max(12px, env(safe-area-inset-left, 0px));
+  background: var(--ink); color: var(--paper);
   position: sticky; top: 0; z-index: 20;
 }
 .brand {
@@ -4237,11 +4239,14 @@ button { font-family: inherit; }
 .icon-btn:hover { background: rgba(239,234,224,0.1); }
 .icon-btn[hidden] { visibility: hidden; display: flex; }
 
-.app { flex: 1; max-width: 680px; width: 100%; margin: 0 auto; padding: 18px 16px 110px; }
+.app { flex: 1; max-width: 680px; width: 100%; margin: 0 auto;
+  padding: 18px 16px calc(110px + env(safe-area-inset-bottom, 0px)); }
 
 .tabbar {
   position: fixed; bottom: 0; left: 0; right: 0; display: flex;
-  background: var(--ink); padding: 8px; z-index: 20;
+  background: var(--ink); z-index: 20;
+  padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px))
+           max(8px, env(safe-area-inset-left, 0px));
   border-top: 1px solid rgba(199,154,62,0.25);
 }
 .tab-btn {
@@ -4685,13 +4690,13 @@ a.btn-icon { text-decoration: none; }
 .trend-badge.mid { background: var(--missing-bg); color: #8a6d1f; }
 
 .toast {
-  position: fixed; top: 14px; left: 50%;
-  transform: translateX(-50%) translateY(-160%);
+  position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 50%;
+  transform: translateX(-50%) translateY(-160%); visibility: hidden;
   background: var(--ink); color: var(--paper); padding: 10px 18px;
   border-radius: 999px; font-size: 13px; z-index: 100;
-  transition: transform 0.25s ease; border: 1px solid var(--gold); pointer-events: none;
+  transition: transform 0.25s ease, visibility 0.25s; border: 1px solid var(--gold); pointer-events: none;
 }
-.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.show { transform: translateX(-50%) translateY(0); visibility: visible; }
 .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); font-family: var(--font-mono); font-size: 13px; }
 .footer-build { text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); padding: 20px 0 6px; letter-spacing: 0.08em; }
 .mt-0 { margin-top: 0; }
@@ -4872,7 +4877,7 @@ a.btn-icon { text-decoration: none; }
 }
 .sheet {
   background: var(--paper-card); border-radius: var(--radius-l) var(--radius-l) 0 0;
-  padding: 18px 18px 26px; width: 100%; max-width: 680px;
+  padding: 18px 18px calc(26px + env(safe-area-inset-bottom, 0px)); width: 100%; max-width: 680px;
   max-height: 74vh; overflow-y: auto; box-shadow: var(--shadow);
 }
 @media (min-width: 680px) {
@@ -7196,6 +7201,10 @@ body {
     return m + ':' + (r < 10 ? '0' : '') + r;
   }
 
+  /* On mrwashburnmusic.com, host.js stands in for Google: there is no Sheet
+     and no Doc to import from, and songs come in by hand or from a backup. */
+  var ON_WEB = !!window.SONGBURNER_WEB;
+
   /* ---------- state ---------- */
   var S = {
     build: '', songs: [], lists: [], lastImport: '', docUrl: '', docTitle: '',
@@ -8823,11 +8832,25 @@ body {
         retry.addEventListener('click', function () { boot(1); });
         wrap.appendChild(retry);
       } else {
-        wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
-          'Import your songbook from Google Docs to get started.</div>';
-        var imp = el('button', 'btn btn-gold btn-block', 'Import from Doc');
-        imp.addEventListener('click', function () { go('settings'); });
-        wrap.appendChild(imp);
+        if (ON_WEB) {
+          wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
+            'Add your first song to get started.</div>';
+          var add1 = el('button', 'btn btn-gold btn-block', 'Add a song');
+          add1.addEventListener('click', function () { resetTo('add'); });
+          wrap.appendChild(add1);
+          var rest = el('a', 'btn btn-outline btn-block', 'Restore a backup');
+          rest.href = 'backup/';
+          rest.style.marginTop = '10px';
+          rest.style.textAlign = 'center';
+          rest.style.textDecoration = 'none';
+          wrap.appendChild(rest);
+        } else {
+          wrap.innerHTML += '<div class="empty-state"><span class="eyebrow-mark">Nothing here yet</span>' +
+            'Import your songbook from Google Docs to get started.</div>';
+          var imp = el('button', 'btn btn-gold btn-block', 'Import from Doc');
+          imp.addEventListener('click', function () { go('settings'); });
+          wrap.appendChild(imp);
+        }
       }
       appEl.appendChild(wrap);
       buildFooter();
@@ -17768,8 +17791,10 @@ body {
     var box = el('div', 'card-block');
     box.innerHTML =
       '<div class="card-title">Could not reach your songbook</div>' +
-      '<p class="form-hint mt-0">Your songs are stored in the Sheet, not on this device, ' +
-      'so nothing has been lost - this is the app failing to read them.</p>' +
+      '<p class="form-hint mt-0">' + (ON_WEB
+        ? 'Your songs are still saved on this device. The app could not open them this time.'
+        : 'Your songs are stored in the Sheet, not on this device, ' +
+          'so nothing has been lost - this is the app failing to read them.') + '</p>' +
       '<p class="form-hint" style="color:var(--incorrect)"><strong>Error:</strong> ' + esc(msg) + '</p>' +
       (attempt > 1 ? '<p class="form-hint">Retried once already.</p>' : '');
     var again = el('button', 'btn btn-primary btn-block', 'Try again');

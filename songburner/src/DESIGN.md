@@ -3159,6 +3159,28 @@ Quiz values moved from `settings.points[id]` to `settings.quizzes[id] =
 {pts, floor}`, which is the same shape games use. Anything you had set under
 `points` is migrated onto it.
 
+## Running on the website — 1.71
+
+`host.js` sets `window.SONGBURNER_WEB`, and the page reads it once as `ON_WEB`.
+It is for the few places where the Sheets version and the website really
+differ: there is no Google Doc to import from, so an empty library offers
+**Add a song** and **Restore a backup** instead of an import that can only
+fail, and a failed load says the songs are still on this device rather than
+in a Sheet. Anything that is true on both stays one code path.
+
+**Phones with a notch.** The page asks for `viewport-fit=cover` and a
+see-through status bar, so the header, the tab bar, bottom sheets and the toast
+each add the matching `env(safe-area-inset-*)` to their own padding. Without it
+an installed copy on an iPhone draws the header under the clock and the tab bar
+under the home bar.
+
+**Slow connections.** `sw.js` is still network first, so a new build shows up
+on the next open, but it gives the network 2.5 seconds before it serves the
+saved copy. After one request has waited that long, the rest are served from
+the saved copy straight away for fifteen seconds, so a bad connection costs
+2.5 seconds once rather than once per file. It only falls back to the saved
+page for page loads, never for a script or a font.
+
 ## Working on the code
 
 The page lives in one template literal at the bottom. Three characters must
