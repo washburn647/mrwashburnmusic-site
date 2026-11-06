@@ -1,5 +1,5 @@
 /* GENERATED from src/Code.gs by tools/build_songburner.py. Do not edit.
-   The server half of Song Burner beta 1.01. host.js calls this once per request with
+   The server half of Song Burner beta 1.02. host.js calls this once per request with
    its stand-ins for the Apps Script services. */
 window.SongBurnerEngine = function (services) {
 var SpreadsheetApp = services.SpreadsheetApp;
@@ -25,7 +25,7 @@ var HtmlService = services.HtmlService;
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.01';
+var BUILD    = 'beta 1.02';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
