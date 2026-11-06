@@ -36,7 +36,9 @@ export default {
     if (box) return boxApi(request, env, box);
     const live = /^\/(studio\/)?api\/live\/(.+)$/.exec(url.pathname);
     if (live) return liveApi(request, env, !!live[1], live[2]);
-    if (url.pathname.startsWith('/songburner/account/')) return songBurnerSignIn(request, env);
+    if (url.pathname === '/songburner/account/' || url.pathname === '/songburner/account/index.html') {
+      return songBurnerSignIn(request, env);
+    }
     if (url.pathname.startsWith('/api/songburner/')) {
       try {
         return await songBurnerApi(request, env, url.pathname.slice('/api/songburner/'.length));
@@ -573,21 +575,31 @@ async function sbSession(request, env) {
   }
 }
 function sbCookie(value, maxAge) {
-  return `${SB_COOKIE}=${value}; Path=/api/songburner/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
+  return `${SB_COOKIE}=${value}; Path=/api/songburner/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
 }
 
-/** The sign-in landing page. Behind Access, so a valid token here starts a session. */
+/** The sign-in landing page. Behind Access, so a valid token here starts a session.
+    X-SB-Signin says how it went, as a short code the page shows if sign-in fails:
+    ok, off, page (the page itself did not load), no-token (Access sent nothing),
+    bad-token (a token, but not for this application), no-email. */
 async function songBurnerSignIn(request, env) {
   // a plain GET, so the asset never comes back as a 304 with no page to put the cookie on
-  const page = await env.ASSETS.fetch(new Request(request.url));
-  if (!env.SONGBURNER_AUD || !env.VAULTS || request.method !== 'GET' || !page.ok) return page;
+  const page = await env.ASSETS.fetch(new Request(new URL('/songburner/account/', request.url)));
+  const done = async (code, cookie) => {
+    const res = new Response(page.body, page);
+    if (cookie) res.headers.append('Set-Cookie', cookie);
+    res.headers.set('X-SB-Signin', code);
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
+  };
+  if (!env.SONGBURNER_AUD || !env.VAULTS) return done('off');
+  if (!page.ok) return done('page');
+  if (!request.headers.get('Cf-Access-Jwt-Assertion')) return done('no-token');
   const who = await accessToken(request, env, env.SONGBURNER_AUD);
-  const email = who && typeof who.email === 'string' ? who.email.trim().toLowerCase() : '';
-  if (!email) return page;
-  const res = new Response(page.body, page);
-  res.headers.append('Set-Cookie', sbCookie(await sbMint(env, email), SB_DAYS * 86400));
-  res.headers.set('Cache-Control', 'no-store');
-  return res;
+  if (!who) return done('bad-token');
+  const email = typeof who.email === 'string' ? who.email.trim().toLowerCase() : '';
+  if (!email) return done('no-email');
+  return done('ok', sbCookie(await sbMint(env, email), SB_DAYS * 86400));
 }
 
 async function songBurnerApi(request, env, path) {
