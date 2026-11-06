@@ -84,13 +84,13 @@ async function show() {
   render(page, { key: await keyFor(hash), qr: location.href });
 }
 
-/* Where a student signs in: their first name and their five emojis. */
+/* Where a student signs in: their first name and their four emojis. */
 function showEntry(problem = '') {
   stop();
   document.title = 'Lesson · Mr. Washburn Music';
   const picks = [...PICKS].sort((a, b) => a[0].localeCompare(b[0]));
   const name = el('input', { class: 'codename', autocomplete: 'off', autocapitalize: 'words', spellcheck: false, 'aria-label': 'First name', placeholder: '🙂' });
-  const lists = [1, 2, 3, 4, 5].map((n) => el('select', { class: 'codepick', 'aria-label': `Emoji ${n}` },
+  const lists = [1, 2, 3, 4].map((n) => el('select', { class: 'codepick', 'aria-label': `Emoji ${n}` },
     el('option', { value: '' }, '—'),
     ...picks.map(([w, e]) => el('option', { value: w }, `${e} ${w}`))));
   const form = el('form', { class: 'codeform' + (problem ? ' shake' : ''), onsubmit: (e) => {
@@ -117,6 +117,7 @@ async function showLocked(code) {
   try { localStorage.setItem(CODE, code); } catch { /* private window */ }
   sendPending(code);
   const lessons = pages.l.map((l) => cleanPage({ ...l, v: 2, n: pages.n, i: pages.i, p: pages.p }));
+  const upcoming = Array.isArray(pages.u) ? pages.u.filter((d) => typeof d === 'string' && /^\d{4}-\d\d-\d\d$/.test(d)).sort() : null;
   // The songs and material Kyle picked for them to keep, from every lesson.
   const shelf = pages.b?.length ? cleanPage({ v: 2, n: pages.n, i: pages.i, t: pages.b, p: pages.p }) : null;
   const forget = () => { try { localStorage.removeItem(CODE); } catch { /* nothing kept */ } showEntry(); };
@@ -132,7 +133,7 @@ async function showLocked(code) {
     render(lessons[index], {
       key: await keyFor(`${code}/${lessons[index].d}`),
       qr: LESSON_PAGE,
-      lessons, index, open, openShelf: shelf && openShelf,
+      lessons, index, open, openShelf: shelf && openShelf, upcoming,
       onCards: (it, r) => queueResult(code, { y: 'c', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
       onPiece: (it, r) => queueResult(code, { y: 'p', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
       onVisit: () => visited(code, lessons[index].d),
@@ -183,7 +184,7 @@ function stop() { timers.forEach(clearInterval); timers = []; }
 
 /* ---------- The page ---------- */
 
-function render(page, { key, qr: qrText, lessons, index = 0, open, openShelf, shelf = false, onCards, onPiece, onVisit, forget }) {
+function render(page, { key, qr: qrText, lessons, index = 0, open, openShelf, shelf = false, upcoming, onCards, onPiece, onVisit, forget }) {
   stop();
   const header = logo();
   document.title = `${page.n || 'Lesson'} · Mr. Washburn Music`;
@@ -202,7 +203,10 @@ function render(page, { key, qr: qrText, lessons, index = 0, open, openShelf, sh
 
   /* Days until the next lesson, and what they've done this week */
   const today = iso(new Date());
-  const until = daysUntil(page.x);
+  // The next lesson date from the calendar (pages opened by name), else the one the page names.
+  const until = Array.isArray(upcoming) && upcoming.length
+    ? upcoming.map(daysUntil).find((n) => n != null && n >= 0) ?? null
+    : daysUntil(page.x);
   const next = until != null && until >= 0 && el('p', { class: 'nextlesson' },
     until === 0 ? '🎵 Lesson today!' : el('span', {}, el('b', {}, String(until)), until === 1 ? ' day until your next lesson' : ' days until your next lesson'));
   const doneEl = el('div', { class: 'done' });

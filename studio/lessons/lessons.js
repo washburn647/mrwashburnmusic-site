@@ -5,7 +5,9 @@
      where only the code opens them (see /lesson/locked.js). Their flash card
      results come back the same way, and Results shows the weak spots.
    - a link to one lesson, with the page inside the link (see /lesson/codec.js).
-   #/ is the week, #/library the practice library, #/<student> and
+   Everything also syncs through Kyle's private copy on the website (sync.js), so
+   every device he signs in on has the same students, pieces and library.
+   #/ is the week, #/calendar the schedule, #/library the practice library, #/<student> and
    #/<student>/<lesson> one student. */
 
 import { store, newId, downloadJSON, today } from '../db.js';
@@ -15,9 +17,10 @@ import { readPieceFile, slimXML, pieceInfo } from '/lesson/score.js';
 import { openPlayer, PIECE_MODES, KEYBOARD_MODES } from '/lesson/player.js';
 import { openPractice } from '/lesson/practice.js';
 import { LESSON_PAGE, LOCAL_PAGE, STUDIO_HOME, API } from '/lesson/paths.js';
-import { newCode, cleanCode, publish, results, unpublish, secretFor, PICKS } from '/lesson/locked.js';
+import { newCode, cleanCode, publish, results, unpublish, secretFor, PICKS, CODE_WORDS } from '/lesson/locked.js';
 import { cardLabel, KINDS } from '/lesson/cards.js';
 import { editDeck, deckSummary, newDeck } from './decks.js';
+import * as sync from './sync.js';
 
 const students = store('students');
 const pieces = store('pieces');
@@ -34,6 +37,9 @@ const copyItem = (it) => ({ ...newItem(), ...structuredClone(it), id: newId() })
 function upgrade(s) {
   s.day ??= '';
   s.time ??= '';
+  s.sched ??= [];
+  // Sign-in codes went from five emojis to four: keep the first four (Publish again to use them).
+  if (s.code && s.code.split('-').length > CODE_WORDS) s.code = s.code.split('-').slice(0, CODE_WORDS).join('-');
   for (const l of s.lessons) {
     l.private ??= '';
     l.stars ??= 0;
@@ -79,6 +85,8 @@ async function showList() {
     ...(STUDIO_HOME ? [h('div', { class: 'bar' }, h('a', { class: 'back', href: STUDIO_HOME }, '‹ Studio'))] : []),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Lesson pages'),
+      syncMark(),
+      h('a', { class: 'button', href: '#/calendar' }, 'Calendar'),
       h('a', { class: 'button', href: '#/library' }, 'Library'),
       h('button', { onclick: backup, disabled: !all.length }, 'Backup'),
       h('button', { onclick: () => restore.click() }, 'Restore'),
@@ -131,9 +139,10 @@ async function restoreBackup(file) {
     const here = await students.get(s.id);
     if (here && here.updated >= s.updated) continue;
     await students.put({
-      id: s.id, name: str(s.name), instrument: str(s.instrument), code: str(s.code).split('-').slice(0, 5).map((w) => (PICKS.some(([x]) => x === w) ? w : '')).join('-'), pubSecret: str(s.pubSecret), published: Number(s.published) || 0,
+      id: s.id, name: str(s.name), instrument: str(s.instrument), code: str(s.code).split('-').slice(0, CODE_WORDS).map((w) => (PICKS.some(([x]) => x === w) ? w : '')).join('-'), pubSecret: str(s.pubSecret), published: Number(s.published) || 0,
       day: s.day === '' || s.day == null ? '' : Math.max(0, Math.min(6, Number(s.day) || 0)), time: /^\d\d:\d\d$/.test(s.time) ? s.time : '',
       created: Number(s.created) || Date.now(), updated: Number(s.updated) || Date.now(),
+      sched: (Array.isArray(s.sched) ? s.sched : []).filter((e) => e && /^\d{4}-\d\d-\d\d$/.test(e.d)).map((e) => ({ id: id(e.id), d: e.d, t: /^\d\d:\d\d$/.test(e.t) ? e.t : '' })),
       lessons: s.lessons.map((l) => ({
         id: id(l.id), date: str(l.date), note: str(l.note), private: str(l.private),
         stars: [0, 1, 2, 3].includes(l.stars) ? l.stars : 0,
@@ -156,6 +165,28 @@ async function addPieceFile(file) {
 }
 
 const pieceName = (p) => p.title || p.name || 'Piece';
+const composer = (p) => (p.composer ??= (/<creator[^>]*type="composer"[^>]*>([^<]*)</.exec(p.xml)?.[1] || '').trim());
+const lastName = (p) => composer(p).split(/\s+/).pop() || '\uffff';
+
+/* How piece lists are sorted; remembered on this device. */
+const SORTS = [
+  ['name', 'A–Z', (a, b) => pieceName(a).localeCompare(pieceName(b))],
+  ['composer', 'Composer', (a, b) => lastName(a).localeCompare(lastName(b)) || pieceName(a).localeCompare(pieceName(b))],
+  ['new', 'Newest', (a, b) => (b.created || 0) - (a.created || 0)],
+  ['old', 'Oldest', (a, b) => (a.created || 0) - (b.created || 0)],
+  ['bars', 'Length', (a, b) => (a.measures || 0) - (b.measures || 0) || pieceName(a).localeCompare(pieceName(b))],
+];
+let pieceSort = 'name';
+try { pieceSort = localStorage.getItem('lessons.pieceSort') || 'name'; } catch { /* private window */ }
+const sortPieces = (list) => list.sort((SORTS.find(([k]) => k === pieceSort) || SORTS[0])[2]);
+function sortSelect(then) {
+  return h('select', { class: 'sort', 'aria-label': 'Sort', onchange: (e) => {
+    pieceSort = e.target.value;
+    try { localStorage.setItem('lessons.pieceSort', pieceSort); } catch { /* private window */ }
+    then();
+  } }, SORTS.map(([k, label]) => h('option', { value: k, selected: k === pieceSort }, label)));
+}
+const pieceSmall = (p) => [composer(p), p.parts.filter(Boolean).join(', '), p.measures && `${p.measures} bars`].filter(Boolean).join(' · ');
 
 /* Pick a piece already here, or add a file. Resolves with a piece or null. */
 function choosePiece() {
@@ -167,11 +198,19 @@ function choosePiece() {
     const file = h('input', { type: 'file', accept: '.mxl,.musicxml,.xml', hidden: true, onchange: async () => {
       try { done(await addPieceFile(file.files[0])); } catch { alert('That file is not a MusicXML score.'); }
     } });
-    const all = (await pieces.all()).sort((a, b) => pieceName(a).localeCompare(pieceName(b)));
+    const all = await pieces.all();
+    const filter = h('input', { type: 'search', placeholder: 'Search', class: 'search', oninput: () => fill() });
+    const list = h('ul', { class: 'sheets' });
+    const fill = () => {
+      const q = filter.value.trim().toLowerCase();
+      list.replaceChildren(...sortPieces(all.filter((p) => !q || `${pieceName(p)} ${p.name} ${composer(p)}`.toLowerCase().includes(q))).map((p) =>
+        h('li', {}, h('a', { href: '#', onclick: (e) => { e.preventDefault(); done(p); } }, h('span', {}, pieceName(p)), h('small', {}, pieceSmall(p))))));
+    };
+    fill();
     dlg.append(
       h('div', { class: 'bar' }, h('button', { class: 'primary', onclick: () => file.click() }, 'Add MusicXML file'), file, h('span', { class: 'grow' }), h('button', { onclick: () => done(null) }, 'Cancel')),
-      h('ul', { class: 'sheets' }, all.map((p) => h('li', {}, h('a', { href: '#', onclick: (e) => { e.preventDefault(); done(p); } },
-        h('span', {}, pieceName(p)), h('small', {}, [p.parts.filter(Boolean).join(', '), p.measures && `${p.measures} bars`].filter(Boolean).join(' · ')))))),
+      h('div', { class: 'bar' }, filter, sortSelect(fill)),
+      list,
     );
     dlg.showModal();
   });
@@ -209,7 +248,7 @@ function itemBadges(it, pieceMap) {
 async function showLibrary() {
   document.title = 'Library · Lesson pages';
   const all = (await library.all()).sort((a, b) => a.item.title.localeCompare(b.item.title));
-  const allPieces = (await pieces.all()).sort((a, b) => pieceName(a).localeCompare(pieceName(b)));
+  const allPieces = await pieces.all();
   const pieceMap = Object.fromEntries(allPieces.map((p) => [p.id, p]));
   const used = new Set();
   for (const s of await students.all()) for (const l of s.lessons) for (const it of l.items) if (it.piece) used.add(it.piece);
@@ -218,6 +257,17 @@ async function showLibrary() {
     for (const f of file.files) { try { await addPieceFile(f); } catch { alert(`${f.name} is not a MusicXML score.`); } }
     showLibrary();
   } });
+  const pieceSearch = h('input', { type: 'search', placeholder: 'Search', class: 'search', oninput: () => fillPieces() });
+  const pieceList = h('ul', { class: 'sheets lib' });
+  function fillPieces() {
+    const q = pieceSearch.value.trim().toLowerCase();
+    pieceList.replaceChildren(...sortPieces(allPieces.filter((p) => !q || `${pieceName(p)} ${p.name} ${composer(p)}`.toLowerCase().includes(q))).map((p) => h('li', {},
+      h('div', { class: 'libitem' },
+        h('input', { class: 'item-title', value: pieceName(p), 'aria-label': 'Piece name', onchange: (ev) => { p.title = ev.target.value; pieces.put(p); } }),
+        h('small', {}, [pieceSmall(p), `${Math.round(p.xml.length / 1024)} KB`].filter(Boolean).join(' · ')),
+        h('button', { class: 'icon', title: 'Play', onclick: () => openPlayer(document.body, { xml: p.xml, title: pieceName(p) }) }, '▶'),
+        used.has(p.id) ? null : confirmButton('×', 'Remove?', async () => { await pieces.delete(p.id); showLibrary(); })))));
+  }
   app.replaceChildren(
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '#/' }, '‹ Lesson pages')),
     h('div', { class: 'bar' }, h('h1', { class: 'grow' }, 'Library'),
@@ -229,14 +279,10 @@ async function showLibrary() {
         e.item.deck && h('button', { class: 'icon', title: 'Edit deck', onclick: async () => { const d = await editDeck(e.item.deck, e.item.title); if (d) { e.item.deck = d; await library.put(e); showLibrary(); } } }, '🃏'),
         confirmButton('×', 'Remove?', async () => { await library.delete(e.id); showLibrary(); }))))),
     h('h2', {}, 'Pieces'),
-    h('div', { class: 'bar' }, h('button', { onclick: () => file.click() }, 'Add MusicXML files'), file),
-    h('ul', { class: 'sheets lib' }, allPieces.map((p) => h('li', {},
-      h('div', { class: 'libitem' },
-        h('input', { class: 'item-title', value: pieceName(p), 'aria-label': 'Piece name', onchange: (ev) => { p.title = ev.target.value; pieces.put(p); } }),
-        h('small', {}, [p.parts.filter(Boolean).join(', '), p.measures && `${p.measures} bars`, `${Math.round(p.xml.length / 1024)} KB`].filter(Boolean).join(' · ')),
-        h('button', { class: 'icon', title: 'Play', onclick: () => openPlayer(document.body, { xml: p.xml, title: pieceName(p) }) }, '▶'),
-        used.has(p.id) ? null : confirmButton('×', 'Remove?', async () => { await pieces.delete(p.id); showLibrary(); }))))),
+    h('div', { class: 'bar' }, h('button', { onclick: () => file.click() }, 'Add MusicXML files'), file, h('span', { class: 'grow' }), pieceSearch, sortSelect(fillPieces)),
+    pieceList,
   );
+  fillPieces();
 }
 
 /* ---------- One student ---------- */
@@ -308,7 +354,7 @@ async function showStudent(id, lessonId) {
   student = await students.get(id);
   if (!student) { location.hash = '#/'; return; }
   upgrade(student);
-  const lesson = student.lessons.find((l) => l.id === lessonId) || student.lessons[student.lessons.length - 1];
+  const lesson = student.lessons.find((l) => l.id === lessonId) || currentLesson(student);
   const setTitle = () => { document.title = `${student.name || 'New student'} · Lesson pages`; };
   setTitle();
   const pieceMap = Object.fromEntries((await pieces.all()).map((p) => [p.id, p]));
@@ -433,9 +479,21 @@ async function showStudent(id, lessonId) {
   } }, 'Copy link');
 
   const chipLabel = (l) => formatDate(l.date).replace(/^\w+, /, '') || 'No date';
-  const chips = h('nav', { class: 'chips' }, [...student.lessons].reverse().map((l) =>
-    h('a', { href: `#/${student.id}/${l.id}`, 'aria-current': l === lesson ? 'true' : null }, chipLabel(l)),
-  ));
+  /* Older lessons in a menu, then the most recent one, then every lesson still to come
+     (the next one marked). */
+  const chips = h('nav', { class: 'chips' });
+  function drawChips() {
+    const { older, recent, future } = lessonGroups(student);
+    const chip = (l, extra = '') => h('a', { href: `#/${student.id}/${l.id}`, class: extra || null, 'aria-current': l === lesson ? 'true' : null }, chipLabel(l));
+    chips.replaceChildren(
+      older.length ? h('select', { class: `older${older.includes(lesson) ? ' on' : ''}`, 'aria-label': 'Earlier lessons', onchange: (e) => { location.hash = `#/${student.id}/${e.target.value}`; } },
+        h('option', { value: '', selected: !older.includes(lesson), disabled: true }, '⋯'),
+        older.map((l) => h('option', { value: l.id, selected: l === lesson }, chipLabel(l)))) : null,
+      recent ? chip(recent) : null,
+      ...future.map((l, i) => chip(l, i === 0 ? 'next' : '')),
+    );
+  }
+  drawChips();
 
   // The instrument decides which tools a student's items offer. Guitar is still to come.
   const instrumentSel = h('select', { 'aria-label': 'Instrument', onchange: () => { student.instrument = instrumentSel.value; save(); renderItems(); } },
@@ -445,7 +503,7 @@ async function showStudent(id, lessonId) {
     h('option', { value: '', selected: student.day === '' }, 'Day'),
     DAYS.map((d, i) => h('option', { value: i, selected: String(student.day) === String(i) }, d)));
 
-  /* How the student signs in (first name and five emojis), and their locked pages on the site */
+  /* How the student signs in (first name and four emojis), and their locked pages on the site */
   function codeBar() {
     const bar = h('div', { class: 'bar codebar' });
     const status = h('small', {});
@@ -456,7 +514,7 @@ async function showStudent(id, lessonId) {
     const draw = () => {
       showStatus();
       const parts = (student.code || '').split('-');
-      const lists = [0, 1, 2, 3, 4].map((i) => h('select', { class: 'codepick', 'aria-label': `Emoji ${i + 1}`, onchange: () => {
+      const lists = [...Array(CODE_WORDS).keys()].map((i) => h('select', { class: 'codepick', 'aria-label': `Emoji ${i + 1}`, onchange: () => {
         student.code = lists.map((x) => x.value).join('-');
         save();
         pub.disabled = API == null || !secret();
@@ -489,7 +547,7 @@ async function showStudent(id, lessonId) {
         h('div', { class: 'picks' }, lists),
         h('button', { class: 'icon', title: 'Pick for me', onclick: () => { student.code = newCode(); save(); draw(); } }, '🎲'),
         pub, status,
-        h('button', { disabled: API == null || !student.pubSecret, onclick: () => showResults(student) }, 'Practice'));
+        h('button', { disabled: API == null || !student.pubSecret, onclick: () => showResults(student) }, 'Practice report'));
     };
     draw();
     // Renaming the student changes how they sign in: the tick goes until the next Publish.
@@ -530,7 +588,7 @@ async function showStudent(id, lessonId) {
     ),
     h('div', { class: 'bar' },
       input(lesson, 'date', { class: 'date', type: 'date', 'aria-label': 'Lesson date' },
-        () => { chips.querySelector('[aria-current]').textContent = chipLabel(lesson); }),
+        () => { drawChips(); }),
     ),
     items,
     h('div', { class: 'bar' },
@@ -563,11 +621,27 @@ async function showStudent(id, lessonId) {
   renderItems();
 }
 
-/* The next lesson after a date: the student's lesson day in the week after it (a week on
-   when no day is set). */
+/* Every date a student has a lesson: scheduled in the calendar or with a lesson page. */
+function lessonDates(s) {
+  return [...new Set([...(s.sched || []).map((e) => e.d), ...s.lessons.map((l) => l.date)].filter((d) => /^\d{4}-\d\d-\d\d$/.test(d)))].sort();
+}
+
+/* Lessons on or before today, newest first ([0] is the most recent), and lessons to come, soonest first. */
+function lessonGroups(s) {
+  const now = today();
+  const past = s.lessons.filter((l) => !l.date || l.date <= now).sort((a, b) => b.date.localeCompare(a.date) || s.lessons.indexOf(b) - s.lessons.indexOf(a));
+  const future = s.lessons.filter((l) => l.date > now).sort((a, b) => a.date.localeCompare(b.date));
+  return { older: past.slice(1), recent: past[0] || null, future };
+}
+const currentLesson = (s) => { const g = lessonGroups(s); return g.recent || g.future[0]; };
+
+/* The next lesson after a date: the next date in the calendar or with a lesson page; else the
+   student's lesson day in the week after it (a week on when no day is set). */
 function nextLesson(s, date) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
   if (!m) return '';
+  const later = lessonDates(s).find((d) => d > date);
+  if (later) return later;
   const d = new Date(+m[1], m[2] - 1, +m[3]);
   let add = 7;
   if (s.day !== '' && s.day != null) add = ((Number(s.day) - d.getDay() + 7) % 7) || 7;
@@ -579,7 +653,11 @@ function nextLesson(s, date) {
 async function pagesFor(s) {
   const pool = [];
   const lessons = [];
-  const recent = [...s.lessons].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
+  // Lessons still to come stay in the studio until their day (unless there's nothing else yet).
+  const now = today();
+  let shown = s.lessons.filter((l) => !l.date || l.date <= now);
+  if (!shown.length) shown = [...s.lessons].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 1);
+  const recent = shown.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
   for (const lesson of recent) {
     const page = await pageFor(s, lesson);
     const mine = (page.p || []).map((xml) => { const i = pool.indexOf(xml); return i >= 0 ? i : pool.push(xml) - 1; });
@@ -601,7 +679,9 @@ async function pagesFor(s) {
   const shelf = await pageFor(s, { items: kept, date: '', note: '' });
   const mine = (shelf.p || []).map((xml) => { const i = pool.indexOf(xml); return i >= 0 ? i : pool.push(xml) - 1; });
   for (const it of shelf.t) if (it.p !== undefined) it.p = mine[it.p];
-  return { v: 1, n: s.name.trim(), i: s.instrument.trim(), l: lessons, p: pool, ...(shelf.t.length ? { b: shelf.t } : {}) };
+  // Lesson dates to come, so the page counts down to the next one.
+  const upcoming = lessonDates(s).filter((d) => d >= now).slice(0, 30);
+  return { v: 1, n: s.name.trim(), i: s.instrument.trim(), l: lessons, p: pool, ...(shelf.t.length ? { b: shelf.t } : {}), ...(upcoming.length ? { u: upcoming } : {}) };
 }
 
 /* What a student did with their pages, from the notes their page sends back (encrypted):
@@ -685,12 +765,174 @@ function setupSummary(u) {
 
 const deckTitle = (d) => (d.k === 'n' ? 'Note cards' : d.u || (d.k === 't' ? 'Tonal patterns' : 'Rhythm patterns'));
 
+/* ---------- Calendar ---------- */
+
+/* Republish a student whose pages are live, so their countdown follows the calendar. */
+async function republish(s) {
+  if (API == null || !s.pubSecret || s.pubSecret !== secretFor(s.name, s.code)) return;
+  try {
+    await publish(s.pubSecret, await pagesFor(s));
+    s.published = Date.now();
+    await students.put(s);
+  } catch { /* the next Publish catches up */ }
+}
+
+const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const timeLabel = (t) => {
+  const m = /^(\d\d):(\d\d)$/.exec(t || '');
+  if (!m) return '';
+  const hr = +m[1] % 12 || 12;
+  return `${hr}:${m[2]}`;
+};
+
+/* A month of lessons: what's scheduled in the calendar, and lesson pages by their date.
+   #/calendar/YYYY-MM. Only Kyle sees it. */
+async function showCalendar(month) {
+  document.title = 'Calendar · Lesson pages';
+  const now = new Date();
+  const m = /^(\d{4})-(\d{2})$/.exec(month || '');
+  const first = m ? new Date(+m[1], +m[2] - 1, 1) : new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthId = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const prev = new Date(first.getFullYear(), first.getMonth() - 1, 1);
+  const next = new Date(first.getFullYear(), first.getMonth() + 1, 1);
+  const all = (await students.all()).map(upgrade).sort((a, b) => a.name.localeCompare(b.name));
+  const todayIso = today();
+
+  // Date -> [{ s, t, e (calendar entry), l (lesson page) }]
+  const byDate = new Map();
+  const add = (d, x) => { if (!byDate.has(d)) byDate.set(d, []); byDate.get(d).push(x); };
+  for (const s of all) {
+    const had = new Set();
+    for (const e of s.sched) {
+      add(e.d, { s, t: e.t || s.time, e, l: s.lessons.find((l) => l.date === e.d) });
+      had.add(e.d);
+    }
+    for (const l of s.lessons) if (l.date && !had.has(l.date)) { add(l.date, { s, t: s.time, l }); had.add(l.date); }
+  }
+  for (const list of byDate.values()) list.sort((a, b) => (a.t || '99').localeCompare(b.t || '99') || a.s.name.localeCompare(b.s.name));
+
+  const start = new Date(first);
+  start.setDate(1 - first.getDay());
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    if (i >= 35 && d.getMonth() !== first.getMonth()) break;
+    const iso = isoDate(d);
+    const entries = byDate.get(iso) || [];
+    cells.push(h('div', { class: `cday${d.getMonth() !== first.getMonth() ? ' out' : ''}${iso === todayIso ? ' today' : ''}${iso < todayIso ? ' past' : ''}` },
+      h('button', { class: 'cnum', title: 'Schedule', onclick: () => schedule(iso) }, String(d.getDate())),
+      entries.map((x) => h('button', { class: `centry${x.l ? ' has' : ''}`, onclick: () => entryMenu(iso, x) },
+        x.t ? h('b', {}, timeLabel(x.t)) : null, ` ${x.s.name || 'New student'}`))));
+  }
+
+  app.replaceChildren(
+    h('div', { class: 'bar' }, h('a', { class: 'back', href: '#/' }, '‹ Lesson pages')),
+    h('div', { class: 'bar calbar' },
+      h('a', { class: 'button', href: `#/calendar/${monthId(prev)}`, 'aria-label': 'Previous month' }, '‹'),
+      h('h1', { class: 'grow' }, first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })),
+      monthId(first) !== monthId(now) ? h('a', { class: 'button', href: '#/calendar' }, 'Today') : null,
+      h('a', { class: 'button', href: `#/calendar/${monthId(next)}`, 'aria-label': 'Next month' }, '›')),
+    h('div', { class: 'cal' },
+      DAYS.map((d) => h('div', { class: 'chead' }, d.slice(0, 3))),
+      cells),
+  );
+
+  const redraw = () => showCalendar(month);
+
+  function dialog(kids) {
+    const dlg = h('dialog', { class: 'pickdlg caldlg' });
+    document.body.append(dlg);
+    const close = () => { dlg.close(); dlg.remove(); };
+    dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+    dlg.append(...kids(close));
+    dlg.showModal();
+    return close;
+  }
+
+  /* Put a student on a day (and the same day in following weeks). */
+  function schedule(iso) {
+    if (!all.length) return;
+    dialog((close) => {
+      const who = h('select', { 'aria-label': 'Student' }, all.map((s) => h('option', { value: s.id }, s.name || 'New student')));
+      const time = h('input', { type: 'time', class: 'time', 'aria-label': 'Time', value: all[0].time || '' });
+      who.onchange = () => { time.value = all.find((s) => s.id === who.value)?.time || ''; };
+      const weeks = h('select', { 'aria-label': 'Repeat' }, [[1, 'Once'], [4, '4 weeks'], [8, '8 weeks'], [12, '12 weeks']].map(([n, label]) => h('option', { value: n }, label)));
+      return [
+        h('h2', {}, formatDate(iso)),
+        h('div', { class: 'bar' }, who, time, weeks),
+        h('div', { class: 'bar' }, h('span', { class: 'grow' }),
+          h('button', { onclick: close }, 'Cancel'),
+          h('button', { class: 'primary', onclick: async () => {
+            const s = all.find((x) => x.id === who.value);
+            const [y, mo, d] = iso.split('-').map(Number);
+            for (let w = 0; w < +weeks.value; w++) {
+              const day = isoDate(new Date(y, mo - 1, d + 7 * w));
+              const have = s.sched.find((e) => e.d === day);
+              if (have) have.t = time.value;
+              else s.sched.push({ id: newId(), d: day, t: time.value });
+            }
+            s.sched.sort((a, b) => a.d.localeCompare(b.d));
+            s.updated = Date.now();
+            await students.put(s);
+            close();
+            redraw();
+            republish(s);
+          } }, 'Add')),
+      ];
+    });
+  }
+
+  /* One lesson on the calendar: open or make its page, change the time, or take it off. */
+  function entryMenu(iso, x) {
+    const { s, e, l } = x;
+    dialog((close) => {
+      const time = h('input', { type: 'time', class: 'time', 'aria-label': 'Time', value: x.t || '' });
+      const save = async () => {
+        if (e && time.value !== (e.t || '')) { e.t = time.value; s.updated = Date.now(); await students.put(s); }
+      };
+      return [
+        h('h2', {}, `${s.name || 'New student'} · ${formatDate(iso)}`),
+        h('div', { class: 'bar' },
+          e ? time : null,
+          h('span', { class: 'grow' }),
+          h('button', { class: 'primary', onclick: async () => {
+            await save();
+            let lesson = l;
+            if (!lesson) {
+              // A new lesson page for that day starts from the latest one's practice list.
+              const last = currentLesson(s);
+              lesson = newLesson(last ? last.items.map(copyItem) : undefined);
+              lesson.date = iso;
+              s.lessons.push(lesson);
+              s.updated = Date.now();
+              await students.put(s);
+            }
+            close();
+            location.hash = `#/${s.id}/${lesson.id}`;
+          } }, l ? 'Lesson page' : 'Make lesson page')),
+        h('div', { class: 'bar' },
+          e ? confirmButton('Remove', 'Remove?', async () => {
+            s.sched.splice(s.sched.indexOf(e), 1);
+            s.updated = Date.now();
+            await students.put(s);
+            close();
+            redraw();
+            republish(s);
+          }) : null,
+          h('span', { class: 'grow' }),
+          h('button', { onclick: async () => { await save(); close(); redraw(); } }, 'Close')),
+      ];
+    });
+  }
+}
+
 /* ---------- Routing ---------- */
 
 async function route() {
   if (student) { await flush(); student = null; }
   const [id, lessonId] = location.hash.replace(/^#\/?/, '').split('/');
   if (id === 'library') showLibrary();
+  else if (id === 'calendar') showCalendar(lessonId);
   else if (id) showStudent(id, lessonId);
   else showList();
 }
@@ -698,3 +940,23 @@ async function route() {
 window.addEventListener('hashchange', route);
 window.addEventListener('pagehide', () => { if (student) flush(); });
 route();
+
+/* Sync with the website (not in the offline copy). */
+const SYNC_MARK = { syncing: ['☁', 'Syncing'], ok: ['☁✓', 'Synced'], offline: ['☁✗', 'Offline'], signin: ['☁?', 'Sign in again'], error: ['☁✗', 'Sync failed'] };
+function syncMark() {
+  const m = h('span', { class: 'syncmark' });
+  const show = (s) => { const [t, title] = SYNC_MARK[s] || ['', '']; m.textContent = t; m.title = title; m.hidden = !t; };
+  show(sync.getStatus());
+  sync.onStatus((s) => { if (m.isConnected) show(s); });
+  return m;
+}
+if (API != null) {
+  // Records came down: show them, unless Kyle is in the middle of something.
+  let stale = false;
+  const busy = () => document.querySelector('dialog[open]') || document.body.classList.contains('playing-piece') ||
+    (document.activeElement && document.activeElement !== document.body && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
+  const refresh = () => { if (busy()) stale = true; else { stale = false; route(); } };
+  sync.onPulled(refresh);
+  document.addEventListener('focusout', () => { if (stale) setTimeout(refresh, 300); });
+  sync.start();
+}

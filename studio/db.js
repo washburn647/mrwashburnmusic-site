@@ -1,5 +1,6 @@
 /* On-device storage for the studio tools (IndexedDB 'mwm-studio').
-   Nothing leaves the device except as a backup file Kyle saves. */
+   Lesson pages also sync through Kyle's private copy on the website (lessons/sync.js);
+   every save stamps the record with u, the time it changed. */
 
 const DB_NAME = 'mwm-studio';
 const VERSION = 3;
@@ -38,12 +39,22 @@ function tx(name, mode, fn) {
   }));
 }
 
+const writeFns = [];
+/** fn(store name) after each save or delete made here (not by sync). */
+export function onWrite(fn) { writeFns.push(fn); }
+const wrote = (name) => (r) => { for (const fn of writeFns) fn(name); return r; };
+let lastU = 0;
+const stamp = () => (lastU = Math.max(Date.now(), lastU + 1));
+
 export function store(name) {
   return {
     all: () => tx(name, 'readonly', (s) => s.getAll()),
     get: (id) => tx(name, 'readonly', (s) => s.get(id)),
-    put: (rec) => tx(name, 'readwrite', (s) => s.put(rec)),
-    delete: (id) => tx(name, 'readwrite', (s) => s.delete(id)),
+    put: (rec) => { rec.u = stamp(); return tx(name, 'readwrite', (s) => s.put(rec)).then(wrote(name)); },
+    delete: (id) => tx(name, 'readwrite', (s) => s.delete(id)).then(wrote(name)),
+    // For sync: save or remove without stamping or telling anyone.
+    putAsIs: (rec) => tx(name, 'readwrite', (s) => s.put(rec)),
+    deleteAsIs: (id) => tx(name, 'readwrite', (s) => s.delete(id)),
   };
 }
 

@@ -1,5 +1,5 @@
-/* Locked student pages. Each private student signs in with their first name and five
-   emojis (a code of five words, one per emoji). Name and code together make
+/* Locked student pages. Each private student signs in with their first name and four
+   emojis (a code of four words, one per emoji; older codes had five). Name and code together make
    (in this browser, never sent anywhere) a key that encrypts their pages, an id that names
    their box on the site, and a token that lets them add practice results to it. The site
    keeps only what it can't read (see /worker/index.js). Kyle keeps the codes in the studio.
@@ -28,9 +28,9 @@ const WORDS = `
 `.trim().split(/\s+/);
 const SET = new Set(WORDS);
 
-/* New codes come from these 64 words, each with a picture, so a student can pick their
-   code from five lists instead of typing it (64^5, about a billion codes). Older codes
-   from the longer list above still open by link. */
+/* Codes come from these 64 words, each with a picture, so a student can pick their
+   code from four lists instead of typing it (64^4, about 16 million codes for each name;
+   every guess also takes the slow key below). */
 export const PICKS = [
   ['apple', '🍎'], ['bear', '🐻'], ['bell', '🔔'], ['bike', '🚲'], ['bird', '🐦'], ['boat', '⛵'], ['book', '📖'], ['bread', '🍞'],
   ['bunny', '🐰'], ['cake', '🎂'], ['candy', '🍬'], ['carrot', '🥕'], ['castle', '🏰'], ['cheese', '🧀'], ['cherry', '🍒'], ['chick', '🐥'],
@@ -47,8 +47,9 @@ export const emojiFor = (word) => EMOJI.get(word) || '';
 export const showCode = (code) => code.split('-').map((w) => `${emojiFor(w)} ${w}`.trim()).join('  ');
 export const pickable = (code) => code.split('-').every((w) => EMOJI.has(w));
 
+export const CODE_WORDS = 4;
 export function newCode() {
-  const n = crypto.getRandomValues(new Uint8Array(5));
+  const n = crypto.getRandomValues(new Uint8Array(CODE_WORDS));
   return [...n].map((x) => PICKS[x & 63][0]).join('-');
 }
 
@@ -64,7 +65,7 @@ export function secretFor(name, code) {
 /* A typed or linked code, tidied: "Tiger moon, PIANO..." becomes "tiger-moon-piano...". */
 export function cleanCode(text) {
   const words = String(text || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
-  return words.length === 5 && words.every((w) => SET.has(w)) ? words.join('-') : '';
+  return (words.length === 4 || words.length === 5) && words.every((w) => SET.has(w)) ? words.join('-') : '';
 }
 
 const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
