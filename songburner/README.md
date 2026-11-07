@@ -65,4 +65,20 @@ November 2026):
    Users), so testers who stop using it give their seat back after a month.
 
 Removing a tester: take their address off the policy, then remove them under
-**Team & Resources > Users** to free the seat.
+**Team & Resources > Users** to free the seat. Then press **Remove** next to them
+in the studio (below): that deletes their cloud copy and ends their session.
+
+## In the studio
+
+`/studio/songburner/` (behind the studio's Access login):
+
+- **Testers**: a line per tester from the roster the Worker keeps (one more
+  Vault, `songburner-roster`): email, first and last seen, and counts worked out
+  at each sync (songs, runs, runs per day for 60 days, cloud size). Never a song,
+  a lyric or a score. A tester who signed up before the roster existed appears
+  the next time their app syncs.
+- **Defaults**: the settings every tester starts from, published to
+  `/api/live/songburner.json` as only what differs from the built-in values.
+  `host.js` fetches them (and keeps the last copy for offline use), and the
+  engine lays a tester's own settings over them. A tester's settings are stored
+  as what they changed, so anything they never touched follows the defaults.

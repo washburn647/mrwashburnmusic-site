@@ -24,6 +24,25 @@
   /* Tells the page it is running on the website, not inside Apps Script. */
   window.SONGBURNER_WEB = true;
 
+  /* The default settings, as set in the studio (/api/live/songburner.json).
+     The engine lays them under your own settings on every call (see
+     siteDefaults in Code.gs). The last copy is kept for offline use. */
+  var DEFAULTS_KEY = 'sb-defaults';
+  try { window.SONGBURNER_DEFAULTS = JSON.parse(localStorage.getItem(DEFAULTS_KEY) || 'null'); } catch (e) {}
+  if (window.fetch) {
+    fetch('/api/live/songburner.json', { cache: 'no-cache' }).then(function (res) {
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(res.status);
+      return res.json();
+    }).then(function (d) {
+      window.SONGBURNER_DEFAULTS = d;
+      try {
+        if (d) localStorage.setItem(DEFAULTS_KEY, JSON.stringify(d));
+        else localStorage.removeItem(DEFAULTS_KEY);
+      } catch (e) {}
+    }).catch(function () {});
+  }
+
   var DB_NAME = 'songburner';
   var STORE = 'tabs';
   var ORDER_KEY = '__order';

@@ -2,7 +2,8 @@
    Network first, so a new build shows up the next time you open the app with
    a connection; the last copy that loaded is kept for when there is none.
    Songs and scores are not in here - they live in IndexedDB (see host.js). */
-var CACHE = 'songburner-shell-v1';
+/* v2: drops any API answers v1 saved. */
+var CACHE = 'songburner-shell-v2';
 var SHELL = ['./', 'index.html', 'host.js', 'engine.js', 'app.js', 'fonts.css',
              'manifest.webmanifest', 'backup/', 'backup/backup.js',
              'fonts/bebas-neue-latin.woff2', 'fonts/inter-var-latin.woff2',
@@ -37,6 +38,8 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   // The sign-in page sits behind Cloudflare Access: always the network, never a saved copy.
   if (url.pathname.indexOf('/songburner/account/') === 0) return;
+  // Nothing from the API is ever saved here: a tester's library must not linger in this cache.
+  if (url.pathname.indexOf('/api/') === 0) return;
   var net = fetch(req).then(function (res) {
     if (res.ok) {
       var copy = res.clone();
