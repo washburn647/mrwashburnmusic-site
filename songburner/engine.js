@@ -1,5 +1,5 @@
 /* GENERATED from src/Code.gs by tools/build_songburner.py. Do not edit.
-   The server half of Song Burner beta 1.02. host.js calls this once per request with
+   The server half of Song Burner beta 1.03. host.js calls this once per request with
    its stand-ins for the Apps Script services. */
 window.SongBurnerEngine = function (services) {
 var SpreadsheetApp = services.SpreadsheetApp;
@@ -25,7 +25,7 @@ var HtmlService = services.HtmlService;
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.02';
+var BUILD    = 'beta 1.03';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -1971,8 +1971,9 @@ function range(v, lo, hi, fallback) {
   return a <= b ? [a, b] : [b, a];
 }
 
-function computeSettings() {
-  var s = {
+/** What this file ships with, before the site's defaults or anything of yours. */
+function builtInSettings() {
+  return {
     rev: SETTINGS_REV,
     decay: DECAY_PER_DAY, floor: POINTS_FLOOR, hotPct: HOT_PCT,
     speedMod: SPEED_MOD, speedSwing: SPEED_SWING, timerMin: TIMER_MIN,
@@ -1981,6 +1982,60 @@ function computeSettings() {
     medalMult: defaultMedalMult(),
     games: defaultGameSettings(), quizzes: defaultQuizSettings()
   };
+}
+
+/* THE SITE'S DEFAULTS - beta 1.03. On the website the teacher sets the
+   defaults from the studio, and host.js hands them in as SONGBURNER_DEFAULTS
+   (a blob of the same shape as a stored one, holding only what differs from
+   the built-in values). In Apps Script there is no such thing, and this is
+   null. */
+function siteDefaults() {
+  var d = (typeof SONGBURNER_DEFAULTS !== 'undefined') ? SONGBURNER_DEFAULTS : null;
+  return (d && typeof d === 'object' && !(d instanceof Array)) ? d : null;
+}
+
+/** The defaults in force here: built in, then the site's on top. */
+function defaultSettings() {
+  var s = builtInSettings();
+  var site = siteDefaults();
+  return site ? applyStored(s, site) : s;
+}
+
+/* YOUR SETTINGS ARE STORED AS WHAT YOU CHANGED - beta 1.03. The blob in Meta
+   used to be every value, so the first slider you touched froze all the rest
+   at whatever the defaults were that day. Now it holds only what differs from
+   the defaults, and flags itself `diff`, so a value you never moved follows
+   the defaults when they change. A mix and a range are one value each: half
+   a mix means nothing. */
+function diffSettings(full, base) {
+  function walk(a, b) {
+    var out = {}, any = false;
+    for (var k in a) {
+      if (!a.hasOwnProperty(k)) continue;
+      var x = a[k], y = b ? b[k] : undefined;
+      if (x && typeof x === 'object' && !(x instanceof Array) && k !== 'mix' &&
+          y && typeof y === 'object') {
+        var sub = walk(x, y);
+        if (sub) { out[k] = sub; any = true; }
+      } else if (JSON.stringify(x) !== JSON.stringify(y)) {
+        out[k] = x; any = true;
+      }
+    }
+    return any ? out : null;
+  }
+  var d = walk(full, base) || {};
+  d.rev = SETTINGS_REV;
+  d.diff = true;
+  return d;
+}
+
+/** A full blob, built in values filled in under whatever a stored one says. */
+function settingsFrom(stored) {
+  return stored ? applyStored(builtInSettings(), stored) : builtInSettings();
+}
+
+function computeSettings() {
+  var s = defaultSettings();
   // build f kept the decay on its own key; honour it before the newer blob
   var legacyDecay = metaGet('decayPerDay');
   if (legacyDecay !== null && legacyDecay !== '' && !isNaN(Number(legacyDecay))) {
@@ -1990,7 +2045,14 @@ function computeSettings() {
   var stored = null;
   if (raw) { try { stored = JSON.parse(raw); } catch (e) { stored = null; } }
   if (!stored) return s;
+  /* A blob from before 1.03 holds every value. Whatever in it still matches
+     the built-in value was never yours, so it is read as unset. */
+  if (!stored.diff) stored = diffSettings(settingsFrom(stored), builtInSettings());
+  return applyStored(s, stored);
+}
 
+/** Lays a stored blob over s, value by value, through the range rules. */
+function applyStored(s, stored) {
   s.decay       = num(stored.decay, 0, 25, s.decay, true);
   s.floor       = num(stored.floor, 0, 99, s.floor);
   /* The old blob kept one floor for everything and quiz values under `points`.
@@ -1998,13 +2060,13 @@ function computeSettings() {
      rather than reset: a number you chose is a number you chose, wherever it
      used to live. The seeds go in BEFORE the revision check, so they survive
      it. */
-  if (stored.points) {
+  if (stored.points && !stored.diff) {
     for (var lp in s.quizzes) {
       if (!s.quizzes.hasOwnProperty(lp)) continue;
       s.quizzes[lp].pts = num(stored.points[lp], 0, 1000, s.quizzes[lp].pts);
     }
   }
-  if (stored.floor !== undefined && !stored.quizzes) {
+  if (stored.floor !== undefined && !stored.quizzes && !stored.diff) {
     for (var lf in s.quizzes) {
       if (s.quizzes.hasOwnProperty(lf)) s.quizzes[lf].floor = s.floor;
     }
@@ -2015,7 +2077,7 @@ function computeSettings() {
       }
     }
   }
-  if (stored.choiceCount !== undefined && !stored.quizzes) {
+  if (stored.choiceCount !== undefined && !stored.quizzes && !stored.diff) {
     var cc = num(stored.choiceCount, 2, 8, CHOICE_COUNT, true);
     for (var lc in s.games) {
       if (!s.games.hasOwnProperty(lc)) continue;
@@ -2174,12 +2236,15 @@ function apiSetSettings(payload) {
       }
     }
   }
-  if (payload.reset === 'medals') s.medalMult = defaultMedalMult();
-  if (payload.reset === 'games') s.games = defaultGameSettings();
-  if (payload.reset === 'points') s.quizzes = defaultQuizSettings();
+  var defs = defaultSettings();
+  if (payload.reset === 'medals') s.medalMult = defs.medalMult;
+  if (payload.reset === 'games') s.games = defs.games;
+  if (payload.reset === 'points') s.quizzes = defs.quizzes;
 
   s.rev = SETTINGS_REV;
-  metaSet('settings', JSON.stringify(s));
+  /* Through the range rules first, so what is compared with the defaults is
+     what would be read back. */
+  metaSet('settings', JSON.stringify(diffSettings(settingsFrom(diffSettings(s, builtInSettings())), defs)));
   metaSet('decayPerDay', '');        // superseded by the blob
   _settings = null;                  // recompute, and validate on the way back
   return getSettings();
@@ -4218,5 +4283,8 @@ function apiImportDoc(replaceAll) {
    ============================================================ */
 
 /* ---- end of Code.gs server half ---- */
-return { apiCall: apiCall, setup: setup, BUILD: BUILD };
+/* The studio's defaults editor (studio/songburner/) reads the settings rules from here. */
+return { apiCall: apiCall, setup: setup, BUILD: BUILD,
+         settings: { builtIn: builtInSettings, from: settingsFrom, diff: diffSettings,
+                     games: GAME_SPEC, quizzes: QUIZ_SPEC, modes: QUIZ_MODES } };
 };

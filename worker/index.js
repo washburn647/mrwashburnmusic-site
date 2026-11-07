@@ -9,6 +9,7 @@
      site (grooves, game options, voice takes, units), read by the games and lessons (see Live).
    - /api/songburner/: Song Burner's cloud copy, one private library per signed-in tester,
      behind its own Cloudflare Access application (see songBurnerApi and Vault).
+   - /studio/api/songburner/: the studio's view of the Song Burner testers (see songBurnerStudio).
 
    wrangler.jsonc sets ACCESS_TEAM (the Zero Trust team domain) and ACCESS_AUD
    (the Access application's Audience tag). */
@@ -21,7 +22,7 @@ const HASH = /^[0-9a-f]{16,128}$/;
 const TIMINGS = /^[\w-]{1,80}$/;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/studio/api/lessons/')) {
       if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.CLASS_FILES) return reply({ error: 'not set up' }, 503);
@@ -39,9 +40,18 @@ export default {
     if (url.pathname === '/songburner/account/' || url.pathname === '/songburner/account/index.html') {
       return songBurnerSignIn(request, env);
     }
+    if (url.pathname.startsWith('/studio/api/songburner/')) {
+      if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.VAULTS) return reply({ error: 'not set up' }, 503);
+      if (!(await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
+      try {
+        return await songBurnerStudio(request, env, url.pathname.slice('/studio/api/songburner/'.length));
+      } catch (err) {
+        return reply({ error: 'server error' }, 500);
+      }
+    }
     if (url.pathname.startsWith('/api/songburner/')) {
       try {
-        return await songBurnerApi(request, env, url.pathname.slice('/api/songburner/'.length));
+        return await songBurnerApi(request, env, url.pathname.slice('/api/songburner/'.length), ctx);
       } catch (err) {
         return reply({ error: 'server error' }, 500);
       }
@@ -309,10 +319,13 @@ async function boxApi(request, env, [, studio, id, results]) {
    GET  /api/live/grooves.json              Groove Lab's grooves (musician-maker/grooves.json's shape)
    GET  /api/live/games.json                the game workshop's options (musician-maker/games.json's shape)
    GET  /api/live/units.json                the voice recorder's units (assets/patterns/units.json's shape)
+   GET  /api/live/songburner.json           Song Burner's default settings (only what differs from
+                                            the built-in values; see siteDefaults in Code.gs)
    GET  /api/live/voice/:voice.json         a voice's takes (index.json "voices" entry's shape)
    GET  /api/live/voice/:voice/:take.mp3    one take
    PUT  /studio/api/live/grooves            publish the grooves                       (Kyle)
    PUT  /studio/api/live/games              publish the game options                  (Kyle)
+   PUT  /studio/api/live/songburner         publish Song Burner's default settings    (Kyle)
    GET  /studio/api/live/voice/:voice       ids of the takes already uploaded         (Kyle)
    PUT  /studio/api/live/voice/:voice/:take.mp3   upload a take                       (Kyle)
    PUT  /studio/api/live/voice/:voice       publish the take list and units; takes it
@@ -340,6 +353,7 @@ async function liveApi(request, env, studio, path) {
     if (path === 'grooves.json') return live.text('grooves');
     if (path === 'units.json') return live.text('units');
     if (path === 'games.json') return live.text('games');
+    if (path === 'songburner.json') return live.text('songburner');
     if ((m = /^voice\/([^/]+)\.json$/.exec(path)) && VOICE.test(m[1])) return live.text('voice:' + m[1]);
     if ((m = /^voice\/([^/]+)\/([^/]+)\.mp3$/.exec(path)) && VOICE.test(m[1]) && TAKE.test(m[2])) return live.take(m[1], m[2]);
     return reply({ error: 'not found' }, 404);
@@ -363,6 +377,14 @@ async function liveApi(request, env, studio, path) {
     const games = data && data.games;
     if (!games || typeof games !== 'object' || Array.isArray(games) || !Object.keys(games).length) return reply({ error: 'no games' }, 400);
     return live.putText('games', text);
+  }
+  if (path === 'songburner' && method === 'PUT') {
+    const text = await request.text();
+    if (text.length > 256 * 1024) return reply({ error: 'too big' }, 413);
+    let data;
+    try { data = JSON.parse(text); } catch { return reply({ error: 'not JSON' }, 400); }
+    if (!data || typeof data !== 'object' || Array.isArray(data) || !data.diff) return reply({ error: 'not settings' }, 400);
+    return live.putText('songburner', text);
   }
   if ((m = /^voice\/([^/]+)$/.exec(path)) && VOICE.test(m[1])) {
     if (method === 'GET') return live.takeIds(m[1]);
@@ -560,18 +582,18 @@ async function sbMint(env, email) {
   return payload + '.' + b64url(sig);
 }
 
-/** The email in a valid Song Burner session cookie, or ''. */
+/** The email in a valid Song Burner session cookie and when it was made (seconds), or null. */
 async function sbSession(request, env) {
   const m = /(?:^|;\s*)sb_session=([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)/.exec(request.headers.get('Cookie') || '');
-  if (!m) return '';
+  if (!m) return null;
   try {
     const ok = await crypto.subtle.verify('HMAC', await sbKey(env), b64(m[2]), new TextEncoder().encode(m[1]));
-    if (!ok) return '';
+    if (!ok) return null;
     const body = part(m[1]);
-    if (typeof body.e !== 'string' || !(body.x > Date.now() / 1000)) return '';
-    return body.e;
+    if (typeof body.e !== 'string' || !(body.x > Date.now() / 1000)) return null;
+    return { email: body.e, iat: body.x - SB_DAYS * 86400 };
   } catch (e) {
-    return '';
+    return null;
   }
 }
 function sbCookie(value, maxAge) {
@@ -602,7 +624,7 @@ async function songBurnerSignIn(request, env) {
   return done('ok', sbCookie(await sbMint(env, email), SB_DAYS * 86400));
 }
 
-async function songBurnerApi(request, env, path) {
+async function songBurnerApi(request, env, path, ctx) {
   if (!env.SONGBURNER_AUD || !env.VAULTS) return reply({ error: 'not set up' }, 503);
   const method = request.method;
   if (path === 'signout' && method === 'POST') {
@@ -611,17 +633,34 @@ async function songBurnerApi(request, env, path) {
     return out;
   }
   // The session cookie, or an Access token while /api/songburner/ is still behind Access too.
-  let email = await sbSession(request, env);
-  if (!email) {
-    const who = await accessToken(request, env, env.SONGBURNER_AUD);
-    email = who && typeof who.email === 'string' ? who.email.trim().toLowerCase() : '';
+  let who = await sbSession(request, env);
+  if (!who) {
+    const t = await accessToken(request, env, env.SONGBURNER_AUD);
+    const e = t && typeof t.email === 'string' ? t.email.trim().toLowerCase() : '';
+    who = e ? { email: e, iat: Number(t.iat) || 0 } : null;
   }
-  if (!email) return reply({ error: 'sign in' }, 401);
-  if (path === 'me' && method === 'GET') return reply({ email });
+  if (!who) return reply({ error: 'sign in' }, 401);
+  const email = who.email;
+  const hash = await sha256(email);
+  const vault = env.VAULTS.get(env.VAULTS.idFromName('songburner:' + hash));
+  // Removed from the studio: sessions made before that are over.
+  if (!(await vault.allowed(who.iat))) return reply({ error: 'sign in' }, 401);
+  const later = (p) => { if (ctx) ctx.waitUntil(p.catch(() => {})); };
+  const roster = sbRoster(env);
+  if (path === 'me' && method === 'GET') {
+    later(roster.seen(hash, email));
+    return reply({ email });
+  }
   if (path !== 'library') return reply({ error: 'not found' }, 404);
-  const vault = env.VAULTS.get(env.VAULTS.idFromName('songburner:' + await sha256(email)));
-  if (method === 'GET') return vault.read();
-  if (method === 'DELETE') return vault.clear();
+  if (method === 'GET') {
+    // A tester the roster has no numbers for yet (signed up before it existed) gets them now.
+    later(roster.seen(hash, email).then((fresh) => fresh && vault.stats().then((st) => st && roster.note(hash, email, st))));
+    return vault.read();
+  }
+  if (method === 'DELETE') {
+    later(roster.forget(hash));
+    return vault.clear();
+  }
   if (method === 'PUT') {
     const text = await request.text();
     if (text.length > MAX_LIBRARY) return reply({ error: 'too big' }, 413);
@@ -629,14 +668,73 @@ async function songBurnerApi(request, env, path) {
     try { lib = JSON.parse(text); } catch { return reply({ error: 'bad library' }, 400); }
     if (!lib || typeof lib.tabs !== 'object' || !Array.isArray(lib.order)) return reply({ error: 'bad library' }, 400);
     const base = Number(request.headers.get('If-Match') || '0');
-    return vault.write(text, Number.isFinite(base) ? base : -1);
+    const res = await vault.write(text, Number.isFinite(base) ? base : -1);
+    if (res.ok) later(roster.note(hash, email, libraryStats(lib, text.length)));
+    return res;
   }
   return reply({ error: 'method not allowed' }, 405);
+}
+
+/* THE STUDIO'S VIEW OF THE TESTERS. One more Vault, named 'songburner-roster', keeps a line per
+   tester: their email (so the teacher can tell who is who), when they were first and last seen,
+   and counts worked out from their library at each sync. Never a song title, a lyric or a score:
+   only what it takes to see who is using it and how much.
+
+   GET    /studio/api/songburner/users          { users: [...] }                       (Kyle)
+   DELETE /studio/api/songburner/users/:hash    delete their cloud copy and end their
+                                                sessions; signing in again starts fresh (Kyle) */
+const sbRoster = (env) => env.VAULTS.get(env.VAULTS.idFromName('songburner-roster'));
+const DAY = 86400e3;
+
+async function songBurnerStudio(request, env, path) {
+  const method = request.method;
+  const roster = sbRoster(env);
+  if (path === 'users' && method === 'GET') return reply({ users: await roster.list(), now: Date.now() });
+  const m = /^users\/([0-9a-f]{64})$/.exec(path);
+  if (m && method === 'DELETE') {
+    await env.VAULTS.get(env.VAULTS.idFromName('songburner:' + m[1])).remove();
+    await roster.forget(m[1]);
+    return reply({ ok: true });
+  }
+  return reply({ error: 'not found' }, 404);
+}
+
+/** Counts only, from a library ({ tabs, order }): songs, runs, and runs per day for the last 60 days. */
+export function libraryStats(lib, bytes) {
+  const rows = (name) => {
+    const t = lib && lib.tabs && lib.tabs[name];
+    return Array.isArray(t) ? t : [];
+  };
+  const real = (r) => Array.isArray(r) && r[0] !== '' && r[0] != null;
+  const songs = rows('Songs').slice(1).filter(real).length;
+  const att = rows('Attempts');
+  const iDate = Array.isArray(att[0]) ? att[0].indexOf('date') : -1;
+  const recent = {};
+  let runs = 0, last = 0;
+  const since = Math.floor(Date.now() / DAY) - 60;
+  for (const r of att.slice(1)) {
+    if (!real(r)) continue;
+    runs++;
+    if (iDate < 0) continue;
+    const v = r[iDate];
+    const t = typeof v === 'number' ? v : Date.parse(v);
+    if (!(t > 0)) continue;
+    if (t > last) last = t;
+    const d = Math.floor(t / DAY);
+    if (d >= since) recent[d] = (recent[d] || 0) + 1;
+  }
+  return { songs, runs, lastRun: last, days: recent, bytes: bytes || 0, synced: Date.now() };
 }
 
 const VAULT_CHUNK = 512 * 1024;   // characters per stored value, well under the 2 MB limit
 
 export class Vault extends DurableObject {
+  /** A session made at iat (seconds) may use this library: false once the studio removed it after. */
+  async allowed(iat) {
+    const cut = await this.ctx.storage.get('cut');
+    return !cut || Number(iat) * 1000 > cut;
+  }
+
   async read() {
     const meta = await this.ctx.storage.get('meta');
     if (!meta) return reply({ version: 0, at: 0, library: null });
@@ -663,6 +761,51 @@ export class Vault extends DurableObject {
   async clear() {
     await this.ctx.storage.deleteAll();
     return reply({ ok: true });
+  }
+
+  /** Removed from the studio: the library goes, and so does every session made before now. */
+  async remove() {
+    await this.ctx.storage.deleteAll();
+    await this.ctx.storage.put('cut', Date.now());
+  }
+
+  /** The counts for the roster, from the stored library, or null if there is none. */
+  async stats() {
+    const meta = await this.ctx.storage.get('meta');
+    if (!meta) return null;
+    const parts = await this.ctx.storage.get([...Array(meta.chunks).keys()].map((i) => `lib:${i}`));
+    let text = '';
+    for (let i = 0; i < meta.chunks; i++) text += parts.get(`lib:${i}`) || '';
+    try { return { ...libraryStats(JSON.parse(text), text.length), synced: meta.at }; } catch (e) { return null; }
+  }
+
+  /* Only on the one Vault named 'songburner-roster': a line per tester, keyed by the hash. */
+  async seen(hash, email) {
+    const key = 'u:' + hash;
+    const now = Date.now();
+    const u = (await this.ctx.storage.get(key)) || { first: now };
+    const fresh = !u.synced;
+    u.email = email;
+    u.seen = now;
+    await this.ctx.storage.put(key, u);
+    return fresh;
+  }
+
+  async note(hash, email, st) {
+    const key = 'u:' + hash;
+    const now = Date.now();
+    const u = (await this.ctx.storage.get(key)) || { first: now };
+    Object.assign(u, st, { email, seen: now });
+    await this.ctx.storage.put(key, u);
+  }
+
+  async forget(hash) {
+    await this.ctx.storage.delete('u:' + hash);
+  }
+
+  async list() {
+    const all = await this.ctx.storage.list({ prefix: 'u:' });
+    return [...all].map(([k, u]) => ({ id: k.slice(2), ...u }));
   }
 
   /* Only on the one Vault named 'songburner-signing-key': the key that signs session

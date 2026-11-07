@@ -18,6 +18,22 @@ redeploy, and changing any of it **rescores every song and its whole history**,
 because points are computed from accuracy and mode, never stored. Defaults live
 near the top of `Code.gs`; the live values live in the `Meta` tab.
 
+### Defaults from the studio, and settings stored as changes — beta 1.03
+
+On the website the teacher sets the defaults at `/studio/songburner/`. They are
+published as only what differs from the built-in values, `host.js` hands them to
+the engine as `SONGBURNER_DEFAULTS`, and `defaultSettings()` lays them over the
+built-in ones. Apps Script has none, so there they are just the built-in values.
+
+Your own blob in `Meta` now holds **only what you changed** from those defaults
+(`diff: true`). It used to hold every value, so touching one slider froze all the
+others at that day's defaults and a new default could never reach you. A blob
+from before 1.03 is read once as a diff against the built-in values: anything in
+it that still matched them was never yours. A mix and a range are compared whole.
+
+**Generalise:** store a preference as the change from the default, never as a
+snapshot of every value, or the default stops being able to move.
+
 ### The ladder
 
 Two shelves. **Quizzes** carry the points; **games** are a few points each and

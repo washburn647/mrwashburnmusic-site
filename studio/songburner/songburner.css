@@ -1,0 +1,66 @@
+/* Song Burner in the studio: testers and default settings. */
+h2 { font-weight: 600; font-size: 18px; margin: 0 0 10px; }
+.seg { display: inline-flex; background: #EFE8D6; border-radius: 12px; padding: 3px; gap: 3px; margin-bottom: 16px; }
+.seg button { background: transparent; box-shadow: none; padding: 6px 14px; border-radius: 9px; font-size: 17px; }
+.seg button.on { background: #fff; box-shadow: 0 1px 0 rgba(47,74,58,.12); font-weight: 600; }
+.status { color: #5B6B5F; margin: -6px 0 16px; }
+.status.draft { color: #A8743A; }
+.status.bad { color: #A33B2B; }
+.card { background: #fff; border-radius: 18px; padding: 16px; box-shadow: 0 2px 0 rgba(47,74,58,.08); margin-bottom: 16px; }
+.cards { margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.cards .card { margin: 0; }
+
+.totals { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.total-box { background: #fff; border-radius: 16px; padding: 10px 16px; box-shadow: 0 2px 0 rgba(47,74,58,.08); min-width: 110px; }
+.total-box b { display: block; font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.total-box span { color: #8A968C; font-size: 14px; }
+
+.users { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+.users th { text-align: left; font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8A968C; padding: 0 10px; white-space: nowrap; }
+.users td { background: #fff; padding: 10px; vertical-align: middle; font-variant-numeric: tabular-nums; }
+.users td:first-child { border-radius: 12px 0 0 12px; word-break: break-all; }
+.users td:last-child { border-radius: 0 12px 12px 0; text-align: right; width: 1%; white-space: nowrap; }
+.users .n { text-align: right; }
+.users .quiet { color: #8A968C; }
+@media (max-width: 760px) {
+  .users, .users tbody, .users tr, .users td { display: block; }
+  .users thead { display: none; }
+  .users tr { background: #fff; border-radius: 12px; margin-bottom: 10px; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; }
+  .users td { padding: 4px 6px; background: transparent; border-radius: 0 !important; text-align: left !important; width: auto !important; }
+  .users td:first-child { grid-column: 1 / -1; font-weight: 500; }
+  .users td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #8A968C; }
+}
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #F0EADB; }
+.row:last-child { border-bottom: 0; }
+.row label { flex: 1; }
+.row .unit { color: #8A968C; font-size: 14px; min-width: 1.6em; }
+input[type=number] { width: 72px; box-sizing: border-box; border: 0; border-radius: 10px; padding: 6px 8px; background: #F6F1E4; text-align: right; font-variant-numeric: tabular-nums; }
+input[type=number]:focus, select:focus { outline: 2px solid #2F4A3A; }
+select { font: inherit; color: inherit; border: 0; border-radius: 10px; padding: 6px 8px; background: #F6F1E4; }
+.changed input, .changed select, td.changed input { background: #E5EEDD; box-shadow: inset 0 0 0 1px #5E7D4F; }
+.pair { display: inline-flex; align-items: center; gap: 4px; }
+.pair input { width: 56px; }
+
+.levels { width: 100%; border-collapse: collapse; }
+.levels th { font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8A968C; padding: 4px 6px; text-align: right; }
+.levels th:first-child { text-align: left; }
+.levels td { padding: 5px 6px; border-top: 1px solid #F0EADB; text-align: right; white-space: nowrap; }
+.levels td:first-child { text-align: left; white-space: normal; }
+.levels tr.sub td:first-child { padding-left: 18px; color: #5B6B5F; }
+.game-pick { margin-bottom: 10px; }
+h3 { font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8A968C; margin: 14px 0 2px; }
+.card h2 + h3 { margin-top: 0; }
+@media (max-width: 600px) {
+  .levels, .levels thead, .levels tbody { display: block; }
+  .levels tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #F0EADB; padding: 6px 0; }
+  .levels thead tr { border-top: 0; }
+  .levels th:first-child { display: none; }
+  .levels td { border-top: 0; padding: 3px 2px; text-align: center; }
+  .levels th { text-align: center; }
+  .levels td:first-child { grid-column: 1 / -1; text-align: left; }
+  .levels tr.sub td:first-child { padding-left: 12px; }
+  .levels .pair { gap: 2px; }
+  .levels .pair input[type=number] { width: 40px; padding: 6px 3px; text-align: center; }
+  .levels input[type=number] { width: 60px; }
+}

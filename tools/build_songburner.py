@@ -93,7 +93,10 @@ engine = (
     '%s\n'
     '\n'
     '/* ---- end of Code.gs server half ---- */\n'
-    'return { apiCall: apiCall, setup: setup, BUILD: BUILD };\n'
+    '/* The studio\'s defaults editor (studio/songburner/) reads the settings rules from here. */\n'
+    'return { apiCall: apiCall, setup: setup, BUILD: BUILD,\n'
+    '         settings: { builtIn: builtInSettings, from: settingsFrom, diff: diffSettings,\n'
+    '                     games: GAME_SPEC, quizzes: QUIZ_SPEC, modes: QUIZ_MODES } };\n'
     '};\n'
 ) % (build,
      ''.join('var %s = services.%s;\n' % (s, s) for s in SERVICES) + server.rstrip('\n'))
