@@ -7,6 +7,7 @@
   const HEAR = 0.6;    // MHz either side where it starts to bleed through the static
   const AHEAD = 1.6;   // MHz either side where it starts loading, when "Load nearby stations" is on
   const MAXCH = 3;     // streams open at once
+  const WHEEL_PX = 90; // a tuning wheel moves this many pixels per MHz
   const KEY = 'mwm-radio';
   // Kyle's stations (from his dashboard), at their real FM numbers where they have one.
   const SEED = 2;
@@ -24,7 +25,7 @@
     { name: 'VPR News', freq: 107.9, url: 'https://vpr.streamguys1.com/vpr96.mp3' },
   ];
   const SKINS = { antique: '#3A2617', atomic: '#7FC8BC', eighties: '#14121C', modern: '#F6F1E4' };
-  const OPTS = { shape: 'h', static: 0.7, chatter: true, scanWait: 7, ahead: true };
+  const OPTS = { tuner: 'knob', static: 0.7, chatter: true, scanWait: 7, ahead: true };
 
   const $ = (id) => document.getElementById(id);
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -48,7 +49,8 @@
   if (!SKINS[state.skin]) state.skin = 'antique';
   state.opts = { ...OPTS, ...(state.opts || {}) };
   const opts = state.opts;
-  if (!['h', 'v', 'round'].includes(opts.shape)) opts.shape = 'h';
+  delete opts.shape;
+  if (!['knob', 'across', 'updown'].includes(opts.tuner)) opts.tuner = 'knob';
   let saveTimer = 0;
   function save() {
     clearTimeout(saveTimer);
@@ -63,39 +65,24 @@
   const powerBtn = $('power'), scanBtn = $('scan'), tuneKnob = $('tune'), volKnob = $('vol');
   const bars = [...meter.querySelectorAll('i')];
 
-  // ---------- dial: across, up-down or round ----------
+  // ---------- dial ----------
   const pct = (f) => ((f - LO) / (HI - LO)) * 100;
-  const ARC = 270;                                   // round dial sweep, degrees
-  const ang = (f) => -ARC / 2 + (pct(f) / 100) * ARC;
-  function place(el, f) {
-    if (opts.shape === 'round') { el.style.cssText = ''; el.style.transform = 'rotate(' + ang(f) + 'deg)'; }
-    else if (opts.shape === 'v') { el.style.cssText = ''; el.style.bottom = pct(f) + '%'; }
-    else { el.style.cssText = ''; el.style.left = pct(f) + '%'; }
-  }
   function piece(cls, f, label) {
     const arm = document.createElement('span');
     arm.className = 'arm ' + cls;
+    arm.style.left = pct(f) + '%';
     const t = document.createElement('span');
     t.className = 'pip';
     if (label) {
       const n = document.createElement('b');
       n.textContent = label;
-      if (opts.shape === 'round') n.style.transform = 'rotate(' + (-ang(f)) + 'deg)';
       t.appendChild(n);
     }
     arm.appendChild(t);
-    place(arm, f);
     return arm;
   }
-  function buildScale() {
-    dial.dataset.shape = opts.shape;
-    document.body.dataset.dial = opts.shape;
-    scale.querySelectorAll('.arm').forEach((m) => m.remove());
-    for (let f = 88; f <= 108; f++) scale.appendChild(piece(f % 4 === 0 ? 'tick major' : 'tick', f, f % 4 === 0 ? String(f) : ''));
-    for (let f = 88.5; f < 108; f++) scale.appendChild(piece('tick minor', f));
-    drawMarks();
-    paint();
-  }
+  for (let f = 88; f <= 108; f++) scale.appendChild(piece(f % 4 === 0 ? 'tick major' : 'tick', f, f % 4 === 0 ? String(f) : ''));
+  for (let f = 88.5; f < 108; f++) scale.appendChild(piece('tick minor', f));
   function drawMarks() {
     scale.querySelectorAll('.mark').forEach((m) => m.remove());
     for (const s of state.stations) scale.appendChild(piece('mark', s.freq));
@@ -368,7 +355,8 @@
   }
   function paint() {
     const f = state.freq;
-    place(needle, f);
+    needle.style.left = pct(f) + '%';
+    tuneKnob.style.setProperty('--off', ((f - LO) * WHEEL_PX).toFixed(1) + 'px');
     tuneKnob.style.setProperty('--a', ((f - LO) * 120) + 'deg');
     tuneKnob.setAttribute('aria-valuenow', fmt(f));
     tuneKnob.setAttribute('aria-valuetext', fmt(f) + ' FM');
@@ -448,9 +436,13 @@
   function userTouch() { stopGlide(); if (scanning) setScan(false); }
 
   // ---------- knobs ----------
-  function knob(el, onTurn, onKey, onEnd) {
+  // A knob turns; a wheel (across or up and down) is pushed along like a thumbwheel.
+  function knob(el, onTurn, onKey, onEnd, axis) {
     let last = null;
     const angle = (e) => {
+      const ax = axis && axis();
+      if (ax === 'x') return e.clientX * 120 / WHEEL_PX;
+      if (ax === 'y') return -e.clientY * 120 / WHEEL_PX;
       const r = el.getBoundingClientRect();
       return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
     };
@@ -464,8 +456,10 @@
       if (last == null) return;
       const a = angle(e);
       let d = a - last;
-      if (d > 180) d -= 360;
-      if (d < -180) d += 360;
+      if (!(axis && axis())) {
+        if (d > 180) d -= 360;
+        if (d < -180) d += 360;
+      }
       last = a;
       onTurn(d);
     });
@@ -496,7 +490,13 @@
       clearTimeout(wheelSnap);
       wheelSnap = setTimeout(snap, 400);
     },
-    snap);
+    snap,
+    () => (opts.tuner === 'across' ? 'x' : opts.tuner === 'updown' ? 'y' : null));
+  function setTuner() {
+    document.body.dataset.tuner = opts.tuner;
+    tuneKnob.classList.toggle('wheel', opts.tuner !== 'knob');
+    tuneKnob.setAttribute('aria-orientation', opts.tuner === 'updown' ? 'vertical' : 'horizontal');
+  }
   function setVol(v) {
     state.vol = clamp(v, 0, 1);
     if (master) master.gain.setTargetAtTime(state.vol * state.vol, ctx.currentTime, 0.02);
@@ -506,20 +506,11 @@
     (d) => setVol(state.vol + d / 270),
     (dir, big) => setVol(state.vol + dir * (big ? 0.2 : 0.05)));
 
-  // drag along (or around) the dial itself
+  // drag along the dial itself
   let dialDrag = false;
   const dialFreq = (e) => {
     const r = scale.getBoundingClientRect();
-    let k;
-    if (opts.shape === 'round') {
-      const a = Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180 / Math.PI;
-      k = (clamp(a, -ARC / 2, ARC / 2) + ARC / 2) / ARC;
-    } else if (opts.shape === 'v') {
-      k = (r.bottom - e.clientY) / r.height;
-    } else {
-      k = (e.clientX - r.left) / r.width;
-    }
-    return LO + clamp(k, 0, 1) * (HI - LO);
+    return LO + clamp((e.clientX - r.left) / r.width, 0, 1) * (HI - LO);
   };
   dial.addEventListener('pointerdown', (e) => {
     dialDrag = true; userTouch();
@@ -613,7 +604,7 @@
       const v = b.dataset.v;
       opts[k] = v === 'true' ? true : v === 'false' ? false : isNaN(+v) ? v : +v;
       save(); paintOpts();
-      if (k === 'shape') buildScale();
+      if (k === 'tuner') setTuner();
       engine();
     });
   }
@@ -720,6 +711,8 @@
 
   // ---------- start ----------
   setSkin(state.skin);
-  buildScale();
+  drawMarks();
+  setTuner();
+  paint();
   paintSignal();
 })();
