@@ -99,55 +99,14 @@ main { width: min(740px, 100%); }
   pointer-events: none;
 }
 
-/* across */
-.dial[data-shape="h"] .scale { inset: 0 22px; }
-.dial[data-shape="h"] .arm { top: 0; bottom: 0; width: 0; }
-.dial[data-shape="h"] .tick .pip { bottom: 22%; left: -1px; width: 2px; height: 22%; }
-.dial[data-shape="h"] .tick.minor .pip { height: 11%; }
-.dial[data-shape="h"] .tick.major .pip { height: 30%; }
-.dial[data-shape="h"] .pip b { bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); }
-.dial[data-shape="h"] .mark .pip { bottom: 9%; left: -3.5px; }
-.dial[data-shape="h"] .needle { top: 8%; bottom: 6%; width: 3px; margin-left: -1.5px; }
-
-/* up and down */
-.dial[data-shape="v"] { cursor: ns-resize; min-height: 240px; min-width: 96px; }
-.dial[data-shape="v"] .scale { inset: 20px 0; }
-.dial[data-shape="v"] .arm { left: 0; right: 0; height: 0; }
-.dial[data-shape="v"] .tick .pip { left: 26%; top: -1px; height: 2px; width: 13%; }
-.dial[data-shape="v"] .tick.minor .pip { width: 7%; }
-.dial[data-shape="v"] .tick.major .pip { width: 20%; }
-.dial[data-shape="v"] .pip b { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); font-size: calc(var(--num-size, 17px) * .9); }
-.dial[data-shape="v"] .mark .pip { left: 12%; top: -3.5px; }
-.dial[data-shape="v"] .needle { left: 7%; right: 7%; height: 3px; margin-bottom: -1.5px; }
-
-/* round */
-.dial[data-shape="round"] {
-  cursor: grab;
-  justify-self: center;
-  width: min(var(--round, 230px), 100%);
-  aspect-ratio: 1;
-  min-height: 0;
-  border-radius: 50%;
-}
-.dial[data-shape="round"] .scale { inset: 8px; border-radius: 50%; }
-.dial[data-shape="round"] .arm { inset: 0; }
-.dial[data-shape="round"] .tick .pip { left: 50%; top: 5%; width: 2px; margin-left: -1px; height: 6%; }
-.dial[data-shape="round"] .tick.minor .pip { height: 3.5%; }
-.dial[data-shape="round"] .tick.major .pip { height: 9%; }
-.dial[data-shape="round"] .pip b { top: calc(100% + 6px); left: 50%; width: 2.4em; margin-left: -1.2em; text-align: center; font-size: calc(var(--num-size, 17px) * .85); }
-.dial[data-shape="round"] .mark .pip { left: 50%; margin-left: -3.5px; top: 1%; }
-.dial[data-shape="round"] .needle { left: 50%; top: 9%; bottom: 50%; width: 3px; margin-left: -1.5px; transform-origin: 50% 100%; }
-.dial[data-shape="round"] .scale::after {
-  content: "";
-  position: absolute;
-  left: 50%; top: 50%;
-  width: 18px; height: 18px;
-  margin: -9px 0 0 -9px;
-  border-radius: 50%;
-  background: var(--hub, var(--needle));
-  box-shadow: 0 1px 3px rgba(0,0,0,.4);
-  z-index: 2;
-}
+.dial .scale { inset: 0 22px; }
+.dial .arm { top: 0; bottom: 0; width: 0; }
+.dial .tick .pip { bottom: 22%; left: -1px; width: 2px; height: 22%; }
+.dial .tick.minor .pip { height: 11%; }
+.dial .tick.major .pip { height: 30%; }
+.dial .pip b { bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); }
+.dial .mark .pip { bottom: 9%; left: -3.5px; }
+.dial .needle { top: 8%; bottom: 6%; width: 3px; margin-left: -1.5px; }
 
 /* ---------- readout ---------- */
 .readout {
@@ -298,6 +257,31 @@ main { width: min(740px, 100%); }
   outline: 3px solid var(--focus, #D9B26F);
 }
 
+/* tuning wheel: a ridged drum set into the case, seen edge on; the ridges roll as you push it */
+.knob.wheel {
+  --wheel-w: 150px;
+  --wheel-h: 46px;
+  width: var(--wheel-w);
+  height: var(--wheel-h);
+  border-radius: 8px;
+  cursor: ew-resize;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.72), rgba(0,0,0,.15) 22%, rgba(255,255,255,.18) 50%, rgba(0,0,0,.15) 78%, rgba(0,0,0,.72)),
+    repeating-linear-gradient(90deg, var(--wheel-a, #2A170B) 0 3px, var(--wheel-b, #6B4A33) 3px 9px)
+      calc(var(--off, 0px) * -1) 0 / 9px 100%;
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), 0 0 0 4px var(--slot, rgba(0,0,0,.35)), 0 0 0 6px var(--slot-rim, rgba(255,255,255,.12));
+}
+[data-tuner="updown"] .knob.wheel {
+  width: var(--wheel-h);
+  height: calc(var(--wheel-w) * .8);
+  cursor: ns-resize;
+  background:
+    linear-gradient(0deg, rgba(0,0,0,.72), rgba(0,0,0,.15) 22%, rgba(255,255,255,.18) 50%, rgba(0,0,0,.15) 78%, rgba(0,0,0,.72)),
+    repeating-linear-gradient(0deg, var(--wheel-a, #2A170B) 0 3px, var(--wheel-b, #6B4A33) 3px 9px)
+      0 var(--off, 0px) / 100% 9px;
+}
+.knob.wheel .cap, .knob.wheel::after { display: none; }
+
 /* ---------- under the set ---------- */
 .under {
   display: flex;
@@ -440,7 +424,6 @@ body[data-skin="antique"] {
   --num-font: Georgia, "Times New Roman", serif;
   --needle: #7A1A0E;
   --markc: #7A1A0E;
-  --hub: radial-gradient(circle at 35% 30%, #F2D489, #9C6B24);
   --read-ink: #F3DFB6;
   --read-font: Georgia, "Times New Roman", serif;
   --freq-size: 0px;
@@ -459,6 +442,10 @@ body[data-skin="antique"] {
   --knob-turn: repeating-conic-gradient(rgba(0,0,0,.4) 0 5deg, rgba(255,220,180,.05) 5deg 15deg);
   --knob-shadow: 0 6px 0 #241206, 0 10px 18px rgba(0,0,0,.5), inset 0 0 0 4px #3A2414, inset 0 0 0 6px rgba(201,162,87,.5);
   --ind: #E9C98A;
+  --wheel-a: #1E1008;
+  --wheel-b: #6A4630;
+  --slot: #3A1E0A;
+  --slot-rim: rgba(214,160,92,.5);
   --lbl: #F0D9A8;
   --pill-bg: #5A3216;
   --pill-ink: #F3E3C0;
@@ -470,14 +457,7 @@ body[data-skin="antique"] {
   grid-template-columns: 1fr auto;
   grid-template-areas: "spk spk" "dial dial" "read meter" "ctl ctl";
 }
-[data-skin="antique"][data-dial="v"] .radio {
-  grid-template-columns: 1fr 112px;
-  grid-template-areas: "spk dial" "read meter" "ctl ctl";
-}
-[data-skin="antique"][data-dial="v"] .dial,
-[data-skin="antique"][data-dial="round"] .dial { --dial-r: 18px; }
-[data-skin="antique"][data-dial="round"] .dial { border-radius: 50%; }
-[data-skin="antique"] .dial[data-shape="h"] .scale { inset: 0 68px; }
+[data-skin="antique"] .dial .scale { inset: 0 68px; }
 [data-skin="antique"] .spk {
   height: 190px;
   border-radius: 48% 48% 10px 10px / 60% 60% 10px 10px;
@@ -490,7 +470,6 @@ body[data-skin="antique"] {
     linear-gradient(#C9B07A, #B49660);
   box-shadow: inset 0 0 0 6px #5A3216, inset 0 0 0 8px rgba(214,160,92,.45), inset 0 10px 26px rgba(0,0,0,.5);
 }
-[data-skin="antique"][data-dial="v"] .spk { height: auto; min-height: 210px; }
 [data-skin="antique"] .readout { justify-content: center; text-shadow: 0 1px 0 rgba(0,0,0,.5); }
 [data-skin="antique"] .name:empty::before { content: "\00a0"; }
 [data-skin="antique"] .meter {
@@ -535,7 +514,6 @@ body[data-skin="atomic"] {
   --num: #23423D;
   --needle: #E0452B;
   --markc: #E0452B;
-  --hub: radial-gradient(circle at 35% 30%, #fff, #A9AFAE);
   --read-ink: #23423D;
   --freq-size: 26px;
   --name-size: 18px;
@@ -554,6 +532,10 @@ body[data-skin="atomic"] {
   --knob-light: radial-gradient(circle at 34% 28%, rgba(255,255,255,.9), transparent 45%);
   --knob-shadow: 0 5px 0 #8E9694, 0 9px 16px rgba(0,0,0,.25), inset 0 0 0 3px rgba(255,255,255,.6);
   --ind: #E0452B;
+  --wheel-a: #8F9795;
+  --wheel-b: #F4F4F0;
+  --slot: #4E8F84;
+  --slot-rim: #E9E9E4;
   --lbl: #23423D;
   --pill-bg: #E0452B;
   --pill-ink: #FFF8EA;
@@ -565,12 +547,6 @@ body[data-skin="atomic"] {
   grid-template-columns: 34% 1fr auto;
   grid-template-areas: "spk dial dial" "spk read meter" "ctl ctl ctl";
 }
-[data-skin="atomic"][data-dial="v"] .radio {
-  grid-template-columns: 34% 1fr 100px;
-  grid-template-areas: "spk read dial" "spk meter dial" "ctl ctl ctl";
-}
-[data-skin="atomic"][data-dial="v"] .meter { justify-content: flex-start; }
-[data-skin="atomic"][data-dial="round"] .dial { --round: 210px; }
 [data-skin="atomic"] .spk {
   border-radius: 26px;
   min-height: 150px;
@@ -619,7 +595,6 @@ body[data-skin="eighties"] {
   --needle: #FF2E5B;
   --needle-glow: 0 0 8px #FF2E5B;
   --markc: #40E0FF;
-  --hub: #2A2A30;
   --read-bg: radial-gradient(ellipse at 50% 0%, rgba(106,247,240,.12), transparent 70%), #0A2324;
   --read-shadow: inset 0 2px 6px rgba(0,0,0,.8), 0 0 0 2px #2E2E34;
   --read-r: 6px;
@@ -650,6 +625,10 @@ body[data-skin="eighties"] {
   --ind: #FF2E5B;
   --ind-w: 6px;
   --ind-h: 22%;
+  --wheel-a: #5E5E66;
+  --wheel-b: #D4D4DA;
+  --slot: #0C0C0E;
+  --slot-rim: #4A4A52;
   --lbl: #A9A9B6;
   --pill-bg: linear-gradient(90deg, #FF40C8, #8A5CFF);
   --pill-ink: #fff;
@@ -662,12 +641,6 @@ body[data-skin="eighties"] {
   grid-template-columns: 1fr 1.5fr 1fr;
   grid-template-areas: "spk dial spkr" "spk read spkr" "spk meter spkr" "ctl ctl ctl";
 }
-[data-skin="eighties"][data-dial="v"] .radio {
-  grid-template-columns: 1fr 90px 1.2fr 1fr;
-  grid-template-areas: "spk dial read spkr" "spk dial meter spkr" "ctl ctl ctl ctl";
-}
-[data-skin="eighties"][data-dial="v"] .readout { align-self: end; }
-[data-skin="eighties"][data-dial="round"] .dial { --round: 170px; }
 [data-skin="eighties"] .spk-r { display: block; grid-area: spkr; }
 [data-skin="eighties"] .spk {
   align-self: center;
@@ -711,7 +684,6 @@ body[data-skin="modern"] {
   --num-size: 14px;
   --needle: #2F4A3A;
   --markc: #D9B26F;
-  --hub: #2F4A3A;
   --freq-size: 64px;
   --name-size: 20px;
   --bar-off: #E8E0CC;
@@ -733,6 +705,10 @@ body[data-skin="modern"] {
   --ind: #2F4A3A;
   --ind-w: 8px;
   --ind-h: 8px;
+  --wheel-a: #C9BFA6;
+  --wheel-b: #F6F1E4;
+  --slot: #E3DAC4;
+  --slot-rim: transparent;
   --lbl: #5B6B5F;
   --pill-bg: #2F4A3A;
   --pill-ink: #F6F1E4;
@@ -745,12 +721,6 @@ body[data-skin="modern"] {
   grid-template-areas: "spk read" "spk dial" "meter meter" "ctl ctl";
   column-gap: 28px;
 }
-[data-skin="modern"][data-dial="v"] .radio {
-  grid-template-columns: 38% 1fr 90px;
-  grid-template-areas: "spk read dial" "spk meter dial" "ctl ctl ctl";
-}
-[data-skin="modern"][data-dial="v"] .meter { align-self: start; }
-[data-skin="modern"][data-dial="round"] .dial { --round: 220px; background: #F6F1E4; }
 [data-skin="modern"] .spk {
   min-height: 170px;
   border-radius: 18px;
@@ -781,19 +751,14 @@ body[data-skin="modern"] {
   body { padding-top: 64px; align-items: flex-start; }
   .controls { justify-content: center; }
   .keys { order: 3; width: 100%; justify-content: center; }
-  .dial[data-shape="h"] .scale { inset: 0 14px; }
+  .dial .scale { inset: 0 14px; }
   body .radio { grid-template-columns: 1fr auto; grid-template-areas: "spk spk" "dial dial" "read meter" "ctl ctl"; }
-  body[data-dial="v"] .radio { grid-template-columns: 1fr 100px; grid-template-areas: "spk dial" "read dial" "meter dial" "ctl ctl"; }
-  body[data-dial="v"] .meter { justify-self: start; }
   [data-skin="antique"] .radio { --pad: 46px 20px 24px; }
   [data-skin="antique"] .spk { height: 120px; }
-  [data-skin="antique"][data-dial="v"] .spk { min-height: 150px; }
   [data-skin="atomic"] .spk { min-height: 90px; }
   [data-skin="eighties"] .radio { grid-template-columns: 1fr 1fr; grid-template-areas: "spk spkr" "dial dial" "read read" "meter meter" "ctl ctl"; }
-  [data-skin="eighties"][data-dial="v"] .radio { grid-template-columns: 1fr 96px; grid-template-areas: "spk dial" "spkr dial" "read read" "meter meter" "ctl ctl"; }
   [data-skin="eighties"] .spk { width: 78%; justify-self: center; }
   [data-skin="modern"] .radio { --freq-size: 52px; grid-template-columns: 1fr; grid-template-areas: "spk" "read" "dial" "meter" "ctl"; }
-  [data-skin="modern"][data-dial="v"] .radio { grid-template-columns: 1fr 96px; grid-template-areas: "spk dial" "read dial" "meter dial" "ctl ctl"; }
   [data-skin="modern"] .spk { min-height: 70px; }
   #stations li { grid-template-columns: 36px 76px 1fr 36px; }
 }
