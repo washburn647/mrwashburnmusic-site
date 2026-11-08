@@ -37,7 +37,7 @@
         </div>
         <div class="keys">
           <button class="key" id="down" aria-label="Previous station">◀◀</button>
-          <button class="key" id="scan" aria-pressed="false">Scan</button>
+          <button class="key scan" id="scan" aria-pressed="false"><span>Scan</span></button>
           <button class="key" id="up" aria-label="Next station">▶▶</button>
         </div>
         <div class="knob-wrap">
@@ -48,7 +48,10 @@
     </div>
 
     <div class="under">
-      <button class="pill" id="open">Stations</button>
+      <div class="pills">
+        <button class="pill" id="open">Stations</button>
+        <button class="pill" id="openOpts">Options</button>
+      </div>
       <div class="skins" role="radiogroup" aria-label="Look">
         <button role="radio" data-skin="antique" aria-checked="true">Old-time</button>
         <button role="radio" data-skin="atomic" aria-checked="false">’50s</button>
@@ -57,6 +60,35 @@
       </div>
     </div>
   </main>
+
+  <dialog id="opts">
+    <div class="sheet">
+      <header>
+        <h2>Options</h2>
+        <button class="x" id="closeOpts" aria-label="Close">✕</button>
+      </header>
+      <div class="opt">
+        <span>Dial</span>
+        <div class="seg" data-opt="shape"><button data-v="h">Across</button><button data-v="v">Up and down</button><button data-v="round">Round</button></div>
+      </div>
+      <label class="opt">
+        <span>Static</span>
+        <input type="range" data-opt="static" min="0" max="1" step="0.05">
+      </label>
+      <div class="opt">
+        <span>Radio chatter</span>
+        <div class="seg" data-opt="chatter"><button data-v="false">Off</button><button data-v="true">On</button></div>
+      </div>
+      <div class="opt">
+        <span>Scan stops for</span>
+        <div class="seg" data-opt="scanWait"><button data-v="4">4 s</button><button data-v="7">7 s</button><button data-v="15">15 s</button></div>
+      </div>
+      <div class="opt">
+        <span>Load nearby stations</span>
+        <div class="seg" data-opt="ahead"><button data-v="false">Off</button><button data-v="true">On</button></div>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="list">
     <div class="sheet">
