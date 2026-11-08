@@ -678,6 +678,45 @@
     });
   }
 
+  /* THE DASHBOARD FEED. After each sync, where every song stands right now goes up
+     too (title, artist, score, heat and rate; never a lyric), for a dashboard that
+     shows the Fridge and the Counter from outside the app. The Worker keeps it only
+     while the tester has turned the feed on (/api/songburner/dashboard, see
+     worker/index.js), and walks it forward night by night until the next one. A
+     tester who has not turned it on is asked again an hour later at the soonest. */
+  var DASH_OFF = 'sb-dash-off';
+  function pushDashboard() {
+    try {
+      var off = Number(localStorage.getItem(DASH_OFF) || 0);
+      if (off && Date.now() - off < 3600e3) return;
+    } catch (e) {}
+    var at = Date.now();
+    run(JSON.stringify({ action: 'init' })).then(function (out) {
+      var r = JSON.parse(out);
+      if (!r.ok) return null;
+      var d = r.data;
+      var songs = (d.songs || []).filter(function (s) {
+        return s.attempts && s.score !== null && s.score !== undefined;
+      }).map(function (s) {
+        return { id: s.id, title: s.title, artist: s.artist, score: s.score, hot: !!s.hot,
+                 hotDays: s.hotDays || 0, coldRate: s.coldRate || 0, daysSince: s.daysSince };
+      });
+      return api('dashboard', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ at: at, tz: new Date(at).getTimezoneOffset(), build: d.build,
+                               y: d.settings ? d.settings.decay : 0, songs: songs })
+      });
+    }).then(function (res) {
+      return res && res.ok ? res.json() : null;
+    }).then(function (j) {
+      try {
+        if (j && j.on) localStorage.removeItem(DASH_OFF);
+        else if (j) localStorage.setItem(DASH_OFF, String(Date.now()));
+      } catch (e) {}
+    }).catch(function () {});
+  }
+
   function emit(detail) {
     try { window.dispatchEvent(new CustomEvent('songburner:sync', { detail: detail })); } catch (e) {}
   }
@@ -689,6 +728,7 @@
     syncing = ready.then(function () { return syncOnce(0); }).then(function (r) {
       syncing = null;
       emit({ state: 'done', changed: r.changed, at: r.at });
+      pushDashboard();
       if (syncAgain) { syncAgain = false; syncNow(); }
       return r;
     }, function (e) {
