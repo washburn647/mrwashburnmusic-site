@@ -2,8 +2,8 @@
 
   python tools/pull_live.py [https://mrwashburnmusic.com]
 
-Groove Lab's, the game workshop's and the voice recorder's "Publish to site" put grooves,
-game options, voice takes and units
+Groove Lab's, the game workshop's, the voice recorder's and the radio editor's "Publish to
+site" put grooves, game options, voice takes, units and radio stations
 on the live site (/api/live/, see worker/index.js), and the site plays those ahead of the
 repo's files. This brings the repo up to date with them, so a later change starts from what
 is live and the repo stays a full copy:
@@ -11,6 +11,7 @@ is live and the repo stays a full copy:
   - game options → musician-maker/games.json (checked by tools/add_games.py)
   - each voice's takes → assets/sounds/voice/<voice>/<take id>.mp3, listed in index.json
   - units → assets/patterns/units.json
+  - radio stations → radio/stations.json
 Anything not published is left as it is.
 """
 
@@ -55,6 +56,15 @@ def main():
             subprocess.run([sys.executable, os.path.join(ROOT, 'tools', tool), f.name], check=True)
         finally:
             os.unlink(f.name)
+
+    radio = get(base, '/api/live/radio.json')
+    if radio:
+        with open(os.path.join(ROOT, 'radio', 'stations.json'), 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(json.loads(radio), f, indent=1, ensure_ascii=False)
+            f.write('\n')
+        print('radio: radio/stations.json')
+    else:
+        print('radio: none published')
 
     units = get(base, '/api/live/units.json')
     if units:

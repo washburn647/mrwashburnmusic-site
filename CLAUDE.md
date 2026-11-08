@@ -13,11 +13,11 @@ Pull requests get a Cloudflare preview build (`npx wrangler preview`).
 
 ## Publishing from the studio
 
-Groove Lab, the game workshop and the voice recorder have "Publish to site": Kyle's grooves,
-game options, voice takes and units go straight to the live site (`/api/live/`, a Durable
-Object in `worker/index.js`), and the site reads them ahead of the repo's files. So the repo's
-`musician-maker/grooves.json`, `games.json`, `assets/patterns/units.json` and voice takes can be
-behind: run `python tools/pull_live.py` first when a change touches them, and commit what it
+Groove Lab, the game workshop, the voice recorder and the radio stations page have "Publish to
+site": Kyle's grooves, game options, voice takes, units and radio stations go straight to the live
+site (`/api/live/`, a Durable Object in `worker/index.js`), and the site reads them ahead of the
+repo's files. So the repo's `musician-maker/grooves.json`, `games.json`,
+`assets/patterns/units.json`, `radio/stations.json` and voice takes can be behind: run `python tools/pull_live.py` first when a change touches them, and commit what it
 pulls.
 
 ## Song Burner (`songburner/`)

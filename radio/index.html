@@ -98,24 +98,30 @@
       </header>
       <ul id="stations"></ul>
 
-      <form id="add" autocomplete="off">
-        <h3>Add a station</h3>
-        <label>Name <input name="name" maxlength="40"></label>
-        <label>Link <input name="url" type="url" required placeholder="https://"></label>
-        <label class="short">Frequency <input name="freq" type="number" min="87.5" max="108" step="0.1" placeholder="auto"></label>
-        <button class="pill" type="submit">Add</button>
-        <p class="err" id="err" role="alert"></p>
-      </form>
+      <h3 class="lib-h">Add stations</h3>
+      <div class="chips" id="genres"></div>
+      <ul id="library"></ul>
 
-      <details>
-        <summary>Finding a station’s link</summary>
-        <ol>
-          <li>On the station’s website, look for <b>Listen in other apps</b>, <b>Stream URL</b> or <b>Direct link</b>. Right-click it and choose <b>Copy link</b>.</li>
-          <li>If the link ends in <b>.pls</b> or <b>.m3u</b>, download that file, open it in a text editor, and copy the line that starts with https://.</li>
-          <li>Still stuck? Play the station on its website, press F12, open <b>Network</b>, choose <b>Media</b>, and copy the address that appears.</li>
-          <li><b>radio-browser.info</b> lists stream links for thousands of stations.</li>
-        </ol>
-        <p>The link should start with https://.</p>
+      <details class="own">
+        <summary>Add your own link</summary>
+        <form id="add" autocomplete="off">
+          <label>Name <input name="name" maxlength="40"></label>
+          <label>Link <input name="url" type="url" required placeholder="https://"></label>
+          <label class="short">Frequency <input name="freq" type="number" min="87.5" max="108" step="0.1" placeholder="auto"></label>
+          <button class="pill" type="submit">Add</button>
+          <p class="err" id="err" role="alert"></p>
+        </form>
+
+        <details>
+          <summary>Finding a station’s link</summary>
+          <ol>
+            <li>On the station’s website, look for <b>Listen in other apps</b>, <b>Stream URL</b> or <b>Direct link</b>. Right-click it and choose <b>Copy link</b>.</li>
+            <li>If the link ends in <b>.pls</b> or <b>.m3u</b>, download that file, open it in a text editor, and copy the line that starts with https://.</li>
+            <li>Still stuck? Play the station on its website, press F12, open <b>Network</b>, choose <b>Media</b>, and copy the address that appears.</li>
+            <li><b>radio-browser.info</b> lists stream links for thousands of stations.</li>
+          </ol>
+          <p>The link should start with https://.</p>
+        </details>
       </details>
     </div>
   </dialog>

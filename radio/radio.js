@@ -9,21 +9,6 @@
   const MAXCH = 3;     // streams open at once
   const WHEEL_PX = 90; // a tuning wheel moves this many pixels per MHz
   const KEY = 'mwm-radio';
-  // Kyle's stations (from his dashboard), at their real FM numbers where they have one.
-  const SEED = 2;
-  const DEFAULTS = [
-    { name: 'Groove Salad', freq: 88.5, url: 'https://ice2.somafm.com/groovesalad-128-mp3' },
-    { name: 'WGDR', freq: 91.1, url: 'https://wgdr.broadcasttool.stream/wgdr_128' },
-    { name: 'Black Sheep', freq: 91.5, url: 'https://wool.broadcasttool.stream/stream' },
-    { name: 'VPR Jazz', freq: 93.3, url: 'https://vprjazz.streamguys1.com/vprjazz64.aac' },
-    { name: 'WDEV', freq: 96.1, url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WDEVFM.mp3' },
-    { name: 'Royalton', freq: 96.5, url: 'https://royaltonradio.streamguys1.com/live' },
-    { name: 'VPR Classical', freq: 99.3, url: 'https://vprclassical.streamguys1.com/vprclassical128.mp3' },
-    { name: 'Classic Hits', freq: 101.7, url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WCVTFM.mp3' },
-    { name: 'WXGR', freq: 103.5, url: 'https://sh.fl-us.audio-stream.com/proxy/seacoast?mp=/stream' },
-    { name: 'BBC World Service', freq: 105.3, url: 'https://vprbbc.streamguys1.com/vprbbc24.mp3' },
-    { name: 'VPR News', freq: 107.9, url: 'https://vpr.streamguys1.com/vpr96.mp3' },
-  ];
   const SKINS = { antique: '#3A2617', atomic: '#7FC8BC', eighties: '#14121C', modern: '#F6F1E4' };
   const OPTS = { tuner: 'knob', static: 0.7, chatter: true, scanWait: 7, ahead: true };
 
@@ -36,14 +21,11 @@
   // ---------- saved state ----------
   let state = null;
   try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { /* private window */ }
-  const seeded = () => DEFAULTS.map((s, i) => ({ id: 's' + SEED + '-' + i, ...s }));
-  if (!state || !Array.isArray(state.stations)) {
-    state = { stations: seeded(), skin: 'antique', freq: 99.3, vol: 0.6, seed: SEED };
-  } else if ((state.seed || 1) < SEED) {
-    // new built-in stations replace the old built-in ones; the listener's own stay
-    state.stations = seeded().concat(state.stations.filter((s) => String(s.id).startsWith('u')));
-    state.seed = SEED;
-  }
+  // The station library (Kyle's picks and the rest, by genre) comes from stations.json, or
+  // what Kyle published from the studio. A dial entry from the library carries its id in "cat".
+  if (!state || !Array.isArray(state.stations)) state = { stations: [], skin: 'antique', freq: 99.3, vol: 0.6 };
+  if ((state.seed || 1) < 2) state.stations = state.stations.filter((s) => String(s.id).startsWith('u'));
+  state.seed = 3;
   state.freq = clamp(+state.freq || 99.3, LO, HI);
   state.vol = clamp(state.vol == null ? 0.6 : +state.vol, 0, 1);
   if (!SKINS[state.skin]) state.skin = 'antique';
@@ -611,9 +593,105 @@
 
   // ---------- station list ----------
   const dlg = $('list'), ul = $('stations'), form = $('add'), err = $('err');
-  $('open').addEventListener('click', () => { renderList(); dlg.showModal(); });
+  $('open').addEventListener('click', () => { renderList(); renderLibrary(); dlg.showModal(); });
   $('close').addEventListener('click', () => dlg.close());
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+
+  // ---------- library ----------
+  let catalog = null;
+  const libUl = $('library'), chips = $('genres');
+  const PICKS = 'picks';
+  const onDial = (id) => state.stations.find((d) => d.cat === id);
+  // a spot at least `gap` MHz from every other station, as near to f as there is
+  function freeNear(f, gap) {
+    const taken = (x) => state.stations.some((s) => Math.abs(s.freq - x) < gap);
+    if (f && !taken(f)) return r1(f);
+    const start = f || 98;
+    for (let k = 1; k < 120; k++) {
+      for (const x of [start + k * 0.2, start - k * 0.2]) if (x > LO + 0.3 && x < HI - 0.1 && !taken(x)) return r1(x);
+    }
+    return r1(start);
+  }
+  // Kyle's picks keep the spot he gave them unless it is taken; the rest keep clear of their neighbours
+  function addFromCat(s, pick) {
+    const d = { id: 'c:' + s.id, cat: s.id, name: s.name, url: s.url, freq: s.freq ? freeNear(s.freq, pick ? 0.15 : 0.35) : autoFreq(s.url) };
+    state.stations.push(d);
+    return d;
+  }
+  function syncCatalog(c) {
+    catalog = c;
+    const byId = new Map(c.stations.map((s) => [s.id, s]));
+    const byUrl = new Map(c.stations.map((s) => [s.url, s]));
+    for (const d of state.stations) {
+      if (!d.cat && byUrl.has(d.url)) d.cat = byUrl.get(d.url).id;      // dials from before the library
+      if (d.cat && byId.has(d.cat)) d.url = byId.get(d.cat).url;        // links Kyle fixes reach every dial
+    }
+    // each of Kyle's picks lands on the dial once; one taken off stays off
+    const first = !Array.isArray(state.seen);
+    const seen = new Set(state.seen || []);
+    if (first) state.stations.forEach((d) => { if (d.cat) seen.add(d.cat); });
+    for (const id of c.picks) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const s = byId.get(id);
+      if (s && !onDial(id)) addFromCat(s, true);
+    }
+    state.seen = [...seen];
+    changed();
+  }
+  async function loadCatalog() {
+    const get = async (u) => {
+      const r = await fetch(u, { cache: 'no-cache', credentials: 'omit' });
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      if (!j || !Array.isArray(j.stations) || !Array.isArray(j.picks)) throw new Error('shape');
+      return j;
+    };
+    let c = null;
+    try { c = await get('/api/live/radio.json'); } catch (e) {
+      try { c = await get('stations.json'); } catch (x) { /* offline: keep the dial as it is */ }
+    }
+    if (c) syncCatalog(c);
+  }
+  function renderLibrary() {
+    if (!catalog) { libUl.textContent = ''; chips.textContent = ''; return; }
+    const tabs = [[PICKS, 'Kyle’s picks'], ...(catalog.genres || []).map((g) => [g, g])];
+    if (!tabs.some(([k]) => k === state.lib)) state.lib = PICKS;
+    chips.textContent = '';
+    for (const [k, label] of tabs) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label;
+      b.setAttribute('aria-pressed', String(k === state.lib));
+      b.addEventListener('click', () => { state.lib = k; save(); renderLibrary(); });
+      chips.appendChild(b);
+    }
+    const byId = new Map(catalog.stations.map((s) => [s.id, s]));
+    const list = state.lib === PICKS
+      ? catalog.picks.map((id) => byId.get(id)).filter(Boolean)
+      : catalog.stations.filter((s) => s.genre === state.lib);
+    libUl.textContent = '';
+    for (const s of list) {
+      const li = document.createElement('li');
+      const there = onDial(s.id);
+      const info = document.createElement('div');
+      const b = document.createElement('b'); b.textContent = s.name;
+      const sm = document.createElement('small');
+      sm.textContent = [there ? fmt(there.freq) : s.freq ? fmt(s.freq) : '', s.where].filter(Boolean).join(' · ');
+      info.append(b, sm);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = there ? 'have' : 'plus';
+      btn.textContent = there ? '✓' : '+';
+      btn.setAttribute('aria-label', (there ? 'Tune to ' : 'Add ') + s.name);
+      btn.addEventListener('click', () => {
+        const d = onDial(s.id) || addFromCat(s);
+        changed(); renderList(); renderLibrary();
+        if (there) { userTouch(); if (!on) power(true); glideTo(d.freq); dlg.close(); }
+      });
+      li.append(info, btn);
+      libUl.appendChild(li);
+    }
+  }
 
   function clashes(s) {
     return state.stations.some((o) => o !== s && Math.abs(o.freq - s.freq) < 0.15);
@@ -659,7 +737,7 @@
         state.stations = state.stations.filter((o) => o !== s);
         const ch = chans.get(s.id);
         if (ch) dropChan(ch);
-        changed(); renderList();
+        changed(); renderList(); renderLibrary();
       });
 
       li.append(go, f, n, rm);
@@ -700,6 +778,8 @@
     let name = String(fd.get('name') || '').trim();
     if (!name) name = new URL(url).hostname.replace(/^www\./, '').split('.')[0];
     const st = { id: 'u' + Date.now().toString(36), name, url, freq };
+    const known = catalog && catalog.stations.find((s) => s.url === url);
+    if (known) st.cat = known.id;
     failedUrls.delete(url);
     state.stations.push(st);
     form.reset();
@@ -715,4 +795,5 @@
   setTuner();
   paint();
   paintSignal();
+  loadCatalog();
 })();
