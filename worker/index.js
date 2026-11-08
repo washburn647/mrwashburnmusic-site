@@ -321,11 +321,14 @@ async function boxApi(request, env, [, studio, id, results]) {
    GET  /api/live/units.json                the voice recorder's units (assets/patterns/units.json's shape)
    GET  /api/live/songburner.json           Song Burner's default settings (only what differs from
                                             the built-in values; see siteDefaults in Code.gs)
+   GET  /api/live/radio.json                the radio's station library and Kyle's picks
+                                            (radio/stations.json's shape)
    GET  /api/live/voice/:voice.json         a voice's takes (index.json "voices" entry's shape)
    GET  /api/live/voice/:voice/:take.mp3    one take
    PUT  /studio/api/live/grooves            publish the grooves                       (Kyle)
    PUT  /studio/api/live/games              publish the game options                  (Kyle)
    PUT  /studio/api/live/songburner         publish Song Burner's default settings    (Kyle)
+   PUT  /studio/api/live/radio              publish the radio's stations              (Kyle)
    GET  /studio/api/live/voice/:voice       ids of the takes already uploaded         (Kyle)
    PUT  /studio/api/live/voice/:voice/:take.mp3   upload a take                       (Kyle)
    PUT  /studio/api/live/voice/:voice       publish the take list and units; takes it
@@ -354,6 +357,7 @@ async function liveApi(request, env, studio, path) {
     if (path === 'units.json') return live.text('units');
     if (path === 'games.json') return live.text('games');
     if (path === 'songburner.json') return live.text('songburner');
+    if (path === 'radio.json') return live.text('radio');
     if ((m = /^voice\/([^/]+)\.json$/.exec(path)) && VOICE.test(m[1])) return live.text('voice:' + m[1]);
     if ((m = /^voice\/([^/]+)\/([^/]+)\.mp3$/.exec(path)) && VOICE.test(m[1]) && TAKE.test(m[2])) return live.take(m[1], m[2]);
     return reply({ error: 'not found' }, 404);
@@ -386,6 +390,15 @@ async function liveApi(request, env, studio, path) {
     if (!data || typeof data !== 'object' || Array.isArray(data) || !data.diff) return reply({ error: 'not settings' }, 400);
     return live.putText('songburner', text);
   }
+  if (path === 'radio' && method === 'PUT') {
+    const text = await request.text();
+    if (text.length > 256 * 1024) return reply({ error: 'too big' }, 413);
+    let data;
+    try { data = JSON.parse(text); } catch { return reply({ error: 'not JSON' }, 400); }
+    const clean = radioLibrary(data);
+    if (typeof clean === 'string') return reply({ error: clean }, 400);
+    return live.putText('radio', JSON.stringify(clean));
+  }
   if ((m = /^voice\/([^/]+)$/.exec(path)) && VOICE.test(m[1])) {
     if (method === 'GET') return live.takeIds(m[1]);
     if (method === 'PUT') {
@@ -405,8 +418,41 @@ async function liveApi(request, env, studio, path) {
   return reply({ error: 'not found' }, 404);
 }
 
+// The radio plays these links on every visitor's dial, so only the fields it reads are kept,
+// and every link must be https. Returns the cleaned library, or what is wrong with it.
+const STATION = /^[a-z0-9-]{1,40}$/;
+function radioLibrary(data) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.stations) || !data.stations.length) return 'no stations';
+  if (data.stations.length > 500) return 'too many stations';
+  const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  const genres = (Array.isArray(data.genres) ? data.genres : []).map((g) => str(g, 40)).filter(Boolean).slice(0, 30);
+  const ids = new Set();
+  const stations = [];
+  for (const o of data.stations) {
+    if (!o || typeof o !== 'object' || !STATION.test(o.id) || ids.has(o.id)) return 'bad station id';
+    let url;
+    try { url = new URL(o.url); } catch { return `bad link: ${o.id}`; }
+    if (url.protocol !== 'https:' || url.username || url.password) return `link must be https: ${o.id}`;
+    const name = str(o.name, 40);
+    if (!name) return `no name: ${o.id}`;
+    const s = { id: o.id, name };
+    if (o.freq != null && o.freq !== '') {
+      const f = Math.round(Number(o.freq) * 10) / 10;
+      if (!(f >= 87.5 && f <= 108)) return `frequency out of range: ${o.id}`;
+      s.freq = f;
+    }
+    s.where = str(o.where, 60);
+    s.genre = str(o.genre, 40);
+    s.url = url.href;
+    ids.add(o.id);
+    stations.push(s);
+  }
+  const picks = [...new Set(Array.isArray(data.picks) ? data.picks : [])].filter((id) => ids.has(id));
+  return { genres, picks, stations };
+}
+
 export class Live extends DurableObject {
-  // text:<name> → { chunks, at }, text:<name>:<i> → a piece of it (names: grooves, games, units, voice:<voice>)
+  // text:<name> → { chunks, at }, text:<name>:<i> → a piece of it (names: grooves, games, units, songburner, radio, voice:<voice>)
   // takes:<voice> → [take ids], take:<voice>:<id> → the mp3's bytes
   async text(name) {
     const meta = await this.ctx.storage.get(`text:${name}`);

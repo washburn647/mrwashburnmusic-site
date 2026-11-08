@@ -1,0 +1,459 @@
+{
+ "genres": [
+  "Classical",
+  "Jazz",
+  "News and talk",
+  "Eclectic",
+  "Folk and roots",
+  "Chill",
+  "World",
+  "Oldies and swing"
+ ],
+ "picks": [
+  "groovesalad",
+  "wgdr",
+  "blacksheep",
+  "vprjazz",
+  "wdev",
+  "royalton",
+  "vprclassical",
+  "classichits",
+  "wxgr",
+  "bbc",
+  "vprnews"
+ ],
+ "stations": [
+  {
+   "id": "groovesalad",
+   "name": "Groove Salad",
+   "freq": 88.5,
+   "where": "SomaFM",
+   "genre": "Chill",
+   "url": "https://ice2.somafm.com/groovesalad-128-mp3"
+  },
+  {
+   "id": "wgdr",
+   "name": "WGDR",
+   "freq": 91.1,
+   "where": "Plainfield, Vermont",
+   "genre": "Eclectic",
+   "url": "https://wgdr.broadcasttool.stream/wgdr_128"
+  },
+  {
+   "id": "blacksheep",
+   "name": "Black Sheep",
+   "freq": 91.5,
+   "where": "Bellows Falls, Vermont",
+   "genre": "Eclectic",
+   "url": "https://wool.broadcasttool.stream/stream"
+  },
+  {
+   "id": "vprjazz",
+   "name": "VPR Jazz",
+   "freq": 93.3,
+   "where": "Vermont Public",
+   "genre": "Jazz",
+   "url": "https://vprjazz.streamguys1.com/vprjazz64.aac"
+  },
+  {
+   "id": "wdev",
+   "name": "WDEV",
+   "freq": 96.1,
+   "where": "Waterbury, Vermont",
+   "genre": "News and talk",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WDEVFM.mp3"
+  },
+  {
+   "id": "royalton",
+   "name": "Royalton Community Radio",
+   "freq": 96.5,
+   "where": "South Royalton, Vermont",
+   "genre": "Eclectic",
+   "url": "https://royaltonradio.streamguys1.com/live"
+  },
+  {
+   "id": "vprclassical",
+   "name": "VPR Classical",
+   "freq": 99.3,
+   "where": "Vermont Public",
+   "genre": "Classical",
+   "url": "https://vprclassical.streamguys1.com/vprclassical128.mp3"
+  },
+  {
+   "id": "classichits",
+   "name": "Classic Hits",
+   "freq": 101.7,
+   "where": "Waterbury, Vermont",
+   "genre": "Oldies and swing",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WCVTFM.mp3"
+  },
+  {
+   "id": "wxgr",
+   "name": "WXGR",
+   "freq": 103.5,
+   "where": "Dover, New Hampshire",
+   "genre": "Eclectic",
+   "url": "https://sh.fl-us.audio-stream.com/proxy/seacoast?mp=/stream"
+  },
+  {
+   "id": "bbc",
+   "name": "BBC World Service",
+   "freq": 105.3,
+   "where": "London, via Vermont Public",
+   "genre": "News and talk",
+   "url": "https://vprbbc.streamguys1.com/vprbbc24.mp3"
+  },
+  {
+   "id": "vprnews",
+   "name": "VPR News",
+   "freq": 107.9,
+   "where": "Vermont Public",
+   "genre": "News and talk",
+   "url": "https://vpr.streamguys1.com/vpr96.mp3"
+  },
+  {
+   "id": "wqxr",
+   "name": "WQXR",
+   "freq": 105.9,
+   "where": "New York",
+   "genre": "Classical",
+   "url": "https://stream.wqxr.org/wqxr-web"
+  },
+  {
+   "id": "wfmt",
+   "name": "WFMT",
+   "freq": 98.7,
+   "where": "Chicago",
+   "genre": "Classical",
+   "url": "https://wfmt.streamguys1.com/main-mp3"
+  },
+  {
+   "id": "king",
+   "name": "Classical KING",
+   "freq": 98.1,
+   "where": "Seattle",
+   "genre": "Classical",
+   "url": "https://classicalking.streamguys1.com/king-fm-aac-128k"
+  },
+  {
+   "id": "wcrb",
+   "name": "WCRB",
+   "freq": 99.5,
+   "where": "Boston",
+   "genre": "Classical",
+   "url": "https://wgbh-live.streamguys1.com/classical-hi"
+  },
+  {
+   "id": "wrti",
+   "name": "WRTI Classical",
+   "freq": 90.1,
+   "where": "Philadelphia",
+   "genre": "Classical",
+   "url": "https://wrti-live.streamguys1.com/classical-mp3"
+  },
+  {
+   "id": "ycl",
+   "name": "YourClassical",
+   "freq": 99.5,
+   "where": "Minnesota Public Radio",
+   "genre": "Classical",
+   "url": "https://cms.stream.publicradio.org/cms.mp3"
+  },
+  {
+   "id": "venice",
+   "name": "Venice Classic Radio",
+   "where": "Venice, Italy",
+   "genre": "Classical",
+   "url": "https://uk2.streamingpulse.com/ssl/vcr1"
+  },
+  {
+   "id": "klassik",
+   "name": "Klassik Radio",
+   "where": "Germany",
+   "genre": "Classical",
+   "url": "https://live.streams.klassikradio.de/klassikradio-deutschland/stream/mp3"
+  },
+  {
+   "id": "swissclassic",
+   "name": "Radio Swiss Classic",
+   "where": "Switzerland",
+   "genre": "Classical",
+   "url": "https://stream.srg-ssr.ch/srgssr/rsc_de/mp3/128"
+  },
+  {
+   "id": "lyric",
+   "name": "RTÉ lyric fm",
+   "freq": 96.0,
+   "where": "Ireland",
+   "genre": "Classical",
+   "url": "https://icecast.rte.ie/lyric"
+  },
+  {
+   "id": "wbgo",
+   "name": "WBGO",
+   "freq": 88.3,
+   "where": "Newark",
+   "genre": "Jazz",
+   "url": "https://ais-sa8.cdnstream1.com/3629_128.mp3"
+  },
+  {
+   "id": "jazz24",
+   "name": "Jazz24",
+   "where": "Seattle",
+   "genre": "Jazz",
+   "url": "https://knkx-live-a.edge.audiocdn.com/6285_128k"
+  },
+  {
+   "id": "kjazz",
+   "name": "KJazz",
+   "freq": 88.1,
+   "where": "Los Angeles",
+   "genre": "Jazz",
+   "url": "https://streaming.live365.com/a49833"
+  },
+  {
+   "id": "kcsm",
+   "name": "KCSM Jazz 91",
+   "freq": 91.1,
+   "where": "San Mateo, California",
+   "genre": "Jazz",
+   "url": "https://ice7.securenetsystems.net/KCSM2"
+  },
+  {
+   "id": "wdcb",
+   "name": "WDCB",
+   "freq": 90.9,
+   "where": "Chicago",
+   "genre": "Jazz",
+   "url": "https://wdcb-ice.streamguys1.com/wdcb128"
+  },
+  {
+   "id": "wrtijazz",
+   "name": "WRTI Jazz",
+   "where": "Philadelphia",
+   "genre": "Jazz",
+   "url": "https://wrti-live.streamguys1.com/jazz-mp3"
+  },
+  {
+   "id": "tsf",
+   "name": "TSF Jazz",
+   "freq": 89.9,
+   "where": "Paris",
+   "genre": "Jazz",
+   "url": "https://tsfjazz.ice.infomaniak.ch/tsfjazz-high.mp3"
+  },
+  {
+   "id": "fipjazz",
+   "name": "FIP Jazz",
+   "where": "Paris",
+   "genre": "Jazz",
+   "url": "https://icecast.radiofrance.fr/fipjazz-hifi.aac"
+  },
+  {
+   "id": "swissjazz",
+   "name": "Radio Swiss Jazz",
+   "where": "Switzerland",
+   "genre": "Jazz",
+   "url": "https://stream.srg-ssr.ch/srgssr/rsj/mp3/128"
+  },
+  {
+   "id": "wnyc",
+   "name": "WNYC",
+   "freq": 93.9,
+   "where": "New York",
+   "genre": "News and talk",
+   "url": "https://fm939.wnyc.org/wnycfm-web"
+  },
+  {
+   "id": "kqed",
+   "name": "KQED",
+   "freq": 88.5,
+   "where": "San Francisco",
+   "genre": "News and talk",
+   "url": "https://streams.kqed.org/kqedradio"
+  },
+  {
+   "id": "wbur",
+   "name": "WBUR",
+   "freq": 90.9,
+   "where": "Boston",
+   "genre": "News and talk",
+   "url": "https://fm909.wbur.org/wbur_www"
+  },
+  {
+   "id": "kexp",
+   "name": "KEXP",
+   "freq": 90.3,
+   "where": "Seattle",
+   "genre": "Eclectic",
+   "url": "https://kexp.streamguys1.com/kexp160.aac"
+  },
+  {
+   "id": "wfuv",
+   "name": "WFUV",
+   "freq": 90.7,
+   "where": "New York",
+   "genre": "Eclectic",
+   "url": "https://onair.wfuv.org/onair-hi"
+  },
+  {
+   "id": "current",
+   "name": "The Current",
+   "freq": 89.3,
+   "where": "Minneapolis",
+   "genre": "Eclectic",
+   "url": "https://current.stream.publicradio.org/current.mp3"
+  },
+  {
+   "id": "wxpn",
+   "name": "WXPN",
+   "freq": 88.5,
+   "where": "Philadelphia",
+   "genre": "Eclectic",
+   "url": "https://wxpnhi.xpn.org/xpnhi"
+  },
+  {
+   "id": "fip",
+   "name": "FIP",
+   "freq": 105.1,
+   "where": "Paris",
+   "genre": "Eclectic",
+   "url": "https://icecast.radiofrance.fr/fip-hifi.aac"
+  },
+  {
+   "id": "rp",
+   "name": "Radio Paradise",
+   "where": "California",
+   "genre": "Eclectic",
+   "url": "https://stream.radioparadise.com/aac-128"
+  },
+  {
+   "id": "rpmellow",
+   "name": "Radio Paradise Mellow",
+   "where": "California",
+   "genre": "Chill",
+   "url": "https://stream.radioparadise.com/mellow-128"
+  },
+  {
+   "id": "wwoz",
+   "name": "WWOZ",
+   "freq": 90.7,
+   "where": "New Orleans",
+   "genre": "Folk and roots",
+   "url": "https://wwoz-sc.streamguys1.com/wwoz-hi.mp3"
+  },
+  {
+   "id": "folkalley",
+   "name": "Folk Alley",
+   "where": "Ohio",
+   "genre": "Folk and roots",
+   "url": "https://freshgrass.streamguys1.com/ss1-128mp3"
+  },
+  {
+   "id": "irish",
+   "name": "Folk Alley Irish",
+   "where": "Ohio",
+   "genre": "Folk and roots",
+   "url": "https://freshgrass.streamguys1.com/irish-128mp3"
+  },
+  {
+   "id": "wumb",
+   "name": "WUMB",
+   "freq": 91.9,
+   "where": "Boston",
+   "genre": "Folk and roots",
+   "url": "https://wumb.streamguys1.com/wumb919fast"
+  },
+  {
+   "id": "bluegrass",
+   "name": "Bluegrass Country",
+   "where": "Washington, DC",
+   "genre": "Folk and roots",
+   "url": "https://ice24.securenetsystems.net/WAMU"
+  },
+  {
+   "id": "dronezone",
+   "name": "Drone Zone",
+   "where": "SomaFM",
+   "genre": "Chill",
+   "url": "https://ice2.somafm.com/dronezone-128-mp3"
+  },
+  {
+   "id": "deepspace",
+   "name": "Deep Space One",
+   "where": "SomaFM",
+   "genre": "Chill",
+   "url": "https://ice2.somafm.com/deepspaceone-128-mp3"
+  },
+  {
+   "id": "secretagent",
+   "name": "Secret Agent",
+   "where": "SomaFM",
+   "genre": "Chill",
+   "url": "https://ice2.somafm.com/secretagent-128-mp3"
+  },
+  {
+   "id": "illstreet",
+   "name": "Illinois Street Lounge",
+   "where": "SomaFM",
+   "genre": "Chill",
+   "url": "https://ice2.somafm.com/illstreet-128-mp3"
+  },
+  {
+   "id": "spacestation",
+   "name": "Space Station Soma",
+   "where": "SomaFM",
+   "genre": "Chill",
+   "url": "https://ice2.somafm.com/spacestation-128-mp3"
+  },
+  {
+   "id": "fipworld",
+   "name": "FIP Monde",
+   "where": "Paris",
+   "genre": "World",
+   "url": "https://icecast.radiofrance.fr/fipworld-hifi.aac"
+  },
+  {
+   "id": "rpglobal",
+   "name": "Radio Paradise World",
+   "where": "California",
+   "genre": "World",
+   "url": "https://stream.radioparadise.com/global-128"
+  },
+  {
+   "id": "goa",
+   "name": "Suburbs of Goa",
+   "where": "SomaFM",
+   "genre": "World",
+   "url": "https://ice2.somafm.com/suburbsofgoa-128-mp3"
+  },
+  {
+   "id": "thistle",
+   "name": "ThistleRadio",
+   "where": "SomaFM",
+   "genre": "World",
+   "url": "https://ice2.somafm.com/thistle-128-mp3"
+  },
+  {
+   "id": "swing",
+   "name": "Ella Swing and Big Band",
+   "where": "Germany",
+   "genre": "Oldies and swing",
+   "url": "https://stream.ella-radio.de/ella-swing-and-bigband/mp3-192/"
+  },
+  {
+   "id": "folkfwd",
+   "name": "Folk Forward",
+   "where": "SomaFM",
+   "genre": "Folk and roots",
+   "url": "https://ice2.somafm.com/folkfwd-128-mp3"
+  },
+  {
+   "id": "sonic",
+   "name": "Sonic Universe",
+   "where": "SomaFM",
+   "genre": "Jazz",
+   "url": "https://ice2.somafm.com/sonicuniverse-128-mp3"
+  }
+ ]
+}

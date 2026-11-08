@@ -380,6 +380,46 @@ details ol { padding-left: 1.3em; margin: 10px 0; }
 details li + li { margin-top: 6px; }
 details p { margin: 0; color: #5B6B5F; }
 
+.lib-h { margin: 8px 0 10px; font-size: 17px; font-weight: 600; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button {
+  flex: none;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #F1EBDC;
+  color: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.chips button[aria-pressed="true"] { background: #2F4A3A; color: #F6F1E4; }
+#library { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px; }
+#library li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px 8px 10px;
+  border-radius: 12px;
+}
+#library li:hover { background: #F6F1E4; }
+#library li div { flex: 1; min-width: 0; display: grid; }
+#library b { font-weight: 600; font-size: 16px; }
+#library small { font-size: 13px; color: #5B6B5F; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plus, .have {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+}
+.plus { background: #2F4A3A; color: #F6F1E4; }
+.have { background: #E3EBD8; color: #2F4A3A; font-size: 15px; }
+details.own { margin-top: 20px; padding-top: 14px; border-top: 1px solid #ECE4D2; }
+details.own > form { margin-top: 12px; }
+
 .opt {
   display: flex;
   justify-content: space-between;

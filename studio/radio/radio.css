@@ -1,0 +1,42 @@
+/* The radio's station library in the studio. */
+.bar .back[target] { font-size: 15px; }
+.status { color: #5B6B5F; margin: -6px 0 16px; min-height: 1.2em; }
+.status.draft { color: #A8743A; }
+.status.bad { color: #A33B2B; }
+
+.seg { display: flex; flex-wrap: wrap; background: #EFE8D6; border-radius: 12px; padding: 3px; gap: 3px; margin-bottom: 12px; }
+.seg button { background: transparent; box-shadow: none; padding: 6px 12px; border-radius: 9px; font-size: 16px; }
+.seg button.on { background: #fff; box-shadow: 0 1px 0 rgba(47,74,58,.12); font-weight: 600; }
+.seg .n { margin-left: 6px; color: #8A968C; font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; }
+
+.stations td { vertical-align: middle; }
+.stations tr.bad td { background: #FBEDE8; }
+.stations .star { width: 36px; text-align: center; }
+.pick { font-size: 22px; line-height: 1; padding: 4px 6px; color: #B9B19C; }
+.pick.on { color: #C98A1B; }
+.pick:hover, .pick:focus-visible { color: #C98A1B; }
+.stations .name { width: 22%; }
+.stations .freq { width: 78px; }
+.stations .freq input { text-align: right; font-variant-numeric: tabular-nums; }
+.stations .where { width: 18%; }
+.stations .genre { width: 14%; }
+.stations .url input { font-size: 14px; color: #5B6B5F; }
+.why { display: block; padding: 0 6px 4px; font-size: 13px; color: #A33B2B; }
+.why.soft { color: #A8743A; }
+.listen { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-right: 4px; border-radius: 50%; background: #E3EBD8; color: #2F4A3A; text-decoration: none; font-size: 13px; vertical-align: middle; }
+.listen:hover, .listen:focus-visible { box-shadow: 0 0 0 2px #2F4A3A; outline: none; }
+.add { margin-top: 6px; }
+button:disabled { opacity: .45; cursor: default; box-shadow: none; }
+
+@media (max-width: 760px) {
+  .stations, .stations tbody, .stations tr, .stations td { display: block; }
+  .stations thead { display: none; }
+  .stations tr { position: relative; background: #fff; border-radius: 12px; margin-bottom: 10px; padding: 6px 6px 6px 40px; display: grid; grid-template-columns: 1fr 1fr; }
+  .stations tr.bad { background: #FBEDE8; }
+  .stations td { width: auto !important; padding: 2px; background: transparent !important; border-radius: 0 !important; }
+  .stations .star { position: absolute; left: 4px; top: 8px; }
+  .stations .name, .stations .url { grid-column: 1 / -1; }
+  .stations .tools { grid-column: 1 / -1; text-align: right; }
+  .stations .freq input { text-align: left; }
+  .stations td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #8A968C; padding: 4px 6px 0; }
+}
