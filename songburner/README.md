@@ -68,6 +68,18 @@ Removing a tester: take their address off the policy, then remove them under
 **Team & Resources > Users** to free the seat. Then press **Remove** next to them
 in the studio (below): that deletes their cloud copy and ends their session.
 
+## Dashboard feed
+
+For Kyle's second-screen dashboard (a page on his PC, not part of this site),
+which shows the Fridge and the Counter. Signed in, open
+`https://mrwashburnmusic.com/api/songburner/dashboard` and copy the `feed` link
+into the dashboard's `config.js`. From then on, every sync also sends where each
+song stands (title, artist, score, heat, rate; never lyrics), and the feed walks
+that forward night by night to today, so it stays right between syncs. Anyone
+with the link can read those titles and scores; `POST` to the same address for a
+new link (the old one stops), `DELETE` to turn it off. Deleting the cloud copy
+turns it off too. A tester who never turns it on stores nothing.
+
 ## In the studio
 
 `/studio/songburner/` (behind the studio's Access login):

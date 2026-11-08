@@ -553,7 +553,19 @@ export class Box extends DurableObject {
    GET    /api/songburner/me        who is signed in              { email }
    GET    /api/songburner/library   the stored library            { version, at, library }
    PUT    /api/songburner/library   replace it; If-Match: version { version, at } or 409
-   DELETE /api/songburner/library   delete the cloud copy */
+   DELETE /api/songburner/library   delete the cloud copy
+   GET    /api/songburner/dashboard turn the dashboard feed on    { feed } (the same link each time)
+   POST   /api/songburner/dashboard a new feed link; the old stops { feed }
+   DELETE /api/songburner/dashboard turn the feed off
+   PUT    /api/songburner/dashboard where the songs stand now     { on } (stored only while on)
+   GET    /api/songburner/feed/:hash/:key   the feed itself, no sign-in: the key is the lock
+
+   THE DASHBOARD FEED. Kyle's second-screen dashboard (a page on his PC, outside this site)
+   shows the Fridge and the Counter. The scores are worked out in the app, on the device, so
+   the app sends a small snapshot after every sync (each song's score, heat and rate, nothing
+   else; never a lyric) and the feed walks it forward a night at a time to today, with the
+   same rules as scoreFromAttempts in songburner/src/Code.gs. A tester who never turns the
+   feed on stores nothing. */
 
 const MAX_LIBRARY = 24 * 1024 * 1024;
 
@@ -633,6 +645,8 @@ async function songBurnerApi(request, env, path, ctx) {
     return out;
   }
   // The session cookie, or an Access token while /api/songburner/ is still behind Access too.
+  const feed = /^feed\/([0-9a-f]{64})\/([A-Za-z0-9_-]{16,100})$/.exec(path);
+  if (feed) return dashFeed(request, env, feed[1], feed[2]);
   let who = await sbSession(request, env);
   if (!who) {
     const t = await accessToken(request, env, env.SONGBURNER_AUD);
@@ -651,6 +665,7 @@ async function songBurnerApi(request, env, path, ctx) {
     later(roster.seen(hash, email));
     return reply({ email });
   }
+  if (path === 'dashboard') return dashSetup(request, vault, hash, method);
   if (path !== 'library') return reply({ error: 'not found' }, 404);
   if (method === 'GET') {
     // A tester the roster has no numbers for yet (signed up before it existed) gets them now.
@@ -673,6 +688,104 @@ async function songBurnerApi(request, env, path, ctx) {
     return res;
   }
   return reply({ error: 'method not allowed' }, 405);
+}
+
+const MAX_DASH = 512 * 1024;
+
+/** The tester's own side of the feed: make, replace or drop its link, and store a snapshot. */
+async function dashSetup(request, vault, hash, method) {
+  const link = (key) => new URL(`/api/songburner/feed/${hash}/${key}`, request.url).href;
+  if (method === 'GET' || method === 'POST') {
+    const key = await vault.dashKey(method === 'POST');
+    return reply({ feed: link(key),
+      note: 'Paste this into songburnerFeedUrl in the dashboard\'s config.js. Anyone with it sees your song titles and scores. POST here for a new one (the old one stops working); DELETE turns the feed off.' });
+  }
+  if (method === 'DELETE') { await vault.dashOff(); return reply({ ok: true }); }
+  if (method === 'PUT') {
+    const text = await request.text();
+    if (text.length > MAX_DASH) return reply({ error: 'too big' }, 413);
+    let snap;
+    try { snap = JSON.parse(text); } catch { return reply({ error: 'bad snapshot' }, 400); }
+    if (!snap || !Array.isArray(snap.songs) || !(Number(snap.at) > 0)) return reply({ error: 'bad snapshot' }, 400);
+    return reply({ on: await vault.dashPut(text) });
+  }
+  return reply({ error: 'method not allowed' }, 405);
+}
+
+/** The dashboard runs from a file on Kyle's PC (origin "null"), so the feed answers any origin. */
+function corsed(res) {
+  res.headers.set('Access-Control-Allow-Origin', '*');
+  return res;
+}
+
+async function dashFeed(request, env, hash, key) {
+  if (request.method === 'OPTIONS') {
+    return corsed(new Response(null, { status: 204, headers: { 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Max-Age': '86400' } }));
+  }
+  if (request.method !== 'GET') return corsed(reply({ ok: false, error: 'method not allowed' }, 405));
+  const vault = env.VAULTS.get(env.VAULTS.idFromName('songburner:' + hash));
+  const text = await vault.dashRead(key);
+  if (text === null) return corsed(reply({ ok: false, error: 'Wrong or missing key' }, 403));
+  if (text === '') return corsed(reply({ ok: false, error: 'Open Song Burner once (signed in) to fill the feed' }, 404));
+  return corsed(reply({ ok: true, at: new Date().toISOString(), data: dashProject(JSON.parse(text), Date.now()) }));
+}
+
+const round1 = (n) => Math.round(n * 10) / 10;
+
+/** nightsToZero in Code.gs. */
+function nightsToZero(score, hot, hotDays, coldRate, y) {
+  if (score <= 0) return 0;
+  let rate = hot ? y : coldRate;
+  if (rate <= 0 && y <= 0) return null;
+  let nights = hot ? hotDays + 1 : 0, left = score, guard = 0;
+  while (left > 0 && guard++ < 4000) {
+    left = round1(left - rate);
+    rate = Math.round(rate + y);
+    nights++;
+  }
+  return nights;
+}
+
+/** One song, `nights` nights on: nightsUntil in scoreFromAttempts (Code.gs), with no quizzes. */
+function songAfter(s, nights, y) {
+  let score = Number(s.score) || 0, hot = !!s.hot, hotDays = Number(s.hotDays) || 0, coldRate = Number(s.coldRate) || 0;
+  for (let n = 0; n < nights; n++) {
+    if (hot) {
+      if (hotDays > 0) { const jump = Math.min(nights - n, hotDays); hotDays -= jump; n += jump - 1; continue; }
+      hot = false; coldRate = y; continue;           // the turn itself is free
+    }
+    if (score <= 0 || (coldRate <= 0 && y <= 0)) break;
+    score = Math.max(0, round1(score - coldRate));
+    if (score <= 0) { coldRate = 0; break; }         // frozen: the arrears die with the score
+    coldRate = Math.round(coldRate + y);
+  }
+  return {
+    id: s.id, title: s.title, artist: s.artist, score, hot,
+    hotDays: hot ? hotDays : 0, coldRate: hot ? 0 : coldRate,
+    daysSince: s.daysSince === null || s.daysSince === undefined ? null : Number(s.daysSince) + nights,
+    daysLeft: nightsToZero(score, hot, hotDays, coldRate, y)
+  };
+}
+
+/** The snapshot walked forward to today, in the shape the dashboard's tile reads. */
+function dashProject(snap, now) {
+  const tz = Number(snap.tz) || 0;                   // the device's getTimezoneOffset(), minutes
+  const day = (ms) => Math.floor((ms - tz * 60000) / DAY);
+  const nights = Math.max(0, day(now) - day(Number(snap.at)));
+  const y = Number(snap.y) || 0;
+  const songs = snap.songs.map((s) => songAfter(s, nights, y));
+  const losing = songs.filter((s) => !s.hot && s.score > 0)
+    .sort((a, b) => b.coldRate - a.coldRate || (a.daysLeft ?? 1e9) - (b.daysLeft ?? 1e9))
+    .map((s) => ({ id: s.id, title: s.title, artist: s.artist, score: s.score, rate: s.coldRate, daysLeft: s.daysLeft, daysSince: s.daysSince }));
+  const counter = songs.filter((s) => s.hot && s.hotDays <= 7)
+    .sort((a, b) => a.hotDays - b.hotDays || a.score - b.score)
+    .map((s) => ({ id: s.id, title: s.title, artist: s.artist, score: s.score, hotDays: s.hotDays, daysSince: s.daysSince }));
+  return {
+    build: snap.build || '', songs: songs.length, hot: songs.filter((s) => s.hot).length,
+    total: round1(songs.reduce((n, s) => n + s.score, 0)),
+    losingPerNight: round1(losing.reduce((n, s) => n + s.rate, 0)),
+    losing, counter, snapshotAt: Number(snap.at), nightsSince: nights
+  };
 }
 
 /* THE STUDIO'S VIEW OF THE TESTERS. One more Vault, named 'songburner-roster', keeps a line per
@@ -777,6 +890,37 @@ export class Vault extends DurableObject {
     let text = '';
     for (let i = 0; i < meta.chunks; i++) text += parts.get(`lib:${i}`) || '';
     try { return { ...libraryStats(JSON.parse(text), text.length), synced: meta.at }; } catch (e) { return null; }
+  }
+
+  /* The dashboard feed (see dashSetup). The key is kept as is, so the same link can be
+     shown again; it is never sent anywhere but to the tester who asks for it. */
+  async dashKey(fresh) {
+    let key = fresh ? null : await this.ctx.storage.get('dashkey');
+    if (!key) {
+      key = b64url(crypto.getRandomValues(new Uint8Array(24)));
+      await this.ctx.storage.put('dashkey', key);
+    }
+    return key;
+  }
+
+  async dashOff() {
+    await this.ctx.storage.delete(['dashkey', 'dash']);
+  }
+
+  /** Stores a snapshot while the feed is on; says whether it is. */
+  async dashPut(text) {
+    if (!(await this.ctx.storage.get('dashkey'))) return false;
+    await this.ctx.storage.put('dash', text);
+    return true;
+  }
+
+  /** The snapshot for the right key: null for a wrong key, '' before the first one arrives. */
+  async dashRead(key) {
+    const [k, text] = [await this.ctx.storage.get('dashkey'), await this.ctx.storage.get('dash')];
+    if (!k || !key || k.length !== key.length) return null;
+    let diff = 0;
+    for (let i = 0; i < k.length; i++) diff |= k.charCodeAt(i) ^ key.charCodeAt(i);
+    return diff ? null : (text || '');
   }
 
   /* Only on the one Vault named 'songburner-roster': a line per tester, keyed by the hash. */
