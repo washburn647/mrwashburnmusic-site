@@ -5,12 +5,20 @@
   const LO = 87.5, HI = 108.0;
   const LOCK = 0.25;            // MHz either side of a station where it comes in
   const KEY = 'mwm-radio';
+  // Kyle's stations (from his dashboard), at their real FM numbers where they have one.
+  const SEED = 2;
   const DEFAULTS = [
-    { name: 'WBGO Jazz', freq: 88.3, url: 'https://ais-sa8.cdnstream1.com/3629_128.mp3' },
-    { name: 'Classical KING', freq: 98.1, url: 'https://classicalking.streamguys1.com/king-fm-aac-128k' },
-    { name: 'WFMT', freq: 98.7, url: 'https://wfmt.streamguys1.com/main-mp3' },
-    { name: 'Venice Classic', freq: 101.1, url: 'https://uk2.streamingpulse.com/ssl/vcr1' },
-    { name: 'WQXR', freq: 105.9, url: 'https://stream.wqxr.org/wqxr-web' },
+    { name: 'Groove Salad', freq: 88.5, url: 'https://ice2.somafm.com/groovesalad-128-mp3' },
+    { name: 'WGDR', freq: 91.1, url: 'https://wgdr.broadcasttool.stream/wgdr_128' },
+    { name: 'Black Sheep', freq: 91.5, url: 'https://wool.broadcasttool.stream/stream' },
+    { name: 'VPR Jazz', freq: 93.3, url: 'https://vprjazz.streamguys1.com/vprjazz64.aac' },
+    { name: 'WDEV', freq: 96.1, url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WDEVFM.mp3' },
+    { name: 'Royalton', freq: 96.5, url: 'https://royaltonradio.streamguys1.com/live' },
+    { name: 'VPR Classical', freq: 99.3, url: 'https://vprclassical.streamguys1.com/vprclassical128.mp3' },
+    { name: 'Classic Hits', freq: 101.7, url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WCVTFM.mp3' },
+    { name: 'WXGR', freq: 103.5, url: 'https://sh.fl-us.audio-stream.com/proxy/seacoast?mp=/stream' },
+    { name: 'BBC World Service', freq: 105.3, url: 'https://vprbbc.streamguys1.com/vprbbc24.mp3' },
+    { name: 'VPR News', freq: 107.9, url: 'https://vpr.streamguys1.com/vpr96.mp3' },
   ];
   const SKINS = { antique: '#3A2617', atomic: '#7FC8BC', eighties: '#14121C', modern: '#F6F1E4' };
 
@@ -22,10 +30,15 @@
   // ---------- saved state ----------
   let state = null;
   try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { /* private window */ }
+  const seeded = () => DEFAULTS.map((s, i) => ({ id: 's' + SEED + '-' + i, ...s }));
   if (!state || !Array.isArray(state.stations)) {
-    state = { stations: DEFAULTS.map((s, i) => ({ id: 'd' + i, ...s })), skin: 'antique', freq: 98.7, vol: 0.6 };
+    state = { stations: seeded(), skin: 'antique', freq: 99.3, vol: 0.6, seed: SEED };
+  } else if ((state.seed || 1) < SEED) {
+    // new built-in stations replace the old built-in ones; the listener's own stay
+    state.stations = seeded().concat(state.stations.filter((s) => String(s.id).startsWith('u')));
+    state.seed = SEED;
   }
-  state.freq = clamp(+state.freq || 98.7, LO, HI);
+  state.freq = clamp(+state.freq || 99.3, LO, HI);
   state.vol = clamp(state.vol == null ? 0.6 : +state.vol, 0, 1);
   if (!SKINS[state.skin]) state.skin = 'antique';
   let saveTimer = 0;
