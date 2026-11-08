@@ -43,3 +43,12 @@ Electric guitar, electric piano, organ, ukulele, kalimba and the synths (electri
   - Kalimba: recorded by Xavimart, Gonzalo and Roberto
   - Synth lead: Synth Square; synth pad: Sweep Pad; synth bass: Lately Bass by Yingchun Soul
   Licence: CC0 1.0 (public domain). Trimmed, retuned where measured off, converted to mono.
+
+Tenor saxophone (tenor-sax/): Tenor Saxophone by Roberto, for the FreePats project, made from
+  samples of the Versilian Community Sample Library (VSCO). Licence: CC0 1.0 (public domain).
+  Source: https://freepats.zenvoid.org/Reed/saxophone.html. Trimmed and converted to mono.
+
+Solo violin, violin and viola pizzicato, double bass pizzicato, timpani, gong, suspended cymbal
+  and the rolls (violin/, violin-pizz/, viola-pizz/, bass-pizz/, timpani/, timpani-roll/,
+  hits/gong.mp3, hits/sus-cymbal*.mp3, hits/*-roll.mp3, hits/tambourine-shake.mp3): VSCO 2:
+  Community Edition, as above (CC0).

@@ -16,15 +16,20 @@ const stop = piano.note(60, t, 0.5, { vol: 0.25, dest });   // same call as soun
 ```
 
 `t` is on the audio clock. `samples.list()` gives `index.json`: every instrument and its notes. Each sound starts at its measured onset, so rhythms line up to about 1 ms.
+`samples.raw(name, { lo, hi })` gives the decoded samples themselves, for a player that changes
+a note while it sounds (the instrument museum's bows, slides and timpani pedals, `museum/audio.js`).
 The try-out page is `/studio/sounds/`.
 
-- Pitched: piano, violins, violas, cellos, bass, pizzicato, cello-pizz, harp, flute, oboe,
+- Pitched: piano, violin (solo), violins, violas, cellos, bass, pizzicato, violin-pizz,
+  viola-pizz, cello-pizz, bass-pizz, harp, flute, oboe, tenor-sax,
   clarinet, bassoon, trumpet, horn, trombone, tuba, glockenspiel, xylophone, marimba, guitar
   (nylon), banjo, electric-bass (banjo and electric bass are GNU GPL: see `CREDITS.txt`),
   electric-guitar, electric-piano, organ, ukulele, kalimba, synth-lead, synth-pad, synth-bass
 - Hits: claves, log-drum-high, log-drum-low, cowbell, agogo, triangle, finger-cymbals,
   tambourine, sleigh-bells, shaker, cabasa, guiro, snare, bass-drum, conga, bongo-high,
-  bongo-low, cymbal
+  bongo-low, cymbal, gong, sus-cymbal, and rolls that loop: snare-roll, triangle-roll,
+  tambourine-roll, tambourine-shake, sus-cymbal-roll
+- Timpani (pitched, five drums): timpani, timpani-roll
 - Drum kit (`group: "kit"`): kit-kick, kit-snare, kit-snare-ghost, kit-cross-stick,
   kit-hihat-closed, kit-hihat-open, kit-hihat-pedal, kit-tom-high, kit-tom-low, kit-ride,
   kit-ride-bell, kit-crash, kit-splash (Salamander Drumkit, CC BY-SA: see `CREDITS.txt`)

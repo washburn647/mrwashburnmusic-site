@@ -2547,6 +2547,502 @@
     }
    ],
    "credit": "freepats"
+  },
+  "violin": {
+   "label": "Violin",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 55,
+     "file": "violin/55.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 57,
+     "file": "violin/57.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 60,
+     "file": "violin/60.mp3",
+     "tune": -12
+    },
+    {
+     "midi": 64,
+     "file": "violin/64.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 67,
+     "file": "violin/67.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 69,
+     "file": "violin/69.mp3",
+     "tune": 13
+    },
+    {
+     "midi": 72,
+     "file": "violin/72.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 76,
+     "file": "violin/76.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 79,
+     "file": "violin/79.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 81,
+     "file": "violin/81.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 84,
+     "file": "violin/84.mp3",
+     "tune": -20
+    },
+    {
+     "midi": 88,
+     "file": "violin/88.mp3",
+     "tune": 17
+    },
+    {
+     "midi": 91,
+     "file": "violin/91.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 93,
+     "file": "violin/93.mp3",
+     "tune": 9
+    },
+    {
+     "midi": 96,
+     "file": "violin/96.mp3",
+     "tune": -6
+    }
+   ],
+   "credit": "vsco"
+  },
+  "violin-pizz": {
+   "label": "Violin pizzicato",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 55,
+     "file": "violin-pizz/55.mp3",
+     "tune": -12
+    },
+    {
+     "midi": 57,
+     "file": "violin-pizz/57.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 60,
+     "file": "violin-pizz/60.mp3",
+     "tune": -21
+    },
+    {
+     "midi": 64,
+     "file": "violin-pizz/64.mp3",
+     "tune": -16
+    },
+    {
+     "midi": 67,
+     "file": "violin-pizz/67.mp3",
+     "tune": -19
+    },
+    {
+     "midi": 69,
+     "file": "violin-pizz/69.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 72,
+     "file": "violin-pizz/72.mp3",
+     "tune": -4
+    },
+    {
+     "midi": 76,
+     "file": "violin-pizz/76.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 79,
+     "file": "violin-pizz/79.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 81,
+     "file": "violin-pizz/81.mp3",
+     "tune": -4
+    },
+    {
+     "midi": 93,
+     "file": "violin-pizz/93.mp3",
+     "tune": -2
+    }
+   ],
+   "credit": "vsco"
+  },
+  "viola-pizz": {
+   "label": "Viola pizzicato",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 48,
+     "file": "viola-pizz/48.mp3"
+    },
+    {
+     "midi": 52,
+     "file": "viola-pizz/52.mp3"
+    },
+    {
+     "midi": 55,
+     "file": "viola-pizz/55.mp3",
+     "tune": -6
+    },
+    {
+     "midi": 59,
+     "file": "viola-pizz/59.mp3",
+     "tune": -18
+    },
+    {
+     "midi": 62,
+     "file": "viola-pizz/62.mp3"
+    },
+    {
+     "midi": 65,
+     "file": "viola-pizz/65.mp3",
+     "tune": -12
+    },
+    {
+     "midi": 69,
+     "file": "viola-pizz/69.mp3",
+     "tune": 5
+    },
+    {
+     "midi": 72,
+     "file": "viola-pizz/72.mp3",
+     "tune": 6
+    },
+    {
+     "midi": 76,
+     "file": "viola-pizz/76.mp3",
+     "tune": 4
+    },
+    {
+     "midi": 83,
+     "file": "viola-pizz/83.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 86,
+     "file": "viola-pizz/86.mp3",
+     "tune": -25
+    }
+   ],
+   "credit": "vsco"
+  },
+  "bass-pizz": {
+   "label": "Double bass pizzicato",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 28,
+     "file": "bass-pizz/28.mp3",
+     "tune": -9
+    },
+    {
+     "midi": 30,
+     "file": "bass-pizz/30.mp3"
+    },
+    {
+     "midi": 31,
+     "file": "bass-pizz/31.mp3",
+     "tune": -13
+    },
+    {
+     "midi": 34,
+     "file": "bass-pizz/34.mp3",
+     "tune": -8
+    },
+    {
+     "midi": 36,
+     "file": "bass-pizz/36.mp3",
+     "tune": -34
+    },
+    {
+     "midi": 38,
+     "file": "bass-pizz/38.mp3",
+     "tune": 8
+    },
+    {
+     "midi": 40,
+     "file": "bass-pizz/40.mp3",
+     "tune": -9
+    },
+    {
+     "midi": 42,
+     "file": "bass-pizz/42.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 44,
+     "file": "bass-pizz/44.mp3",
+     "tune": -26
+    },
+    {
+     "midi": 45,
+     "file": "bass-pizz/45.mp3",
+     "tune": 37
+    },
+    {
+     "midi": 49,
+     "file": "bass-pizz/49.mp3"
+    },
+    {
+     "midi": 52,
+     "file": "bass-pizz/52.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 56,
+     "file": "bass-pizz/56.mp3",
+     "tune": -28
+    },
+    {
+     "midi": 59,
+     "file": "bass-pizz/59.mp3",
+     "tune": -13
+    }
+   ],
+   "credit": "vsco"
+  },
+  "tenor-sax": {
+   "label": "Tenor saxophone",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 44,
+     "file": "tenor-sax/44.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 46,
+     "file": "tenor-sax/46.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 48,
+     "file": "tenor-sax/48.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 50,
+     "file": "tenor-sax/50.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 52,
+     "file": "tenor-sax/52.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 54,
+     "file": "tenor-sax/54.mp3"
+    },
+    {
+     "midi": 56,
+     "file": "tenor-sax/56.mp3"
+    },
+    {
+     "midi": 58,
+     "file": "tenor-sax/58.mp3"
+    },
+    {
+     "midi": 60,
+     "file": "tenor-sax/60.mp3"
+    },
+    {
+     "midi": 62,
+     "file": "tenor-sax/62.mp3"
+    },
+    {
+     "midi": 64,
+     "file": "tenor-sax/64.mp3"
+    },
+    {
+     "midi": 66,
+     "file": "tenor-sax/66.mp3"
+    },
+    {
+     "midi": 68,
+     "file": "tenor-sax/68.mp3"
+    },
+    {
+     "midi": 70,
+     "file": "tenor-sax/70.mp3"
+    },
+    {
+     "midi": 72,
+     "file": "tenor-sax/72.mp3"
+    },
+    {
+     "midi": 74,
+     "file": "tenor-sax/74.mp3"
+    },
+    {
+     "midi": 76,
+     "file": "tenor-sax/76.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 78,
+     "file": "tenor-sax/78.mp3"
+    },
+    {
+     "midi": 80,
+     "file": "tenor-sax/80.mp3"
+    },
+    {
+     "midi": 82,
+     "file": "tenor-sax/82.mp3"
+    },
+    {
+     "midi": 84,
+     "file": "tenor-sax/84.mp3"
+    },
+    {
+     "midi": 86,
+     "file": "tenor-sax/86.mp3"
+    },
+    {
+     "midi": 88,
+     "file": "tenor-sax/88.mp3"
+    }
+   ],
+   "credit": "freepats-sax"
+  },
+  "timpani": {
+   "label": "Timpani",
+   "kind": "pitched",
+   "release": 0.4,
+   "zones": [
+    {
+     "midi": 41,
+     "file": "timpani/41.mp3",
+     "tune": 45
+    },
+    {
+     "midi": 47,
+     "file": "timpani/47.mp3",
+     "tune": -21
+    },
+    {
+     "midi": 49,
+     "file": "timpani/49.mp3",
+     "tune": 48
+    },
+    {
+     "midi": 52,
+     "file": "timpani/52.mp3",
+     "tune": 41
+    },
+    {
+     "midi": 55,
+     "file": "timpani/55.mp3",
+     "tune": -39
+    }
+   ],
+   "credit": "vsco"
+  },
+  "timpani-roll": {
+   "label": "Timpani roll",
+   "kind": "pitched",
+   "release": 0.4,
+   "zones": [
+    {
+     "midi": 41,
+     "file": "timpani-roll/41.mp3",
+     "tune": 45
+    },
+    {
+     "midi": 47,
+     "file": "timpani-roll/47.mp3",
+     "tune": -21
+    },
+    {
+     "midi": 49,
+     "file": "timpani-roll/49.mp3",
+     "tune": 48
+    },
+    {
+     "midi": 52,
+     "file": "timpani-roll/52.mp3",
+     "tune": 41
+    },
+    {
+     "midi": 55,
+     "file": "timpani-roll/55.mp3",
+     "tune": -39
+    }
+   ],
+   "credit": "vsco"
+  },
+  "gong": {
+   "label": "Gong",
+   "kind": "hit",
+   "file": "hits/gong.mp3",
+   "credit": "vsco"
+  },
+  "sus-cymbal": {
+   "label": "Suspended cymbal",
+   "kind": "hit",
+   "file": "hits/sus-cymbal.mp3",
+   "credit": "vsco"
+  },
+  "sus-cymbal-roll": {
+   "label": "Suspended cymbal roll",
+   "kind": "hit",
+   "file": "hits/sus-cymbal-roll.mp3",
+   "credit": "vsco"
+  },
+  "snare-roll": {
+   "label": "Snare drum roll",
+   "kind": "hit",
+   "file": "hits/snare-roll.mp3",
+   "credit": "vsco"
+  },
+  "triangle-roll": {
+   "label": "Triangle roll",
+   "kind": "hit",
+   "file": "hits/triangle-roll.mp3",
+   "credit": "vsco"
+  },
+  "tambourine-roll": {
+   "label": "Tambourine roll",
+   "kind": "hit",
+   "file": "hits/tambourine-roll.mp3",
+   "credit": "vsco"
+  },
+  "tambourine-shake": {
+   "label": "Tambourine shake",
+   "kind": "hit",
+   "file": "hits/tambourine-shake.mp3",
+   "credit": "vsco"
   }
  },
  "voices": {},
@@ -2556,6 +3052,7 @@
   "salamander-drums": "Salamander Drumkit by Alexander Holm, CC BY-SA 3.0",
   "freepats-guitar": "Spanish Classical Guitar by Roberto (FreePats project), CC0",
   "freepats": "FreePats project (freepats.zenvoid.org) sound banks, CC0",
+  "freepats-sax": "Tenor Saxophone by Roberto (FreePats project), from VSCO 2 samples, CC0",
   "flamestudios-bass": "Ibanez Electric Bass Guitar by FlameStudios (Gary Campion), GNU GPL v3",
   "flamestudios-banjo": "Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3"
  }

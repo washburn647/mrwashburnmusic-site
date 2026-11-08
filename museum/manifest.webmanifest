@@ -1,0 +1,12 @@
+{
+  "name": "Instrument Museum",
+  "short_name": "Museum",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1F3329",
+  "theme_color": "#1F3329",
+  "icons": [
+    { "src": "../assets/logo/option-f-notes-badge-icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
