@@ -31,3 +31,10 @@
 /songburner/account/*
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
+
+# Radio plays the stream links listeners add, so audio (media-src only) may come from any https host.
+# Everything else on the page stays as strict as the rest of the site.
+/radio/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' https:; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Referrer-Policy: no-referrer
