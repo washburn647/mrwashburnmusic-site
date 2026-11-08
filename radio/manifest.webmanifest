@@ -1,0 +1,12 @@
+{
+  "name": "Radio",
+  "short_name": "Radio",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E9DEC6",
+  "theme_color": "#3A2617",
+  "icons": [
+    { "src": "../assets/logo/option-f-notes-badge-icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
