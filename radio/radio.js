@@ -3,7 +3,10 @@
   'use strict';
 
   const LO = 87.5, HI = 108.0;
-  const LOCK = 0.25;            // MHz either side of a station where it comes in
+  const LOCK = 0.25;   // MHz either side of a station where its name shows
+  const HEAR = 0.6;    // MHz either side where it starts to bleed through the static
+  const AHEAD = 1.6;   // MHz either side where it starts loading, when "Load nearby stations" is on
+  const MAXCH = 3;     // streams open at once
   const KEY = 'mwm-radio';
   // Kyle's stations (from his dashboard), at their real FM numbers where they have one.
   const SEED = 2;
@@ -21,11 +24,13 @@
     { name: 'VPR News', freq: 107.9, url: 'https://vpr.streamguys1.com/vpr96.mp3' },
   ];
   const SKINS = { antique: '#3A2617', atomic: '#7FC8BC', eighties: '#14121C', modern: '#F6F1E4' };
+  const OPTS = { shape: 'h', static: 0.7, chatter: true, scanWait: 7, ahead: true };
 
   const $ = (id) => document.getElementById(id);
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const r1 = (f) => Math.round(f * 10) / 10;
   const fmt = (f) => r1(f).toFixed(1);
+  const rand = (a, b) => a + Math.random() * (b - a);
 
   // ---------- saved state ----------
   let state = null;
@@ -41,6 +46,9 @@
   state.freq = clamp(+state.freq || 99.3, LO, HI);
   state.vol = clamp(state.vol == null ? 0.6 : +state.vol, 0, 1);
   if (!SKINS[state.skin]) state.skin = 'antique';
+  state.opts = { ...OPTS, ...(state.opts || {}) };
+  const opts = state.opts;
+  if (!['h', 'v', 'round'].includes(opts.shape)) opts.shape = 'h';
   let saveTimer = 0;
   function save() {
     clearTimeout(saveTimer);
@@ -54,187 +62,388 @@
   const freqEl = $('freq'), nameEl = $('name'), meter = $('meter');
   const powerBtn = $('power'), scanBtn = $('scan'), tuneKnob = $('tune'), volKnob = $('vol');
   const bars = [...meter.querySelectorAll('i')];
-  const audio = new Audio();
-  audio.preload = 'none';
 
-  // ---------- scale ----------
+  // ---------- dial: across, up-down or round ----------
   const pct = (f) => ((f - LO) / (HI - LO)) * 100;
-  for (let f = 88; f <= 108; f++) {
-    const t = document.createElement('span');
-    t.className = 'tick' + (f % 4 === 0 ? ' major' : '');
-    t.style.left = pct(f) + '%';
-    if (f % 4 === 0) t.dataset.n = f;
-    scale.appendChild(t);
+  const ARC = 270;                                   // round dial sweep, degrees
+  const ang = (f) => -ARC / 2 + (pct(f) / 100) * ARC;
+  function place(el, f) {
+    if (opts.shape === 'round') { el.style.cssText = ''; el.style.transform = 'rotate(' + ang(f) + 'deg)'; }
+    else if (opts.shape === 'v') { el.style.cssText = ''; el.style.bottom = pct(f) + '%'; }
+    else { el.style.cssText = ''; el.style.left = pct(f) + '%'; }
   }
-  for (let f = 88.5; f < 108; f++) {
+  function piece(cls, f, label) {
+    const arm = document.createElement('span');
+    arm.className = 'arm ' + cls;
     const t = document.createElement('span');
-    t.className = 'tick minor';
-    t.style.left = pct(f) + '%';
-    scale.appendChild(t);
+    t.className = 'pip';
+    if (label) {
+      const n = document.createElement('b');
+      n.textContent = label;
+      if (opts.shape === 'round') n.style.transform = 'rotate(' + (-ang(f)) + 'deg)';
+      t.appendChild(n);
+    }
+    arm.appendChild(t);
+    place(arm, f);
+    return arm;
+  }
+  function buildScale() {
+    dial.dataset.shape = opts.shape;
+    document.body.dataset.dial = opts.shape;
+    scale.querySelectorAll('.arm').forEach((m) => m.remove());
+    for (let f = 88; f <= 108; f++) scale.appendChild(piece(f % 4 === 0 ? 'tick major' : 'tick', f, f % 4 === 0 ? String(f) : ''));
+    for (let f = 88.5; f < 108; f++) scale.appendChild(piece('tick minor', f));
+    drawMarks();
+    paint();
   }
   function drawMarks() {
     scale.querySelectorAll('.mark').forEach((m) => m.remove());
-    for (const s of state.stations) {
-      const m = document.createElement('span');
-      m.className = 'mark';
-      m.style.left = pct(s.freq) + '%';
-      scale.appendChild(m);
-    }
+    for (const s of state.stations) scale.appendChild(piece('mark', s.freq));
   }
 
   // ---------- sound ----------
-  let ctx = null, noiseGain = null, on = false;
-  let tuned = null;      // station whose stream is loaded
-  let playing = false;   // stream is actually sounding
-  let failed = null;     // station id that would not play
-  let signal = 0;        // 0..1 how close the needle is to a station
-  let pendingTimer = 0;
+  // Every stream runs through Web Audio (the stations send CORS headers), so each can be
+  // muffled, faded and mixed with the static. A stream without CORS falls back to plain volume.
+  let ctx = null, master = null, noiseGain = null, chatterBus = null, whistle = null, whistleGain = null, noiseBuf = null;
+  let on = false;
+  let best = 0;                 // clearest station sounding right now, 0..1
+  let noiseLevel = 0;           // how much static is showing, 0..1
+  const chans = new Map();      // station id -> channel
+  const noCors = new Set();     // urls that refused CORS
+  const failedUrls = new Set(); // urls that wouldn't play at all this visit
 
-  function startNoise() {
+  function startAudio() {
     if (ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
-    const len = ctx.sampleRate * 2;
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
+    master = ctx.createGain();
+    master.gain.value = state.vol * state.vol;
+    master.connect(ctx.destination);
+
+    // hiss with the odd crackle
+    const len = ctx.sampleRate * 3;
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
     let last = 0;
     for (let i = 0; i < len; i++) {
       const w = Math.random() * 2 - 1;
       last = last * 0.6 + w * 0.4;
-      d[i] = (Math.random() < 0.0008 ? w * 3 : last);   // hiss with the odd crackle
+      d[i] = Math.random() < 0.0006 ? w * 3.5 : last;
     }
     const src = ctx.createBufferSource();
-    src.buffer = buf; src.loop = true;
+    src.buffer = noiseBuf; src.loop = true;
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 0.5;
     noiseGain = ctx.createGain();
     noiseGain.gain.value = 0;
-    src.connect(bp).connect(noiseGain).connect(ctx.destination);
+    src.connect(bp).connect(noiseGain).connect(master);
     src.start();
+
+    // chatter: a narrow "radio band" everything faint passes through
+    chatterBus = ctx.createGain();
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass'; band.frequency.value = 1500; band.Q.value = 0.8;
+    chatterBus.connect(band).connect(master);
+
+    // the whistle you hear sliding past a station
+    whistle = ctx.createOscillator();
+    whistle.type = 'sine';
+    whistleGain = ctx.createGain();
+    whistleGain.gain.value = 0;
+    whistle.connect(whistleGain).connect(chatterBus);
+    whistle.start();
   }
 
-  function mix() {
-    const sig = on && playing ? signal : 0;
-    const v = state.vol * state.vol;      // feels even across the knob
-    audio.volume = clamp(v * Math.min(1, sig * 1.15), 0, 1);
-    if (noiseGain) {
-      const n = on ? v * 0.16 * (1 - sig) : 0;
-      noiseGain.gain.setTargetAtTime(n, ctx.currentTime, 0.03);
+  function makeChan(st) {
+    const a = new Audio();
+    a.preload = 'auto';
+    const ch = { st, url: st.url, a, ready: false, seen: performance.now(), node: null, g: null, lp: null, hp: null };
+    const routed = ctx && !noCors.has(st.url);
+    if (routed) {
+      a.crossOrigin = 'anonymous';
+      ch.node = ctx.createMediaElementSource(a);
+      ch.hp = ctx.createBiquadFilter(); ch.hp.type = 'highpass'; ch.hp.frequency.value = 350;
+      ch.lp = ctx.createBiquadFilter(); ch.lp.type = 'lowpass'; ch.lp.frequency.value = 800;
+      ch.g = ctx.createGain(); ch.g.gain.value = 0;
+      ch.node.connect(ch.hp).connect(ch.lp).connect(ch.g).connect(master);
+    } else {
+      a.muted = true;
     }
-    const shown = on ? (playing ? signal : signal * 0.35) : 0;
-    meter.style.setProperty('--s', shown.toFixed(3));
-    bars.forEach((b, i) => b.classList.toggle('lit', shown > i / 5 + 0.02));
-  }
-
-  function nearest(f) {
-    let best = null, bd = Infinity;
-    for (const s of state.stations) {
-      const d = Math.abs(s.freq - f);
-      if (d < bd) { bd = d; best = s; }
-    }
-    return { st: best, d: bd };
-  }
-
-  function load(st) {
-    tuned = st; playing = false; failed = null;
-    audio.src = st.url;
-    const p = audio.play();
+    a.addEventListener('playing', () => { ch.ready = true; });
+    a.addEventListener('waiting', () => { ch.ready = false; });
+    a.addEventListener('error', () => {
+      if (!a.getAttribute('src')) return;
+      dropChan(ch);
+      if (routed) noCors.add(ch.url);       // try again without Web Audio
+      else failedUrls.add(ch.url);
+      paint();
+    });
+    a.src = st.url;
+    const p = a.play();
     if (p && p.catch) p.catch(() => {});
-    setMedia(st);
+    chans.set(st.id, ch);
+    return ch;
   }
-  function unload() {
-    tuned = null; playing = false;
-    audio.pause();
-    audio.removeAttribute('src');
-    audio.load();
-    setMedia(null);
+  function dropChan(ch) {
+    if (chans.get(ch.st.id) === ch) chans.delete(ch.st.id);
+    ch.ready = false;
+    try { ch.a.pause(); ch.a.removeAttribute('src'); ch.a.load(); } catch (e) { /* ignore */ }
+    if (ch.node) { try { ch.g.disconnect(); ch.node.disconnect(); } catch (e) { /* ignore */ } }
   }
+  function dropAll() { [...chans.values()].forEach(dropChan); }
 
-  audio.addEventListener('playing', () => { playing = true; mix(); paint(); });
-  audio.addEventListener('waiting', () => { playing = false; mix(); });
-  audio.addEventListener('error', () => {
-    if (!audio.getAttribute('src')) return;
-    playing = false;
-    if (tuned) failed = tuned.id;
-    mix(); paint();
-  });
+  // where the dial is heading, so those stations load early
+  let glideTarget = null, scanNext = null;
 
-  function update() {
-    const { st, d } = nearest(state.freq);
-    signal = st && d < LOCK ? clamp((1 - d / LOCK) * 1.6, 0, 1) : 0;
-    const want = signal > 0 ? st : null;
-    if (on && want !== tuned) {
-      clearTimeout(pendingTimer);
-      if (want) pendingTimer = setTimeout(() => load(want), 150);
-      else pendingTimer = setTimeout(unload, 900);
-    } else if (on) {
-      clearTimeout(pendingTimer);
+  function engine() {
+    if (!on) return;
+    const now = performance.now();
+    const f = state.freq;
+    // what to keep open, most wanted first: where the needle is heading, where it is,
+    // the next stop on a scan, the next station each way (for the seek buttons), then anything close
+    const live = state.stations.filter((s) => !failedUrls.has(s.url));
+    const dist = (s, x) => Math.abs(s.freq - x);
+    const pick = [];
+    const add = (s) => { if (s && !pick.includes(s)) pick.push(s); };
+    const closest = (x, within) => live.filter((s) => dist(s, x) < within).sort((a, b) => dist(a, x) - dist(b, x))[0];
+    if (glideTarget != null) add(closest(glideTarget, 0.05));
+    add(closest(f, HEAR));
+    if (opts.ahead) {
+      if (scanNext) add(scanNext);
+      add(nextStation(1, f, live)); add(nextStation(-1, f, live));
+      live.filter((s) => dist(s, f) < AHEAD).sort((a, b) => dist(a, f) - dist(b, f)).forEach(add);
     }
-    mix(); paint();
+    const near = pick.slice(0, MAXCH).map((s) => ({ s }));
+    for (const { s } of near) {
+      let ch = chans.get(s.id);
+      if (ch && ch.url !== s.url) { dropChan(ch); ch = null; }
+      if (!ch) ch = makeChan(s);
+      ch.seen = now;
+    }
+    for (const ch of [...chans.values()]) {
+      if (now - ch.seen > 4000 || !state.stations.includes(ch.st)) dropChan(ch);
+    }
+
+    best = 0;
+    const t = ctx ? ctx.currentTime : 0;
+    for (const ch of chans.values()) {
+      const d = Math.abs(f - ch.st.freq);
+      let c = d < 0.08 ? 1 : clamp(1 - (d - 0.08) / (HEAR - 0.08), 0, 1);
+      if (!ch.ready) c = 0;
+      best = Math.max(best, c);
+      // half-tuned stations fade in and out
+      const flutter = c > 0 && c < 0.95 ? 1 - (1 - c) * 0.6 * Math.random() : 1;
+      const g = Math.pow(c, 1.6) * flutter;
+      if (ch.node) {
+        ch.g.gain.setTargetAtTime(g, t, 0.05);
+        ch.lp.frequency.setTargetAtTime(700 + 15000 * Math.pow(c, 3), t, 0.05);
+        ch.hp.frequency.setTargetAtTime(20 + 400 * (1 - c), t, 0.05);
+      } else {
+        ch.a.muted = g < 0.05;
+        try { ch.a.volume = clamp(g * state.vol * state.vol, 0, 1); } catch (e) { /* iOS */ }
+      }
+    }
+
+    noiseLevel = 1 - best * 0.96;
+    if (noiseGain) noiseGain.gain.setTargetAtTime(opts.static * 0.22 * noiseLevel, t, 0.04);
+
+    // whistle sliding past the nearest loaded station
+    if (whistleGain) {
+      let wd = Infinity;
+      for (const ch of chans.values()) if (ch.ready) wd = Math.min(wd, Math.abs(f - ch.st.freq));
+      const w = opts.chatter && wd > 0.04 && wd < HEAR ? (1 - wd / HEAR) : 0;
+      if (isFinite(wd)) whistle.frequency.setTargetAtTime(180 + wd * 5200, t, 0.03);
+      whistleGain.gain.setTargetAtTime(0.012 * w * opts.static, t, 0.05);
+    }
+    paintSignal();
   }
+  setInterval(engine, 80);
+
+  // ---------- chatter: faint, broken bits of other broadcasts ----------
+  function ghostVoice(t0, amp) {
+    const dur = rand(0.5, 1.6);
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = 7;
+    const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 9;
+    const g = ctx.createGain(); g.gain.value = 0;
+    src.connect(f1).connect(g); src.connect(f2).connect(g); g.connect(chatterBus);
+    let t = t0;
+    while (t < t0 + dur) {
+      const syl = rand(0.06, 0.2);
+      f1.frequency.setValueAtTime(rand(350, 900), t);
+      f2.frequency.setValueAtTime(rand(1100, 2600), t);
+      g.gain.setTargetAtTime(amp * rand(0.4, 1), t, 0.012);
+      g.gain.setTargetAtTime(0, t + syl, 0.02);
+      t += syl + rand(0.02, 0.1);
+    }
+    src.start(t0, rand(0, 2));
+    src.stop(t + 0.2);
+  }
+  function morse(t0, amp) {
+    const o = ctx.createOscillator(); o.frequency.value = rand(550, 950);
+    const g = ctx.createGain(); g.gain.value = 0;
+    o.connect(g).connect(chatterBus);
+    let t = t0;
+    const n = 3 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < n; i++) {
+      const len = Math.random() < 0.5 ? 0.06 : 0.18;
+      g.gain.setTargetAtTime(amp, t, 0.004);
+      g.gain.setTargetAtTime(0, t + len, 0.004);
+      t += len + 0.07;
+    }
+    o.start(t0); o.stop(t + 0.1);
+  }
+  function chirp(t0, amp) {
+    const o = ctx.createOscillator(); o.type = 'triangle';
+    const g = ctx.createGain(); g.gain.value = 0;
+    o.connect(g).connect(chatterBus);
+    const up = Math.random() < 0.5;
+    o.frequency.setValueAtTime(up ? 300 : 2600, t0);
+    o.frequency.exponentialRampToValueAtTime(up ? 2200 : 260, t0 + rand(0.12, 0.35));
+    g.gain.setTargetAtTime(amp, t0, 0.01);
+    g.gain.setTargetAtTime(0, t0 + 0.25, 0.04);
+    o.start(t0); o.stop(t0 + 0.6);
+  }
+  function burst(t0, amp) {
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    const g = ctx.createGain(); g.gain.value = 0;
+    src.connect(g).connect(chatterBus);
+    const n = 2 + Math.floor(Math.random() * 4);
+    let t = t0;
+    for (let i = 0; i < n; i++) {
+      g.gain.setTargetAtTime(amp, t, 0.003);
+      g.gain.setTargetAtTime(0, t + 0.02, 0.01);
+      t += rand(0.04, 0.12);
+    }
+    src.start(t0, rand(0, 2)); src.stop(t + 0.1);
+  }
+  setInterval(() => {
+    if (!on || !ctx || !opts.chatter || document.hidden) return;
+    if (noiseLevel < 0.45 || Math.random() > 0.16) return;
+    const amp = opts.static * noiseLevel;
+    const t = ctx.currentTime + 0.02;
+    const r = Math.random();
+    if (r < 0.42) ghostVoice(t, amp * 1.6);
+    else if (r < 0.6) morse(t, amp * 0.05);
+    else if (r < 0.85) chirp(t, amp * 0.04);
+    else burst(t, amp * 0.5);
+  }, 350);
 
   // ---------- drawing ----------
+  function paintSignal() {
+    const ch = nearestChan();
+    const shown = on ? Math.max(best, ch ? 0.3 * clamp(1 - Math.abs(state.freq - ch.st.freq) / HEAR, 0, 1) : 0) : 0;
+    meter.style.setProperty('--s', shown.toFixed(3));
+    bars.forEach((b, i) => b.classList.toggle('lit', shown > i / 5 + 0.02));
+    paintName();
+  }
+  function nearestChan() {
+    let bestCh = null, bd = Infinity;
+    for (const ch of chans.values()) {
+      const d = Math.abs(ch.st.freq - state.freq);
+      if (d < bd) { bd = d; bestCh = ch; }
+    }
+    return bestCh;
+  }
+  function nearest(f) {
+    let st = null, bd = Infinity;
+    for (const s of state.stations) {
+      const d = Math.abs(s.freq - f);
+      if (d < bd) { bd = d; st = s; }
+    }
+    return { st, d: bd };
+  }
+  let mediaFor = null;
+  function paintName() {
+    const { st, d } = nearest(state.freq);
+    let name = '', here = null;
+    if (on && st && d < LOCK) {
+      here = st;
+      name = failedUrls.has(st.url) ? 'No signal' : st.name;
+    }
+    if (nameEl.textContent !== name) nameEl.textContent = name;
+    if (here !== mediaFor) { mediaFor = here; setMedia(here); }
+  }
   function paint() {
     const f = state.freq;
-    needle.style.left = pct(f) + '%';
+    place(needle, f);
     tuneKnob.style.setProperty('--a', ((f - LO) * 120) + 'deg');
     tuneKnob.setAttribute('aria-valuenow', fmt(f));
     tuneKnob.setAttribute('aria-valuetext', fmt(f) + ' FM');
     volKnob.style.setProperty('--a', (-135 + state.vol * 270) + 'deg');
     volKnob.setAttribute('aria-valuenow', Math.round(state.vol * 100));
     freqEl.textContent = fmt(f);
-    const { st } = nearest(f);
-    let name = '';
-    if (on && st && signal > 0.3) name = failed === st.id ? 'No signal' : st.name;
-    nameEl.textContent = name;
     radio.classList.toggle('on', on);
+    paintName();
   }
 
   // ---------- tuning ----------
   let glide = 0;
   function setFreq(f) {
     state.freq = clamp(f, LO, HI);
-    save(); update();
+    save(); paint();
   }
   function snap() {
     const { st, d } = nearest(state.freq);
     setFreq(st && d < LOCK ? st.freq : r1(state.freq));
   }
-  function stopGlide() { cancelAnimationFrame(glide); glide = 0; }
+  function stopGlide() { cancelAnimationFrame(glide); glide = 0; glideTarget = null; }
   function glideTo(target, done) {
     stopGlide();
+    glideTarget = target;
+    engine();                         // start loading the station now, while the needle travels
     const from = state.freq, t0 = performance.now();
-    const ms = clamp(Math.abs(target - from) * 90, 250, 1100);
+    const ms = clamp(Math.abs(target - from) * 90, 300, 1100);
     const step = (now) => {
       const k = clamp((now - t0) / ms, 0, 1);
       const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
       setFreq(from + (target - from) * e);
       if (k < 1) glide = requestAnimationFrame(step);
-      else { glide = 0; if (done) done(); }
+      else { glide = 0; glideTarget = null; if (done) done(); }
     };
     glide = requestAnimationFrame(step);
   }
-  function seek(dir, done) {
-    const list = [...state.stations].sort((a, b) => a.freq - b.freq);
-    if (!list.length) return;
-    const f = state.freq;
-    let next = dir > 0 ? list.find((s) => s.freq > f + 0.05) : [...list].reverse().find((s) => s.freq < f - 0.05);
+  function nextStation(dir, from, among) {
+    const list = [...(among || state.stations)].sort((a, b) => a.freq - b.freq);
+    if (!list.length) return null;
+    let next = dir > 0 ? list.find((s) => s.freq > from + 0.05) : [...list].reverse().find((s) => s.freq < from - 0.05);
     if (!next) next = dir > 0 ? list[0] : list[list.length - 1];
-    glideTo(next.freq, done);
+    return next;
+  }
+  function seek(dir, done) {
+    const next = nextStation(dir, state.freq);
+    if (next) glideTo(next.freq, done);
   }
 
-  // scan: stop at each station for a few seconds
-  let scanning = false, scanTimer = 0;
+  // scan: the button's needle crosses while it waits on a station, then moves on
+  let scanning = false, scanFrame = 0;
   function setScan(v) {
     scanning = v;
-    clearTimeout(scanTimer);
+    cancelAnimationFrame(scanFrame);
+    scanNext = null;
     scanBtn.setAttribute('aria-pressed', String(v));
+    scanBtn.style.setProperty('--p', 0);
     if (v) { if (!on) power(true); scanStep(); }
   }
   function scanStep() {
     if (!scanning) return;
-    seek(1, () => { scanTimer = setTimeout(scanStep, 7000); });
+    scanBtn.style.setProperty('--p', 0);
+    seek(1, () => {
+      if (!scanning) return;
+      const t0 = performance.now();
+      if (opts.ahead) scanNext = nextStation(1, state.freq);
+      const wait = opts.scanWait * 1000;
+      const tick = (now) => {
+        if (!scanning) return;
+        const p = clamp((now - t0) / wait, 0, 1);
+        scanBtn.style.setProperty('--p', p.toFixed(4));
+        if (p < 1) scanFrame = requestAnimationFrame(tick);
+        else { scanNext = null; scanStep(); }
+      };
+      scanFrame = requestAnimationFrame(tick);
+    });
   }
   function userTouch() { stopGlide(); if (scanning) setScan(false); }
 
@@ -288,15 +497,29 @@
       wheelSnap = setTimeout(snap, 400);
     },
     snap);
+  function setVol(v) {
+    state.vol = clamp(v, 0, 1);
+    if (master) master.gain.setTargetAtTime(state.vol * state.vol, ctx.currentTime, 0.02);
+    save(); paint();
+  }
   knob(volKnob,
-    (d) => { state.vol = clamp(state.vol + d / 270, 0, 1); save(); mix(); paint(); },
-    (dir, big) => { state.vol = clamp(state.vol + dir * (big ? 0.2 : 0.05), 0, 1); save(); mix(); paint(); });
+    (d) => setVol(state.vol + d / 270),
+    (dir, big) => setVol(state.vol + dir * (big ? 0.2 : 0.05)));
 
-  // drag along the dial itself
+  // drag along (or around) the dial itself
   let dialDrag = false;
   const dialFreq = (e) => {
     const r = scale.getBoundingClientRect();
-    return LO + clamp((e.clientX - r.left) / r.width, 0, 1) * (HI - LO);
+    let k;
+    if (opts.shape === 'round') {
+      const a = Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180 / Math.PI;
+      k = (clamp(a, -ARC / 2, ARC / 2) + ARC / 2) / ARC;
+    } else if (opts.shape === 'v') {
+      k = (r.bottom - e.clientY) / r.height;
+    } else {
+      k = (e.clientX - r.left) / r.width;
+    }
+    return LO + clamp(k, 0, 1) * (HI - LO);
   };
   dial.addEventListener('pointerdown', (e) => {
     dialDrag = true; userTouch();
@@ -313,15 +536,18 @@
     on = v;
     powerBtn.setAttribute('aria-pressed', String(on));
     if (on) {
-      startNoise();
+      startAudio();
       if (ctx && ctx.state === 'suspended') ctx.resume();
-      tuned = null;
+      engine();
     } else {
       setScan(false);
-      clearTimeout(pendingTimer);
-      unload();
+      dropAll();
+      best = 0; noiseLevel = 0;
+      if (noiseGain) noiseGain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+      if (whistleGain) whistleGain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+      paintSignal();
     }
-    update();
+    paint();
   }
   powerBtn.addEventListener('click', () => power(!on));
   scanBtn.addEventListener('click', () => setScan(!scanning));
@@ -362,6 +588,36 @@
   }
   skinBtns.forEach((b) => b.addEventListener('click', () => setSkin(b.dataset.skin)));
 
+  // ---------- options ----------
+  const optDlg = $('opts');
+  $('openOpts').addEventListener('click', () => { paintOpts(); optDlg.showModal(); });
+  $('closeOpts').addEventListener('click', () => optDlg.close());
+  optDlg.addEventListener('click', (e) => { if (e.target === optDlg) optDlg.close(); });
+  const segs = [...optDlg.querySelectorAll('[data-opt]')];
+  function paintOpts() {
+    for (const el of segs) {
+      const k = el.dataset.opt;
+      if (el.type === 'range') { el.value = opts[k]; continue; }
+      el.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(String(opts[k]) === b.dataset.v)));
+    }
+  }
+  for (const el of segs) {
+    const k = el.dataset.opt;
+    if (el.type === 'range') {
+      el.addEventListener('input', () => { opts[k] = +el.value; save(); engine(); });
+      continue;
+    }
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const v = b.dataset.v;
+      opts[k] = v === 'true' ? true : v === 'false' ? false : isNaN(+v) ? v : +v;
+      save(); paintOpts();
+      if (k === 'shape') buildScale();
+      engine();
+    });
+  }
+
   // ---------- station list ----------
   const dlg = $('list'), ul = $('stations'), form = $('add'), err = $('err');
   $('open').addEventListener('click', () => { renderList(); dlg.showModal(); });
@@ -371,7 +627,7 @@
   function clashes(s) {
     return state.stations.some((o) => o !== s && Math.abs(o.freq - s.freq) < 0.15);
   }
-  function changed() { save(); drawMarks(); update(); }
+  function changed() { save(); drawMarks(); paint(); engine(); }
 
   function renderList() {
     ul.textContent = '';
@@ -410,7 +666,8 @@
       rm.textContent = '✕';
       rm.addEventListener('click', () => {
         state.stations = state.stations.filter((o) => o !== s);
-        if (tuned === s) unload();
+        const ch = chans.get(s.id);
+        if (ch) dropChan(ch);
         changed(); renderList();
       });
 
@@ -452,6 +709,7 @@
     let name = String(fd.get('name') || '').trim();
     if (!name) name = new URL(url).hostname.replace(/^www\./, '').split('.')[0];
     const st = { id: 'u' + Date.now().toString(36), name, url, freq };
+    failedUrls.delete(url);
     state.stations.push(st);
     form.reset();
     changed(); renderList();
@@ -462,6 +720,6 @@
 
   // ---------- start ----------
   setSkin(state.skin);
-  drawMarks();
-  paint(); mix();
+  buildScale();
+  paintSignal();
 })();

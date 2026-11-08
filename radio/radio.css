@@ -5,6 +5,13 @@
   font-display: swap;
 }
 
+/* Textures are drawn here (SVG noise), so nothing is fetched from elsewhere. */
+:root {
+  --grain: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  .55 0 0 0 -.18'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --wood: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='700' height='700'><filter id='w'><feTurbulence type='fractalNoise' baseFrequency='.0035 .09' numOctaves='4' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .14  0 0 0 0 .06  0 0 0 0 .02  1.9 0 0 0 -.62'/></filter><rect width='100%' height='100%' filter='url(%23w)'/></svg>");
+  --brushed: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='200'><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='.002 .9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .8 0 0 0 -.3'/></filter><rect width='100%' height='100%' filter='url(%23b)'/></svg>");
+}
+
 /* ---------- shared ---------- */
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -18,14 +25,13 @@ body {
   font-family: "Fredoka", ui-rounded, "Segoe UI", system-ui, sans-serif;
   background: var(--wall);
   color: var(--ink);
-  transition: background-color .4s;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
 .home { position: fixed; top: 12px; left: 12px; width: 40px; height: 40px; opacity: .85; }
 .home img { width: 100%; height: 100%; }
-main { width: min(720px, 100%); }
+main { width: min(740px, 100%); }
 
 .radio {
   position: relative;
@@ -38,74 +44,112 @@ main { width: min(720px, 100%); }
   user-select: none;
   -webkit-user-select: none;
 }
-.spk { grid-area: spk; }
+.spk { grid-area: spk; position: relative; }
 .spk-r { display: none; }
 .dial { grid-area: dial; }
 .readout { grid-area: read; }
 .meter { grid-area: meter; }
 .controls { grid-area: ctl; }
 
-/* dial */
+/* ---------- dial ---------- */
 .dial {
   position: relative;
-  height: var(--dial-h, 92px);
-  padding: 0 22px;
+  min-height: var(--dial-h, 92px);
   background: var(--dial-bg);
   border-radius: var(--dial-r, 12px);
   border: var(--dial-border, 0);
+  box-shadow: var(--dial-inset, none);
   overflow: hidden;
   cursor: ew-resize;
   touch-action: none;
   transition: filter .4s, box-shadow .4s;
   filter: var(--dial-off, brightness(.62) saturate(.7));
 }
-.radio.on .dial { filter: none; box-shadow: var(--dial-glow, none); }
-.scale { position: absolute; inset: 0 22px; }
-.tick {
+.radio.on .dial { filter: none; box-shadow: var(--dial-glow, 0 0 0 transparent), var(--dial-inset, 0 0 0 transparent); }
+.dial::after {          /* the glass */
+  content: "";
   position: absolute;
-  bottom: 22%;
-  width: 2px;
-  height: 22%;
-  margin-left: -1px;
-  background: var(--tick);
+  inset: 0;
+  border-radius: inherit;
+  background: var(--glass, linear-gradient(165deg, rgba(255,255,255,.32), rgba(255,255,255,.06) 38%, transparent 40%, transparent 80%, rgba(255,255,255,.08)));
+  pointer-events: none;
+  z-index: 3;
 }
-.tick.minor { height: 11%; opacity: .7; }
-.tick.major { height: 30%; }
-.tick.major::after {
-  content: attr(data-n);
+.scale { position: absolute; }
+.arm { position: absolute; pointer-events: none; }
+.pip { position: absolute; display: block; }
+.tick .pip { background: var(--tick); }
+.tick.minor .pip { opacity: .7; }
+.pip b {
   position: absolute;
-  bottom: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
   font-size: var(--num-size, 17px);
   font-weight: 600;
   color: var(--num);
   font-family: var(--num-font, inherit);
+  white-space: nowrap;
+  line-height: 1;
 }
-.mark {
-  position: absolute;
-  bottom: 9%;
-  width: 7px;
-  height: 7px;
-  margin-left: -3.5px;
-  border-radius: 50%;
-  background: var(--markc, var(--tick));
-  opacity: .8;
-}
+.mark .pip { width: 7px; height: 7px; border-radius: 50%; background: var(--markc, var(--tick)); opacity: .85; }
 .needle {
   position: absolute;
-  top: 8%;
-  bottom: 6%;
-  width: 3px;
-  margin-left: -1.5px;
   background: var(--needle);
   border-radius: 2px;
-  box-shadow: var(--needle-glow, none);
+  box-shadow: var(--needle-glow, 0 0 1px rgba(0,0,0,.3));
   z-index: 2;
   pointer-events: none;
 }
 
-/* readout */
+/* across */
+.dial[data-shape="h"] .scale { inset: 0 22px; }
+.dial[data-shape="h"] .arm { top: 0; bottom: 0; width: 0; }
+.dial[data-shape="h"] .tick .pip { bottom: 22%; left: -1px; width: 2px; height: 22%; }
+.dial[data-shape="h"] .tick.minor .pip { height: 11%; }
+.dial[data-shape="h"] .tick.major .pip { height: 30%; }
+.dial[data-shape="h"] .pip b { bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); }
+.dial[data-shape="h"] .mark .pip { bottom: 9%; left: -3.5px; }
+.dial[data-shape="h"] .needle { top: 8%; bottom: 6%; width: 3px; margin-left: -1.5px; }
+
+/* up and down */
+.dial[data-shape="v"] { cursor: ns-resize; min-height: 240px; min-width: 96px; }
+.dial[data-shape="v"] .scale { inset: 20px 0; }
+.dial[data-shape="v"] .arm { left: 0; right: 0; height: 0; }
+.dial[data-shape="v"] .tick .pip { left: 26%; top: -1px; height: 2px; width: 13%; }
+.dial[data-shape="v"] .tick.minor .pip { width: 7%; }
+.dial[data-shape="v"] .tick.major .pip { width: 20%; }
+.dial[data-shape="v"] .pip b { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); font-size: calc(var(--num-size, 17px) * .9); }
+.dial[data-shape="v"] .mark .pip { left: 12%; top: -3.5px; }
+.dial[data-shape="v"] .needle { left: 7%; right: 7%; height: 3px; margin-bottom: -1.5px; }
+
+/* round */
+.dial[data-shape="round"] {
+  cursor: grab;
+  justify-self: center;
+  width: min(var(--round, 230px), 100%);
+  aspect-ratio: 1;
+  min-height: 0;
+  border-radius: 50%;
+}
+.dial[data-shape="round"] .scale { inset: 8px; border-radius: 50%; }
+.dial[data-shape="round"] .arm { inset: 0; }
+.dial[data-shape="round"] .tick .pip { left: 50%; top: 5%; width: 2px; margin-left: -1px; height: 6%; }
+.dial[data-shape="round"] .tick.minor .pip { height: 3.5%; }
+.dial[data-shape="round"] .tick.major .pip { height: 9%; }
+.dial[data-shape="round"] .pip b { top: calc(100% + 6px); left: 50%; width: 2.4em; margin-left: -1.2em; text-align: center; font-size: calc(var(--num-size, 17px) * .85); }
+.dial[data-shape="round"] .mark .pip { left: 50%; margin-left: -3.5px; top: 1%; }
+.dial[data-shape="round"] .needle { left: 50%; top: 9%; bottom: 50%; width: 3px; margin-left: -1.5px; transform-origin: 50% 100%; }
+.dial[data-shape="round"] .scale::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 18px; height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: var(--hub, var(--needle));
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  z-index: 2;
+}
+
+/* ---------- readout ---------- */
 .readout {
   display: flex;
   align-items: baseline;
@@ -114,16 +158,18 @@ main { width: min(720px, 100%); }
   padding: var(--read-pad, 0);
   background: var(--read-bg, none);
   border-radius: var(--read-r, 0);
+  box-shadow: var(--read-shadow, none);
   color: var(--read-ink, var(--ink));
   font-family: var(--read-font, inherit);
   overflow: hidden;
+  min-width: 0;
 }
 .freq { font-size: var(--freq-size, 30px); font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .freq small { font-size: .45em; margin-left: .3em; opacity: .7; }
 .name { font-size: var(--name-size, 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .radio:not(.on) .readout > * { opacity: var(--read-off, .35); }
 
-/* signal meter: bars by default */
+/* ---------- signal meter: bars by default ---------- */
 .meter {
   --s: 0;
   display: flex;
@@ -146,7 +192,7 @@ main { width: min(720px, 100%); }
 .meter i:nth-child(5) { height: 100%; }
 .meter i.lit { background: var(--bar-on, #5E7D4F); box-shadow: var(--bar-glow, none); }
 
-/* controls */
+/* ---------- controls ---------- */
 .controls {
   display: flex;
   align-items: center;
@@ -156,24 +202,54 @@ main { width: min(720px, 100%); }
 }
 .keys { display: flex; gap: 8px; }
 .key {
+  position: relative;
   min-width: 48px;
   height: 44px;
   padding: 0 12px;
   border: var(--key-border, 0);
   border-radius: var(--key-r, 10px);
-  background: var(--key-bg);
+  background: var(--grain), var(--key-bg);
   color: var(--key-ink);
   box-shadow: var(--key-shadow);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: .03em;
   text-transform: var(--key-case, none);
-  transition: transform .06s, box-shadow .06s, background-color .2s;
+  transition: transform .06s, box-shadow .06s;
+  overflow: hidden;
 }
 .key:active { transform: translateY(2px); box-shadow: var(--key-shadow-down, none); }
-.key[aria-pressed="true"] { background: var(--key-on-bg, var(--key-bg)); color: var(--key-on-ink, var(--key-ink)); box-shadow: var(--key-shadow-down, none); transform: translateY(1px); }
+.key[aria-pressed="true"] { background: var(--grain), var(--key-on-bg, var(--key-bg)); color: var(--key-on-ink, var(--key-ink)); box-shadow: var(--key-shadow-down, none); transform: translateY(1px); }
 .power { font-size: 20px; }
 .power[aria-pressed="true"] { color: var(--power-on, #e44); text-shadow: 0 0 8px currentColor; }
+
+/* scan: a needle crosses the button while it waits on each station */
+.scan { min-width: 76px; }
+.scan span { position: relative; z-index: 1; }
+.scan::before, .scan::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.scan::before {
+  inset: 0;
+  background: var(--scan-fill, rgba(0,0,0,.14));
+  transform-origin: left center;
+  transform: scaleX(var(--p, 0));
+}
+.scan::after {
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  margin-left: -1.5px;
+  left: calc(6px + var(--p, 0) * (100% - 12px));
+  border-radius: 2px;
+  background: var(--needle);
+  box-shadow: var(--needle-glow, none);
+}
+.scan[aria-pressed="true"]::before, .scan[aria-pressed="true"]::after { opacity: 1; }
 
 .knob-wrap { display: grid; justify-items: center; gap: 6px; }
 .lbl { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--lbl, inherit); opacity: .75; }
@@ -197,6 +273,7 @@ main { width: min(720px, 100%); }
   inset: 0;
   border-radius: 50%;
   transform: rotate(var(--a));
+  background: var(--knob-turn, none);
 }
 .knob .cap::after {
   content: "";
@@ -209,11 +286,19 @@ main { width: min(720px, 100%); }
   border-radius: 3px;
   background: var(--ind);
 }
-.knob:focus-visible, .key:focus-visible, .pill:focus-visible, .skins button:focus-visible {
+.knob::after {          /* fixed highlight, so the knob looks lit from one side as it turns */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--knob-light, radial-gradient(circle at 34% 28%, rgba(255,255,255,.28), transparent 46%));
+  pointer-events: none;
+}
+.knob:focus-visible, .key:focus-visible, .pill:focus-visible, .skins button:focus-visible, .seg button:focus-visible {
   outline: 3px solid var(--focus, #D9B26F);
 }
 
-/* under the set */
+/* ---------- under the set ---------- */
 .under {
   display: flex;
   justify-content: space-between;
@@ -222,6 +307,7 @@ main { width: min(720px, 100%); }
   flex-wrap: wrap;
   margin-top: 20px;
 }
+.pills { display: flex; gap: 8px; }
 .pill {
   padding: 10px 20px;
   border: 0;
@@ -231,6 +317,7 @@ main { width: min(720px, 100%); }
   font-size: 16px;
   font-weight: 600;
 }
+#openOpts { background: var(--chip-bg); color: var(--chip-ink); }
 .skins { display: flex; gap: 6px; flex-wrap: wrap; }
 .skins button {
   padding: 8px 14px;
@@ -242,7 +329,7 @@ main { width: min(720px, 100%); }
 }
 .skins button[aria-checked="true"] { border-color: var(--chip-on); }
 
-/* ---------- station sheet ---------- */
+/* ---------- sheets ---------- */
 dialog {
   width: min(560px, calc(100% - 24px));
   max-height: calc(100dvh - 32px);
@@ -301,7 +388,7 @@ dialog::backdrop { background: rgba(20, 16, 10, .55); }
 #add label { display: grid; gap: 4px; font-size: 14px; }
 #add label:nth-of-type(2) { grid-column: 1 / -1; }
 #add .pill { background: #2F4A3A; color: #F6F1E4; height: 42px; }
-.err { grid-column: 1 / -1; margin: 0; color: #A8442A; font-size: 14px; min-height: 0; }
+.err { grid-column: 1 / -1; margin: 0; color: #A8442A; font-size: 14px; }
 .err:empty { display: none; }
 details { margin-top: 16px; font-size: 15px; line-height: 1.5; }
 summary { cursor: pointer; font-weight: 600; }
@@ -309,46 +396,68 @@ details ol { padding-left: 1.3em; margin: 10px 0; }
 details li + li { margin-top: 6px; }
 details p { margin: 0; color: #5B6B5F; }
 
+.opt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-bottom: 1px solid #ECE4D2;
+  font-size: 16px;
+}
+.opt:last-child { border-bottom: 0; }
+.seg { display: flex; background: #F1EBDC; border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: none; padding: 7px 14px; border-radius: 999px; font-size: 14px; }
+.seg button[aria-pressed="true"] { background: #2F4A3A; color: #F6F1E4; }
+.opt input[type="range"] { width: min(240px, 100%); accent-color: #5E7D4F; }
+
 /* =========================================================
    Old-time: a 1930s cathedral set in walnut
    ========================================================= */
 body[data-skin="antique"] {
-  --wall: #E9DEC6 radial-gradient(ellipse at 50% 30%, #F3EAD5, #D9C9A6);
+  --wall: var(--grain), radial-gradient(ellipse at 50% 30%, #F3EAD5, #D9C9A6) #E9DEC6;
   --ink: #3A2617;
   --case:
-    repeating-linear-gradient(92deg, rgba(0,0,0,.06) 0 3px, transparent 3px 11px),
-    repeating-linear-gradient(88deg, rgba(255,220,170,.06) 0 2px, transparent 2px 17px),
-    linear-gradient(160deg, #8A5329, #6A3B1C 55%, #4E2A12);
+    linear-gradient(90deg, rgba(0,0,0,.25), transparent 12%, transparent 88%, rgba(0,0,0,.3)),
+    var(--grain), var(--wood),
+    linear-gradient(160deg, #94592B, #6E3D1C 55%, #50290F);
   --radius: 46% 46% 26px 26px / 34% 34% 26px 26px;
   --pad: 64px 40px 32px;
-  --shadow: inset 0 0 0 8px #5A3216, inset 0 0 0 11px #9C6634, 0 24px 50px rgba(58,38,23,.45);
-  --dial-bg: radial-gradient(ellipse at 50% 70%, #FFE9AE, #F0C46E 60%, #C88E3E);
-  --dial-border: 6px solid #C9A257;
+  --shadow:
+    inset 0 0 0 8px rgba(70,36,14,.55), inset 0 0 0 10px rgba(214,160,92,.55),
+    inset 0 0 0 14px rgba(60,30,10,.4), inset 0 30px 40px -20px rgba(255,220,170,.18),
+    0 3px 0 #3A1E0A, 0 26px 50px rgba(58,38,23,.45);
+  --dial-bg: radial-gradient(ellipse at 50% 70%, #FFEBB4, #F0C46E 60%, #C38737), var(--grain);
+  --dial-border: 7px solid #B88E44;
+  --dial-inset: inset 0 0 0 2px #E6C77E, inset 0 0 0 4px #7A5520, inset 0 6px 14px rgba(90,50,10,.45);
   --dial-r: 50% 50% 14px 14px / 70% 70% 14px 14px;
   --dial-h: 104px;
-  --dial-glow: 0 0 26px rgba(255, 196, 92, .75), inset 0 0 18px rgba(255, 240, 200, .6);
-  --dial-off: brightness(.45) sepia(.4);
+  --dial-glow: 0 0 26px rgba(255, 196, 92, .75);
+  --dial-off: brightness(.42) sepia(.5);
   --tick: #4A2A10;
   --num: #4A2A10;
   --num-font: Georgia, "Times New Roman", serif;
   --needle: #7A1A0E;
   --markc: #7A1A0E;
+  --hub: radial-gradient(circle at 35% 30%, #F2D489, #9C6B24);
   --read-ink: #F3DFB6;
   --read-font: Georgia, "Times New Roman", serif;
   --freq-size: 0px;
   --name-size: 19px;
-  --key-bg: linear-gradient(#F4E8CC, #D9C49A);
+  --key-bg: linear-gradient(#F6EBD0, #D6BF92);
   --key-ink: #4A2A10;
   --key-r: 50%;
-  --key-shadow: 0 3px 0 #3A2010, 0 5px 8px rgba(0,0,0,.4);
-  --key-shadow-down: 0 1px 0 #3A2010;
-  --key-on-bg: linear-gradient(#E8D7B0, #CDB487);
+  --key-shadow: 0 3px 0 #3A2010, 0 5px 8px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.6);
+  --key-shadow-down: 0 1px 0 #3A2010, inset 0 2px 4px rgba(0,0,0,.25);
+  --key-on-bg: linear-gradient(#E6D3A8, #C9AE7E);
+  --scan-fill: rgba(122,26,14,.16);
   --power-on: #C2301C;
   --knob-bg:
-    radial-gradient(circle at 36% 30%, rgba(255,255,255,.22), transparent 42%),
-    repeating-conic-gradient(rgba(0,0,0,.35) 0 5deg, transparent 5deg 15deg),
-    radial-gradient(circle, #5A3A24, #2A170B 72%);
-  --knob-shadow: 0 6px 0 #241206, 0 10px 18px rgba(0,0,0,.5), inset 0 0 0 4px #3A2414;
+    var(--grain),
+    radial-gradient(circle, #5E3E27, #2A170B 72%);
+  --knob-turn: repeating-conic-gradient(rgba(0,0,0,.4) 0 5deg, rgba(255,220,180,.05) 5deg 15deg);
+  --knob-shadow: 0 6px 0 #241206, 0 10px 18px rgba(0,0,0,.5), inset 0 0 0 4px #3A2414, inset 0 0 0 6px rgba(201,162,87,.5);
   --ind: #E9C98A;
   --lbl: #F0D9A8;
   --pill-bg: #5A3216;
@@ -361,19 +470,31 @@ body[data-skin="antique"] {
   grid-template-columns: 1fr auto;
   grid-template-areas: "spk spk" "dial dial" "read meter" "ctl ctl";
 }
+[data-skin="antique"][data-dial="v"] .radio {
+  grid-template-columns: 1fr 112px;
+  grid-template-areas: "spk dial" "read meter" "ctl ctl";
+}
+[data-skin="antique"][data-dial="v"] .dial,
+[data-skin="antique"][data-dial="round"] .dial { --dial-r: 18px; }
+[data-skin="antique"][data-dial="round"] .dial { border-radius: 50%; }
+[data-skin="antique"] .dial[data-shape="h"] .scale { inset: 0 68px; }
 [data-skin="antique"] .spk {
   height: 190px;
   border-radius: 48% 48% 10px 10px / 60% 60% 10px 10px;
   background:
-    repeating-linear-gradient(90deg, transparent 0 30px, #6A3B1C 30px 40px),
-    repeating-linear-gradient(0deg, #C9B07A 0 2px, #B69960 2px 4px),
-    repeating-linear-gradient(90deg, rgba(0,0,0,.08) 0 1px, transparent 1px 3px);
-  box-shadow: inset 0 0 0 6px #5A3216, inset 0 8px 24px rgba(0,0,0,.45);
+    linear-gradient(rgba(0,0,0,.35), transparent 30%),
+    repeating-linear-gradient(90deg, transparent 0 30px, rgba(0,0,0,.25) 30px 31px, #6A3B1C 31px 40px, rgba(255,210,150,.2) 40px 41px),
+    var(--grain),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 3px),
+    linear-gradient(#C9B07A, #B49660);
+  box-shadow: inset 0 0 0 6px #5A3216, inset 0 0 0 8px rgba(214,160,92,.45), inset 0 10px 26px rgba(0,0,0,.5);
 }
-[data-skin="antique"] .scale { inset: 0 44px; }
-[data-skin="antique"] .readout { justify-content: center; }
+[data-skin="antique"][data-dial="v"] .spk { height: auto; min-height: 210px; }
+[data-skin="antique"] .readout { justify-content: center; text-shadow: 0 1px 0 rgba(0,0,0,.5); }
 [data-skin="antique"] .name:empty::before { content: "\00a0"; }
 [data-skin="antique"] .meter {
+  justify-self: center;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -382,7 +503,7 @@ body[data-skin="antique"] {
     conic-gradient(from calc(180deg - (1 - var(--s)) * 70deg - 6deg),
       #0A2A12 0 calc((1 - var(--s)) * 140deg + 12deg),
       #49F06A 0 360deg);
-  box-shadow: 0 0 0 5px #C9A257, 0 0 0 7px #4A2A10, 0 0 14px rgba(73,240,106,.25);
+  box-shadow: 0 0 0 5px #B88E44, 0 0 0 7px #4A2A10, 0 0 14px rgba(73,240,106,.25);
   transition: filter .3s;
 }
 [data-skin="antique"] .radio:not(.on) .meter { filter: brightness(.3) saturate(.3); }
@@ -392,20 +513,29 @@ body[data-skin="antique"] {
    '50s: pastel plastic and chrome
    ========================================================= */
 body[data-skin="atomic"] {
-  --wall: #F7EBD3 radial-gradient(circle at 20% 15%, #FFF6E2, #F1DDB8);
+  --wall: var(--grain), radial-gradient(circle at 20% 15%, #FFF6E2, #F1DDB8) #F7EBD3;
   --ink: #23423D;
-  --case: linear-gradient(170deg, #9AD9CD, #6FBFB1);
+  --case:
+    var(--grain),
+    radial-gradient(ellipse at 30% 0%, rgba(255,255,255,.45), transparent 50%),
+    linear-gradient(170deg, #A2DED2, #6FBFB1);
   --radius: 44px;
   --pad: 30px;
-  --shadow: inset 0 0 0 6px #E9E9E4, inset 0 0 0 8px #A9AFAE, inset 0 -10px 0 8px rgba(0,0,0,.08), 0 22px 44px rgba(35,66,61,.35);
-  --dial-bg: linear-gradient(#FFF8E6, #F3E6C4);
+  --shadow:
+    inset 0 0 0 5px #F2F2EE, inset 0 0 0 6px #8F9795, inset 0 0 0 8px #D9DCDA,
+    inset 0 -12px 0 8px rgba(0,0,0,.07), 0 4px 0 #5E9F94, 0 22px 44px rgba(35,66,61,.35);
+  --dial-bg:
+    repeating-conic-gradient(from 0deg at 50% 120%, rgba(230,180,80,.12) 0 3deg, transparent 3deg 9deg),
+    linear-gradient(#FFF8E6, #F1E2BC);
   --dial-border: 4px solid #D9D9D3;
+  --dial-inset: inset 0 0 0 2px #9DA3A1, inset 0 4px 10px rgba(0,0,0,.12);
   --dial-r: 18px;
   --dial-glow: 0 0 18px rgba(255, 220, 140, .6);
   --tick: #B78A2E;
   --num: #23423D;
   --needle: #E0452B;
   --markc: #E0452B;
+  --hub: radial-gradient(circle at 35% 30%, #fff, #A9AFAE);
   --read-ink: #23423D;
   --freq-size: 26px;
   --name-size: 18px;
@@ -414,15 +544,15 @@ body[data-skin="atomic"] {
   --key-bg: linear-gradient(#FFFDF6, #E4E3DC);
   --key-ink: #23423D;
   --key-r: 999px;
-  --key-shadow: 0 3px 0 #9DA3A1, 0 5px 10px rgba(0,0,0,.18);
+  --key-shadow: 0 3px 0 #9DA3A1, 0 5px 10px rgba(0,0,0,.18), inset 0 1px 0 #fff;
   --key-shadow-down: 0 1px 0 #9DA3A1;
   --key-on-bg: linear-gradient(#FFE9C2, #F5D08E);
+  --scan-fill: rgba(224,69,43,.18);
   --power-on: #E0452B;
-  --knob-bg:
-    radial-gradient(circle at 35% 30%, #FFFFFF, transparent 45%),
-    repeating-conic-gradient(rgba(0,0,0,.12) 0 3deg, transparent 3deg 9deg),
-    radial-gradient(circle, #F6F6F2, #BFC4C2 75%);
-  --knob-shadow: 0 5px 0 #8E9694, 0 9px 16px rgba(0,0,0,.25);
+  --knob-bg: radial-gradient(circle, #F6F6F2, #BFC4C2 75%);
+  --knob-turn: repeating-conic-gradient(rgba(0,0,0,.14) 0 3deg, transparent 3deg 9deg);
+  --knob-light: radial-gradient(circle at 34% 28%, rgba(255,255,255,.9), transparent 45%);
+  --knob-shadow: 0 5px 0 #8E9694, 0 9px 16px rgba(0,0,0,.25), inset 0 0 0 3px rgba(255,255,255,.6);
   --ind: #E0452B;
   --lbl: #23423D;
   --pill-bg: #E0452B;
@@ -435,21 +565,29 @@ body[data-skin="atomic"] {
   grid-template-columns: 34% 1fr auto;
   grid-template-areas: "spk dial dial" "spk read meter" "ctl ctl ctl";
 }
+[data-skin="atomic"][data-dial="v"] .radio {
+  grid-template-columns: 34% 1fr 100px;
+  grid-template-areas: "spk read dial" "spk meter dial" "ctl ctl ctl";
+}
+[data-skin="atomic"][data-dial="v"] .meter { justify-content: flex-start; }
+[data-skin="atomic"][data-dial="round"] .dial { --round: 210px; }
 [data-skin="atomic"] .spk {
   border-radius: 26px;
   min-height: 150px;
   background:
-    repeating-linear-gradient(0deg, #E9E9E4 0 7px, #9AA2A0 7px 8px, #3E5A55 8px 13px);
-  box-shadow: inset 0 0 0 5px #E9E9E4, 0 2px 0 rgba(0,0,0,.08);
+    linear-gradient(90deg, rgba(0,0,0,.2), transparent 20%, transparent 80%, rgba(0,0,0,.2)),
+    repeating-linear-gradient(0deg, #F4F4F0 0 2px, #C9CFCD 2px 6px, #8F9795 6px 7px, #2E4A45 7px 13px);
+  box-shadow: inset 0 0 0 5px #E9E9E4, inset 0 0 0 6px #9DA3A1, 0 2px 0 rgba(0,0,0,.08);
 }
 [data-skin="atomic"] .spk::after {
   content: "★";
-  display: block;
-  text-align: center;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   font-size: 34px;
-  line-height: 150px;
   color: #F5C04A;
-  text-shadow: 0 2px 0 #B78A2E;
+  text-shadow: 0 2px 0 #B78A2E, 0 0 12px rgba(245,192,74,.5);
 }
 
 /* =========================================================
@@ -460,22 +598,30 @@ body[data-skin="eighties"] {
     linear-gradient(transparent 0 calc(100% - 1px), rgba(255, 64, 200, .25) calc(100% - 1px)) 0 0 / 100% 44px,
     linear-gradient(90deg, transparent 0 calc(100% - 1px), rgba(64, 224, 255, .18) calc(100% - 1px)) 0 0 / 44px 100% #14121C;
   --ink: #E8E6F2;
-  --case: linear-gradient(#3A3A40, #1E1E22 18%, #18181B 82%, #2C2C31);
+  --case:
+    linear-gradient(#C9C9CF 0 10px, #6A6A72 10px 12px, transparent 12px),
+    var(--brushed),
+    var(--grain),
+    linear-gradient(#3A3A40, #222226 18%, #1A1A1D 82%, #2C2C31);
   --radius: 20px;
-  --pad: 26px;
-  --shadow: inset 0 3px 0 #6C6C74, inset 0 0 0 2px #0C0C0E, 0 0 0 1px #000, 0 26px 60px rgba(0,0,0,.6), 0 0 40px rgba(255, 64, 200, .15);
-  --dial-bg: linear-gradient(#101012, #1A1A1E);
+  --pad: 30px 26px 26px;
+  --shadow: inset 0 0 0 2px #0C0C0E, inset 0 -3px 0 2px #0C0C0E, 0 0 0 1px #000, 0 26px 60px rgba(0,0,0,.6), 0 0 40px rgba(255, 64, 200, .15);
+  --dial-bg: var(--brushed), linear-gradient(#141416, #1E1E22);
   --dial-border: 2px solid #55555C;
+  --dial-inset: inset 0 2px 8px rgba(0,0,0,.8);
   --dial-r: 6px;
   --dial-h: 72px;
   --dial-off: brightness(.55);
+  --glass: linear-gradient(170deg, rgba(255,255,255,.14), transparent 35%);
   --tick: #FF8A3C;
   --num: #FF8A3C;
   --num-size: 14px;
   --needle: #FF2E5B;
   --needle-glow: 0 0 8px #FF2E5B;
   --markc: #40E0FF;
-  --read-bg: #0A2324;
+  --hub: #2A2A30;
+  --read-bg: radial-gradient(ellipse at 50% 0%, rgba(106,247,240,.12), transparent 70%), #0A2324;
+  --read-shadow: inset 0 2px 6px rgba(0,0,0,.8), 0 0 0 2px #2E2E34;
   --read-r: 6px;
   --read-pad: 10px 16px;
   --read-ink: #6AF7F0;
@@ -486,18 +632,19 @@ body[data-skin="eighties"] {
   --bar-off: #2A2A30;
   --bar-on: #3CFF7A;
   --bar-glow: 0 0 6px rgba(60,255,122,.7);
-  --key-bg: linear-gradient(#E6E6EA, #A9A9B0);
+  --key-bg: var(--brushed), linear-gradient(#E6E6EA, #A9A9B0);
   --key-ink: #18181B;
   --key-r: 4px;
   --key-case: uppercase;
-  --key-shadow: 0 4px 0 #5E5E66, 0 6px 10px rgba(0,0,0,.5);
+  --key-shadow: 0 4px 0 #5E5E66, 0 6px 10px rgba(0,0,0,.5), inset 0 1px 0 #fff;
   --key-shadow-down: 0 1px 0 #5E5E66;
   --key-on-bg: linear-gradient(#FF8A3C, #E5602A);
   --key-on-ink: #18181B;
+  --scan-fill: rgba(64,224,255,.35);
   --power-on: #FF2E5B;
-  --knob-bg:
-    radial-gradient(circle at 35% 30%, rgba(255,255,255,.6), transparent 40%),
-    repeating-conic-gradient(#8A8A92 0 4deg, #D4D4DA 4deg 8deg);
+  --knob-bg: repeating-conic-gradient(#8A8A92 0 4deg, #D4D4DA 4deg 8deg);
+  --knob-turn: radial-gradient(circle, #DCDCE2 0 36%, #9A9AA2 37% 39%, transparent 40%);
+  --knob-light: radial-gradient(circle at 34% 28%, rgba(255,255,255,.55), transparent 42%);
   --knob-shadow: 0 0 0 4px #0C0C0E, 0 0 0 6px #4A4A52, 0 8px 16px rgba(0,0,0,.6);
   --knob-big: 78px;
   --ind: #FF2E5B;
@@ -515,16 +662,23 @@ body[data-skin="eighties"] {
   grid-template-columns: 1fr 1.5fr 1fr;
   grid-template-areas: "spk dial spkr" "spk read spkr" "spk meter spkr" "ctl ctl ctl";
 }
+[data-skin="eighties"][data-dial="v"] .radio {
+  grid-template-columns: 1fr 90px 1.2fr 1fr;
+  grid-template-areas: "spk dial read spkr" "spk dial meter spkr" "ctl ctl ctl ctl";
+}
+[data-skin="eighties"][data-dial="v"] .readout { align-self: end; }
+[data-skin="eighties"][data-dial="round"] .dial { --round: 170px; }
 [data-skin="eighties"] .spk-r { display: block; grid-area: spkr; }
 [data-skin="eighties"] .spk {
   align-self: center;
   aspect-ratio: 1;
   border-radius: 50%;
   background:
-    radial-gradient(circle, #2A2A2E 0 12%, #0E0E10 13% 15%, #3A3A40 16% 30%, #111 31% 33%, transparent 34%),
-    radial-gradient(circle, transparent 0 60%, #50505A 61% 64%, #1A1A1E 65%),
-    radial-gradient(circle at 50% 50%, #26262A 0 1.4px, #121214 1.6px) 0 0 / 7px 7px;
-  box-shadow: 0 0 0 3px #6C6C74, 0 0 0 6px #121214;
+    radial-gradient(circle at 42% 38%, rgba(255,255,255,.25), transparent 8%),
+    radial-gradient(circle, #34343A 0 11%, #0E0E10 12% 14%, #2C2C32 15% 26%, #46464E 27% 29%, #18181B 30% 32%, transparent 33%),
+    radial-gradient(circle, transparent 0 58%, #6A6A72 59% 61%, #26262A 62% 66%, #0E0E10 67%),
+    radial-gradient(circle, #3A3A40 0 1.3px, #0D0D0F 1.6px) 0 0 / 6px 6px;
+  box-shadow: 0 0 0 3px #8A8A92, 0 0 0 4px #0C0C0E, 0 0 0 9px #2A2A30, 0 0 0 10px #0C0C0E;
 }
 [data-skin="eighties"] .radio.on .spk { animation: thump 0.47s ease-in-out infinite alternate; }
 @keyframes thump { to { transform: scale(1.012); } }
@@ -535,28 +689,30 @@ body[data-skin="eighties"] {
 [data-skin="eighties"] .meter i { width: 18px; height: 100% !important; }
 [data-skin="eighties"] .meter i:nth-child(4).lit { background: #FFD23C; box-shadow: 0 0 6px rgba(255,210,60,.7); }
 [data-skin="eighties"] .meter i:nth-child(5).lit { background: #FF2E5B; box-shadow: 0 0 6px rgba(255,46,91,.7); }
-[data-skin="eighties"] .controls { padding-top: 16px; border-top: 2px solid #2E2E34; }
+[data-skin="eighties"] .controls { padding-top: 16px; border-top: 2px solid #2E2E34; box-shadow: inset 0 1px 0 #3E3E46; }
 
 /* =========================================================
    Modern: quiet and flat, the site's own colors
    ========================================================= */
 body[data-skin="modern"] {
-  --wall: #F6F1E4;
+  --wall: var(--grain), #F6F1E4;
   --ink: #2F4A3A;
-  --case: #FFFDF8;
+  --case: var(--grain), linear-gradient(#FFFEFA, #F8F4EA);
   --radius: 30px;
   --pad: 32px;
-  --shadow: 0 1px 0 #E8E0CC, 0 24px 50px rgba(47,74,58,.14);
+  --shadow: inset 0 1px 0 #fff, 0 1px 0 #E8E0CC, 0 24px 50px rgba(47,74,58,.14);
   --dial-bg: none;
   --dial-r: 0;
   --dial-h: 70px;
   --dial-off: opacity(.45);
+  --glass: none;
   --tick: #9DB58C;
   --num: #5B6B5F;
   --num-size: 14px;
   --needle: #2F4A3A;
   --markc: #D9B26F;
-  --freq-size: 68px;
+  --hub: #2F4A3A;
+  --freq-size: 64px;
   --name-size: 20px;
   --bar-off: #E8E0CC;
   --bar-on: #5E7D4F;
@@ -566,10 +722,12 @@ body[data-skin="modern"] {
   --key-shadow: none;
   --key-on-bg: #2F4A3A;
   --key-on-ink: #F6F1E4;
+  --scan-fill: rgba(217,178,111,.5);
   --power-on: #5E7D4F;
   --knob-bg: #F6F1E4;
   --knob-border: 2px solid #E3DAC4;
   --knob-shadow: 0 6px 16px rgba(47,74,58,.12);
+  --knob-light: none;
   --knob: 58px;
   --knob-big: 78px;
   --ind: #2F4A3A;
@@ -583,14 +741,27 @@ body[data-skin="modern"] {
   --chip-on: #2F4A3A;
 }
 [data-skin="modern"] .radio {
-  grid-template-areas: "read" "dial" "meter" "ctl";
+  grid-template-columns: 38% 1fr;
+  grid-template-areas: "spk read" "spk dial" "meter meter" "ctl ctl";
+  column-gap: 28px;
 }
-[data-skin="modern"] .spk { display: none; }
-[data-skin="modern"] .readout { flex-direction: column; align-items: center; gap: 0; }
+[data-skin="modern"][data-dial="v"] .radio {
+  grid-template-columns: 38% 1fr 90px;
+  grid-template-areas: "spk read dial" "spk meter dial" "ctl ctl ctl";
+}
+[data-skin="modern"][data-dial="v"] .meter { align-self: start; }
+[data-skin="modern"][data-dial="round"] .dial { --round: 220px; background: #F6F1E4; }
+[data-skin="modern"] .spk {
+  min-height: 170px;
+  border-radius: 18px;
+  background: radial-gradient(circle, #3B5446 0 2.1px, transparent 2.6px) 3px 3px / 11px 11px, #ECE5D3;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.08);
+}
+[data-skin="modern"] .readout { flex-direction: column; align-items: flex-start; gap: 0; justify-content: center; }
 [data-skin="modern"] .freq { font-weight: 400; letter-spacing: -.02em; line-height: 1; }
 [data-skin="modern"] .name { color: #5B6B5F; min-height: 1.3em; }
 [data-skin="modern"] .power[aria-pressed="true"] { text-shadow: none; }
-[data-skin="modern"] .meter { height: 4px; display: block; border-radius: 4px; background: #EEE7D6; overflow: hidden; }
+[data-skin="modern"] .meter { height: 4px; display: block; border-radius: 4px; background: #EEE7D6; overflow: hidden; align-self: center; }
 [data-skin="modern"] .meter::before {
   content: "";
   display: block;
@@ -602,29 +773,29 @@ body[data-skin="modern"] {
 }
 [data-skin="modern"] .meter i { display: none; }
 [data-skin="modern"] .knob .cap::after { border-radius: 50%; top: 14%; }
+[data-skin="modern"] .key { background: var(--key-bg); }
+[data-skin="modern"] .key[aria-pressed="true"] { background: var(--key-on-bg); }
 
 /* ---------- small screens ---------- */
 @media (max-width: 620px) {
   body { padding-top: 64px; align-items: flex-start; }
   .controls { justify-content: center; }
   .keys { order: 3; width: 100%; justify-content: center; }
+  .dial[data-shape="h"] .scale { inset: 0 14px; }
+  body .radio { grid-template-columns: 1fr auto; grid-template-areas: "spk spk" "dial dial" "read meter" "ctl ctl"; }
+  body[data-dial="v"] .radio { grid-template-columns: 1fr 100px; grid-template-areas: "spk dial" "read dial" "meter dial" "ctl ctl"; }
+  body[data-dial="v"] .meter { justify-self: start; }
   [data-skin="antique"] .radio { --pad: 46px 20px 24px; }
   [data-skin="antique"] .spk { height: 120px; }
-  [data-skin="atomic"] .radio {
-    grid-template-columns: 1fr auto;
-    grid-template-areas: "spk spk" "dial dial" "read meter" "ctl ctl";
-  }
+  [data-skin="antique"][data-dial="v"] .spk { min-height: 150px; }
   [data-skin="atomic"] .spk { min-height: 90px; }
-  [data-skin="atomic"] .spk::after { line-height: 90px; }
-  [data-skin="eighties"] .radio {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas: "spk spkr" "dial dial" "read read" "meter meter" "ctl ctl";
-  }
+  [data-skin="eighties"] .radio { grid-template-columns: 1fr 1fr; grid-template-areas: "spk spkr" "dial dial" "read read" "meter meter" "ctl ctl"; }
+  [data-skin="eighties"][data-dial="v"] .radio { grid-template-columns: 1fr 96px; grid-template-areas: "spk dial" "spkr dial" "read read" "meter meter" "ctl ctl"; }
   [data-skin="eighties"] .spk { width: 78%; justify-self: center; }
-  [data-skin="modern"] .radio { --freq-size: 54px; }
+  [data-skin="modern"] .radio { --freq-size: 52px; grid-template-columns: 1fr; grid-template-areas: "spk" "read" "dial" "meter" "ctl"; }
+  [data-skin="modern"][data-dial="v"] .radio { grid-template-columns: 1fr 96px; grid-template-areas: "spk dial" "read dial" "meter dial" "ctl ctl"; }
+  [data-skin="modern"] .spk { min-height: 70px; }
   #stations li { grid-template-columns: 36px 76px 1fr 36px; }
-  .dial { padding: 0 14px; }
-  .scale { inset: 0 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-skin="eighties"] .radio.on .spk { animation: none; }
