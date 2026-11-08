@@ -1,6 +1,6 @@
 """Build the shared instrument samples in assets/sounds/ from the source libraries.
 
-  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--ebass SF2] [--freepats DIR] [--only NAME,NAME]
+  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--ebass SF2] [--freepats DIR] [--sax DIR] [--only NAME,NAME]
 
 VSCO_DIR   a clone of https://github.com/sgossner/VSCO-2-CE (CC0)
 PIANO_DIR  the audio/ folder of the npm package @audio-samples/piano-mp3-velocity10
@@ -20,6 +20,8 @@ DRUMS_DIR  salamanderDrumkit.tar.bz2 unpacked, from https://archive.org/details/
            https://freepats.zenvoid.org/: EGuitarFSBS-clean bridge small (SFZ+FLAC), FM-Piano1
            (SFZ+FLAC), SweepPad, SynthSquare, LatelyBass (SFZ+FLAC), DrawbarOrganEmulation (SFZ),
            Ukulele (SFZ+FLAC) and Kalimba (SFZ)
+--sax      FreePats' Tenor Saxophone (SFZ+FLAC), unpacked, from
+           https://freepats.zenvoid.org/Reed/saxophone.html (CC0)
 
 Needs ffmpeg and numpy. Every sample is checked with a pitch detector: the file name's
 octave is corrected when the source counts octaves differently, and the measured tuning
@@ -74,7 +76,22 @@ PITCHED = {
     'organ': ('Organ', 'freepats', 'DrawbarOrganEmulation*/samples/*.wav', [''], 3, 0.1, True),
     'ukulele': ('Ukulele', 'freepats', 'Ukulele*/samples/*.flac', [''], 2.5, 0.2, True),
     'kalimba': ('Kalimba', 'freepats', 'Kalimba*/samples/*_01.wav', [''], 3, 0.3, True),
+    # For the instrument museum (/museum/): solo strings, plucked strings, saxophone.
+    'violin': ('Violin', 'vsco', 'Strings/Solo Violin/Arco Vib/*.wav', ['f', 'p'], 4, 0.3, True),
+    'violin-pizz': ('Violin pizzicato', 'vsco', 'Strings/Solo Violin/Pizz/*RR1.wav', ['f', 'p'], 1.5, 0.15, True),
+    'viola-pizz': ('Viola pizzicato', 'vsco', 'Strings/Viola Section/pizz/*rr1.wav', ['v2', 'v1'], 1.5, 0.15, True),
+    'bass-pizz': ('Double bass pizzicato', 'vsco', 'Strings/Solo Contrabass/Pizz/*rr1.wav', ['v3', 'v1'], 2, 0.15, True),
+    'tenor-sax': ('Tenor saxophone', 'sax', 'samples/*.flac', ['v2', 'v3'], 4, 0.15, True),
 }
+
+# Timpani: the five VSCO drums, each tuned where the player found it. Their pitch is the
+# principal (1,1) mode, which the YIN detector misses, so it is measured once by hand
+# (the strongest low peak, with its partials near 1.5 and 2 times it) and kept here as MIDI.
+TIMPANI = {
+    'timpani': ('Timpani', 'Percussion/Timpani/Timpani{n}_Hit_v3_rr1_Sum.wav', 4.5),
+    'timpani-roll': ('Timpani roll', 'Percussion/Timpani/Rolls/Timpani{n}_Roll_v3_rr1_Sum.wav', 4.5),
+}
+TIMPANI_PITCH = {1: 41.45, 2: 46.79, 3: 49.48, 4: 52.41, 5: 54.61}
 
 # The organ's 16' drawbar sounds an octave under the note played: the detector hears that
 # one, so the names' octave is kept.
@@ -110,6 +127,14 @@ HITS = {
     'bongo-high': ('Bongo (high)', 'VSCO 1 Percussion/drums/other/Bongos/HighBongo1.wav', 0.6),
     'bongo-low': ('Bongo (low)', 'VSCO 1 Percussion/drums/other/Bongos/LowBongo1.wav', 0.7),
     'cymbal': ('Crash cymbal', 'Percussion/cymbal-crash1_mf_rr1.wav', 3.5),
+    # For the instrument museum. The rolls loop in the player, so a few seconds is enough.
+    'gong': ('Gong', 'Percussion/gongHit_f.wav', 9),
+    'sus-cymbal': ('Suspended cymbal', 'Percussion/susCymb1-hit_f_rr1.wav', 5),
+    'sus-cymbal-roll': ('Suspended cymbal roll', 'Percussion/susCymb1-cresc-Median_v1.wav', 8),
+    'snare-roll': ('Snare drum roll', 'Percussion/Snare2-rollSN_v3_rr1_Sum.wav', 4),
+    'triangle-roll': ('Triangle roll', 'Percussion/Triangle3-Roll_v2_rr1_Sum.wav', 4),
+    'tambourine-roll': ('Tambourine roll', 'Percussion/Tamb1-Roll_v2_rr1_Sum.wav', 4),
+    'tambourine-shake': ('Tambourine shake', 'Percussion/Tamb1-Shake_v1_rr1_Sum.wav', 1.5),
 }
 
 # The drum kit: one overhead-mic hit each, from the Salamander Drumkit.
@@ -131,6 +156,7 @@ KIT = {
 
 CREDITS = {
     'piano': 'salamander',
+    'tenor-sax': 'freepats-sax',
     'guitar': 'freepats-guitar',
     'banjo': 'flamestudios-banjo',
     'electric-bass': 'flamestudios-bass',
@@ -315,6 +341,20 @@ def build_pitched(name, spec, src):
     return inst
 
 
+def build_timpani(name, spec, src):
+    label, pattern, seconds = spec
+    entries = []
+    xs = {n: trim(decode(os.path.join(src['vsco'], pattern.format(n=n))), seconds) for n in TIMPANI_PITCH}
+    top = max(np.max(np.abs(x)) for x in xs.values())
+    for n, x in xs.items():
+        midi = int(round(TIMPANI_PITCH[n]))
+        rel = f'{name}/{midi}.mp3'
+        encode(x * 0.89 / top, os.path.join(OUT, rel))
+        entries.append({'midi': midi, 'file': rel, 'tune': round((TIMPANI_PITCH[n] - midi) * 100)})
+    print(f'{name}: {len(entries)} drums')
+    return {'label': label, 'kind': 'pitched', 'release': 0.4, 'zones': entries, 'credit': 'vsco'}
+
+
 def build_hit(name, spec, src, source='vsco'):
     label, path, seconds = spec
     x = trim(decode(os.path.join(src[source], path)), seconds)
@@ -329,7 +369,7 @@ def build_hit(name, spec, src, source='vsco'):
 def main():
     argv = sys.argv[1:]
     opts = {}
-    for flag in ('--only', '--guitar', '--banjo', '--ebass', '--freepats'):
+    for flag in ('--only', '--guitar', '--banjo', '--ebass', '--freepats', '--sax'):
         if flag in argv:
             i = argv.index(flag)
             opts[flag] = argv[i + 1]
@@ -338,7 +378,7 @@ def main():
     only = set(opts['--only'].split(',')) if '--only' in opts else None
     src = {'vsco': args[0], 'piano': args[1], 'drums': args[2] if len(args) > 2 else None,
            'guitar': opts.get('--guitar'), 'banjo': opts.get('--banjo'), 'ebass': None,
-           'freepats': opts.get('--freepats')}
+           'freepats': opts.get('--freepats'), 'sax': opts.get('--sax')}
     if opts.get('--ebass'):
         import tempfile
         src['ebass'] = sf2_notes(opts['--ebass'], tempfile.mkdtemp())
@@ -346,10 +386,13 @@ def main():
     index = json.load(open(index_path)) if os.path.exists(index_path) else {}
     instruments = index.get('instruments', {})
     for name, spec in PITCHED.items():
-        if spec[1] in ('guitar', 'banjo', 'ebass', 'freepats') and not src[spec[1]]:
+        if spec[1] in ('guitar', 'banjo', 'ebass', 'freepats', 'sax') and not src[spec[1]]:
             continue
         if not only or name in only:
             instruments[name] = build_pitched(name, spec, src)
+    for name, spec in TIMPANI.items():
+        if not only or name in only:
+            instruments[name] = build_timpani(name, spec, src)
     for name, spec in HITS.items():
         if not only or name in only:
             instruments[name] = build_hit(name, spec, src)
@@ -365,6 +408,7 @@ def main():
         'salamander-drums': 'Salamander Drumkit by Alexander Holm, CC BY-SA 3.0',
         'freepats-guitar': 'Spanish Classical Guitar by Roberto (FreePats project), CC0',
         'freepats': 'FreePats project (freepats.zenvoid.org) sound banks, CC0',
+        'freepats-sax': 'Tenor Saxophone by Roberto (FreePats project), from VSCO 2 samples, CC0',
         'flamestudios-bass': 'Ibanez Electric Bass Guitar by FlameStudios (Gary Campion), GNU GPL v3',
         'flamestudios-banjo': 'Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3',
     }

@@ -213,3 +213,16 @@ export async function grooveLoops() {
   })));
   return out;
 }
+
+/* The decoded samples themselves, for players that shape a note while it sounds (a held bow,
+   a slide, a timpani pedal): a pitched instrument gives { label, release, zones: [{ midi,
+   tune, buffer, start }] } for the notes lo to hi need, a hit gives { label, buffer, start }. */
+export async function raw(name, { lo = 0, hi = 127 } = {}) {
+  const spec = (await list()).instruments[name];
+  if (!spec) throw new Error(`No instrument "${name}"`);
+  if (spec.kind === 'hit') return { label: spec.label, ...(await load(spec.file)) };
+  const want = new Set();
+  for (let m = Math.max(lo, 0); m <= Math.min(hi, 127); m++) want.add(nearest(spec.zones, m));
+  const zones = await Promise.all([...want].map(async (z) => ({ midi: z.midi, tune: z.tune || 0, ...(await load(z.file)) })));
+  return { label: spec.label, release: spec.release, zones: zones.sort((a, b) => a.midi - b.midi) };
+}

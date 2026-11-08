@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Instrument Museum · Mr. Washburn Music</title>
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#1F3329">
+  <link rel="stylesheet" href="museum.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div id="hall" class="hall">
+    <header class="hall-top">
+      <a class="home" href="../" aria-label="Mr. Washburn Music"><img src="../assets/logo/option-f-notes-badge-icon.svg" alt=""></a>
+      <h1>Instrument Museum</h1>
+    </header>
+    <main id="rooms"></main>
+  </div>
+
+  <div id="exhibit" class="exhibit" hidden>
+    <header class="bar">
+      <a class="back" href="#" aria-label="Back to the museum"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <h2 id="ex-name"></h2>
+      <div class="tools" id="ex-tools"></div>
+      <output class="readout" id="readout" aria-live="polite">
+        <span class="staff" id="staff"></span>
+        <span class="nn" id="nn"></span>
+      </output>
+      <button class="info" id="info" aria-label="About this instrument" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10.5v6.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="7.2" r="1.5" fill="currentColor"/></svg></button>
+    </header>
+    <div class="stage" id="stage"></div>
+  </div>
+
+  <dialog id="placard" class="placard">
+    <div class="card">
+      <button class="x" id="placard-close" aria-label="Close">✕</button>
+      <div class="art" id="pl-art"></div>
+      <div class="words">
+        <p class="fam" id="pl-fam"></p>
+        <h2 id="pl-name"></h2>
+        <ul id="pl-facts"></ul>
+        <dl id="pl-range"></dl>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
