@@ -89,6 +89,7 @@ const settings = {
   speed: 'medium',
   as: 'syllables',
   want: 3,
+  wantFor: {}, // takes wanted for one word or pattern, where it differs from want
   countIn: 4,
   firstNote: true,
   mic: '',
@@ -305,7 +306,8 @@ const takesFor = (id, speed) => takes.filter((t) => t.pattern === id && takeAs(t
 const flagged = (t) => t.timing !== undefined && offbeat(t.timing, t.bpm);
 const offbeatTakes = (id) => takesFor(id).filter(flagged);
 const unmeasured = () => takes.filter((t) => t.timing === undefined && !isCue(t.pattern));
-const done = (id, speed) => takesFor(id, speed).length >= (isLine(id) ? 1 : settings.want);
+const wantOf = (id) => (isLine(id) ? 1 : settings.wantFor[id] ?? settings.want);
+const done = (id, speed) => takesFor(id, speed).length >= wantOf(id);
 // A cue word as the recorder handles it: 2 beats, no notation.
 const cueItem = (c) => ({ id: `cue/${c.id}`, kind: 'cue', text: c.text });
 // A narration line: read at its own pace, no beats.
@@ -449,7 +451,7 @@ function renderCues() {
         onkeydown: (e) => { if (e.key === 'Enter' && e.target === e.currentTarget) pick(); },
       },
       h('span', { class: 'word' }, c.text),
-      h('span', { class: 'counts' }, h('span', { class: done(c.id) ? 'sp done' : 'sp' }, `${takesFor(c.id).length} of ${settings.want}`)));
+      h('span', { class: 'counts' }, h('span', { class: done(c.id) ? 'sp done' : 'sp' }, `${takesFor(c.id).length} of ${wantOf(c.id)}`)));
     })),
     stage(null),
   );
@@ -718,6 +720,11 @@ function stage(u) {
       h('span', { class: 'takes' }, list.map((take, i) => h('span', { class: 'take' },
         h('button', { class: flagged(take) ? 'offbeat' : '', title: takeTitle(take), onclick: () => playBlob(take.mp3) }, `▶ ${i + 1}${take.key != null ? ` ${pretty(keyName(p.tonality, take.key))}` : ''}${flagged(take) ? ' ⚠' : ''}`),
         h('button', { class: 'x', title: 'Delete take', onclick: async () => { await takeStore.delete(take.id); takes = await takeStore.all(); render(); } }, '×')))),
+      p.kind === 'line' ? null : h('label', { class: 'want', title: `Takes wanted for this one (${settings.want} for the rest)` }, 'Takes',
+        number(() => wantOf(p.id), (v) => {
+          if (v === settings.want) delete settings.wantFor[p.id];
+          else settings.wantFor[p.id] = v;
+        }, 1, 10)),
       h('span', { class: 'grow' }),
       p.kind === 'line' ? null : h('div', { class: 'beats' },
         Array.from({ length: settings.countIn }, () => h('span', { class: 'count' })),

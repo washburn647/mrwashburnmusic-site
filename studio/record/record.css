@@ -31,7 +31,8 @@ input.name { border: 0; border-radius: 10px; padding: 8px 10px; background: #F6F
 .chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .chips button { padding: 6px 10px; min-width: 44px; color: #8A968C; background: transparent; box-shadow: inset 0 0 0 2px #E4DCC8; }
 .chips button.on { color: #2F4A3A; background: #fff; box-shadow: inset 0 0 0 2px #2F4A3A; font-weight: 600; }
-.settings input[type=number] { width: 3.6em; }
+.settings input[type=number], .want input[type=number] { width: 3.6em; }
+.want input[type=number] { background: #F6F1E4; box-shadow: none; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .grid.wide { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
