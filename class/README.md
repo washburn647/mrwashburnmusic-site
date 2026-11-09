@@ -88,11 +88,14 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   unless 💾 saves a PNG to the device's downloads. The spinner's class lists live only in this browser's localStorage
   (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
   an online name spinner opens this spinner instead.
-- `library.js` (`#/pictures`): the picture library, pictures kept for the drawing box and
-  think/speak, in groups (a game's pictures). Pictures come in by file, paste (into the group
-  last clicked) or drop, and from the drawing box: 📚 opens a tray of the library (tap a picture
-  to put it on the board), ⭐ keeps the chosen board picture in the tray's group. Think/speak's
-  picture list takes them too ("From the library"). One synced record (`library`, below).
+- `library.js`: the picture library, pictures kept for the drawing box and think/speak, in
+  groups (a game's pictures), each with a name. Kept up in the studio (`/studio/pictures/`,
+  straight on the website through `/studio/api/class/`): paste a picture or its address (the
+  website fetches it, `grab` in `worker/index.js`; a Google Images result link works too), pick
+  files or drop them, name, find, group. In the drawing box, 📚 opens a tray of the library:
+  type to find by name in every group, tap a picture to put it on the board; ⭐ keeps the chosen
+  board picture in the tray's group, named for what 🔎 last searched. Think/speak's picture list
+  takes them too ("From the library", with a search). One synced record (`library`, below).
 - `subs.js` (`#/sub`) and `/sub/` (`sub/index.html`, `sub/sub.js`): sub plans. Kyle picks a deck
   and a code (6+ letters or numbers; case, spaces and dashes don't count); a substitute types the
   code at /sub/ and presents that deck, and the decks it links into (`linkedDecks`, sent again
@@ -157,7 +160,7 @@ link = { slide: index } | { url } | { gdoc, gslide, url } | { jump: 'next' | 'pr
 ```
 
 ```
-library = { id: 'pictures', name, created, updated, groups: [{ name, pics: [{ media }] }] }
+library = { id: 'pictures', name, created, updated, groups: [{ name, pics: [{ media, name }] }] }
 ```
 
 Pictures are stored once each, keyed by a hash of their bytes (`media`), with a

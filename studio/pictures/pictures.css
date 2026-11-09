@@ -1,0 +1,19 @@
+.pics-top { position: sticky; top: 0; z-index: 2; background: #F6F1E4; padding: 12px 0; }
+.pics-add { display: flex; gap: 8px; flex-wrap: wrap; }
+.pics-add input, .pics-find, .pics-group select { border: 0; border-radius: 12px; padding: 8px 12px; background: #fff; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.pics-add .paste { flex: 1; min-width: 220px; }
+.pics-find { width: 200px; }
+.pics-note { color: #5B6B5F; min-height: 1.3em; margin: 8px 0 0; }
+.pics-note.bad { color: #A33B2B; }
+.pics-group { background: #fff; border-radius: 16px; padding: 12px 16px 16px; margin: 0 0 16px; box-shadow: 0 2px 0 rgba(47,74,58,.08); outline: 3px solid transparent; }
+.pics-group.on { outline-color: #E8C77A; }
+.pics-group h2 { flex: 1; margin: 0; font-size: 20px; font-weight: 600; }
+.pics-group .bar { margin-bottom: 10px; }
+.pics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+.pic { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.pic .img { aspect-ratio: 1; border-radius: 12px; background: #F6F1E4 repeating-conic-gradient(#EFE8D6 0 25%, #F6F1E4 0 50%) 0 0 / 16px 16px; display: grid; place-items: center; overflow: hidden; }
+.pic img { max-width: 92%; max-height: 92%; }
+.pic input { border: 0; border-radius: 8px; padding: 4px 6px; background: #F6F1E4; min-width: 0; }
+.pic .x { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; padding: 0; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; box-shadow: none; }
+.pic .move { position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; padding: 0; border-radius: 50%; background: rgba(255,255,255,.9); }
+.drop-here { outline: 3px dashed #2F4A3A; }
