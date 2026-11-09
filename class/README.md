@@ -68,14 +68,22 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   grade's built menu with songs the plan hasn't reached yet locked.
 - `widgets.js`: slide elements that work in Present (`{ t: 'wg', kind }`): timer (counts down
   and chimes, or up), spinner, video (YouTube, through the no-cookie player, or a video file),
-  sound file, Spotify, drawing box. Added from the editor's 🧩 menu; double-click one to change
-  it. Elsewhere they draw as labels. Video, Spotify and the drawing box sit on the slide as a
-  small titled box (`name`) and open big over the slide when tapped, outside the slide's scaling
+  sound file, Spotify, drawing box, think/speak, Street View. Added from the editor's 🧩 menu;
+  double-click one to change it. Elsewhere they draw as labels (think/speak draws as itself).
+  The spinner, video, Spotify, the drawing box and Street View sit on the slide as a small box
+  (the spinner and drawing box as just their icon; the others with a title, `name`) and open
+  big over the slide when tapped, outside the slide's scaling
   so they stay sharp: video starts playing, Spotify shows its player (closing tucks it away still
   playing; the box's ■ stops it), the drawing box gives a canvas with pens, eraser and clear,
   and takes pictures: 🔎 opens a Google Images tab for see-through pictures (SafeSearch on);
   a copied picture pastes in (Ctrl+V or 📋), a picture file drops in, and ✋ moves and sizes
   them (✕ takes one off). Pictures stay under the ink and are never saved to the deck.
+  The spinner takes a picked name off the wheel until everyone has had a turn; "Leave in" puts
+  it back, ↺ puts everyone back. Think/speak (`pics: [{ media }]`, chosen in the editor) shows a
+  speak row and a think row; a tap moves a picture to the other row in its column, for the
+  sitting only. Street View (`places: [{ name, src }]`) opens Google Maps' embed of the first
+  place, with a button per place; each `src` comes from pasting Maps' Share > Embed a map code.
+  No key or account: the flying-between-places animation would need Google's 3D Maps API.
   Escape closes an open one; leaving the slide closes it. Drawings last for the sitting only,
   unless 💾 saves a PNG to the device's downloads. The spinner's class lists live only in this browser's localStorage
   (`class.names`), never in a deck, so student names stay on the device. A slide's old link to

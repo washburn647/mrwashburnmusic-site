@@ -12,7 +12,7 @@ import { guessTitle } from './pptx.js';
 import { present } from './present.js';
 import * as store from './store.js';
 import { el, thumb, addMediaUrl } from './ui.js';
-import { KINDS, youtubeId, spotifyPath } from './widgets.js';
+import { KINDS, youtubeId, spotifyPath, editPictures, editPlaces } from './widgets.js';
 
 const SHAPES = [
   ['rect', 'Rectangle'], ['roundRect', 'Rounded rectangle'], ['ellipse', 'Circle'],
@@ -481,8 +481,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
       fill: { type: 'solid', color: '#9DB58C' }, line: { color: '#2F4A3A', width: 2 } }]);
   }
 
-  const WIDGET_SIZE = { timer: [240, 120], spinner: [300, 300], video: [220, 70], sound: [160, 160], spotify: [220, 70],
-    draw: [240, 160] };
+  const WIDGET_SIZE = { timer: [240, 120], spinner: [110, 110], video: [220, 70], sound: [160, 160], spotify: [220, 70],
+    draw: [110, 110], thinkspeak: [720, 300], streetview: [220, 70] };
 
   async function addWidget(kind) {
     commitText();
@@ -517,6 +517,23 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
       }
       if (e.kind === 'spotify') return false;
     }
+    if (e.kind === 'thinkspeak') {
+      const pics = await editPictures(e.pics || [], media, async () => {
+        const files = await chooseFiles('image/*');
+        const out = [];
+        for (const f of files) out.push(await keepFile(f));
+        return out;
+      });
+      if (!pics) return false;
+      e.pics = pics;
+      return true;
+    }
+    if (e.kind === 'streetview') {
+      const places = await editPlaces(e.places || []);
+      if (!places || !places.length) return false;
+      e.places = places;
+      return true;
+    }
     if (e.kind === 'video' || e.kind === 'sound') {
       const file = await chooseFile(e.kind === 'video' ? 'video/*' : 'audio/*');
       if (!file) return false;
@@ -526,6 +543,16 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
       return true;
     }
     return true;
+  }
+
+  function chooseFiles(accept) {
+    return new Promise((resolve) => {
+      mediaPicker.accept = accept;
+      mediaPicker.multiple = true;
+      mediaPicker.value = '';
+      mediaPicker.onchange = () => { mediaPicker.multiple = false; resolve([...mediaPicker.files]); };
+      mediaPicker.click();
+    });
   }
 
   function chooseFile(accept) {

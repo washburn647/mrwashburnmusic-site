@@ -188,6 +188,7 @@ export function mediaOf(deck) {
     take(s.bg);
     for (const el of s.els) {
       if (el.media) out.add(el.media);
+      if (el.pics) for (const p of el.pics) out.add(p.media);
       take(el.fill);
     }
   }

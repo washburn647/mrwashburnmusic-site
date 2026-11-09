@@ -410,3 +410,38 @@ select.ls-in { min-width: 84px; }
 .ls-off { opacity: .55; }
 .ls-shelf-head td { font-weight: 600; color: var(--muted); padding: 16px 8px 6px; }
 .ls-add .ls-in { border-color: var(--line); background: #fff; }
+
+/* Spinner over the slide */
+.wg-panel-spin { width: min(80vh, 80vw); height: min(80vh, 80vw); background: var(--card); border-radius: 18px; padding: 18px 18px 10px; }
+.wg-panel-spin .wg-spinner { position: relative; width: 100%; height: 100%; font-size: 24px; font-family: "Fredoka", ui-rounded, sans-serif;
+  color: var(--forest); }
+.wg-keep { height: 34px; border: 0; border-radius: 999px; padding: 0 14px; background: var(--moss); color: var(--cream);
+  font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
+
+/* Think/speak: pictures hop between the speak row and the think row */
+.slide-stage .wg-thinkspeak { overflow: visible; }
+.wg-thinkspeak .wg-ts-bubble, .wg-thinkspeak .wg-ts-pic, .wg-thinkspeak .wg-ts-line { position: absolute; }
+.wg-thinkspeak .wg-ts-line { left: 0; right: 0; background: #B5B5B5; }
+.wg-thinkspeak .wg-ts-pic { object-fit: contain; transition: top .45s cubic-bezier(.3, 1.4, .5, 1); cursor: pointer; }
+.wg-thinkspeak > .wg-label { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 600; }
+.wg-dialog { width: min(640px, 94vw); }
+.wg-ts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; min-height: 100px; }
+.wg-ts-cell { position: relative; border: 1px solid var(--line); border-radius: 10px; padding: 6px; aspect-ratio: 1; }
+.wg-ts-cell img { width: 100%; height: 100%; object-fit: contain; }
+.wg-ts-cell .wg-btn { width: 26px; height: 26px; font-size: 14px; top: 4px; }
+.wg-ts-cell .wg-btn:first-of-type { left: 4px; }
+.wg-ts-cell .wg-btn:last-of-type { right: 4px; }
+
+/* Street View */
+.wg-panel-map { width: 92vw; height: calc(88vh - 60px); }
+.wg-panel-map .wg-frame { border-radius: 12px; background: #000; flex: 1; height: auto; min-height: 0; }
+.wg-places { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.wg-place { height: 36px; border: 0; border-radius: 999px; padding: 0 16px; background: rgba(255, 255, 255, .9); color: var(--forest);
+  font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
+.wg-place.on { background: var(--moss); color: var(--cream); }
+.wg-place-list { display: flex; flex-direction: column; gap: 8px; }
+.wg-place-row { display: grid; grid-template-columns: 1fr 2fr 34px; gap: 8px; align-items: center; }
+.wg-place-row .wg-btn { position: static; }
+.wg-names-title.bad { border-color: var(--danger); }
+.wg-iconly .wg-label { display: none; }
+.wg.wg-iconly .wg-icon, .wg-face.wg-iconly .wg-icon { font-size: 1em; line-height: 1; }
