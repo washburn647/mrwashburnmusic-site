@@ -488,3 +488,4 @@ button.pics-cell.on { border-color: var(--forest); box-shadow: 0 0 0 3px var(--w
 .sub-ready h1 { margin: 0; font-size: 24px; }
 .sub-ready .btn { font-size: 20px; padding: 12px 28px; }
 .deck-head .spacer { flex: 1; }
+.wg-tray-find, .pics-find { font: inherit; font-size: 15px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; background: #fff; min-width: 0; }

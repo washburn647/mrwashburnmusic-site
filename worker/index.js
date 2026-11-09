@@ -1,6 +1,6 @@
 /* The site is static files. This Worker only answers /api/:
-   - /api/class/: the Class app's files kept on the website (decks, pictures, plans,
-     timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
+   - /api/class/ (and /studio/api/class/, for the studio's picture library): the Class app's
+     files kept on the website (decks, pictures, plans, picture library, timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
      and every request is checked here too, so a missing Access rule never opens it up.
    - /api/s/ and /studio/api/s/: a locked box for each private lesson student (see Box).
    - /studio/api/lessons/: the studio's lesson pages (students, pieces, practice library), kept
@@ -66,11 +66,13 @@ export default {
         return reply({ error: 'server error' }, 500);
       }
     }
-    if (!url.pathname.startsWith('/api/class/')) return env.ASSETS.fetch(request);
+    // The studio's picture library page reaches the same files under /studio/ (same Access login).
+    const classPath = /^\/(studio\/)?api\/class\/(.*)$/.exec(url.pathname);
+    if (!classPath) return env.ASSETS.fetch(request);
     if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.CLASS_FILES) return reply({ error: 'not set up' }, 503);
     if (!(await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
     try {
-      return await classApi(request, env, url.pathname.slice('/api/class/'.length).split('/'));
+      return await classApi(request, env, classPath[2].split('/'));
     } catch (err) {
       return reply({ error: String(err && err.message || err) }, 500);
     }
@@ -86,6 +88,7 @@ async function classApi(request, env, [what, id, extra]) {
   if (what === 'login' && !id) return Response.redirect(new URL('/class/', request.url).href, 302);
 
   if (what === 'sub' && !id) return subSetup(request, bucket);
+  if (what === 'grab' && !id && method === 'POST') return grabPicture(request, bucket);
 
   if (what === 'state' && !id && method === 'GET') {
     const out = { decks: {}, plans: {}, library: {}, media: [], timings: [] };
@@ -163,6 +166,40 @@ async function classApi(request, env, [what, id, extra]) {
   }
 
   return reply({ error: 'not found' }, 404);
+}
+
+/* A picture from the web for the picture library, by its address (POST { url, name }):
+   fetched here, since the browser can't, and kept with the other pictures.
+   Returns { hash, type }. A Google Images result link gives its picture's own address. */
+const GRAB_MAX = 10 * 1024 * 1024;
+const GRAB_TYPES = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
+
+async function grabPicture(request, bucket) {
+  let body = {};
+  try { body = await request.json(); } catch (e) { /* none */ }
+  let url;
+  try { url = new URL(String(body.url || '').trim()); } catch (e) { return reply({ error: 'That isn\'t a web address.' }, 400); }
+  const inner = url.searchParams.get('imgurl') || url.searchParams.get('mediaurl');
+  if (inner) { try { url = new URL(inner); } catch (e) { /* keep the outer one */ } }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return reply({ error: 'That isn\'t a web address.' }, 400);
+  let res;
+  try {
+    res = await fetch(url.href, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; picture library)', Accept: 'image/*' } });
+  } catch (e) {
+    return reply({ error: 'That address didn\'t answer.' }, 502);
+  }
+  const type = (res.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+  if (!res.ok || !GRAB_TYPES.test(type)) return reply({ error: 'That address isn\'t a picture.' }, 422);
+  const bytes = await res.arrayBuffer();
+  if (bytes.byteLength > GRAB_MAX) return reply({ error: 'That picture is too big.' }, 413);
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  const hash = Array.from(d.slice(0, 16), (b) => b.toString(16).padStart(2, '0')).join('');
+  const key = 'media/' + hash;
+  if (!(await bucket.head(key))) {
+    await bucket.put(key, bytes, { httpMetadata: { contentType: type },
+      customMetadata: { rights: 'classroom', name: String(body.name || '').slice(0, 200) } });
+  }
+  return reply({ hash, type });
 }
 
 /* Sub view. Kyle picks a deck for a substitute and a code to open it (sub/config.json:
