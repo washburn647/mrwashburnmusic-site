@@ -180,7 +180,7 @@ export async function takes(name) {
     prepare: (ids) => Promise.all(ids.flatMap((id) => (patterns[id] || []).map((o) => load(o.file)))),
     cues: Object.keys(cues),
     hasCue: (id) => !!cues[id]?.length,
-    prepareCues: () => Promise.all(Object.values(cues).flat().map((o) => load(o.file))),
+    prepareCues: (ids = Object.keys(cues)) => Promise.all(ids.flatMap((id) => (cues[id] || []).map((o) => load(o.file)))),
     async cue(id, t, { vol = 1, dest } = {}) {
       const take = vary(`cue:${id}`, cues[id] || []);
       if (!take) return () => {};
