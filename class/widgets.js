@@ -7,13 +7,20 @@
    - sound:   media (a sound file kept on the device), name
    - spotify: url (an open.spotify.com track, album or playlist), name
    - draw:    a box to draw on, bg (its color)
-   Video, Spotify and the drawing box sit on the slide as a small labeled box;
-   tapped, they open big over the slide (OPENS), clear of the slide's scaling.
-   Elsewhere (thumbnails, the editor) a widget draws as a quiet label. */
+   - thinkspeak: pics [{ media }], a row to say and a row to think: a tap
+              moves a picture to the other row, in its own column
+   - streetview: places [{ name, src }], Google Maps embeds (Share > Embed a
+              map), the first where it starts
+   The spinner, video, Spotify, the drawing box and Street View sit on the
+   slide as a small labeled box; tapped, they open big over the slide (OPENS),
+   clear of the slide's scaling. Elsewhere (thumbnails, the editor) a widget
+   draws as a quiet label, except think/speak, which looks as it does live. */
 
-export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify', draw: 'Drawing box' };
-const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵', draw: '✏' };
-const OPENS = ['video', 'spotify', 'draw'];
+export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify', draw: 'Drawing box',
+  thinkspeak: 'Think/speak', streetview: 'Street View' };
+const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵', draw: '✏', thinkspeak: '💬', streetview: '🌍' };
+const OPENS = ['spinner', 'video', 'spotify', 'draw', 'streetview'];
+const ICON_ONLY = ['spinner', 'draw'];       // on the slide, just their icon
 const INK = ['#000000', '#D04B4B', '#3B83C0', '#4A9C5C', '#E8A33D', '#9257BD'];
 const COLORS = ['#E8A33D', '#5E7D4F', '#3B83C0', '#D04B4B', '#9257BD', '#C9A41F', '#4A9C5C', '#DD8033'];
 const SVG = 'http://www.w3.org/2000/svg';
@@ -29,15 +36,18 @@ const h = (tag, cls, text) => {
 export function drawWidget(el, opts = {}) {
   const d = h('div', 'el wg wg-' + el.kind);
   Object.assign(d.style, { left: el.x + 'px', top: el.y + 'px', width: el.w + 'px', height: el.h + 'px' });
-  d.style.fontSize = (OPENS.includes(el.kind) ? Math.max(12, Math.min(el.h / 2.6, el.w / 8))
+  if (ICON_ONLY.includes(el.kind)) d.classList.add('wg-iconly');
+  d.style.fontSize = (ICON_ONLY.includes(el.kind) ? Math.max(12, Math.min(el.w, el.h) * 0.6)
+    : OPENS.includes(el.kind) ? Math.max(12, Math.min(el.h / 2.6, el.w / 8))
     : Math.max(12, Math.min(el.w, el.h) / 6)) + 'px';
+  if (el.kind === 'thinkspeak') { thinkspeak(d, el, opts); return d; }
   if (!opts.live) {
     d.classList.add('wg-face');
     if (OPENS.includes(el.kind)) d.classList.add('wg-tile');
     d.append(h('span', 'wg-icon', ICONS[el.kind] || '?'), h('span', 'wg-label', label(el)));
     return d;
   }
-  const make = { timer, spinner, video, sound, spotify, draw }[el.kind];
+  const make = { timer, spinner, video, sound, spotify, draw, streetview }[el.kind];
   if (make) make(d, el, opts);
   // A widget is for using: clicks on it are not "show the controls" clicks.
   d.addEventListener('click', (e) => e.stopPropagation());
@@ -47,6 +57,7 @@ export function drawWidget(el, opts = {}) {
 export function label(el) {
   if (el.kind === 'timer') return el.secs ? clock(el.secs) : '0:00 +';
   if (['sound', 'video', 'spotify'].includes(el.kind)) return el.name || KINDS[el.kind];
+  if (el.kind === 'streetview') return el.name || (el.places && el.places[0] && el.places[0].name) || KINDS.streetview;
   return KINDS[el.kind] || '';
 }
 
@@ -138,7 +149,23 @@ const turns = new Map();
 
 // ---- spinner -----------------------------------------------------------------
 
+/** On the slide, a small icon; tapped, the wheel opens big. */
 function spinner(d, el) {
+  tile(d, el);
+  let p = null;
+  d.addEventListener('click', () => {
+    if (p) return;
+    p = panel(d, 'wg-panel-spin', (me) => { me.shade.remove(); p = null; });
+    const w = h('div', 'wg wg-spinner');
+    p.box.append(w);
+    spinnerBody(w);
+  });
+  every(d, 500, () => {}, () => { if (p) p.close(); });
+}
+
+/* The wheel. A name picked comes off the wheel until everyone has had a turn;
+   "Leave in" puts the last one back, ↺ puts everyone back. */
+function spinnerBody(d) {
   d.classList.add('wg-spin');
   const wheelBox = h('div', 'wg-wheel');
   const pointer = h('div', 'wg-pointer');
@@ -147,7 +174,12 @@ function spinner(d, el) {
   const pick = h('select', 'wg-list');
   const edit = h('button', 'wg-btn', '✎');
   edit.title = 'Edit names';
-  bar.append(pick, edit);
+  const again = h('button', 'wg-btn', '↺');
+  again.title = 'Put everyone back';
+  const keepIn = h('button', 'wg-keep', 'Leave in');
+  keepIn.hidden = true;
+  let last = null;
+  bar.append(pick, edit, again, keepIn);
   d.append(wheelBox, pointer, result, bar);
 
   let names = loadNames();
@@ -213,10 +245,12 @@ function spinner(d, el) {
     if (!n.length) { editNames(); return; }
     spinning = true;
     result.textContent = '';
+    keepIn.hidden = true;
     const k = Math.floor(Math.random() * n.length);
-    // Land the middle of slice k under the pointer at the top.
+    // Land the middle of slice k under the pointer at the top, on a wheel of the names left.
     const target = 360 - ((k + 0.5) / n.length) * 360;
-    const svg = wheelBox.firstChild;
+    const svg = drawWheel();
+    svg.getBoundingClientRect();
     angle = angle - (angle % 360) + 360 * 5 + target;
     svg.style.transition = 'transform 4s cubic-bezier(.15,.85,.25,1)';
     svg.style.transform = 'rotate(' + angle + 'deg)';
@@ -227,6 +261,8 @@ function spinner(d, el) {
       if (had.size >= (names.lists[list] || []).length) had.clear();
       had.add(n[k]);
       turns.set(list, had);
+      last = n[k];
+      keepIn.hidden = false;
     }, 4100);
   }
 
@@ -286,6 +322,22 @@ function spinner(d, el) {
     drawWheel();
   });
   edit.addEventListener('click', (e) => { e.stopPropagation(); editNames(); });
+  keepIn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const had = turns.get(list);
+    if (had && last) had.delete(last);
+    keepIn.hidden = true;
+    result.textContent = '';
+    drawWheel();
+  });
+  again.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (spinning) return;
+    turns.delete(list);
+    keepIn.hidden = true;
+    result.textContent = '';
+    drawWheel();
+  });
   wheelBox.addEventListener('click', spin);
   result.addEventListener('click', spin);
   fillPick();
@@ -297,11 +349,11 @@ export function spinnerOverlay(host) {
   const box = h('div', 'wg-overlay');
   const close = h('button', 'wg-btn wg-close', '✕');
   close.title = 'Close';
-  const w = drawWidget({ t: 'wg', kind: 'spinner', x: 0, y: 0, w: 480, h: 480 }, { live: true });
+  const w = h('div', 'wg wg-spinner');
   w.style.position = 'relative';
-  w.style.left = w.style.top = '';
   w.style.width = w.style.height = 'min(80vh, 80vw)';
   w.style.fontSize = '24px';
+  spinnerBody(w);
   box.append(w, close);
   host.append(box);
   const done = () => box.remove();
@@ -699,4 +751,198 @@ function sound(d, el, opts) {
   a.addEventListener('pause', paint);
   a.addEventListener('ended', paint);
   every(d, 500, () => {}, () => a.pause());
+}
+
+// ---- think/speak ---------------------------------------------------------------
+// Which pictures are thinking (the bottom row), for this sitting only.
+
+const thinking = new WeakMap();            // widget -> Set of picture indexes
+
+function thinkspeak(d, el, opts) {
+  const pics = el.pics || [];
+  const below = thinking.get(el) || new Set();
+  thinking.set(el, below);
+  const W = el.w, H = el.h, half = H / 2;
+  const bub = Math.min(half * 0.8, W * 0.2);              // the bubbles' size
+  const left = bub + W * 0.03;
+  const col = (W - left) / Math.max(pics.length, 1);
+  const size = Math.max(8, Math.min(col * 0.86, half * 0.8));
+  d.append(bubble('speak', W * 0.01, (half - bub) / 2, bub), bubble('think', W * 0.01, half + (half - bub) / 2, bub));
+  const line = h('div', 'wg-ts-line');
+  Object.assign(line.style, { top: half - H * 0.02 + 'px', height: H * 0.04 + 'px' });
+  d.append(line);
+  pics.forEach((p, i) => {
+    const img = h('img', 'wg-ts-pic');
+    img.alt = '';
+    img.draggable = false;
+    if (opts.media) img.src = opts.media(p.media);
+    const at = () => {
+      const row = below.has(i) ? 1 : 0;
+      Object.assign(img.style, { left: left + col * i + (col - size) / 2 + 'px', top: row * half + (half - size) / 2 + 'px',
+        width: size + 'px', height: size + 'px' });
+    };
+    at();
+    if (opts.live) {
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (below.has(i)) below.delete(i); else below.add(i);
+        at();
+      });
+    }
+    d.append(img);
+  });
+  if (!pics.length && !opts.live) d.append(h('span', 'wg-label', KINDS.thinkspeak));
+  if (opts.live) d.addEventListener('click', (e) => e.stopPropagation());
+}
+
+/** A speech bubble or a thought cloud, outlined in black. */
+function bubble(kind, x, y, size) {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.classList.add('wg-ts-bubble');
+  Object.assign(svg.style, { left: x + 'px', top: y + 'px', width: size + 'px', height: size + 'px' });
+  const path = (d) => {
+    const p = document.createElementNS(SVG, 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('fill', '#fff');
+    p.setAttribute('stroke', '#000');
+    p.setAttribute('stroke-width', '3.5');
+    p.setAttribute('stroke-linejoin', 'round');
+    svg.append(p);
+  };
+  if (kind === 'speak') {
+    path('M50 14 C76 14 96 26 96 43 C96 60 76 72 50 72 C44 72 38 71 33 70 L8 86 L19 66 C9 60 4 52 4 43 C4 26 24 14 50 14 Z');
+  } else {
+    path('M30 30 C30 18 46 14 52 22 C58 12 76 16 76 28 C90 28 94 44 84 50 C92 60 80 72 68 66 C62 76 44 76 40 66 ' +
+      'C28 72 16 62 22 54 C10 50 12 34 30 30 Z');
+    path('M20 78 A6 6 0 1 0 20.01 78 Z');
+    path('M8 90 A4 4 0 1 0 8.01 90 Z');
+  }
+  return svg;
+}
+
+/** The pictures of a think/speak: add, take off, reorder. pics: [{ media }];
+    addFiles() -> media hashes of pictures the teacher picks. Resolves null on Cancel. */
+export function editPictures(pics, mediaUrl, addFiles) {
+  return new Promise((resolve) => {
+    let list = pics.map((p) => ({ ...p }));
+    const box = h('div', 'wg-names');
+    const card = h('div', 'wg-names-box wg-dialog');
+    const grid = h('div', 'wg-ts-grid');
+    const add = h('button', 'btn quiet', 'Add pictures');
+    const ok = h('button', 'btn', 'Done');
+    const cancel = h('button', 'btn quiet', 'Cancel');
+    const row = h('div', 'wg-names-row');
+    row.append(add, h('span', 'spacer'), cancel, ok);
+    card.append(grid, row);
+    box.append(card);
+    (document.fullscreenElement || document.body).append(box);
+    const paint = () => {
+      grid.replaceChildren(...list.map((p, i) => {
+        const cell = h('div', 'wg-ts-cell');
+        const img = h('img');
+        img.src = mediaUrl(p.media);
+        img.alt = '';
+        const back = h('button', 'wg-btn', '‹');
+        back.title = 'Earlier';
+        back.disabled = i === 0;
+        back.addEventListener('click', () => { [list[i - 1], list[i]] = [list[i], list[i - 1]]; paint(); });
+        const x = h('button', 'wg-btn', '✕');
+        x.title = 'Take off';
+        x.addEventListener('click', () => { list.splice(i, 1); paint(); });
+        cell.append(img, back, x);
+        return cell;
+      }));
+    };
+    paint();
+    add.addEventListener('click', async () => {
+      const hashes = await addFiles();
+      list = list.concat(hashes.map((media) => ({ media })));
+      paint();
+    });
+    const done = (v) => { box.remove(); resolve(v); };
+    cancel.addEventListener('click', () => done(null));
+    ok.addEventListener('click', () => done(list));
+    box.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') done(null); });
+  });
+}
+
+// ---- Street View ---------------------------------------------------------------
+
+/** The embed address in what Google Maps' Share > Embed a map gives (or the address alone). */
+export function mapsEmbed(text) {
+  const m = String(text || '').match(/https:\/\/www\.google\.com\/maps\/embed\?[^"'\s<>]+/);
+  return m ? m[0].replace(/&amp;/g, '&') : null;
+}
+
+function streetview(d, el) {
+  tile(d, el);
+  const places = (el.places || []).filter((x) => x.src);
+  let p = null;
+  d.addEventListener('click', () => {
+    if (p || !places.length) return;
+    p = panel(d, 'wg-panel-map', (me) => { me.shade.remove(); p = null; });
+    const view = h('iframe', 'wg-frame');
+    view.title = 'Street View';
+    view.allow = 'fullscreen';
+    view.setAttribute('allowfullscreen', '');
+    view.referrerPolicy = 'strict-origin-when-cross-origin';
+    const go = (x, b) => {
+      view.src = x.src;
+      row.querySelectorAll('button').forEach((n) => n.classList.toggle('on', n === b));
+    };
+    const row = h('div', 'wg-places');
+    places.forEach((x, i) => {
+      const b = h('button', 'wg-place' + (i === 0 ? ' on' : ''), x.name || 'Place ' + (i + 1));
+      b.addEventListener('click', () => go(x, b));
+      row.append(b);
+    });
+    view.src = places[0].src;
+    p.box.append(view);
+    if (places.length > 1) p.box.append(row);
+  });
+  every(d, 500, () => {}, () => { if (p) p.close(); });
+}
+
+/** A Street View widget's places: a name and pasted embed code each, the first where it
+    starts. Resolves the new list, or null on Cancel. */
+export function editPlaces(places) {
+  return new Promise((resolve) => {
+    const rows = places.length ? places.map((x) => ({ ...x })) : [{ name: '', src: '' }];
+    const box = h('div', 'wg-names');
+    const card = h('div', 'wg-names-box wg-dialog');
+    const list = h('div', 'wg-place-list');
+    const add = h('button', 'btn quiet', 'Add a place');
+    const ok = h('button', 'btn', 'Done');
+    const cancel = h('button', 'btn quiet', 'Cancel');
+    const bar = h('div', 'wg-names-row');
+    bar.append(add, h('span', 'spacer'), cancel, ok);
+    card.append(list, bar);
+    box.append(card);
+    (document.fullscreenElement || document.body).append(box);
+    const paint = () => {
+      list.replaceChildren(...rows.map((x, i) => {
+        const r = h('div', 'wg-place-row');
+        const name = h('input', 'wg-names-title');
+        name.placeholder = 'Name';
+        name.value = x.name || '';
+        name.addEventListener('input', () => { x.name = name.value; });
+        const code = h('input', 'wg-names-title');
+        code.placeholder = 'Embed code from Google Maps';
+        code.value = x.src || '';
+        code.addEventListener('input', () => { x.src = mapsEmbed(code.value) || ''; code.classList.toggle('bad', !!code.value && !x.src); });
+        const out = h('button', 'wg-btn', '✕');
+        out.title = 'Remove';
+        out.addEventListener('click', () => { rows.splice(i, 1); paint(); });
+        r.append(name, code, out);
+        return r;
+      }));
+    };
+    paint();
+    add.addEventListener('click', () => { rows.push({ name: '', src: '' }); paint(); });
+    const done = (v) => { box.remove(); resolve(v); };
+    cancel.addEventListener('click', () => done(null));
+    ok.addEventListener('click', () => done(rows.filter((x) => x.src).map((x) => ({ name: (x.name || '').trim(), src: x.src }))));
+    box.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') done(null); });
+  });
 }
