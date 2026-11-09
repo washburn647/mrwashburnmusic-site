@@ -491,11 +491,17 @@ function spotify(d, el) {
 // ---- drawing box ---------------------------------------------------------------
 // A board to draw on, and to put pictures on: 🔎 looks for see-through pictures
 // in a Google Images tab (SafeSearch on), and a copied picture comes back in by
-// pasting (Ctrl+V or 📋), or a picture file by dropping it. ✋ moves and sizes
+// pasting (Ctrl+V or 📋), a picture file by dropping it, or from the picture
+// library (📚; ⭐ keeps the chosen picture there). ✋ moves and sizes
 // pictures. It all lasts for this sitting only, unless 💾 saves a copy (PNG) to
-// the device. Nothing goes to the website.
+// the device. Nothing goes to the website but pictures kept with ⭐.
 
-const boards = new WeakMap();              // widget -> { ink: data URL, pics: [{ img, x, y, w, h }], look: data URL }
+const boards = new WeakMap();              // widget -> { ink: data URL, pics: [{ img, blob, x, y, w, h }], look: data URL }
+
+// The picture library (library.js), where the app has one (not the sub view):
+// { groups() -> [{ name, pics: [{ media, src }] }], blob(hash), add(blob, groupName) }.
+let library = null;
+export function useLibrary(lib) { library = lib; }
 const CW = 1600;                           // the board's width in canvas pixels
 
 function draw(d, el) {
@@ -561,7 +567,9 @@ function draw(d, el) {
     const choose = (q) => {
       chosen = q;
       for (const x of state.pics) x.node.classList.toggle('on', x === q);
+      if (keepBtn) keepBtn.disabled = !q;
     };
+    let keepBtn = null;
     const showPic = (q) => {
       const node = h('div', 'wg-pic');
       const grip = h('div', 'wg-grip');
@@ -607,13 +615,14 @@ function draw(d, el) {
     };
     const addPicture = (blob) => {
       if (!blob || !/^image\//.test(blob.type)) return;
+      const q = { blob };
       const img = new Image();
       img.draggable = false;
       img.alt = '';
       img.onload = () => {
         const s = Math.min(1, cw * 0.4 / img.naturalWidth, ch * 0.6 / img.naturalHeight);
         const w = img.naturalWidth * s, hh = img.naturalHeight * s;
-        const q = { img, x: (cw - w) / 2, y: (ch - hh) / 2, w, h: hh };
+        Object.assign(q, { img, x: (cw - w) / 2, y: (ch - hh) / 2, w, h: hh });
         state.pics.push(q);
         showPic(q);
         setMode('move');
@@ -688,6 +697,47 @@ function draw(d, el) {
         }
       } catch (e) { /* nothing to paste, or not allowed */ }
     });
+    // The picture library: a tray of its pictures (tap one to put it on the board),
+    // and ⭐ to keep the chosen picture in the group the tray shows.
+    let tray = null, group = null;
+    const paintTray = async () => {
+      const groups = await library.groups();
+      group = groups.find((g) => g.name === group) ? group : groups[0] && groups[0].name;
+      const tabs = h('div', 'wg-tray-tabs');
+      for (const g of groups) {
+        const b = h('button', 'wg-tray-tab' + (g.name === group ? ' on' : ''), g.name);
+        b.addEventListener('click', () => { group = g.name; paintTray(); });
+        tabs.append(b);
+      }
+      const pics = h('div', 'wg-tray-pics');
+      for (const pic of (groups.find((g) => g.name === group) || { pics: [] }).pics) {
+        const b = h('button', 'wg-tray-pic');
+        const img = h('img');
+        img.src = pic.src;
+        img.alt = '';
+        b.append(img);
+        b.addEventListener('click', async () => addPicture(await library.blob(pic.media)));
+        pics.append(b);
+      }
+      tray.replaceChildren(tabs, pics);
+    };
+    if (library) {
+      tool('wg-lib', '📚', 'Picture library', (b) => {
+        if (tray) { tray.remove(); tray = null; b.classList.remove('on'); return; }
+        tray = h('div', 'wg-tray');
+        p.shade.append(tray);
+        b.classList.add('on');
+        paintTray();
+      });
+      keepBtn = tool('wg-keep-pic', '⭐', 'Keep in the picture library', async (b) => {
+        if (!chosen || !chosen.blob) return;
+        await library.add(chosen.blob, group);
+        b.classList.add('on');
+        setTimeout(() => b.classList.remove('on'), 900);
+        if (tray) paintTray();
+      });
+      keepBtn.disabled = true;
+    }
     tool('wg-save', '💾', 'Save a copy', () => {
       flat().toBlob((blob) => {
         if (!blob) return;
@@ -823,17 +873,19 @@ function bubble(kind, x, y, size) {
 
 /** The pictures of a think/speak: add, take off, reorder. pics: [{ media }];
     addFiles() -> media hashes of pictures the teacher picks. Resolves null on Cancel. */
-export function editPictures(pics, mediaUrl, addFiles) {
+export function editPictures(pics, mediaUrl, addFiles, fromLibrary) {
   return new Promise((resolve) => {
     let list = pics.map((p) => ({ ...p }));
     const box = h('div', 'wg-names');
     const card = h('div', 'wg-names-box wg-dialog');
     const grid = h('div', 'wg-ts-grid');
     const add = h('button', 'btn quiet', 'Add pictures');
+    const lib = h('button', 'btn quiet', '📚 From the library');
+    lib.hidden = !fromLibrary;
     const ok = h('button', 'btn', 'Done');
     const cancel = h('button', 'btn quiet', 'Cancel');
     const row = h('div', 'wg-names-row');
-    row.append(add, h('span', 'spacer'), cancel, ok);
+    row.append(add, lib, h('span', 'spacer'), cancel, ok);
     card.append(grid, row);
     box.append(card);
     (document.fullscreenElement || document.body).append(box);
@@ -855,6 +907,11 @@ export function editPictures(pics, mediaUrl, addFiles) {
       }));
     };
     paint();
+    lib.addEventListener('click', async () => {
+      const hashes = await fromLibrary();
+      list = list.concat(hashes.map((media) => ({ media })));
+      paint();
+    });
     add.addEventListener('click', async () => {
       const hashes = await addFiles();
       list = list.concat(hashes.map((media) => ({ media })));

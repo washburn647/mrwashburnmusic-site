@@ -25,6 +25,10 @@
 /class/sw.js
   Cache-Control: no-cache
 
+/sub/*
+  X-Robots-Tag: noindex, nofollow
+  Referrer-Policy: no-referrer
+
 /musician-maker/*
   X-Robots-Tag: noindex, nofollow
 

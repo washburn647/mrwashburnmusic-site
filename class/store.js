@@ -6,7 +6,7 @@
 import { markDeck } from './marks.js';
 
 const DB_NAME = 'mwm-class';
-const VERSION = 3;
+const VERSION = 4;
 let dbPromise = null;
 
 function db() {
@@ -24,6 +24,8 @@ function db() {
         if (!d.objectStoreNames.contains('timings')) d.createObjectStore('timings', { autoIncrement: true });
         // plans: one record per school year (see plans.js).
         if (!d.objectStoreNames.contains('plans')) d.createObjectStore('plans', { keyPath: 'year' });
+        // library: the picture library, one record { id: 'pictures', groups: [{ name, pics: [{ media }] }] }.
+        if (!d.objectStoreNames.contains('library')) d.createObjectStore('library', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -101,6 +103,27 @@ export function deletePlan(year, quiet) {
   return tx('plans', 'readwrite', (s) => wrap(s.delete(year))).then(() => { if (!quiet) changed('plans', year, true); });
 }
 
+export function listLibrary() {
+  return tx('library', 'readonly', (s) => wrap(s.getAll()));
+}
+
+export function getLibrary(id = 'pictures') {
+  return tx('library', 'readonly', (s) => wrap(s.get(id)));
+}
+
+export function putLibrary(rec, quiet) {
+  return putRecord('library', 'id', rec, quiet);
+}
+
+export function deleteLibrary(id, quiet) {
+  return tx('library', 'readwrite', (s) => wrap(s.delete(id))).then(() => { if (!quiet) changed('library', id, true); });
+}
+
+/** Every picture hash the picture library holds. */
+export function libraryMedia(rec) {
+  return rec ? [...new Set(rec.groups.flatMap((g) => g.pics.map((p) => p.media)))] : [];
+}
+
 /** Record how long a slide was on screen. */
 export function logTiming(row) {
   return tx('timings', 'readwrite', (s) => wrap(s.add(row))).then((r) => { changed('timings'); return r; });
@@ -160,6 +183,15 @@ export function mediaKeys() {
   return tx('media', 'readonly', (s) => wrap(s.getAllKeys()));
 }
 
+/** Keep a picture or file (a Blob) with the others; returns its hash. */
+export async function keepBlob(blob, name = '') {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const d = await crypto.subtle.digest('SHA-256', bytes);
+  const hash = Array.from(new Uint8Array(d).slice(0, 16), (b) => b.toString(16).padStart(2, '0')).join('');
+  await putMedia(new Map([[hash, { bytes, type: blob.type, name }]]));
+  return hash;
+}
+
 /** A picture fetched from the website, as stored there. */
 export function putMediaRecord(rec) {
   return tx('media', 'readwrite', (s) => wrap(s.put(rec)));
@@ -169,11 +201,12 @@ export function getMedia(hashes) {
   return tx('media', 'readonly', (s) => Promise.all(hashes.map((h) => wrap(s.get(h)))));
 }
 
-/** Remove pictures no deck uses any more. */
+/** Remove pictures no deck (and not the picture library) uses any more. */
 export async function pruneMedia() {
   const decks = await listDecks();
   const used = new Set();
   for (const d of decks) for (const h of mediaOf(d.deck)) used.add(h);
+  for (const r of await listLibrary()) for (const h of libraryMedia(r)) used.add(h);
   const keys = await tx('media', 'readonly', (s) => wrap(s.getAllKeys()));
   const gone = keys.filter((k) => !used.has(k));
   if (gone.length) await tx('media', 'readwrite', (s) => { for (const k of gone) s.delete(k); });

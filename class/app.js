@@ -1,6 +1,6 @@
 /* Class app shell: the library of decks, a deck's slides, and importing.
    Routes live in the hash: #/ is the library, #/deck/<id> is one deck,
-   #/plan is the planner. */
+   #/plan is the planner, #/pictures the picture library, #/sub sub plans. */
 
 import { convertPptx } from './pptx.js';
 import { present, MENU } from './present.js';
@@ -13,6 +13,8 @@ import { showPlanner } from './planner.js';
 import { gradeHint, normName, classAsOf, lockedSlides, indexSongs, firstClasses } from './plans.js';
 import { makeTemplate } from './builder.js';
 import * as sync from './sync.js';
+import { showPictures } from './library.js';
+import { showSub, refreshSub } from './subs.js';
 
 const CATEGORIES = ['Vocal Warmup', 'Song Fragments', 'Simple Songs', 'Arioso', 'Movement Exploration',
   'Form and Expression', 'Beat Motions', 'Songtales'];
@@ -353,6 +355,8 @@ function route() {
   main.classList.toggle('wide', location.hash.startsWith('#/plan'));
   const plan = location.hash.match(/^#\/plan(?:\/(calendar|lists))?/);
   if (plan) { showPlanner(main, plan[1] || 'plan'); return; }
+  if (location.hash.startsWith('#/pictures')) { showPictures(main); return; }
+  if (location.hash.startsWith('#/sub')) { showSub(main); return; }
   const m = location.hash.match(/^#\/deck\/([\w-]+)(?:\/(present|edit)(?:\/(\d+))?)?/);
   if (m) showDeck(m[1], m[2] === 'present', m[2] === 'edit' ? Math.max(0, (Number(m[3]) || 1) - 1) : null);
   else showLibrary();
@@ -380,6 +384,7 @@ const LOOK = { signin: ['Sign in', 'Sign in'], syncing: ['☁', 'Syncing…'], o
   offline: ['☁', 'Offline'], error: ['☁', 'Sync failed'] };
 sync.onStatus((s, detail) => {
   cloud.hidden = s === 'off';
+  if (s === 'ok') refreshSub();
   if (s === 'off') return;
   const [text, title] = LOOK[s];
   cloud.textContent = text;

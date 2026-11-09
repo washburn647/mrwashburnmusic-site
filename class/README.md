@@ -88,7 +88,21 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   unless 💾 saves a PNG to the device's downloads. The spinner's class lists live only in this browser's localStorage
   (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
   an online name spinner opens this spinner instead.
-- `sync.js`: keeps decks, pictures, plans and timings in step with the website's copy
+- `library.js` (`#/pictures`): the picture library, pictures kept for the drawing box and
+  think/speak, in groups (a game's pictures). Pictures come in by file, paste (into the group
+  last clicked) or drop, and from the drawing box: 📚 opens a tray of the library (tap a picture
+  to put it on the board), ⭐ keeps the chosen board picture in the tray's group. Think/speak's
+  picture list takes them too ("From the library"). One synced record (`library`, below).
+- `subs.js` (`#/sub`) and `/sub/` (`sub/index.html`, `sub/sub.js`): sub plans. Kyle picks a deck
+  and a code (6+ letters or numbers; case, spaces and dashes don't count); a substitute types the
+  code at /sub/ and presents that deck, and the decks it links into (`linkedDecks`, sent again
+  after a sync when its links change). The setting lives on the website (`sub/config.json` in the
+  bucket, `/api/class/sub` for Kyle, `/api/sub/` for the sub; see subApi in `worker/index.js`).
+  The sub gets the decks and a random key for their pictures only; a new code makes a new key.
+  Wrong codes are rate limited. The sub view keeps nothing on the device (no IndexedDB, no
+  timings) and has no picture library. Edit the sub deck like any other; the sub sees the
+  synced copy.
+- `sync.js`: keeps decks, pictures, plans, the picture library and timings in step with the website's copy
   (`/api/class/`, `worker/index.js`), so home and school share one library. Signing in goes
   through Cloudflare Access (Kyle's login). Sync runs when the app opens, comes online or back
   into view, and a moment after each change; the cloud in the header shows how it went.
@@ -140,6 +154,10 @@ element = { t: 'sp' | 'pic', x, y, w, h, rot, flipH, flipV, geom, adj,
 fill = { type: 'solid', color } | { type: 'linear', angle, stops } | { type: 'radial', stops }
      | { type: 'image', media }
 link = { slide: index } | { url } | { gdoc, gslide, url } | { jump: 'next' | 'previous' | ... }
+```
+
+```
+library = { id: 'pictures', name, created, updated, groups: [{ name, pics: [{ media }] }] }
 ```
 
 Pictures are stored once each, keyed by a hash of their bytes (`media`), with a

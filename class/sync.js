@@ -1,10 +1,10 @@
-/* Keeps this device's decks, pictures, plans and timings in step with the
+/* Keeps this device's decks, pictures, plans, picture library and timings in step with the
    copy on the website (/api/class/, see worker/index.js), so home and school
    see the same library. Runs when the app opens, comes back online or into
    view, and a moment after each change.
 
    - A record changed only here goes up; changed only there comes down.
-   - Changed in both places: a plan or built deck keeps the newer one; any
+   - Changed in both places: a plan, the picture library or a built deck keeps the newer one; any
      other deck keeps both, the one from here as a copy.
    - The first time a device syncs, a deck it has under the same name as one
      on the website is the same deck: the website's copy is kept (this
@@ -15,6 +15,16 @@
 import * as store from './store.js';
 
 const API = '/api/class/';
+
+// What sync keeps in step, and how to reach each here.
+const KINDS = {
+  decks: { key: 'id', list: store.listDecks, get: store.getDeck, put: store.putDeck, del: store.deleteDeck,
+           media: (r) => store.mediaOf(r.deck) },
+  plans: { key: 'year', list: store.listPlans, get: store.getPlan, put: store.putPlan, del: store.deletePlan,
+           media: () => [] },
+  library: { key: 'id', list: store.listLibrary, get: store.getLibrary, put: store.putLibrary, del: store.deleteLibrary,
+             media: store.libraryMedia }
+};
 const BOOK = 'class.sync';
 
 let status = 'off';                        // off | signin | syncing | ok | offline | error
@@ -40,7 +50,8 @@ function book() {
   try { b = JSON.parse(localStorage.getItem(BOOK)); } catch (e) { /* private window */ }
   b = b || {};
   b.device = b.device || Math.random().toString(36).slice(2, 10);
-  b.gone = b.gone || { decks: {}, plans: {} };
+  b.gone = b.gone || {};
+  for (const k of Object.keys(KINDS)) b.gone[k] = b.gone[k] || {};
   b.seen = b.seen || [];
   return b;
 }
@@ -89,8 +100,7 @@ async function run() {
     const server = await json('state');
     const b = book();
     const media = new Set(server.media);
-    await syncKind('decks', 'id', server.decks, b, media, pulled);
-    await syncKind('plans', 'year', server.plans, b, media, pulled);
+    for (const [kind, k] of Object.entries(KINDS)) await syncKind(kind, k.key, server[kind] || {}, b, media, pulled);
     await syncTimings(server.timings, b);
     keep(b);
     set('ok');
@@ -104,7 +114,7 @@ async function run() {
 }
 
 async function syncKind(kind, key, server, b, media, pulled) {
-  const local = new Map((kind === 'decks' ? await store.listDecks() : await store.listPlans()).map((r) => [r[key], r]));
+  const local = new Map((await KINDS[kind].list()).map((r) => [r[key], r]));
   const gone = b.gone[kind];
   const hold = new Set(kind === 'decks' ? busy() : []);
 
@@ -137,7 +147,7 @@ async function syncKind(kind, key, server, b, media, pulled) {
       const mine = L.updated !== L.synced, theirs = S.u !== L.synced;
       if (mine && !theirs) await push(kind, L, key, S.u, media);
       else if (!mine && theirs) { await pull(kind, id, media); pulled.push({ kind, id }); }
-      else if (kind === 'plans' || L.deck.built) {
+      else if (kind !== 'decks' || L.deck.built) {
         if (L.updated > S.u) await push(kind, L, key, S.u, media);
         else { await pull(kind, id, media); pulled.push({ kind, id }); }
       } else {
@@ -193,7 +203,7 @@ function moveLinks(deck, from, to) {
 }
 
 async function push(kind, rec, key, base, media) {
-  if (kind === 'decks') await sendMedia(store.mediaOf(rec.deck), media);
+  await sendMedia(KINDS[kind].media(rec), media);
   const body = { ...rec };
   delete body.synced;
   const u = rec.updated || Date.now();
@@ -206,22 +216,22 @@ async function push(kind, rec, key, base, media) {
 
 /** Note the version the website now has, unless the record changed again meanwhile. */
 async function mark(kind, rec, u) {
-  const now = kind === 'decks' ? await store.getDeck(rec.id) : await store.getPlan(rec.year);
+  const now = await KINDS[kind].get(rec[KINDS[kind].key]);
   if (!now || now.updated !== rec.updated) return;
   now.synced = u;
   now.updated = u;
-  await (kind === 'decks' ? store.putDeck(now, true) : store.putPlan(now, true));
+  await KINDS[kind].put(now, true);
 }
 
 async function pull(kind, id, media) {
   const rec = await json(kind + '/' + encodeURIComponent(id));
-  if (kind === 'decks') await fetchMedia(store.mediaOf(rec.deck));
+  await fetchMedia(KINDS[kind].media(rec));
   rec.synced = rec.updated;
-  await (kind === 'decks' ? store.putDeck(rec, true) : store.putPlan(rec, true));
+  await KINDS[kind].put(rec, true);
 }
 
 async function drop(kind, id) {
-  await (kind === 'decks' ? store.deleteDeck(id, true) : store.deletePlan(id, true));
+  await KINDS[kind].del(id, true);
 }
 
 async function sendDelete(kind, id, u, base) {

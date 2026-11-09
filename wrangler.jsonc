@@ -24,6 +24,10 @@
   "r2_buckets": [
     { "binding": "CLASS_FILES", "bucket_name": "mwm-class-files" }
   ],
+  // Wrong sub codes: a few tries a minute per address (see subApi in worker/index.js).
+  "ratelimits": [
+    { "name": "SUB_LIMIT", "namespace_id": "1001", "simple": { "limit": 8, "period": 60 } }
+  ],
   // Lesson students' locked boxes: one Durable Object each, holding only encrypted data.
   // LIVE: what Kyle publishes from the studio (grooves, game options, voice takes), one Durable Object.
   "durable_objects": {

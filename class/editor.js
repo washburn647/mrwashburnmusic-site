@@ -11,7 +11,8 @@ import { markDeck, ROLES, GRADES } from './marks.js';
 import { guessTitle } from './pptx.js';
 import { present } from './present.js';
 import * as store from './store.js';
-import { el, thumb, addMediaUrl } from './ui.js';
+import { el, thumb, addMediaUrl, loadHashes } from './ui.js';
+import { pickFromLibrary } from './library.js';
 import { KINDS, youtubeId, spotifyPath, editPictures, editPlaces } from './widgets.js';
 
 const SHAPES = [
@@ -523,6 +524,10 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
         const out = [];
         for (const f of files) out.push(await keepFile(f));
         return out;
+      }, async () => {
+        const hashes = await pickFromLibrary();
+        await loadHashes(hashes);
+        return hashes;
       });
       if (!pics) return false;
       e.pics = pics;
