@@ -477,7 +477,8 @@ async function boxApi(request, env, [, studio, id, results]) {
    GET  /api/live/units.json                the voice recorder's units (assets/patterns/units.json's shape)
    GET  /api/live/songburner.json           Song Burner's default settings (only what differs from
                                             the built-in values; see siteDefaults in Code.gs)
-   GET  /api/live/radio.json                the radio's station library and Kyle's picks
+   GET  /api/live/radio.json                the radio's station library and Kyle's picks; any
+                                            origin may read it (Kyle's dashboard does)
                                             (radio/stations.json's shape)
    GET  /api/live/voice/:voice.json         a voice's takes (index.json "voices" entry's shape)
    GET  /api/live/voice/:voice/:take.mp3    one take
@@ -513,7 +514,13 @@ async function liveApi(request, env, studio, path) {
     if (path === 'units.json') return live.text('units');
     if (path === 'games.json') return live.text('games');
     if (path === 'songburner.json') return live.text('songburner');
-    if (path === 'radio.json') return live.text('radio');
+    if (path === 'radio.json') {
+      // Kyle's desktop dashboard reads the station list too, so any page may fetch it (it's public).
+      const r = await live.text('radio');
+      const out = new Response(r.body, r);
+      out.headers.set('Access-Control-Allow-Origin', '*');
+      return out;
+    }
     if ((m = /^voice\/([^/]+)\.json$/.exec(path)) && VOICE.test(m[1])) return live.text('voice:' + m[1]);
     if ((m = /^voice\/([^/]+)\/([^/]+)\.mp3$/.exec(path)) && VOICE.test(m[1]) && TAKE.test(m[2])) return live.take(m[1], m[2]);
     return reply({ error: 'not found' }, 404);
