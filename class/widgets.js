@@ -10,17 +10,19 @@
    - thinkspeak: pics [{ media }], a row to say and a row to think: a tap
               moves a picture to the other row, in its own column
    - streetview: places [{ name, src }], Google Maps embeds (Share > Embed a
-              map), the first where it starts
-   The spinner, video, Spotify, the drawing box and Street View sit on the
-   slide as a small labeled box; tapped, they open big over the slide (OPENS),
-   clear of the slide's scaling. Elsewhere (thumbnails, the editor) a widget
-   draws as a quiet label, except think/speak, which looks as it does live. */
+              map), the first where it starts, the rest in a list under it
+   The spinner, video, Spotify, the drawing box, think/speak and Street View
+   sit on the slide as a small box (ICON_ONLY: just their icon); tapped, they
+   open big over the slide (OPENS), clear of the slide's scaling. Elsewhere
+   (thumbnails, the editor) a widget draws as a quiet label or its icon.
+   Everything set up in the editor lives on the element, so it saves with the
+   slide and goes wherever the slide or element is copied. */
 
 export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify', draw: 'Drawing box',
   thinkspeak: 'Think/speak', streetview: 'Street View' };
 const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵', draw: '✏', thinkspeak: '💬', streetview: '🌍' };
-const OPENS = ['spinner', 'video', 'spotify', 'draw', 'streetview'];
-const ICON_ONLY = ['spinner', 'draw'];       // on the slide, just their icon
+const OPENS = ['spinner', 'video', 'spotify', 'draw', 'thinkspeak', 'streetview'];
+const ICON_ONLY = ['spinner', 'draw', 'thinkspeak', 'streetview'];   // on the slide, just their icon
 const INK = ['#000000', '#D04B4B', '#3B83C0', '#4A9C5C', '#E8A33D', '#9257BD'];
 const COLORS = ['#E8A33D', '#5E7D4F', '#3B83C0', '#D04B4B', '#9257BD', '#C9A41F', '#4A9C5C', '#DD8033'];
 const SVG = 'http://www.w3.org/2000/svg';
@@ -40,14 +42,13 @@ export function drawWidget(el, opts = {}) {
   d.style.fontSize = (ICON_ONLY.includes(el.kind) ? Math.max(12, Math.min(el.w, el.h) * 0.6)
     : OPENS.includes(el.kind) ? Math.max(12, Math.min(el.h / 2.6, el.w / 8))
     : Math.max(12, Math.min(el.w, el.h) / 6)) + 'px';
-  if (el.kind === 'thinkspeak') { thinkspeak(d, el, opts); return d; }
   if (!opts.live) {
     d.classList.add('wg-face');
     if (OPENS.includes(el.kind)) d.classList.add('wg-tile');
-    d.append(h('span', 'wg-icon', ICONS[el.kind] || '?'), h('span', 'wg-label', label(el)));
+    d.append(icon(el.kind), h('span', 'wg-label', label(el)));
     return d;
   }
-  const make = { timer, spinner, video, sound, spotify, draw, streetview }[el.kind];
+  const make = { timer, spinner, video, sound, spotify, draw, thinkspeak, streetview }[el.kind];
   if (make) make(d, el, opts);
   // A widget is for using: clicks on it are not "show the controls" clicks.
   d.addEventListener('click', (e) => e.stopPropagation());
@@ -389,7 +390,16 @@ function frame(d, src, title) {
 /** The small box on the slide: an icon and the widget's name. */
 function tile(d, el) {
   d.classList.add('wg-tile');
-  d.append(h('span', 'wg-icon', ICONS[el.kind]), h('span', 'wg-label', label(el)));
+  d.append(icon(el.kind), h('span', 'wg-label', label(el)));
+}
+
+/** A widget's icon: think/speak's is a thought cloud, the rest an emoji. */
+function icon(kind) {
+  if (kind !== 'thinkspeak') return h('span', 'wg-icon', ICONS[kind] || '?');
+  const svg = bubble('think');
+  svg.setAttribute('viewBox', '2 10 96 86');
+  svg.classList.add('wg-icon', 'wg-cloud');
+  return svg;
 }
 
 let openPanel = null;                      // { close } of the panel showing now
@@ -820,49 +830,65 @@ function sound(d, el, opts) {
 
 const thinking = new WeakMap();            // widget -> Set of picture indexes
 
+/** On the slide, a thought cloud; tapped, the speak and think rows open big on white. */
 function thinkspeak(d, el, opts) {
+  tile(d, el);
+  let p = null;
+  d.addEventListener('click', () => {
+    if (p) return;
+    p = panel(d, 'wg-panel-ts', (me) => { me.shade.remove(); p = null; });
+    const board = h('div', 'wg-ts-board');
+    p.box.append(board);
+    const r = p.box.getBoundingClientRect();
+    rows(board, el, r.width, r.height, opts);
+  });
+  every(d, 500, () => {}, () => { if (p) p.close(); });
+}
+
+/** The two rows, W x H pixels: a tap moves a picture to the other row, in its column. */
+function rows(d, el, W, H, opts) {
   const pics = el.pics || [];
   const below = thinking.get(el) || new Set();
   thinking.set(el, below);
-  const W = el.w, H = el.h, half = H / 2;
+  const half = H / 2;
   const bub = Math.min(half * 0.8, W * 0.2);              // the bubbles' size
   const left = bub + W * 0.03;
   const col = (W - left) / Math.max(pics.length, 1);
   const size = Math.max(8, Math.min(col * 0.86, half * 0.8));
-  d.append(bubble('speak', W * 0.01, (half - bub) / 2, bub), bubble('think', W * 0.01, half + (half - bub) / 2, bub));
+  d.append(at(bubble('speak'), W * 0.01, (half - bub) / 2, bub), at(bubble('think'), W * 0.01, half + (half - bub) / 2, bub));
   const line = h('div', 'wg-ts-line');
-  Object.assign(line.style, { top: half - H * 0.02 + 'px', height: H * 0.04 + 'px' });
+  Object.assign(line.style, { top: half - H * 0.01 + 'px', height: H * 0.02 + 'px' });
   d.append(line);
   pics.forEach((p, i) => {
     const img = h('img', 'wg-ts-pic');
     img.alt = '';
     img.draggable = false;
     if (opts.media) img.src = opts.media(p.media);
-    const at = () => {
+    const place = () => {
       const row = below.has(i) ? 1 : 0;
       Object.assign(img.style, { left: left + col * i + (col - size) / 2 + 'px', top: row * half + (half - size) / 2 + 'px',
         width: size + 'px', height: size + 'px' });
     };
-    at();
-    if (opts.live) {
-      img.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (below.has(i)) below.delete(i); else below.add(i);
-        at();
-      });
-    }
+    place();
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (below.has(i)) below.delete(i); else below.add(i);
+      place();
+    });
     d.append(img);
   });
-  if (!pics.length && !opts.live) d.append(h('span', 'wg-label', KINDS.thinkspeak));
-  if (opts.live) d.addEventListener('click', (e) => e.stopPropagation());
+}
+
+function at(node, x, y, size) {
+  node.classList.add('wg-ts-bubble');
+  Object.assign(node.style, { left: x + 'px', top: y + 'px', width: size + 'px', height: size + 'px' });
+  return node;
 }
 
 /** A speech bubble or a thought cloud, outlined in black. */
-function bubble(kind, x, y, size) {
+function bubble(kind) {
   const svg = document.createElementNS(SVG, 'svg');
   svg.setAttribute('viewBox', '0 0 100 100');
-  svg.classList.add('wg-ts-bubble');
-  Object.assign(svg.style, { left: x + 'px', top: y + 'px', width: size + 'px', height: size + 'px' });
   const path = (d) => {
     const p = document.createElementNS(SVG, 'path');
     p.setAttribute('d', d);
@@ -956,19 +982,12 @@ function streetview(d, el) {
     view.allow = 'fullscreen';
     view.setAttribute('allowfullscreen', '');
     view.referrerPolicy = 'strict-origin-when-cross-origin';
-    const go = (x, b) => {
-      view.src = x.src;
-      row.querySelectorAll('button').forEach((n) => n.classList.toggle('on', n === b));
-    };
-    const row = h('div', 'wg-places');
-    places.forEach((x, i) => {
-      const b = h('button', 'wg-place' + (i === 0 ? ' on' : ''), x.name || 'Place ' + (i + 1));
-      b.addEventListener('click', () => go(x, b));
-      row.append(b);
-    });
+    const pick = h('select', 'wg-places');
+    places.forEach((x, i) => pick.append(new Option(x.name || 'Place ' + (i + 1), i)));
+    pick.addEventListener('change', () => { view.src = places[pick.value].src; });
     view.src = places[0].src;
     p.box.append(view);
-    if (places.length > 1) p.box.append(row);
+    if (places.length > 1) p.box.append(pick);
   });
   every(d, 500, () => {}, () => { if (p) p.close(); });
 }

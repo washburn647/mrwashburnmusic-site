@@ -6,6 +6,7 @@
 import { present } from '/class/present.js';
 import { buildMenu } from '/class/menus.js';
 import { mediaOf } from '/class/store.js';
+import { iconWidgets } from '/class/marks.js';
 
 const $ = (s) => document.querySelector(s);
 const urls = new Map();                    // picture hash -> object URL
@@ -40,6 +41,7 @@ async function open(code) {
   }
   const out = await res.json().catch(() => ({}));
   if (!res.ok) { msg.textContent = out.error || 'That didn\'t work.'; return; }
+  for (const d of out.decks) iconWidgets(d.deck);
   bundle = { start: out.start, key: out.key, decks: new Map(out.decks.map((d) => [d.id, d])) };
   const rec = bundle.decks.get(bundle.start);
   await loadPictures(rec.deck);

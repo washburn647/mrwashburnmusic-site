@@ -24,6 +24,7 @@ const LINE_WIDTHS = [0, 1, 2, 3, 5, 8];
 const SNAP = 6;                            // screen px
 const NUDGE = 1, NUDGE_BIG = 10;
 const MIN_SIZE = 4;
+let clip = null;                           // copied elements, kept from deck to deck
 
 export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   const deck = rec.deck;
@@ -36,7 +37,6 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   let undo = [], redo = [];
   let writable = null;                     // indexes of slides copied for the change in progress
   let lastKey = null, lastAt = 0;
-  let clip = null;                         // copied elements
   let scale = 1;
   let stage = null;
   let saveTimer = null;
@@ -483,12 +483,13 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
 
   const WIDGET_SIZE = { timer: [240, 120], spinner: [110, 110], video: [220, 70], sound: [160, 160], spotify: [220, 70],
-    draw: [110, 110], thinkspeak: [720, 300], streetview: [220, 70] };
+    draw: [110, 110], thinkspeak: [110, 110], streetview: [110, 110] };
 
   async function addWidget(kind) {
     commitText();
     const [w, h] = WIDGET_SIZE[kind];
     const e = { t: 'wg', kind, x: (deck.w - w) / 2, y: (deck.h - h) / 2, w, h };
+    if (kind === 'thinkspeak' || kind === 'streetview') e.icon = true;
     if (!(await configure(e))) return;
     addElements([e]);
   }
@@ -1225,7 +1226,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
 
   function leave() {
-    if (!/\/edit/.test(location.hash) && root.isConnected) close();
+    // Another page, or another deck's editor: this one goes.
+    if (!location.hash.startsWith('#/deck/' + rec.id + '/edit') && root.isConnected) close(true);
   }
 
   function closeMenus(e) {
@@ -1235,7 +1237,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     searchBox.hidden = true;
   }
 
-  async function close() {
+  /** byHash: the address already moved on, so don't send it back to the deck. */
+  async function close(byHash) {
     commitText();
     await flush();
     document.removeEventListener('keydown', onKey);
@@ -1246,7 +1249,7 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     document.removeEventListener('pointerdown', closeMenus);
     root.remove();
     document.body.classList.remove('editing-deck');
-    if (onExit) onExit(index);
+    if (onExit && !byHash) onExit(index);
   }
 
   document.addEventListener('keydown', onKey);

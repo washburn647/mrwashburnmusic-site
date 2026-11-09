@@ -419,11 +419,14 @@ select.ls-in { min-width: 84px; }
   font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
 
 /* Think/speak: pictures hop between the speak row and the think row */
-.slide-stage .wg-thinkspeak { overflow: visible; }
-.wg-thinkspeak .wg-ts-bubble, .wg-thinkspeak .wg-ts-pic, .wg-thinkspeak .wg-ts-line { position: absolute; }
-.wg-thinkspeak .wg-ts-line { left: 0; right: 0; background: #B5B5B5; }
-.wg-thinkspeak .wg-ts-pic { object-fit: contain; transition: top .45s cubic-bezier(.3, 1.4, .5, 1); cursor: pointer; }
-.wg-thinkspeak > .wg-label { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 600; }
+.wg-panel-ts { width: min(92vw, calc(85vh * 12 / 5)); aspect-ratio: 12 / 5; background: #fff; border-radius: 18px; }
+.wg-ts-board { position: relative; width: 100%; height: 100%; }
+.wg-ts-board .wg-ts-bubble, .wg-ts-board .wg-ts-pic, .wg-ts-board .wg-ts-line { position: absolute; }
+.wg-ts-board .wg-ts-line { left: 2%; right: 2%; background: #B5B5B5; border-radius: 99px; }
+.wg-ts-board .wg-ts-pic { object-fit: contain; transition: top .45s cubic-bezier(.3, 1.4, .5, 1); cursor: pointer; }
+svg.wg-cloud { width: 1em; height: 1em; display: block; }
+.wg-face.wg-tile svg.wg-cloud, .wg-tile svg.wg-cloud { width: 1.15em; height: 1.15em; }
+.wg-iconly svg.wg-cloud { width: 1.2em; height: 1.2em; }
 .wg-dialog { width: min(640px, 94vw); }
 .wg-ts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; min-height: 100px; }
 .wg-ts-cell { position: relative; border: 1px solid var(--line); border-radius: 10px; padding: 6px; aspect-ratio: 1; }
@@ -435,10 +438,8 @@ select.ls-in { min-width: 84px; }
 /* Street View */
 .wg-panel-map { width: 92vw; height: calc(88vh - 60px); }
 .wg-panel-map .wg-frame { border-radius: 12px; background: #000; flex: 1; height: auto; min-height: 0; }
-.wg-places { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.wg-place { height: 36px; border: 0; border-radius: 999px; padding: 0 16px; background: rgba(255, 255, 255, .9); color: var(--forest);
-  font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
-.wg-place.on { background: var(--moss); color: var(--cream); }
+.wg-places { height: 40px; border: 0; border-radius: 999px; padding: 0 16px; background: rgba(255, 255, 255, .95); color: var(--forest);
+  font: 600 17px "Fredoka", ui-rounded, sans-serif; max-width: 92vw; }
 .wg-place-list { display: flex; flex-direction: column; gap: 8px; }
 .wg-place-row { display: grid; grid-template-columns: 1fr 2fr 34px; gap: 8px; align-items: center; }
 .wg-place-row .wg-btn { position: static; }
