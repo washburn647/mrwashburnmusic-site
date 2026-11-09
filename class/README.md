@@ -11,8 +11,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 
 - `index.html`, `app.js`: the library (`#/`) and one deck's slides (`#/deck/<id>`), plus importing.
 - `editor.js`: the slide editor (`#/deck/<id>/edit/<n>`). Select, move (with snapping; Alt turns
-  it off), resize, type in boxes, add text, shapes and pictures, links, marks, layer order,
-  slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only
+  it off), resize, type in boxes, add text, shapes and pictures, links, marks, layer order
+  (Ctrl+↑ or Ctrl+↓ one step, with Shift to the front or back), slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only
   the slides it touches. Slide links follow their slide when slides move. Saves as it goes.
 - `ui.js`: helpers the pages share (thumbnails, picture URLs).
 - `menus.js`: builds a grade's menu on demand: the icon of every song for that grade or an
@@ -69,9 +69,12 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 - `widgets.js`: slide elements that work in Present (`{ t: 'wg', kind }`): timer (counts down
   and chimes, or up), spinner, video (YouTube, through the no-cookie player, or a video file),
   sound file, Spotify, drawing box, think/speak, Street View. Added from the editor's 🧩 menu;
-  double-click one to change it. Elsewhere they draw as labels (think/speak draws as itself).
-  The spinner, video, Spotify, the drawing box and Street View sit on the slide as a small box
-  (the spinner and drawing box as just their icon; the others with a title, `name`) and open
+  double-click one to change it. Elsewhere they draw as labels or icons. What a widget is set up
+  with lives on its element, so it saves with the slide and copies with it (duplicate slide, Ctrl+C
+  and Ctrl+V, even into another deck, and class builds).
+  The spinner, video, Spotify, the drawing box, think/speak and Street View sit on the slide as
+  a small box (the spinner, drawing box, think/speak and Street View as just their icon, think/speak's
+  a thought cloud; the others with a title, `name`) and open
   big over the slide when tapped, outside the slide's scaling
   so they stay sharp: video starts playing, Spotify shows its player (closing tucks it away still
   playing; the box's ■ stops it), the drawing box gives a canvas with pens, eraser and clear,
@@ -79,10 +82,11 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   a copied picture pastes in (Ctrl+V or 📋), a picture file drops in, and ✋ moves and sizes
   them (✕ takes one off). Pictures stay under the ink and are never saved to the deck.
   The spinner takes a picked name off the wheel until everyone has had a turn; "Leave in" puts
-  it back, ↺ puts everyone back. Think/speak (`pics: [{ media }]`, chosen in the editor) shows a
-  speak row and a think row; a tap moves a picture to the other row in its column, for the
-  sitting only. Street View (`places: [{ name, src }]`) opens Google Maps' embed of the first
-  place, with a button per place; each `src` comes from pasting Maps' Share > Embed a map code.
+  it back, ↺ puts everyone back. Think/speak (`pics: [{ media }]`, chosen in the editor) opens on
+  white with a speak row and a think row; a tap moves a picture to the other row in its column,
+  for the sitting only. Street View (`places: [{ name, src }]`) opens Google Maps' embed of the
+  first place, with the others in a list under it; the two used to be wide boxes, and `markDeck`
+  shrinks old ones to an icon once (`el.icon`); each `src` comes from pasting Maps' Share > Embed a map code.
   No key or account: the flying-between-places animation would need Google's 3D Maps API.
   Escape closes an open one; leaving the slide closes it. Drawings last for the sitting only,
   unless 💾 saves a PNG to the device's downloads. The spinner's class lists live only in this browser's localStorage

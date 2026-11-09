@@ -24,6 +24,7 @@ const LINE_WIDTHS = [0, 1, 2, 3, 5, 8];
 const SNAP = 6;                            // screen px
 const NUDGE = 1, NUDGE_BIG = 10;
 const MIN_SIZE = 4;
+let clip = null;                           // copied elements, kept from deck to deck
 
 export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   const deck = rec.deck;
@@ -36,7 +37,6 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   let undo = [], redo = [];
   let writable = null;                     // indexes of slides copied for the change in progress
   let lastKey = null, lastAt = 0;
-  let clip = null;                         // copied elements
   let scale = 1;
   let stage = null;
   let saveTimer = null;
@@ -145,8 +145,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   const replaceBtn = tool('🖼', 'Replace picture', () => replacer.click());
   const toBgBtn = tool('▣', 'Use as background', () => pictureToBackground());
-  const frontBtn = tool('⤒', 'Bring to front', () => restack(1));
-  const backBtn = tool('⤓', 'Send to back', () => restack(-1));
+  const frontBtn = tool('⤒', 'Bring to front (Ctrl+Shift+↑; forward one: Ctrl+↑)', () => restack(1));
+  const backBtn = tool('⤓', 'Send to back (Ctrl+Shift+↓; back one: Ctrl+↓)', () => restack(-1));
   const dupBtn = tool('⧉', 'Duplicate (Ctrl+D)', () => duplicate());
   const delBtn = tool('🗑', 'Delete', () => removeSelected());
 
@@ -483,12 +483,13 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
 
   const WIDGET_SIZE = { timer: [240, 120], spinner: [110, 110], video: [220, 70], sound: [160, 160], spotify: [220, 70],
-    draw: [110, 110], thinkspeak: [720, 300], streetview: [220, 70] };
+    draw: [110, 110], thinkspeak: [110, 110], streetview: [110, 110] };
 
   async function addWidget(kind) {
     commitText();
     const [w, h] = WIDGET_SIZE[kind];
     const e = { t: 'wg', kind, x: (deck.w - w) / 2, y: (deck.h - h) / 2, w, h };
+    if (kind === 'thinkspeak' || kind === 'streetview') e.icon = true;
     if (!(await configure(e))) return;
     addElements([e]);
   }
@@ -953,13 +954,25 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     });
   }
 
-  function restack(dir) {
+  /** Layer order: dir 1 up, -1 down; all the way, or one step past the next element. */
+  function restack(dir, one) {
     if (!sel.length) return;
     change(() => {
       const s = ws();
       const picked = sel.slice().sort((a, b) => a - b).map((i) => s.els[i]);
-      const rest = s.els.filter((_, k) => !sel.includes(k));
-      s.els = dir > 0 ? rest.concat(picked) : picked.concat(rest);
+      if (one) {
+        const els = s.els.slice();
+        const order = sel.slice().sort((a, b) => (b - a) * dir);
+        for (const i of order) {
+          const j = i + dir;
+          if (j < 0 || j >= els.length || picked.includes(els[j])) continue;
+          [els[i], els[j]] = [els[j], els[i]];
+        }
+        s.els = els;
+      } else {
+        const rest = s.els.filter((_, k) => !sel.includes(k));
+        s.els = dir > 0 ? rest.concat(picked) : picked.concat(rest);
+      }
       sel = picked.map((p) => s.els.indexOf(p));
     });
   }
@@ -1170,6 +1183,11 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     if (k === 'Enter' && sel.length === 1) { e.preventDefault(); editText(sel[0]); return; }
     if (k.startsWith('Arrow')) {
       e.preventDefault();
+      // Ctrl+↑ / Ctrl+↓: forward or back one layer; with Shift, to the front or back.
+      if (mod && sel.length && (k === 'ArrowUp' || k === 'ArrowDown')) {
+        restack(k === 'ArrowUp' ? 1 : -1, !e.shiftKey);
+        return;
+      }
       if (!sel.length || mod) {
         const back = k === 'ArrowUp' || k === 'ArrowLeft';
         if (mod && !sel.length) moveSlide(index, index + (back ? -1 : 1));
@@ -1225,7 +1243,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
 
   function leave() {
-    if (!/\/edit/.test(location.hash) && root.isConnected) close();
+    // Another page, or another deck's editor: this one goes.
+    if (!location.hash.startsWith('#/deck/' + rec.id + '/edit') && root.isConnected) close(true);
   }
 
   function closeMenus(e) {
@@ -1235,7 +1254,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     searchBox.hidden = true;
   }
 
-  async function close() {
+  /** byHash: the address already moved on, so don't send it back to the deck. */
+  async function close(byHash) {
     commitText();
     await flush();
     document.removeEventListener('keydown', onKey);
@@ -1246,7 +1266,7 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     document.removeEventListener('pointerdown', closeMenus);
     root.remove();
     document.body.classList.remove('editing-deck');
-    if (onExit) onExit(index);
+    if (onExit && !byHash) onExit(index);
   }
 
   document.addEventListener('keydown', onKey);

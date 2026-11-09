@@ -50,6 +50,7 @@ export const GRADES = ['PK', 'K', '1'];
 /** hint: normName(song) -> grades, from the year plan's Max columns (see plans.js). */
 export function markDeck(deck, hint) {
   markSlides(deck);
+  iconWidgets(deck);
   // A menu: a slide of song icons that each jump to their song.
   deck.slides.forEach((slide) => {
     const jumps = slide.els.filter((el) => el.link && el.link.slide != null &&
@@ -60,6 +61,21 @@ export function markDeck(deck, hint) {
   if (!deck.gradesSet) guessGrades(deck, plan);
   if (plan) planGradesOnly(deck, plan);
   return deck;
+}
+
+/* Think/speak and Street View used to sit on the slide as a wide box; now they are an
+   icon like the spinner (el.icon). Old ones shrink once to the new size, keeping their
+   middle; after that their size is whatever the editor gives them. */
+const ICON_WIDGETS = { thinkspeak: 110, streetview: 110 };
+export function iconWidgets(deck) {
+  for (const slide of deck.slides) for (const el of slide.els) {
+    const size = el.t === 'wg' && ICON_WIDGETS[el.kind];
+    if (!size || el.icon) continue;
+    el.x += (el.w - size) / 2;
+    el.y += (el.h - size) / 2;
+    el.w = el.h = size;
+    el.icon = true;
+  }
 }
 
 /* The decks run in sections: a big "PK" slide, then the songs that start in
