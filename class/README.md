@@ -11,8 +11,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 
 - `index.html`, `app.js`: the library (`#/`) and one deck's slides (`#/deck/<id>`), plus importing.
 - `editor.js`: the slide editor (`#/deck/<id>/edit/<n>`). Select, move (with snapping; Alt turns
-  it off), resize, type in boxes, add text, shapes and pictures, links, marks, layer order,
-  slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only
+  it off), resize, type in boxes, add text, shapes and pictures, links, marks, layer order
+  (Ctrl+↑ or Ctrl+↓ one step, with Shift to the front or back), slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only
   the slides it touches. Slide links follow their slide when slides move. Saves as it goes.
 - `ui.js`: helpers the pages share (thumbnails, picture URLs).
 - `menus.js`: builds a grade's menu on demand: the icon of every song for that grade or an

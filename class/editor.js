@@ -145,8 +145,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   const replaceBtn = tool('🖼', 'Replace picture', () => replacer.click());
   const toBgBtn = tool('▣', 'Use as background', () => pictureToBackground());
-  const frontBtn = tool('⤒', 'Bring to front', () => restack(1));
-  const backBtn = tool('⤓', 'Send to back', () => restack(-1));
+  const frontBtn = tool('⤒', 'Bring to front (Ctrl+Shift+↑; forward one: Ctrl+↑)', () => restack(1));
+  const backBtn = tool('⤓', 'Send to back (Ctrl+Shift+↓; back one: Ctrl+↓)', () => restack(-1));
   const dupBtn = tool('⧉', 'Duplicate (Ctrl+D)', () => duplicate());
   const delBtn = tool('🗑', 'Delete', () => removeSelected());
 
@@ -954,13 +954,25 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     });
   }
 
-  function restack(dir) {
+  /** Layer order: dir 1 up, -1 down; all the way, or one step past the next element. */
+  function restack(dir, one) {
     if (!sel.length) return;
     change(() => {
       const s = ws();
       const picked = sel.slice().sort((a, b) => a - b).map((i) => s.els[i]);
-      const rest = s.els.filter((_, k) => !sel.includes(k));
-      s.els = dir > 0 ? rest.concat(picked) : picked.concat(rest);
+      if (one) {
+        const els = s.els.slice();
+        const order = sel.slice().sort((a, b) => (b - a) * dir);
+        for (const i of order) {
+          const j = i + dir;
+          if (j < 0 || j >= els.length || picked.includes(els[j])) continue;
+          [els[i], els[j]] = [els[j], els[i]];
+        }
+        s.els = els;
+      } else {
+        const rest = s.els.filter((_, k) => !sel.includes(k));
+        s.els = dir > 0 ? rest.concat(picked) : picked.concat(rest);
+      }
       sel = picked.map((p) => s.els.indexOf(p));
     });
   }
@@ -1171,6 +1183,11 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     if (k === 'Enter' && sel.length === 1) { e.preventDefault(); editText(sel[0]); return; }
     if (k.startsWith('Arrow')) {
       e.preventDefault();
+      // Ctrl+↑ / Ctrl+↓: forward or back one layer; with Shift, to the front or back.
+      if (mod && sel.length && (k === 'ArrowUp' || k === 'ArrowDown')) {
+        restack(k === 'ArrowUp' ? 1 : -1, !e.shiftKey);
+        return;
+      }
       if (!sel.length || mod) {
         const back = k === 'ArrowUp' || k === 'ArrowLeft';
         if (mod && !sel.length) moveSlide(index, index + (back ? -1 : 1));
