@@ -3,10 +3,11 @@
    answers and grades the same everywhere.
 
    Controls per task (tasks.js):
-     say             said or sung into the mic; nothing to tap (without the mic, Say It
-                     doesn't come up in a run).
+     say             said or sung into the mic, shown as a big mic that glows with the voice;
+                     nothing to tap (without the mic, Say It doesn't come up in a run).
      tap             the game's object, big, tapped right on, in time.
-     play            a pad for the game's instrument, tapped in time.
+     play            the game's instrument, big (instruments.js), tapped right on, in time;
+                     each tap strikes the other side or hand.
      du              two tiles, du (a quarter) and du-de (two eighths, tapped twice), tapped in
                      time: each note on its own tile.
                      right part of the beat.
@@ -17,6 +18,7 @@
 
 import { onsets, readTaps, fromCells, sylText, isCreate } from './steps.js';
 import { look, beatsOf } from './tasks.js';
+import { art, lookOf } from './instruments.js';
 
 /* Fixed markup for the note tiles and the answer slots. */
 export const NOTE_SVG = {
@@ -86,15 +88,21 @@ export function makeTurn(item, game, ui) {
         h('span', { class: 'tap-shadow' }), h('span', { class: 'tap-body' }, h('span', { class: 'tap-face' }, obj)));
       el.style.setProperty('--spb', `${spb}s`);
     } else if (task === 'say') {
-      el = h('div', { class: 'pad pad-say' },
-        h('b', { class: 'wait' }, waitText), h('b', { class: 'now' }, create ? '🎤 ANSWER' : '🎤 SAY IT'),
-        listens ? h('span', { class: 'meter' }, h('span', {})) : h('small', {}, 'Turn the mic on to play this one'));
+      // A big mic: it glows with the voice (--lv, set by the host) and bounces on each syllable.
+      const pic = h('span', { class: 'big-art' });
+      pic.innerHTML = art('mic'); // fixed markup
+      el = h('div', { class: 'big-inst look-mic' }, h('span', { class: 'big-glow' }), pic,
+        listens ? null : h('small', {}, 'Turn the mic on to play this one'));
     } else {
-      const big = `${kit.instrument?.icon || '🥁'} PLAY`;
-      el = h('button', { class: `pad pad-${task}`, onpointerdown: press },
-        h('b', { class: 'wait' }, waitText), h('b', { class: 'now' }, create ? big.replace('PLAY', 'ANSWER') : big),
-        h('small', {}, `${kit.instrument?.name || 'the drum'} · or press space`));
+      // Play It: the instrument itself, big, to play right on.
+      const lk = lookOf(kit.instrument);
+      const pic = h('span', { class: 'big-art' });
+      pic.innerHTML = art(lk); // fixed markup
+      el = h('button', { class: `big-inst look-${lk}`, 'aria-label': `Play ${kit.instrument?.name || 'the drum'}`, onpointerdown: press },
+        h('span', { class: 'big-glow' }), h('span', { class: 'tap-shadow' }), pic);
+      el.dataset.side = 'r';
     }
+    el.style.setProperty('--spb', `${spb}s`);
     input = (time, fromMic, ev) => {
       if (fromMic ? !listens : !tapIn) return;
       if (!fromMic) ui.hit(sound, 0.9);
@@ -107,6 +115,7 @@ export function makeTurn(item, game, ui) {
         taps.push(t);
         if (fromMic) usedMic = true;
       } else if (fromMic) return;
+      if (task === 'play') el.dataset.side = el.dataset.side === 'l' ? 'r' : 'l';
       bumpEl(el, 'hit');
       if (task === 'tap') tapFun(el, ev);
       ui.feel?.({ el, ev, t, b: (t - tResp) / spb, open: isOpen, ...(isOpen ? judge(t) : { cls: 'idle', word: '' }) });
@@ -220,7 +229,7 @@ export function makeTurn(item, game, ui) {
     grade,
     reveal: (res) => el.reveal?.(res),
     inputs: () => (task === 'note' ? cells.slice() : taps.slice()),
-    meter: el.querySelector?.('.meter span') || null,
+    meter: task === 'say' && ui.mic ? el : null, // the host sets --lv (0 to 1) on it from the mic level
     answerText: (res) => (res.got ? sylText(res.got) : ''),
   };
 }

@@ -907,3 +907,49 @@ audio.intro-media { background: none; }
 @keyframes dance { 0%, 100% { transform: rotate(-8deg) translateY(0); } 25% { transform: rotate(0) translateY(-7px); } 50% { transform: rotate(8deg) translateY(0); } 75% { transform: rotate(0) translateY(-7px); } }
 @media (prefers-reduced-motion: reduce) { .mookie.dance { animation: none; } .sg-bar .add, .sg-bar .lost { transition: none; } }
 .mk-text { overflow: hidden; max-height: 60vh; }
+
+/* ---------- Play It's instrument and Speak/Sing It's mic, big (turn.js, instruments.js) ----------
+   Like Tap It's object: dozing while the call plays, awake and bouncing on the beat on the
+   learner's turn. A tap strikes one side, then the other; the mic glows with the voice. */
+.big-inst { position: relative; display: grid; place-items: center; min-height: 170px; padding: 0; background: none; border: 0;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.big-inst.look-mic { cursor: default; }
+.big-inst .big-art { position: relative; display: block; width: min(300px, 72vw); transform-origin: 50% 100%;
+  transform: scale(.82); filter: saturate(.45); opacity: .75; animation: tap-doze 2.4s ease-in-out infinite;
+  transition: transform .25s cubic-bezier(.3, 1.6, .5, 1), filter .2s, opacity .2s; }
+.big-inst.look-mic .big-art { width: min(170px, 44vw); }
+.big-inst .big-art svg { display: block; width: 100%; height: auto; overflow: visible; }
+.controls.live .big-inst .big-art { transform: none; filter: none; opacity: 1; animation: bi-bob var(--spb, .6s) ease-in-out infinite; }
+.big-inst .tap-shadow { bottom: 6px; width: 60%; }
+.big-glow { position: absolute; width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(circle, var(--wheat-soft) 0%, transparent 70%);
+  opacity: 0; transition: opacity .2s; pointer-events: none; }
+.controls.live .big-glow { opacity: 1; animation: tap-glow var(--spb, .6s) ease-out infinite; }
+.big-inst small { position: absolute; bottom: 0; color: var(--muted); }
+@keyframes bi-bob { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-8px); } }
+
+/* Parts that move: the struck side squashes (bongos, drum), the bell swings, a maraca shakes. */
+.big-art .part { transform-box: fill-box; transform-origin: 50% 100%; }
+.big-art .head { transform-box: fill-box; transform-origin: 50% 50%; }
+.big-inst.hit[data-side="l"] .part.l, .big-inst.hit[data-side="r"] .part.r { animation: bi-strike .26s cubic-bezier(.3, 1.5, .5, 1); }
+.big-inst.hit[data-side="l"] .part.l .head, .big-inst.hit[data-side="r"] .part.r .head { animation: bi-ring .3s ease-out; }
+@keyframes bi-strike { 0% { transform: scale(1.08, .82); } 60% { transform: scale(.97, 1.05); } 100% { transform: none; } }
+@keyframes bi-ring { 0% { fill: #fff; transform: scale(1.06, .7); } 100% { transform: none; } }
+.look-bell .part.swing { transform-origin: 50% 0; }
+.big-inst.look-bell.hit[data-side="l"] .part.swing { animation: bi-swing-l .45s ease-out; }
+.big-inst.look-bell.hit[data-side="r"] .part.swing { animation: bi-swing-r .45s ease-out; }
+@keyframes bi-swing-l { 30% { transform: rotate(-16deg); } 70% { transform: rotate(6deg); } }
+@keyframes bi-swing-r { 30% { transform: rotate(16deg); } 70% { transform: rotate(-6deg); } }
+.look-maracas .part { transform-origin: 50% 100%; }
+.big-inst.look-maracas.hit[data-side="l"] .part.l, .big-inst.look-maracas.hit[data-side="r"] .part.r { animation: bi-shake .3s ease-out; }
+@keyframes bi-shake { 25% { transform: translate(-6px, -10px) rotate(-10deg); } 60% { transform: translate(4px, 2px) rotate(6deg); } }
+/* The mic: the glow follows the voice, and each syllable it hears bumps it. */
+.look-mic .big-glow { opacity: calc(.25 + var(--lv, 0) * .75); transform: scale(calc(.7 + var(--lv, 0) * .6)); animation: none; }
+.controls.live .look-mic .big-glow { animation: none; }
+.look-mic .light { opacity: .35; }
+.controls.live .look-mic .light { opacity: 1; animation: bi-light 1s ease-in-out infinite; }
+@keyframes bi-light { 50% { opacity: .4; } }
+.big-inst.look-mic.hit .part.capsule { animation: bi-strike .26s cubic-bezier(.3, 1.5, .5, 1); }
+.intro-area .big-inst { min-height: 130px; }
+.intro-area .big-inst .big-art { width: min(220px, 60vw); }
+.intro-area .big-inst.look-mic .big-art { width: min(120px, 34vw); }
+@media (prefers-reduced-motion: reduce) { .big-inst .big-art, .controls.live .big-inst .big-art, .controls.live .big-glow { animation: none; } }

@@ -74,6 +74,9 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   the site's sampled instruments for anything missing. Busses: the call on `master`, the
   groove on its own, everything else on `fxBus`, which `clear(from, to)` turns down.
 - `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
+- `instruments.js`: the big drawn instruments Play It is played right on (bongos, a bell,
+  maracas, a drum, picked from the kit's sound or its `look`), and Speak/Sing It's big mic,
+  which glows with the voice. Each tap strikes the other side or hand.
 - `narration.js`: the words behind every 🔊 button (the intros, the mic screen), which Kyle
   records at `/studio/record/` (Narration: free length, one take each). They publish with the
   cues as `line/<id>`; `sound.js` `narrate()` plays Kyle's take, or the device's voice until

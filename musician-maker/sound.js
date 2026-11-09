@@ -4,7 +4,7 @@
    or failing to load falls back to a sampled or synthesized stand-in, so the stream always plays. */
 
 import * as samples from '/assets/sounds/samples.js';
-import { onsets } from './steps.js';
+import { onsets, ALL } from './steps.js';
 
 let ctx = null;
 let master = null;
@@ -50,7 +50,11 @@ export function load() {
     ...Object.entries(PITCHED).map(async ([n, [lo, hi]]) => { inst[n] = await samples.instrument(n, { lo, hi }); }),
     (async () => {
       kyle = await samples.takes('kyle');
-      await Promise.allSettled([kyle.prepare(kyle.patterns), kyle.prepareCues()]);
+      // Ahead of time: only the unit's patterns and the cue words. Other units' takes and the
+      // narration (line/…) load when they're first played.
+      const unit = new Set(ALL.map((p) => p.id));
+      await Promise.allSettled([kyle.prepare(kyle.patterns.filter((id) => unit.has(id))),
+        kyle.prepareCues(kyle.cues.filter((id) => !id.startsWith('line/')))]);
     })(),
     (async () => { loops = await samples.grooveLoops(); })(),
     loadGrooves(),

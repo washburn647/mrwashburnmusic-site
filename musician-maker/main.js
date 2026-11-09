@@ -895,7 +895,7 @@ function useTurn(turn) {
     const fill = turn.meter;
     const draw = () => {
       if (!fill.isConnected) return;
-      fill.style.width = `${Math.round(mic.getLevel() * 100)}%`;
+      fill.style.setProperty('--lv', Math.min(1, mic.getLevel() * 1.4).toFixed(2));
       requestAnimationFrame(draw);
     };
     draw();
