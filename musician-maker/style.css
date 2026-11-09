@@ -918,6 +918,11 @@ audio.intro-media { background: none; }
   transform: scale(.82); filter: saturate(.45); opacity: .75; animation: tap-doze 2.4s ease-in-out infinite;
   transition: transform .25s cubic-bezier(.3, 1.6, .5, 1), filter .2s, opacity .2s; }
 .big-inst.look-mic .big-art { width: min(170px, 44vw); }
+/* Speak/Sing It: a speech bubble by the mic with what to say it on. */
+.say-on { position: absolute; left: calc(50% + min(70px, 18vw)); top: 4px; padding: 8px 16px; border-radius: 22px;
+  color: var(--forest); background: var(--paper); font-size: clamp(22px, 6vw, 32px); font-weight: 600; white-space: nowrap; box-shadow: 0 3px 0 rgba(0,0,0,.12); }
+.say-on::after { content: ''; position: absolute; left: 14px; bottom: -10px; border: 10px solid transparent; border-top-color: var(--paper); border-bottom: 0; border-left-width: 4px; }
+.say-on.bum { font-style: italic; }
 .big-inst .big-art svg { display: block; width: 100%; height: auto; overflow: visible; }
 .controls.live .big-inst .big-art { transform: none; filter: none; opacity: 1; animation: bi-bob var(--spb, .6s) ease-in-out infinite; }
 .big-inst .tap-shadow { bottom: 6px; width: 60%; }

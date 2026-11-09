@@ -655,7 +655,7 @@ export class Live extends DurableObject {
     return reply({ ok: true });
   }
 
-  /* list: { label, patterns: { id: [{ take, speed, bpm, key?, as? }] }, cues: { id: [{ take, speed, bpm }] }, units? }
+  /* list: { label, patterns: { id: [{ take, speed, bpm, key?, as?, tempo?, lead? }] }, cues: { id: [{ take, speed, bpm }] }, units? }
      Every take it names must be uploaded already. */
   async putVoice(voice, text) {
     let list;
@@ -673,6 +673,9 @@ export class Live extends DurableObject {
           const entry = { file: `/api/live/voice/${voice}/${o.take}.mp3`, speed: String(o.speed || ''), bpm: Number(o.bpm) || 0 };
           if (o.as === 'bum') entry.as = 'bum';
           if (typeof o.key === 'number') entry.key = o.key;
+          // How the take really kept the beat (assets/sounds/timing.js).
+          if (typeof o.tempo === 'number' && o.tempo > 20 && o.tempo < 300) entry.tempo = o.tempo;
+          if (typeof o.lead === 'number' && o.lead > 0 && o.lead < 1) entry.lead = o.lead;
           return entry;
         });
       }
