@@ -22,6 +22,7 @@ import * as FX from './effects.js';
 import { cueId } from './cues.js';
 import { notation } from '/assets/patterns/notation.js';
 import * as store from './store.js';
+import * as markup from './markup.js';
 
 const app = document.getElementById('app');
 const Q = new URLSearchParams(location.search);
@@ -121,6 +122,7 @@ function seg(options, value, change) {
 /* Which screen is showing, for the page background (the title is a stage at night). */
 function scene(name) {
   document.body.dataset.screen = name;
+  markup.refresh();
 }
 
 /* Which groove plays: Mix (a different one each lap) or one the learner picks. Each tap
@@ -306,7 +308,7 @@ function progress(view = progressView) {
     view === 'tasks' ? taskGrid(sheet) : map,
     view === 'steps' ? h('p', { class: 'note' }, 'Master a step to open the next one. The music picks what you play.') : null,
     h('div', { class: 'testbox' },
-      h('label', {}, 'Test mode (for Kyle): drill any step', seg({ off: 'Off', on: 'On' }, st.test ? 'on' : 'off', (v) => { st.test = v === 'on'; save(); progress(); })),
+      h('label', {}, 'Test mode (for Kyle): drill any step, markup ✏️', seg({ off: 'Off', on: 'On' }, st.test ? 'on' : 'off', (v) => { st.test = v === 'on'; save(); progress(); })),
       st.test ? h('label', {}, 'Record the mic in runs (saves a file for Claude)', seg({ off: 'Off', on: 'On' }, st.recMic ? 'on' : 'off', (v) => { st.recMic = v === 'on'; save(); })) : null,
       st.test ? h('label', {}, 'Mic echo cancelling', seg({ on: 'On', off: 'Off' }, st.echo === false ? 'off' : 'on', (v) => { st.echo = v === 'on'; save(); })) : null,
       st.test ? h('button', { class: 'mini', onclick: lab }, 'Transitions lab') : null,
@@ -790,6 +792,8 @@ function gameSeg(B, seg) {
   R.groove.duckFrom = T(c0);
   // Only Say It listens: while the mic is on, the groove stays soft through the turn.
   R.groove.duckUntil = R.micOn && item.task === 'say' ? T(p0) : T(r0);
+  // Nothing but the call (and a soft pulse) while it plays: no gags, scene sounds or taps.
+  snd.clear(T(c0), R.groove.duckUntil);
   R.groove.micFrom = T(r0) - 0.3 * spb;
   for (let k = 0; k < 4; k++) later(T(c0 + k), () => dots(k, 4, 'call'));
   callOut(item, game, T(c0), spb);
@@ -1163,7 +1167,8 @@ function bossItem() {
 
 /* The boss alternates by lap between the games that host one (The Big Cheese in Mouse
    Catcher, The Big Fluff in Supper Time; the workshop's options choose which do). Four
-   rounds of call and turn, each any task; three hits beat him. */
+   rounds of call, turn and payoff (4 beats, so the hit or miss is over before the next
+   call), each any task; three hits beat him. */
 function boss(B) {
   const game = LINEUP.bosses[R.lap % LINEUP.bosses.length];
   const T = (i) => R.clock.timeOf(i);
@@ -1201,6 +1206,7 @@ function boss(B) {
     const groove = () => {
       R.groove.duckFrom = T(call);
       R.groove.duckUntil = T(R.micOn && item.task === 'say' ? p0 : r0);
+      snd.clear(T(call), R.groove.duckUntil);
       R.groove.micFrom = T(r0) - 0.3 * spb;
       snd.setGroovePhase(call);
     };
@@ -1237,7 +1243,7 @@ function boss(B) {
         onFail: () => { bump(R.dom.prompt.querySelector('.hearts'), 'fx-no'); flash('missed!', 'bad'); R.api.miss?.(); },
       });
     });
-    c0 = p0;
+    c0 = p0 + 4; // the hit or miss plays out before the next call
   }
   const done = c0;
   later(T(done), () => {
@@ -1395,6 +1401,18 @@ function introPreview(key) {
   if (key.startsWith('say-')) mic.start(snd.ac()).then(() => show(true), () => show(false));
   else show(false);
 }
+
+// Markup mode (markup.js): Kyle's notes on any screen, in Test mode and workshop tests.
+markup.setup({
+  enabled: () => !!(st.test || TEST || Q.has('markup')),
+  audio: () => snd.ac(),
+  where: () => {
+    const bits = [document.body.dataset.screen];
+    if (R) bits.push(`${R.tempo} bpm`, R.item ? `${taskById(R.item.task).name}, step ${R.item.step}` : '', R.dom?.cue?.textContent || '');
+    if (TEST) bits.push(`test: ${TEST.game.name}`);
+    return bits.filter(Boolean).join(' · ');
+  },
+});
 
 if (TEST) testTitle();
 else if (allTaskKeys().includes(Q.get('intro'))) introPreview(Q.get('intro'));
