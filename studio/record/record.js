@@ -27,6 +27,7 @@ import { LINES, lineById } from '/musician-maker/narration.js';
 const app = document.getElementById('app');
 const SPEEDS = { slow: 'Slow', medium: 'Medium', fast: 'Fast' };
 const MARKS = { familiar: 'Familiar', unfamiliar: 'Unfamiliar' };
+const RECORDED = { all: 'Any', done: 'Recorded', todo: 'Not yet' };
 const FILTERS = { all: 'All', familiar: 'Familiar', unfamiliar: 'Unfamiliar', unmarked: 'Unmarked' };
 const KINDS = { rhythm: 'Rhythm', tonal: 'Tonal' };
 const VOICES = { syllables: 'Syllables', bum: 'On “bum”' };
@@ -88,10 +89,12 @@ const settings = {
   speed: 'medium',
   as: 'syllables',
   want: 3,
+  wantFor: {}, // takes wanted for one word or pattern, where it differs from want
   countIn: 4,
   firstNote: true,
   mic: '',
   filter: 'all',
+  recorded: 'all', // all, done (every speed has its takes, in the voice shown), todo
   folder: '', // its name
 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS)) || {}); } catch { /* defaults */ }
@@ -303,7 +306,8 @@ const takesFor = (id, speed) => takes.filter((t) => t.pattern === id && takeAs(t
 const flagged = (t) => t.timing !== undefined && offbeat(t.timing, t.bpm);
 const offbeatTakes = (id) => takesFor(id).filter(flagged);
 const unmeasured = () => takes.filter((t) => t.timing === undefined && !isCue(t.pattern));
-const done = (id, speed) => takesFor(id, speed).length >= (isLine(id) ? 1 : settings.want);
+const wantOf = (id) => (isLine(id) ? 1 : settings.wantFor[id] ?? settings.want);
+const done = (id, speed) => takesFor(id, speed).length >= wantOf(id);
 // A cue word as the recorder handles it: 2 beats, no notation.
 const cueItem = (c) => ({ id: `cue/${c.id}`, kind: 'cue', text: c.text });
 // A narration line: read at its own pace, no beats.
@@ -370,7 +374,9 @@ function render() {
   const removed = all.filter((p) => u.removed.includes(p.id));
   if (!removed.length) showRemoved = false;
   const markOf = (p) => u.marks[p.id] || 'unmarked';
-  const filtered = settings.filter === 'all' ? kept : kept.filter((p) => markOf(p) === settings.filter);
+  const complete = (p) => Object.keys(SPEEDS).every((sp) => done(p.id, sp));
+  const recordedOk = (p) => settings.recorded === 'all' || complete(p) === (settings.recorded === 'done');
+  const filtered = (settings.filter === 'all' ? kept : kept.filter((p) => markOf(p) === settings.filter)).filter(recordedOk);
   const off = kept.filter((p) => offbeatTakes(p.id).length);
   if (!off.length) showOffbeat = false;
   shown = showRemoved ? removed : showOffbeat ? off : filtered;
@@ -394,6 +400,9 @@ function render() {
       h('div', { class: 'bar' },
         seg(Object.fromEntries(Object.entries(FILTERS).map(([f, label]) => [f, `${label} ${counts[f]}`])), showRemoved ? '' : settings.filter,
           (v) => { settings.filter = v; showRemoved = false; showOffbeat = false; save(); render(); }),
+        seg(Object.fromEntries(Object.entries(RECORDED).map(([f, label]) => [f, `${label} ${f === 'all' ? kept.length : kept.filter((p) => complete(p) === (f === 'done')).length}`])),
+          showRemoved || showOffbeat ? '' : settings.recorded,
+          (v) => { settings.recorded = v; showRemoved = false; showOffbeat = false; save(); render(); }),
         removed.length ? h('button', { class: showRemoved ? 'on' : '', onclick: () => { showRemoved = !showRemoved; showOffbeat = false; render(); } }, `Removed ${removed.length}`) : null,
         off.length ? h('button', { class: `offbeat${showOffbeat ? ' on' : ''}`, title: 'Patterns with a take that may be off the beat', onclick: () => { showOffbeat = !showOffbeat; showRemoved = false; render(); } }, `Off the beat ${off.length}`) : null,
         unmeasured().length ? h('button', { disabled: !!checking, onclick: checkTiming }, checking || 'Check timing') : null,
@@ -442,7 +451,7 @@ function renderCues() {
         onkeydown: (e) => { if (e.key === 'Enter' && e.target === e.currentTarget) pick(); },
       },
       h('span', { class: 'word' }, c.text),
-      h('span', { class: 'counts' }, h('span', { class: done(c.id) ? 'sp done' : 'sp' }, `${takesFor(c.id).length} of ${settings.want}`)));
+      h('span', { class: 'counts' }, h('span', { class: done(c.id) ? 'sp done' : 'sp' }, `${takesFor(c.id).length} of ${wantOf(c.id)}`)));
     })),
     stage(null),
   );
@@ -711,6 +720,11 @@ function stage(u) {
       h('span', { class: 'takes' }, list.map((take, i) => h('span', { class: 'take' },
         h('button', { class: flagged(take) ? 'offbeat' : '', title: takeTitle(take), onclick: () => playBlob(take.mp3) }, `▶ ${i + 1}${take.key != null ? ` ${pretty(keyName(p.tonality, take.key))}` : ''}${flagged(take) ? ' ⚠' : ''}`),
         h('button', { class: 'x', title: 'Delete take', onclick: async () => { await takeStore.delete(take.id); takes = await takeStore.all(); render(); } }, '×')))),
+      p.kind === 'line' ? null : h('label', { class: 'want', title: `Takes wanted for this one (${settings.want} for the rest)` }, 'Takes',
+        number(() => wantOf(p.id), (v) => {
+          if (v === settings.want) delete settings.wantFor[p.id];
+          else settings.wantFor[p.id] = v;
+        }, 1, 10)),
       h('span', { class: 'grow' }),
       p.kind === 'line' ? null : h('div', { class: 'beats' },
         Array.from({ length: settings.countIn }, () => h('span', { class: 'count' })),
