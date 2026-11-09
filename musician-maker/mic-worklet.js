@@ -30,6 +30,10 @@ class SyllableDetector {
     this.dipped = false;
     this.last = -1;
     this.minGap = 0.11; // s, set from the tempo
+    this.dip = 6; // dB below the syllable's peak that counts as a dip (the "d")
+    this.deepDip = 9; // dB: a dip this deep is a clear break between syllables
+    this.near = 3; // dB: after a shallower one, the voice must come back this close to its peak
+    this.rise = 5; // dB back up out of a dip that starts a new syllable
     this.level = 0;
     this.age = 0; // s since start: the floor is learned fast at first
     this.stir = 0; // when the level last left the floor, for dating onsets
@@ -96,7 +100,7 @@ class SyllableDetector {
         // in the room, a "bum" running into the next): a new syllable starts here.
         // Like a rise after a dip, it counts once it gets near the last syllable's level.
         // A rise already waiting (after a dip) keeps its own start and level to reach.
-        this.pend ||= { start: this.stir, at: t, ref: this.peak };
+        this.pend ||= { start: this.stir, at: t, need: this.peak - this.echoDrop };
         this.dipped = false;
         this.peak = env;
       } else if (!this.dipped) {
@@ -104,16 +108,19 @@ class SyllableDetector {
         // A rise after a dip is a new syllable once it gets near the last one's level;
         // one that stays well below it is that syllable's tail, not a "de".
         const p = this.pend;
-        if (p && env >= p.ref - this.echoDrop) {
+        if (p && env >= p.need) {
           if (p.start - this.last >= this.minGap) onset = p.start;
           this.pend = null;
         } else if (p && t - p.at > 0.08) this.pend = null;
-        if (env < this.peak - 9) { this.dipped = true; this.valley = env; this.stir = t; }
+        if (env < this.peak - this.dip) { this.dipped = true; this.valley = env; this.stir = t; }
       } else {
         if (env < this.valley) { this.valley = env; this.stir = t; }
         if (env < this.valley + 2) this.stir = t;
-        if (env > this.valley + 5) {
-          this.pend = { start: this.stir, at: t, ref: this.peak };
+        if (env > this.valley + this.rise) {
+          // A shallow dip (a soft "d", the "m" of a "bum") counts only if the voice comes
+          // back up near where it was: a vowel fading with a wobble doesn't.
+          const deep = this.peak - this.valley >= this.deepDip;
+          this.pend = { start: this.stir, at: t, need: this.peak - (deep ? this.echoDrop : this.near) };
           this.dipped = false;
           this.peak = env;
         }
