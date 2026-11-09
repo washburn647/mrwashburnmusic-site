@@ -7,6 +7,8 @@
      in the same private R2 bucket so every device Kyle signs in on sees them (see lessonsApi).
    - /api/live/ and /studio/api/live/: what Kyle publishes from the studio straight to the
      site (grooves, game options, voice takes, units), read by the games and lessons (see Live).
+   - /api/sub/: a substitute's view of the deck Kyle picks for them, opened with a code he
+     sets (see subApi). /api/class/sub is where he sets it.
    - /api/songburner/: Song Burner's cloud copy, one private library per signed-in tester,
      behind its own Cloudflare Access application (see songBurnerApi and Vault).
    - /studio/api/songburner/: the studio's view of the Song Burner testers (see songBurnerStudio).
@@ -16,7 +18,7 @@
 
 import { DurableObject } from 'cloudflare:workers';
 
-const KINDS = new Set(['decks', 'plans']);
+const KINDS = new Set(['decks', 'plans', 'library']);
 const ID = /^[\w.-]{1,80}$/;
 const HASH = /^[0-9a-f]{16,128}$/;
 const TIMINGS = /^[\w-]{1,80}$/;
@@ -56,6 +58,14 @@ export default {
         return reply({ error: 'server error' }, 500);
       }
     }
+    if (url.pathname.startsWith('/api/sub/')) {
+      if (!env.CLASS_FILES) return reply({ error: 'not set up' }, 503);
+      try {
+        return await subApi(request, env, url.pathname.slice('/api/sub/'.length).split('/'));
+      } catch (err) {
+        return reply({ error: 'server error' }, 500);
+      }
+    }
     if (!url.pathname.startsWith('/api/class/')) return env.ASSETS.fetch(request);
     if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.CLASS_FILES) return reply({ error: 'not set up' }, 503);
     if (!(await signedIn(request, env))) return reply({ error: 'sign in' }, 401);
@@ -75,8 +85,10 @@ async function classApi(request, env, [what, id, extra]) {
   // Access sends you here after its login page; go back to the app.
   if (what === 'login' && !id) return Response.redirect(new URL('/class/', request.url).href, 302);
 
+  if (what === 'sub' && !id) return subSetup(request, bucket);
+
   if (what === 'state' && !id && method === 'GET') {
-    const out = { decks: {}, plans: {}, media: [], timings: [] };
+    const out = { decks: {}, plans: {}, library: {}, media: [], timings: [] };
     for (const kind of KINDS) {
       for (const o of await listAll(bucket, kind + '/')) {
         const m = o.customMetadata || {};
@@ -150,6 +162,113 @@ async function classApi(request, env, [what, id, extra]) {
     }
   }
 
+  return reply({ error: 'not found' }, 404);
+}
+
+/* Sub view. Kyle picks a deck for a substitute and a code to open it (sub/config.json:
+   { code, deck, decks: [ids of the decks it links into], key }). The sub page sends the code
+   to open, and gets those decks plus `key`, a random string that fetches their pictures.
+   A new code makes a new key. Wrong codes are rate limited (SUB_LIMIT, per address).
+   PUT  /api/class/sub   { code, deck, decks } sets it (no code: keeps it); { code: '' } turns it off (Kyle only)
+   GET  /api/class/sub   what is set (Kyle only)
+   POST /api/sub/open    { code } -> { start, decks: [{ id, name, deck }], key }
+   GET  /api/sub/media/<hash>   with X-Sub-Key: a picture of those decks */
+const SUB = 'sub/config.json', SUB_ALLOW = 'sub/media.json';
+const normCode = (c) => String(c || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+async function readJson(bucket, key) {
+  const o = await bucket.get(key);
+  if (!o) return null;
+  try { return JSON.parse(await o.text()); } catch (e) { return null; }
+}
+
+async function subSetup(request, bucket) {
+  if (request.method === 'GET') {
+    const c = await readJson(bucket, SUB);
+    return reply(c && c.code ? { code: c.code, deck: c.deck, decks: c.decks } : { code: '' });
+  }
+  if (request.method !== 'PUT') return reply({ error: 'method not allowed' }, 405);
+  const body = await request.json();
+  const old = await readJson(bucket, SUB);
+  // No code in the body: keep the one set (the app sends the decks again when links change).
+  const code = String(body.code === undefined ? (old && old.code) || '' : body.code || '').trim().slice(0, 40);
+  if (!code) {
+    await bucket.delete([SUB, SUB_ALLOW]);
+    return reply({ code: '' });
+  }
+  if (normCode(code).length < 6) return reply({ error: 'The code needs at least 6 letters or numbers.' }, 400);
+  const deck = String(body.deck || '');
+  const decks = [deck, ...(Array.isArray(body.decks) ? body.decks : [])].map(String).filter((d) => ID.test(d));
+  if (!ID.test(deck)) return reply({ error: 'deck needed' }, 400);
+  const key = old && old.key && normCode(old.code) === normCode(code) ? old.key : randomKey();
+  const config = { code, deck, decks: [...new Set(decks)].slice(0, 60), key };
+  await bucket.put(SUB, JSON.stringify(config), { httpMetadata: { contentType: 'application/json' } });
+  if (!old || old.key !== key) await bucket.delete(SUB_ALLOW);   // the old key stops working
+  return reply({ code, deck, decks: config.decks });
+}
+
+function randomKey() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Pictures a deck uses (the same as mediaOf in class/store.js). */
+function deckMedia(deck, out) {
+  const take = (f) => { if (f && f.type === 'image' && f.media) out.add(f.media); };
+  for (const s of (deck && deck.slides) || []) {
+    take(s.bg);
+    for (const el of s.els || []) {
+      if (el.media) out.add(el.media);
+      if (el.pics) for (const p of el.pics) if (p && p.media) out.add(p.media);
+      take(el.fill);
+    }
+  }
+}
+
+function sameText(a, b) {
+  const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
+  let d = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) d |= (x[i] || 0) ^ (y[i] || 0);
+  return d === 0;
+}
+
+async function subApi(request, env, [what, id, extra]) {
+  const bucket = env.CLASS_FILES;
+  if (what === 'open' && !id && request.method === 'POST') {
+    const ip = request.headers.get('CF-Connecting-IP') || 'here';
+    if (env.SUB_LIMIT && !(await env.SUB_LIMIT.limit({ key: ip })).success) {
+      return reply({ error: 'Too many tries. Wait a minute and try again.' }, 429);
+    }
+    let code = '';
+    try { code = (await request.json()).code; } catch (e) { /* no body */ }
+    const c = await readJson(bucket, SUB);
+    if (!c || !c.code || !normCode(code) || !sameText(normCode(code), normCode(c.code))) {
+      return reply({ error: 'That code doesn\'t open anything.' }, 403);
+    }
+    const decks = [], media = new Set();
+    for (const deckId of c.decks || [c.deck]) {
+      const o = await bucket.get('decks/' + deckId);
+      if (!o || (o.customMetadata || {}).gone === '1') continue;
+      const rec = JSON.parse(await o.text());
+      deckMedia(rec.deck, media);
+      decks.push({ id: rec.id, name: rec.name, deck: rec.deck });
+    }
+    if (!decks.some((d) => d.id === c.deck)) return reply({ error: 'That code doesn\'t open anything.' }, 403);
+    const allow = [...media].sort();
+    const had = await readJson(bucket, SUB_ALLOW);
+    if (!had || had.key !== c.key || JSON.stringify(had.media) !== JSON.stringify(allow)) {
+      await bucket.put(SUB_ALLOW, JSON.stringify({ key: c.key, media: allow }), { httpMetadata: { contentType: 'application/json' } });
+    }
+    return reply({ start: c.deck, decks, key: c.key });
+  }
+  if (what === 'media' && id && HASH.test(id) && extra === undefined && request.method === 'GET') {
+    const key = request.headers.get('X-Sub-Key') || '';
+    const allow = await readJson(bucket, SUB_ALLOW);
+    if (!key || !allow || !sameText(key, allow.key) || !allow.media.includes(id)) return reply({ error: 'not found' }, 404);
+    const o = await bucket.get('media/' + id);
+    if (!o) return reply({ error: 'not found' }, 404);
+    return new Response(o.body, { headers: headers({
+      'Content-Type': (o.httpMetadata && o.httpMetadata.contentType) || 'application/octet-stream' }) });
+  }
   return reply({ error: 'not found' }, 404);
 }
 

@@ -24,9 +24,9 @@ export const MENU = -1;                    // the index Present gives a grade's 
     opts.openDeck(link): another library deck for a { deck } link, as { deck, media, deckId,
     deckName, index } or with menu (a built menu) to open on. opts.menuFor(deckId, grade, { only,
     title }): a built menu, for links to a deck's own menu slides. opts.strict: a grade shows
-    only the slides tagged for it. */
+    only the slides tagged for it. opts.noTimings: keep no record of time on screen (the sub view). */
 export function present(record, startAt, media, onClose, findGoogle, opts = {}) {
-  const { grade, menu, openDeck, menuFor, strict } = opts;
+  const { grade, menu, openDeck, menuFor, strict, noTimings } = opts;
   let deck = record.deck;
   let deckId = record.id;
   let deckName = record.name;
@@ -83,7 +83,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     since = null;
     if (index === MENU) return;
     onScreen.set(slideKey(), (onScreen.get(slideKey()) || 0) + ms);
-    if (ms < 2000) return;                  // flicking past a slide isn't teaching it
+    if (ms < 2000 || noTimings) return;     // flicking past a slide isn't teaching it
     const slide = deck.slides[index];
     const song = slide.plan ? slide.plan.song : slide.song ? slide.song.name : null;
     logTiming({ deck: deckId, deckName, slide: index, gid: slide.gid || null,

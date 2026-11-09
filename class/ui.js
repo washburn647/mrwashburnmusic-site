@@ -17,8 +17,13 @@ export function el(tag, attrs = {}, ...children) {
 }
 
 /** Load a deck's pictures; returns hash -> URL. */
-export async function loadMedia(deck) {
-  const need = store.mediaOf(deck).filter((h) => !urls.has(h));
+export function loadMedia(deck) {
+  return loadHashes(store.mediaOf(deck));
+}
+
+/** Load these pictures; returns hash -> URL. */
+export async function loadHashes(hashes) {
+  const need = hashes.filter((h) => !urls.has(h));
   if (need.length) {
     const recs = await store.getMedia(need);
     recs.forEach((r, i) => { if (r) urls.set(need[i], URL.createObjectURL(r.blob)); });

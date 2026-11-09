@@ -49,3 +49,5 @@ Kyle's classroom slides app, served at `/class/`. Read `class/README.md` first.
 - Bump `CACHE` in `class/sw.js` when the app's file list changes.
 - Sync (`class/sync.js`, `worker/index.js`) keeps Kyle's files in a private R2 bucket behind
   Cloudflare Access. Never make the bucket public or serve its files without the Access check.
+  The one exception is the sub view (`/sub/`, `/api/sub/`): only the deck Kyle picks for subs
+  (and decks it links into), only with his current code. Keep it that narrow.

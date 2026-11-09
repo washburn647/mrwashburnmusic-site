@@ -445,3 +445,46 @@ select.ls-in { min-width: 84px; }
 .wg-names-title.bad { border-color: var(--danger); }
 .wg-iconly .wg-label { display: none; }
 .wg.wg-iconly .wg-icon, .wg-face.wg-iconly .wg-icon { font-size: 1em; line-height: 1; }
+
+/* The picture library: its page, the drawing box's tray, choosing pictures */
+.pics-group { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px 16px; margin-bottom: 16px; }
+.pics-group.on { box-shadow: 0 0 0 3px var(--wheat); }
+.pics-head { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
+.pics-head h3 { margin: 0 auto 0 0; font-size: 18px; }
+.pics-grid, .pics-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.pics-pick { max-height: 56vh; overflow: auto; min-height: 100px; }
+.pics-cell { position: relative; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px; padding: 6px; background: #fff; }
+.pics-cell img { width: 100%; height: 100%; object-fit: contain; }
+button.pics-cell.on { border-color: var(--forest); box-shadow: 0 0 0 3px var(--wheat); }
+.pics-add { font-size: 32px; color: var(--muted); }
+.pics-x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; font-size: 12px; padding: 0; }
+.pics-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.wg-tray { position: absolute; left: 12px; top: 12px; bottom: 12px; width: 200px; z-index: 2; background: rgba(255, 255, 255, .95);
+  border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.wg-tray-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.wg-tray-tab { border: 0; border-radius: 999px; padding: 4px 10px; background: var(--line); color: var(--forest); font: inherit; font-size: 13px; }
+.wg-tray-tab.on { background: var(--forest); color: var(--cream); }
+.wg-tray-pics { flex: 1; overflow: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+.wg-tray-pic { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 4px; }
+.wg-tray-pic img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.wg-drawbar button:disabled { opacity: .35; }
+
+/* Sub plans: the app's page (#/sub) and the sub view (/sub/) */
+.sub-form { display: flex; flex-direction: column; gap: 14px; max-width: 560px; }
+.sub-form label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.sub-deck, .sub-code { font: inherit; font-size: 16px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff; }
+.sub-deck { flex: 1; min-width: 0; }
+.sub-code { width: 18ch; letter-spacing: .06em; }
+.sub-row { display: flex; gap: 8px; }
+.sub-status { font-size: 20px; margin: 0; }
+.sub-note { color: var(--muted); min-height: 1.4em; }
+.sub-page { min-height: 100vh; display: grid; place-items: center; margin: 0; }
+.sub-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px 24px; width: min(420px, calc(100vw - 32px));
+  display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
+.sub-logo { width: 96px; height: auto; }
+.sub-open { display: flex; gap: 8px; width: 100%; }
+.sub-open input { flex: 1; min-width: 0; font: inherit; font-size: 20px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; text-align: center; letter-spacing: .08em; }
+.sub-ready { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.sub-ready h1 { margin: 0; font-size: 24px; }
+.sub-ready .btn { font-size: 20px; padding: 12px 28px; }
+.deck-head .spacer { flex: 1; }
