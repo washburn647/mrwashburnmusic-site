@@ -8,6 +8,7 @@ import { onsets } from './steps.js';
 
 let ctx = null;
 let master = null;
+let fxBus = null; // every sound but the call and the groove: quieted while a call plays (clear)
 let grooveBus = null;
 let loopBus = null; // Kyle's groove loops, ducked as one
 const inst = {};
@@ -28,6 +29,8 @@ export function ac() {
     master.connect(ctx.destination);
     grooveBus = ctx.createGain();
     grooveBus.connect(master);
+    fxBus = ctx.createGain();
+    fxBus.connect(master);
     loopBus = ctx.createGain();
     loopBus.gain.value = 1;
     loopBus.connect(grooveBus);
@@ -106,7 +109,7 @@ function playBuf(buf, t, vol = 0.6, rate = 1) {
   src.buffer = buf;
   src.playbackRate.value = rate;
   g.gain.value = vol;
-  src.connect(g).connect(master);
+  src.connect(g).connect(fxBus);
   src.start(Math.max(t, ctx.currentTime));
 }
 
@@ -126,7 +129,7 @@ function noise(t, len, vol, filter, from, to, q = 1) {
   g.gain.linearRampToValueAtTime(vol, t + 0.01);
   g.gain.setValueAtTime(vol, t + len * 0.7);
   g.gain.linearRampToValueAtTime(0, t + len);
-  src.connect(f).connect(g).connect(master);
+  src.connect(f).connect(g).connect(fxBus);
   src.start(t);
 }
 
@@ -136,11 +139,11 @@ export function toon(name, t, opts = {}) {
   t = Math.max(t ?? ctx.currentTime, ctx.currentTime);
   const { vol = 1, rate = 1 } = opts;
   if (toonBuf[name]) { playBuf(toonBuf[name], t, 0.6 * vol, rate); return; }
-  const tone = (f, len, v, type, slide) => synth(t, f, len, v * vol, master, type, slide);
+  const tone = (f, len, v, type, slide) => synth(t, f, len, v * vol, fxBus, type, slide);
   switch (name) {
     case 'whistle-up': tone(500, 0.35, 0.18, 'sine', 3.2); break;
     case 'whistle-down': tone(1500, 0.45, 0.18, 'sine', 0.3); break;
-    case 'squeak': tone(1900, 0.07, 0.12, 'sine', 1.5); synth(t + 0.08, 2300, 0.06, 0.1 * vol, master, 'sine', 1.3); break;
+    case 'squeak': tone(1900, 0.07, 0.12, 'sine', 1.5); synth(t + 0.08, 2300, 0.06, 0.1 * vol, fxBus, 'sine', 1.3); break;
     case 'pop': tone(700, 0.06, 0.3, 'sine', 2.2); break;
     case 'zip': noise(t, 0.22, 0.35 * vol, 'bandpass', 900, 6000, 3); break;
     case 'raspberry': {
@@ -160,7 +163,7 @@ export function toon(name, t, opts = {}) {
       g.gain.setValueAtTime(0.18 * vol, t);
       g.gain.linearRampToValueAtTime(0, t + 0.5);
       lfo.connect(lg).connect(g.gain);
-      o.connect(f).connect(g).connect(master);
+      o.connect(f).connect(g).connect(fxBus);
       o.start(t); lfo.start(t);
       o.stop(t + 0.55); lfo.stop(t + 0.55);
       break;
@@ -183,7 +186,7 @@ export function toon(name, t, opts = {}) {
           g.gain.linearRampToValueAtTime(0.13 * vol, t + d + 0.012);
           g.gain.setValueAtTime(0.13 * vol, t + d + 0.1);
           g.gain.linearRampToValueAtTime(0, t + d + 0.14);
-          o.connect(f).connect(g).connect(master);
+          o.connect(f).connect(g).connect(fxBus);
           o.start(t + d);
           o.stop(t + d + 0.16);
         });
@@ -200,7 +203,7 @@ export function toon(name, t, opts = {}) {
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(v * vol, t + 0.006);
         g.gain.exponentialRampToValueAtTime(0.0005, t + len);
-        o.connect(g).connect(master);
+        o.connect(g).connect(fxBus);
         o.start(t);
         o.stop(t + len + 0.05);
       });
@@ -227,7 +230,7 @@ export function toon(name, t, opts = {}) {
         g.gain.setValueAtTime(0.16 * vol, t + d);
         g.gain.linearRampToValueAtTime(0, t + d + 0.16);
         lfo.connect(lg).connect(g.gain);
-        o.connect(f).connect(g).connect(master);
+        o.connect(f).connect(g).connect(fxBus);
         o.start(t + d); lfo.start(t + d);
         o.stop(t + d + 0.18); lfo.stop(t + d + 0.18);
       });
@@ -249,7 +252,7 @@ export function toon(name, t, opts = {}) {
           g.gain.linearRampToValueAtTime(0.035 * vol, t + 0.25);
           g.gain.setValueAtTime(0.035 * vol, t + 0.9);
           g.gain.linearRampToValueAtTime(0, t + 1.4);
-          o.connect(f).connect(g).connect(master);
+          o.connect(f).connect(g).connect(fxBus);
           o.start(t);
           o.stop(t + 1.45);
         });
@@ -269,7 +272,7 @@ export function toon(name, t, opts = {}) {
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(v * vol, t + 0.004);
         g.gain.exponentialRampToValueAtTime(0.0005, t + len);
-        o.connect(g).connect(master);
+        o.connect(g).connect(fxBus);
         o.start(t);
         o.stop(t + len + 0.05);
       });
@@ -307,7 +310,7 @@ export function toon(name, t, opts = {}) {
       g.gain.linearRampToValueAtTime(v, t + 0.04);
       g.gain.setValueAtTime(v, t + len * 0.7);
       g.gain.linearRampToValueAtTime(0, t + len);
-      o.connect(f).connect(g).connect(master);
+      o.connect(f).connect(g).connect(fxBus);
       o.start(t);
       o.stop(t + len + 0.05);
       break;
@@ -315,7 +318,7 @@ export function toon(name, t, opts = {}) {
     case 'chomp':
       [0, 0.13].forEach((d) => {
         noise(t + d, 0.07, 0.35 * vol, 'lowpass', 1400, 500, 1);
-        synth(t + d, 150, 0.08, 0.25 * vol, master, 'sine', 0.5);
+        synth(t + d, 150, 0.08, 0.25 * vol, fxBus, 'sine', 0.5);
       });
       break;
     case 'burp': {
@@ -334,28 +337,28 @@ export function toon(name, t, opts = {}) {
       g.gain.setValueAtTime(0.22 * vol, t);
       g.gain.linearRampToValueAtTime(0, t + 0.55);
       lfo.connect(lg).connect(g.gain);
-      o.connect(f).connect(g).connect(master);
+      o.connect(f).connect(g).connect(fxBus);
       o.start(t); lfo.start(t);
       o.stop(t + 0.6); lfo.stop(t + 0.6);
       break;
     }
-    case 'cluck': [0, 0.09, 0.16].forEach((d, i) => synth(t + d, (i === 2 ? 820 : 640) * rate, 0.05, 0.14 * vol, master, 'square', 0.6)); break;
+    case 'cluck': [0, 0.09, 0.16].forEach((d, i) => synth(t + d, (i === 2 ? 820 : 640) * rate, 0.05, 0.14 * vol, fxBus, 'square', 0.6)); break;
     case 'fanfare': [[67, 0, 0.1], [72, 0.12, 0.1], [76, 0.24, 0.1], [79, 0.36, 0.5]].forEach(([m, d, len]) => {
-      synth(t + d, 440 * 2 ** ((m - 69) / 12), len, 0.12 * vol, master, 'sawtooth');
-      synth(t + d, 440 * 2 ** ((m - 69) / 12) * 1.003, len, 0.08 * vol, master, 'square');
+      synth(t + d, 440 * 2 ** ((m - 69) / 12), len, 0.12 * vol, fxBus, 'sawtooth');
+      synth(t + d, 440 * 2 ** ((m - 69) / 12) * 1.003, len, 0.08 * vol, fxBus, 'square');
     }); break;
     case 'hiss': noise(t, 0.45, 0.22 * vol, 'highpass', 3500, 5000, 0.7); break;
-    case 'snore': noise(t, 0.6, 0.18 * vol, 'lowpass', 250, 700, 2); synth(t, 70, 0.55, 0.12 * vol, master, 'sawtooth', 1.3); break;
-    case 'tiptoe': synth(t, 1100 * rate, 0.05, 0.1 * vol, master, 'triangle', 0.7); break;
+    case 'snore': noise(t, 0.6, 0.18 * vol, 'lowpass', 250, 700, 2); synth(t, 70, 0.55, 0.12 * vol, fxBus, 'sawtooth', 1.3); break;
+    case 'tiptoe': synth(t, 1100 * rate, 0.05, 0.1 * vol, fxBus, 'triangle', 0.7); break;
     /* Brushing Time (scene-brush.js) */
     case 'brush': noise(t, 0.13, 0.12 * vol, 'bandpass', 1800 * rate, 5200 * rate, 1.2); break;
-    case 'sproing': tone(240 * rate, 0.16, 0.14, 'triangle', 2.6); synth(t + 0.05, 420 * rate, 0.14, 0.08 * vol, master, 'sine', 0.7); break;
-    case 'ting': [2637, 3951, 5274].forEach((fq, i) => synth(t + i * 0.05, fq * rate, 0.35, 0.07 * vol, master, 'sine')); break;
+    case 'sproing': tone(240 * rate, 0.16, 0.14, 'triangle', 2.6); synth(t + 0.05, 420 * rate, 0.14, 0.08 * vol, fxBus, 'sine', 0.7); break;
+    case 'ting': [2637, 3951, 5274].forEach((fq, i) => synth(t + i * 0.05, fq * rate, 0.35, 0.07 * vol, fxBus, 'sine')); break;
     case 'spritz': [0, 0.11].forEach((d) => noise(t + d, 0.09, 0.3 * vol, 'highpass', 4000, 7000, 0.8)); break;
     case 'zap':
       // Static: a fistful of crackles.
       for (let k = 0; k < 7; k++) noise(t + k * 0.035 + Math.random() * 0.02, 0.025, 0.35 * vol, 'highpass', 2500 + Math.random() * 3000, 6000, 1);
-      synth(t, 1800, 0.12, 0.05 * vol, master, 'square', 0.4);
+      synth(t, 1800, 0.12, 0.05 * vol, fxBus, 'square', 0.4);
       break;
     case 'purr': {
       // A low motor that flutters 24 times a second.
@@ -374,7 +377,7 @@ export function toon(name, t, opts = {}) {
       g.gain.linearRampToValueAtTime(0.14 * vol, t + 0.08);
       g.gain.linearRampToValueAtTime(0, t + 0.7);
       lfo.connect(lg).connect(g.gain);
-      o.connect(f).connect(g).connect(master);
+      o.connect(f).connect(g).connect(fxBus);
       o.start(t); lfo.start(t);
       o.stop(t + 0.75); lfo.stop(t + 0.75);
       break;
@@ -382,14 +385,14 @@ export function toon(name, t, opts = {}) {
     case 'roar':
       // An 800-year-old bronze lion clears his throat.
       noise(t, 0.7, 0.3 * vol, 'lowpass', 500, 180, 3);
-      synth(t, 110 * rate, 0.7, 0.16 * vol, master, 'sawtooth', 0.6);
-      synth(t, 82 * rate, 0.7, 0.12 * vol, master, 'square', 0.7);
+      synth(t, 110 * rate, 0.7, 0.16 * vol, fxBus, 'sawtooth', 0.6);
+      synth(t, 82 * rate, 0.7, 0.12 * vol, fxBus, 'square', 0.7);
       break;
     case 'sneeze':
       // "Ah..." (a rising buzzy vowel) "...CHOO!" (a burst of noise).
-      synth(t, 300 * rate, 0.32, 0.08 * vol, master, 'sawtooth', 1.6);
+      synth(t, 300 * rate, 0.32, 0.08 * vol, fxBus, 'sawtooth', 1.6);
       noise(t + 0.34, 0.16, 0.5 * vol, 'bandpass', 3000, 1200, 1.2);
-      synth(t + 0.34, 520 * rate, 0.1, 0.12 * vol, master, 'square', 0.5);
+      synth(t + 0.34, 520 * rate, 0.1, 0.12 * vol, fxBus, 'square', 0.5);
       break;
     default: break;
   }
@@ -418,7 +421,7 @@ const FALLBACK = {
   conga: [200, 0.15], 'finger-cymbals': [4000, 0.5], 'sleigh-bells': [6000, 0.3],
 };
 
-export function hit(name, t, vol = 0.8, dest = master) {
+export function hit(name, t, vol = 0.8, dest = fxBus) {
   if (!ctx) return;
   t = Math.max(t, ctx.currentTime);
   if (inst[name]?.hit) return inst[name].hit(t, { vol, dest });
@@ -428,7 +431,7 @@ export function hit(name, t, vol = 0.8, dest = master) {
   }
 }
 
-export function note(name, midi, t, dur, vol = 0.25, dest = master) {
+export function note(name, midi, t, dur, vol = 0.25, dest = fxBus) {
   if (!ctx) return;
   t = Math.max(t, ctx.currentTime);
   if (inst[name]?.note) inst[name].note(midi, t, dur, { vol, dest });
@@ -441,7 +444,7 @@ export function note(name, midi, t, dur, vol = 0.25, dest = master) {
    inst: the instrument's sound (a HITS name), for the last two. */
 export function call(p, kind, t, spb, inst = 'conga') {
   if (kind === 'instrument' || kind === 'syllables+inst') {
-    for (const o of onsets(p)) hit(inst, t + o.b * spb, kind === 'instrument' ? 0.95 : 0.55);
+    for (const o of onsets(p)) hit(inst, t + o.b * spb, kind === 'instrument' ? 0.95 : 0.55, master);
     if (kind === 'instrument') return;
     kind = 'syllables';
   }
@@ -455,9 +458,19 @@ export function call(p, kind, t, spb, inst = 'conga') {
   }
   // Stand-ins until the takes exist: a low thump for "bum", a bright one for syllables.
   for (const o of onsets(p)) {
-    if (kind === 'neutral') hit('log-drum-low', t + o.b * spb, 1);
-    else hit('log-drum-high', t + o.b * spb, 0.9);
+    if (kind === 'neutral') hit('log-drum-low', t + o.b * spb, 1, master);
+    else hit('log-drum-high', t + o.b * spb, 0.9, master);
   }
+}
+
+/* Keep a call clear: from `from` to `to` (audio times), every sound but the call and the groove
+   (scene effects, gags, wins and misses, transitions, taps) drops almost to silence. The
+   groove thins to its pulse at the same time (main.js duck). */
+export function clear(from, to) {
+  if (!ctx) return;
+  const g = fxBus.gain;
+  g.setTargetAtTime(0.04, Math.max(ctx.currentTime, from - 0.04), 0.012);
+  g.setTargetAtTime(1, Math.max(ctx.currentTime, to), 0.04);
 }
 
 /* A learner's own pattern played back (compose). */
@@ -496,7 +509,7 @@ export const fx = {
     bp.frequency.exponentialRampToValueAtTime(300, t + len);
     const g = ctx.createGain();
     g.gain.value = 0.7;
-    src.connect(bp).connect(g).connect(master);
+    src.connect(bp).connect(g).connect(fxBus);
     src.start(t);
   },
   tier(t) { hit('cymbal', t, 0.5); },
@@ -702,7 +715,7 @@ export function groove(i, t, spb, { tier, mode, duck }) {
   if (mode === 'off') { grooveStop(); return; }
   if (i <= lastBeat) grooveStop(); // the clock started again
   lastBeat = i;
-  loopBus.gain.setTargetAtTime(duck ? 0.3 : 1, t, 0.02);
+  loopBus.gain.setTargetAtTime(duck ? 0.12 : 1, t, 0.02);
   const rec = {};
   const useLoops = (!G || G.id === 'basic') && M === '2/4';
   for (const [n, name] of ALL_LAYERS.entries()) {
@@ -712,8 +725,9 @@ export function groove(i, t, spb, { tier, mode, duck }) {
   }
   const V = versionNow();
   if (!V) { standIn(i, t, spb, { tier, mode, duck }, rec); return; }
-  // While the mic listens, only the pulse keeps the beat, softly: the mic hears everything else.
-  if (duck === 'mic') { playGrooveBeat(V, i, t, spb, { layers: ['pulse'], level: 0.45 }); return; }
+  // During a call, and while the mic listens, only the pulse keeps the beat, softly: the call
+  // has to come through clearly, and the mic hears everything else.
+  if (duck) { playGrooveBeat(V, i, t, spb, { layers: ['pulse'], level: duck === 'mic' ? 0.45 : 0.4 }); return; }
   let layers;
   if (mode === 'breakdown') layers = [V.layers.breakdown, ...(V.variants?.breakdown || []).map((x) => x.tracks)].some((ts) => ts.some((tr) => tr.notes.length)) ? ['breakdown'] : ['pulse'];
   else layers = LAYERS.filter((name, n) => n <= tier && !(duck && (name === 'horns' || name === 'band')));
@@ -726,8 +740,8 @@ function standIn(i, t, spb, { tier, mode, duck }, rec) {
   const onOne = i % 2 === 0;
   const root = ROOTS[bar % 4];
   const g = grooveBus;
-  // While the mic listens, only the claves keep the beat: the mic hears everything else.
-  if (duck === 'mic') { hit('claves', t, onOne ? 0.3 : 0.2, g); return; }
+  // During a call, and while the mic listens, only the claves keep the beat.
+  if (duck) { hit('claves', t, onOne ? 0.3 : 0.2, g); return; }
   const level = duck ? 0.35 : 1;
   if (mode === 'breakdown') {
     if (rec.breakdown) return;

@@ -21,6 +21,10 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   learner answers. Syllables on screen carry iconic notation: a stem over each note, a beam
   over each du-de. A miss shows the answer as the step can: on "bum" at Rote, syllables on
   the other ear steps, notes and syllables from Reading on.
+- **A clear call:** from the call to the end of the learner's turn, the groove drops to its
+  pulse and every other sound (scene, gags, effects, on the `fxBus`) goes nearly silent
+  (`snd.clear`), so only the pattern to copy stands out. Each boss round ends with a 4-beat
+  payoff, so its hit or miss never lands on the next call.
 - **Band seats:** either side of the bouncing ball, one seat per layer (bass, drums, horns,
   keys). Each lights up when its layer joins at a combo tier and bobs on the beat.
 - **Tasks** (`tasks.js`, Kyle's writeup cell by cell): Speak/Sing It (steps 1–8, said or sung
@@ -60,7 +64,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   the boss; `main.js` takes turns between them by lap.
 - `sound.js`: the groove, calls, cue words, effects. Uses Kyle's recordings where they're on
   the site (takes on "bum" and in syllables, cue words, groove loops per layer and tempo) and
-  the site's sampled instruments for anything missing.
+  the site's sampled instruments for anything missing. Busses: the call on `master`, the
+  groove on its own, everything else on `fxBus`, which `clear(from, to)` turns down.
 - `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
 - `grooves.json`: the grooves, made in the studio's Groove Lab (`/studio/groove/`, added with
   `tools/add_grooves.py`). The game plays what the Lab last published (`/api/live/grooves.json`)
@@ -79,12 +84,21 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `gags.js`: picks a game's win and fail gags from the ones that are on. Each game lists its gags
   with names (`gags`), and `win(gag)` / `fail(gag)` can force one (the workshop's Try it).
 - `intro.js`: task intros. The first time a task comes up at a step (`say-1`, `du-2`, …), the
-  stream stops for a pop-up: the task, the step, what to do, Kyle's recorded message when there
-  is one (audio or video in `intros/`), and a slow practice try with no score. "Let's play"
+  stream stops for a pop-up built for kids who don't read well yet: a picture strip (👂 listen
+  and/or 👀 look ➜ the thing they do ➜ copy it or make your own), the lines with a 🔊 button that
+  reads them aloud (the device's voice), Kyle's recorded message when there is one (audio or
+  video in `intros/`), and the turn itself. It plays a demo first: a 👆 hand taps the right
+  tiles or the object in time (or the mic shows the syllables), then "Your turn!" and a slow
+  practice try with no score; ▶ Watch shows it again. "Let's play"
   counts back in to that game. Written intros go in `INTROS`; any without one uses the lines
   from `tasks.js`. Seen ones are kept in `st.intro`; My progress replays them and their practice
   rounds. The workshop previews each one (`?intro=<task>-<step>&game=<id>`), and a test run can
   show them all again (`intros=all`). The boss only uses tasks whose intro has been seen.
+- `markup.js`: Markup mode for Kyle (on in Test mode, in a workshop test run, or with
+  `?markup`). The ✏️ button bottom left freezes the screen (sound paused), takes numbered notes
+  and drawing, and saves each with a screen picture (screen capture, allowed once a visit),
+  the screen's words and what's under each note. 🗂️ lists them; Download saves one JSON file to
+  hand to Claude. Kept on the device (IndexedDB) until cleared.
 - `speech.js`: the call in syllables, built up in one speech bubble a syllable at a time and left
   up a moment so the whole pattern shows. Every game's singer uses it.
 - `clock.js`: the beat clock everything is scheduled on.

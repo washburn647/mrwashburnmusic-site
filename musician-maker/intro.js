@@ -17,9 +17,9 @@
      tries   practice rounds before "Let's play" lights up (default 1; 0 to skip practice) */
 
 import * as snd from './sound.js';
-import { STEPS, ALL, patternsFor, byId, sayAs, isCreate } from './steps.js';
+import { STEPS, ALL, patternsFor, byId, sayAs, isCreate, onsets } from './steps.js';
 import { taskById, parseKey, cellOf, introLines, howTo, look, beatsOf } from './tasks.js';
-import { makeTurn, WHY } from './turn.js';
+import { makeTurn, WHY, NOTE_SVG } from './turn.js';
 
 export const INTROS = {
   'say-1': {
@@ -54,14 +54,22 @@ export function introFor(key, game = null) {
    ui: { h, notes, sylIcons, mic } from main.js (mic: the mic is on). game: whose object and
    instrument the practice uses. practice: just the practice round, from My progress (no NEW
    tag, nothing to unlock). Returns { keys(e) } for the page's key handler and { mic(time) }
-   for each syllable the mic hears. */
+   for each syllable the mic hears.
+
+   Made for learners who may not read well yet: a picture strip says what to do (listen or
+   look, then copy it or make your own, on what), 🔊 reads the words aloud, and Watch plays a
+   demo round on the real controls, a ghost hand tapping each note in time, before Try it. A
+   new intro starts with the demo. */
 export function showIntro(host, key, ui, done, { game = null, practice = false } = {}) {
-  const { h, notes, sylIcons } = ui;
+  const { h, notes } = ui;
   const it = introFor(key, game);
   const { task, step } = it;
+  const kit = game?.kit || {};
+  const create = isCreate(step.n);
   let tries = 0;
   let busy = false;
   let turn = null;
+  let watching = false;
 
   const media = practice ? null : it.media?.video
     ? h('video', { class: 'intro-media', src: new URL(it.media.video, import.meta.url).href, controls: true, playsInline: true, preload: 'metadata' })
@@ -72,20 +80,54 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
   const dots = h('div', { class: 'dots' });
   const area = h('div', { class: 'intro-area controls' });
   const said = h('p', { class: 'intro-said' });
-  const tryBox = h('div', { class: 'intro-try', hidden: true }, shown, dots, area, said);
-  const tryBtn = h('button', { class: 'mini', onclick: () => round() }, 'Try it');
-  const go = h('button', { class: 'play', onclick: () => { media?.pause?.(); done(); } }, practice ? 'Done' : 'Let\'s play');
+  const ghost = h('span', { class: 'ghost', 'aria-hidden': 'true' }, '👆');
+  const tryBox = h('div', { class: 'intro-try' }, shown, dots, area, said, ghost);
+  const watchBtn = h('button', { class: 'mini', onclick: () => round(true) }, '▶ Watch');
+  const tryBtn = h('button', { class: 'mini', onclick: () => round(false) }, '✋ Try it');
+  const go = h('button', { class: 'play', onclick: () => { stopVoice(); media?.pause?.(); done(); } }, practice ? 'Done' : 'Let\'s play');
   const ready = () => { go.disabled = !practice && tries < it.tries; };
   ready();
+
+  // 🔊: the intro's words, read aloud by the device's voice (Kyle's recording can replace it).
+  const voice = typeof speechSynthesis !== 'undefined';
+  const stopVoice = () => { if (voice) speechSynthesis.cancel(); };
+  const readAloud = () => {
+    stopVoice();
+    const u = new SpeechSynthesisUtterance([it.title.replace('/', ' or '), ...it.lines].join(' '));
+    u.rate = 0.92;
+    speechSynthesis.speak(u);
+  };
+
+  const cell = cellOf(task.id, step.n);
+  const hears = cell.some((x) => x.hear);
+  const sees = cell.some((x) => x.see);
+  const pic = (icon, label) => h('div', { class: 'pic' }, icon, h('small', {}, label));
+  const what = () => {
+    if (task.id === 'du') return h('span', { class: 'pic-ic mini-tiles' }, h('b', {}, 'du'), h('b', {}, 'du-de'));
+    if (task.id === 'note') {
+      const el = h('span', { class: 'pic-ic mini-notes' });
+      el.innerHTML = NOTE_SVG.q + NOTE_SVG.ee; // fixed markup
+      return el;
+    }
+    const icon = { say: '🎤', tap: kit.object?.icon || '👆', play: kit.instrument?.icon || '🥁' }[task.id];
+    return h('span', { class: 'pic-ic' }, icon);
+  };
+  const story = h('div', { class: 'intro-story' },
+    pic(h('span', { class: 'pic-ic' }, `${hears ? '👂' : ''}${sees ? '👀' : ''}`), hears && sees ? 'Listen, look' : hears ? 'Listen' : 'Look'),
+    h('span', { class: 'pic-arrow', 'aria-hidden': 'true' }, '➜'),
+    pic(what(), create ? 'Make your own' : 'Copy it'));
 
   host.replaceChildren(h('div', { class: 'card intro' },
     practice ? h('b', { class: 'tag soft' }, 'Practice') : h('b', { class: 'tag' }, 'NEW'),
     h('div', { class: 'cue-word small' }, it.title),
     h('p', { class: 'intro-step' }, `Step ${step.n}: ${step.name}`),
-    practice ? null : h('ul', { class: 'intro-lines' }, ...it.lines.map((l) => h('li', {}, l))),
+    story,
+    practice ? null : h('p', { class: 'intro-how' },
+      h('span', {}, howTo({ task: task.id, step: step.n, stim: cell[0] }, game).how),
+      voice ? h('button', { class: 'speak', 'aria-label': 'Read it to me', onclick: readAloud }, '🔊') : null),
     media,
-    it.tries || practice ? tryBox : null,
-    h('div', { class: 'row' }, it.tries || practice ? tryBtn : null, go)));
+    tryBox,
+    h('div', { class: 'row' }, watchBtn, it.tries || practice ? tryBtn : null, go)));
 
   const ctx = () => snd.ac();
   const spb = 60 / PRACTICE_BPM;
@@ -95,20 +137,37 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
     dots.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < k ? 'past' : i === k ? 'now' : '' })));
   };
 
-  /* One practice round, like the game's but slower, with a click on every beat. */
-  async function round() {
+  /* The ghost hand moves onto what it's about to press, then presses it. */
+  const point = (target) => {
+    if (!target) return;
+    const box = tryBox.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
+    ghost.style.left = `${r.left - box.left + r.width / 2}px`;
+    ghost.style.top = `${r.top - box.top + r.height * 0.55}px`;
+    ghost.classList.add('on');
+  };
+  const tap = () => { ghost.classList.remove('tap'); void ghost.offsetWidth; ghost.classList.add('tap'); };
+  const fake = (k) => ({ key: k, preventDefault() {} });
+
+  /* One round, like the game's but slower, with a click on every beat. demo: the ghost hand
+     answers (it doesn't count as a try). */
+  async function round(demo) {
     if (busy) return;
     busy = true;
+    watching = demo;
+    watchBtn.disabled = true;
     tryBtn.disabled = true;
+    tryBtn.classList.remove('nudge');
     said.textContent = '';
     said.className = 'intro-said';
-    tryBox.hidden = false;
     area.classList.remove('over');
+    ghost.classList.remove('on', 'tap');
     await snd.load();
     const ids = patternsFor(step.set);
     const list = (ids.length ? ids : ALL.map((x) => x.id)).map(byId).filter(Boolean);
     const pattern = list[Math.floor(Math.random() * list.length)] || ALL[0];
-    const cell = cellOf(task.id, step.n);
+    const others = list.filter((x) => x.id !== pattern.id);
+    const answer = create ? others[Math.floor(Math.random() * others.length)] || pattern : pattern;
     const stim = cell[Math.floor(Math.random() * cell.length)];
     const item = { task: task.id, step: step.n, stim, pattern };
     const { go: shout } = howTo(item, game);
@@ -123,10 +182,10 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
       at(c0 + k * spb, () => beatDots(k, 4, 'call'));
     }
     const l = look(stim);
-    at(t0, () => { said.textContent = l === 'read' ? 'Read it…' : l === 'both' ? 'Listen and read…' : 'Listen…'; });
-    if (stim.hear) snd.call(pattern, stim.hear, c0, spb, game?.play || game?.kit?.instrument?.sound);
+    at(t0, () => { said.textContent = `${demo ? '👀 Watch! ' : ''}${l === 'read' ? '👀' : l === 'both' ? '👂👀' : '👂'}`; });
+    if (stim.hear) snd.call(pattern, stim.hear, c0, spb, game?.play || kit.instrument?.sound);
     turn = makeTurn(item, game, {
-      h, mic: ui.mic, tResp: r0, spb,
+      h, mic: ui.mic || demo, tResp: r0, spb,
       now: () => ctx().currentTime, latency: () => snd.latency(), hit: (name, vol) => snd.hit(name, ctx().currentTime, vol),
     });
     area.classList.remove('live');
@@ -137,27 +196,75 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
       snd.hit('claves', r0 + k * spb, 0.25);
       at(r0 + k * spb, () => beatDots(k, n, 'resp'));
     }
+    if (demo) showHow(answer, r0);
     at(r0 + n * spb, () => {
       area.classList.remove('live');
       area.classList.add('over');
+      ghost.classList.remove('on');
+      busy = false;
+      watching = false;
+      watchBtn.disabled = false;
+      tryBtn.disabled = false;
+      if (demo) {
+        turn = null;
+        said.className = 'intro-said right';
+        said.textContent = '👍 Your turn!';
+        tryBtn.classList.add('nudge');
+        return;
+      }
       const res = turn.grade();
       turn.reveal(res);
       turn = null;
-      busy = false;
       tries++;
-      const create = isCreate(step.n);
       said.className = `intro-said ${res.right ? 'right' : 'wrong'}`;
       said.textContent = res.right
-        ? (create ? `Yes! Yours was ${sayAs(res.got, step.n)}.` : 'Yes! That\'s it.')
-        : `${WHY[res.why] || 'Not quite'}${create ? '' : `. It was ${sayAs(pattern, step.n)}`}. Try again?`;
+        ? (create ? `👍 ${sayAs(res.got, step.n)}` : '👍 Yes!')
+        : `${WHY[res.why] || 'Not quite'}${create ? '' : `: ${sayAs(pattern, step.n)}`}`;
       if (res.right) snd.fx.win(ctx().currentTime + 0.02);
       else snd.fx.fail(ctx().currentTime + 0.02);
       if (create && res.got && task.id === 'note') snd.playBack(res.got, ctx().currentTime + 0.3, spb);
-      tryBtn.textContent = 'Try again';
-      tryBtn.disabled = false;
+      tryBtn.textContent = '✋ Again';
       ready();
     });
   }
 
-  return { keys: (e) => (turn ? turn.keys(e) : false), mic: (time) => turn?.input(time, true) };
+  /* The demo's answer: the ghost hand plays it on the real controls, in time. Speak/Sing It
+     has nothing to press: the answer is sung (Kyle's take, or its stand-in) and the mic's
+     pad lights up on each syllable. */
+  function showHow(answer, r0) {
+    const el = turn.el;
+    if (task.id === 'note') {
+      answer.cells.forEach((c, i) => {
+        const tile = el.querySelector(c === 'q' ? '.n-q' : '.n-ee');
+        at(r0 + (0.3 + i * 0.9) * spb, () => point(tile));
+        at(r0 + (0.6 + i * 0.9) * spb, () => { tap(); turn?.keys(fake(c === 'q' ? '1' : '2')); });
+      });
+      return;
+    }
+    const ons = onsets(answer);
+    if (task.id === 'say') {
+      snd.call(answer, step.n === 1 ? 'neutral' : 'syllables', r0, spb);
+      const words = [];
+      ons.forEach((o) => at(r0 + o.b * spb, () => {
+        el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit');
+        words.push(step.n === 1 ? 'bum' : o.syl);
+        said.textContent = `🎤 ${words.join(' ')}`;
+      }));
+      return;
+    }
+    ons.forEach((o) => {
+      const c = answer.cells[Math.floor(o.b)];
+      const target = task.id === 'du' ? el.querySelector(c === 'q' ? '.du-q' : '.du-ee') : el;
+      at(r0 + (o.b - 0.35) * spb, () => point(target));
+      at(r0 + o.b * spb, () => { tap(); turn?.keys(fake(task.id === 'du' ? (c === 'q' ? 'f' : 'j') : ' ')); });
+    });
+  }
+
+  // A new intro shows how first.
+  if (!practice) setTimeout(() => { if (host.isConnected) round(true); }, 600);
+
+  return {
+    keys: (e) => (turn && !watching ? turn.keys(e) : false),
+    mic: (time) => (watching ? undefined : turn?.input(time, true)),
+  };
 }
