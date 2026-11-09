@@ -16,6 +16,7 @@
    (recording again replaces it). They publish with the cues, as line/<id>. */
 
 import * as samples from '/assets/sounds/samples.js';
+import { timing, offbeat, forSite } from '/assets/sounds/timing.js';
 import { METERS, TONALITIES, KEYS, DEFAULT_UNITS, unitPatterns, conceptLabel, toneMidi, patternById } from '/assets/patterns/patterns.js';
 import { notation } from '/assets/patterns/notation.js';
 import { h, confirmButton } from '../dom.js';
@@ -283,6 +284,7 @@ let current = null;
 let recording = null;
 let editing = false;
 let showRemoved = false;
+let showOffbeat = false;
 let status = { text: '', bad: false };
 let folder = null; // where Save for site writes, once picked
 
@@ -296,6 +298,11 @@ const takeAs = (t) => t.as || 'syllables';
 const asFor = (id) => (isCue(id) ? 'cue' : settings.as);
 const takesFor = (id, speed) => takes.filter((t) => t.pattern === id && takeAs(t) === asFor(id)
   && (!speed || isCue(id) || t.speed === speed)).sort((a, b) => a.created - b.created);
+// A take that needs a listen: timing.js couldn't line it up with the beat. Unmeasured takes
+// (from before the check) aren't flagged until Check timing measures them.
+const flagged = (t) => t.timing !== undefined && offbeat(t.timing, t.bpm);
+const offbeatTakes = (id) => takesFor(id).filter(flagged);
+const unmeasured = () => takes.filter((t) => t.timing === undefined && !isCue(t.pattern));
 const done = (id, speed) => takesFor(id, speed).length >= (isLine(id) ? 1 : settings.want);
 // A cue word as the recorder handles it: 2 beats, no notation.
 const cueItem = (c) => ({ id: `cue/${c.id}`, kind: 'cue', text: c.text });
@@ -364,7 +371,9 @@ function render() {
   if (!removed.length) showRemoved = false;
   const markOf = (p) => u.marks[p.id] || 'unmarked';
   const filtered = settings.filter === 'all' ? kept : kept.filter((p) => markOf(p) === settings.filter);
-  shown = showRemoved ? removed : filtered;
+  const off = kept.filter((p) => offbeatTakes(p.id).length);
+  if (!off.length) showOffbeat = false;
+  shown = showRemoved ? removed : showOffbeat ? off : filtered;
   if (!filtered.some((p) => p.id === current)) current = (filtered.find((p) => !done(p.id, settings.speed)) || filtered[0])?.id;
   const counts = Object.fromEntries(Object.keys(FILTERS).map((f) => [f, f === 'all' ? kept.length : kept.filter((p) => markOf(p) === f).length]));
 
@@ -384,8 +393,10 @@ function render() {
       editing ? unitEditor(u) : null,
       h('div', { class: 'bar' },
         seg(Object.fromEntries(Object.entries(FILTERS).map(([f, label]) => [f, `${label} ${counts[f]}`])), showRemoved ? '' : settings.filter,
-          (v) => { settings.filter = v; showRemoved = false; save(); render(); }),
-        removed.length ? h('button', { class: showRemoved ? 'on' : '', onclick: () => { showRemoved = !showRemoved; render(); } }, `Removed ${removed.length}`) : null,
+          (v) => { settings.filter = v; showRemoved = false; showOffbeat = false; save(); render(); }),
+        removed.length ? h('button', { class: showRemoved ? 'on' : '', onclick: () => { showRemoved = !showRemoved; showOffbeat = false; render(); } }, `Removed ${removed.length}`) : null,
+        off.length ? h('button', { class: `offbeat${showOffbeat ? ' on' : ''}`, title: 'Patterns with a take that may be off the beat', onclick: () => { showOffbeat = !showOffbeat; showRemoved = false; render(); } }, `Off the beat ${off.length}`) : null,
+        unmeasured().length ? h('button', { disabled: !!checking, onclick: checkTiming }, checking || 'Check timing') : null,
         h('span', { class: 'grow' }),
         h('span', { class: 'label' }, 'Voice'),
         seg(VOICES, settings.as, (v) => { if (!recording) { settings.as = v; current = null; save(); render(); } }),
@@ -608,7 +619,14 @@ function remove(u, id, out) {
 function card(p, u) {
   const m = u.marks[p.id];
   const out = u.removed.includes(p.id);
-  const pick = () => { if (!recording && !out) { current = p.id; render(); } };
+  const pick = () => {
+    if (recording || out) return;
+    current = p.id;
+    // Off the beat: open the speed with the take to listen to.
+    const f = showOffbeat && offbeatTakes(p.id)[0];
+    if (f) settings.speed = f.speed;
+    render();
+  };
   const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
   const staff = h('span', { class: 'staff' });
   const key = drawKey(p);
@@ -623,7 +641,8 @@ function card(p, u) {
   staff,
   h('span', { class: 'syl' }, p.syllables),
   h('span', { class: 'counts' }, Object.entries(SPEEDS).map(([s, label]) =>
-    h('span', { class: done(p.id, s) ? 'sp done' : 'sp', title: `${label}, ${settings.bpm[s]} bpm` }, `${label[0]} ${takesFor(p.id, s).length}`))),
+    h('span', { class: done(p.id, s) ? 'sp done' : 'sp', title: `${label}, ${settings.bpm[s]} bpm` }, `${label[0]} ${takesFor(p.id, s).length}`)),
+  offbeatTakes(p.id).length ? h('span', { class: 'sp offbeat', title: 'Takes that may be off the beat' }, `⚠ ${offbeatTakes(p.id).length}`) : null),
   h('span', { class: 'marks' },
     out
       ? h('button', { onclick: stop(() => remove(u, p.id, false)) }, 'Put back')
@@ -655,6 +674,13 @@ function observe() {
 }
 
 const beatsOf = (p) => (p.kind === 'line' ? 0 : p.kind === 'cue' ? 2 : p.kind === 'rhythm' ? p.cells.length : p.tones.length);
+function takeTitle(take) {
+  const t = take.timing;
+  if (t === undefined || isCue(take.pattern)) return `${take.bpm} bpm`;
+  if (!t) return `${take.bpm} bpm · may be off the beat: couldn't find every syllable. Listen, and record it again if it's off`;
+  if (flagged(take)) return `${take.bpm} bpm · may be off the beat: a syllable is ${Math.round(t.off * 100)}% of a beat out. Listen, and record it again if it's off`;
+  return `${take.bpm} bpm · sung at ${Math.round(t.tempo)}; the game plays it in time`;
+}
 const bumOf = (p) => p.syllables.replace(/[a-z]+/gi, 'bum');
 
 function stage(u) {
@@ -680,10 +706,10 @@ function stage(u) {
       p.kind === 'line' ? h('span', { class: 'label' }, 'Record, read it, then Stop')
       : p.kind === 'cue'
         ? h('span', { class: 'label' }, `${SPEEDS[CUE_SPEED]} ${settings.bpm[CUE_SPEED]} · ${list.length}`)
-        : seg(Object.fromEntries(Object.entries(SPEEDS).map(([s, label]) => [s, `${label} ${settings.bpm[s]} · ${takesFor(p.id, s).length}`])),
+        : seg(Object.fromEntries(Object.entries(SPEEDS).map(([s, label]) => [s, `${label} ${settings.bpm[s]} · ${takesFor(p.id, s).length}${takesFor(p.id, s).some(flagged) ? ' ⚠' : ''}`])),
           settings.speed, (v) => { if (!recording) { settings.speed = v; save(); render(); } }),
       h('span', { class: 'takes' }, list.map((take, i) => h('span', { class: 'take' },
-        h('button', { title: `${take.bpm} bpm`, onclick: () => playBlob(take.mp3) }, `▶ ${i + 1}${take.key != null ? ` ${pretty(keyName(p.tonality, take.key))}` : ''}`),
+        h('button', { class: flagged(take) ? 'offbeat' : '', title: takeTitle(take), onclick: () => playBlob(take.mp3) }, `▶ ${i + 1}${take.key != null ? ` ${pretty(keyName(p.tonality, take.key))}` : ''}${flagged(take) ? ' ⚠' : ''}`),
         h('button', { class: 'x', title: 'Delete take', onclick: async () => { await takeStore.delete(take.id); takes = await takeStore.all(); render(); } }, '×')))),
       h('span', { class: 'grow' }),
       p.kind === 'line' ? null : h('div', { class: 'beats' },
@@ -718,6 +744,40 @@ async function toggleRecording() {
   } catch (e) {
     say(`Couldn't start recording: ${e.message}`, true);
   }
+}
+
+/* ---------- Timing ---------- */
+
+// timing.js on a take: { tempo, off, lead }, or null when it can't find every syllable.
+async function measure(mp3, p, bpm) {
+  try {
+    const b = await decode(mp3);
+    return timing(b.getChannelData(0), b.sampleRate, p, bpm);
+  } catch {
+    return null;
+  }
+}
+
+/* Measures the takes recorded before the check existed. Publish to site afterwards to send the
+   game what it found. */
+let checking = '';
+async function checkTiming() {
+  await audio();
+  const list = unmeasured();
+  for (const [i, take] of list.entries()) {
+    checking = `Checking ${i + 1} of ${list.length}…`;
+    if (i % 10 === 0) render();
+    const p = itemById(take.pattern);
+    if (!p) continue;
+    take.timing = await measure(take.mp3, p, take.bpm);
+    await takeStore.put(take);
+  }
+  checking = '';
+  takes = await takeStore.all();
+  const bad = takes.filter(flagged).length;
+  say(bad ? `Checked ${list.length} takes. ${bad} may be off the beat ⚠: listen to them, and record again any that are. Publish to site to put the rest in time.`
+    : `Checked ${list.length} takes, all on the beat. Publish to site to put them in time.`, false);
+  render();
 }
 
 function record(p) {
@@ -784,10 +844,11 @@ function record(p) {
       // Anything before a quarter beat ahead of the downbeat is count-in.
       const take = await processTake(new Blob(parts, { type: recorder.mimeType }), downbeat - begun - beat / 4);
       if (!take) { say('Too quiet, nothing saved. Check the microphone level.', true); return; }
-      await takeStore.put({ id: crypto.randomUUID(), pattern: p.id, as, speed, bpm, key, created: Date.now(), ...take });
+      const t = p.kind === 'cue' ? undefined : await measure(take.mp3, p, bpm);
+      await takeStore.put({ id: crypto.randomUUID(), pattern: p.id, as, speed, bpm, key, created: Date.now(), ...take, ...(t === undefined ? {} : { timing: t }) });
       playBlob(take.mp3);
       takes = await takeStore.all();
-      say(p.kind === 'cue' ? `Saved: take ${takesFor(p.id).length}` : `Saved: ${SPEEDS[speed]}${as === 'bum' ? ' bum' : ''} take ${takesFor(p.id, speed).length}`);
+      say(p.kind === 'cue' ? `Saved: take ${takesFor(p.id).length}` : `Saved: ${SPEEDS[speed]}${as === 'bum' ? ' bum' : ''} take ${takesFor(p.id, speed).length}${t !== undefined && offbeat(t, bpm) ? ', but it may be off the beat ⚠' : ''}`, t !== undefined && offbeat(t, bpm));
       if (done(p.id, speed) && current === p.id && asFor(p.id) === as) {
         const list = p.kind === 'cue' ? shown : shown.filter((q) => !unitNow().removed.includes(q.id));
         const i = list.findIndex((q) => q.id === p.id);
@@ -869,7 +930,7 @@ async function buildZip() {
     numbers.set(tag, (numbers.get(tag) || 0) + 1);
     const file = `voice/${voice}/${tag}-${numbers.get(tag)}.mp3`;
     files.push({ name: file, data: new Uint8Array(await take.mp3.arrayBuffer()) });
-    list.push({ pattern: take.pattern, as, speed: take.speed, bpm: take.bpm, key: take.key, file, id: take.id, created: take.created, seconds: Math.round(take.seconds * 100) / 100 });
+    list.push({ pattern: take.pattern, as, speed: take.speed, bpm: take.bpm, key: take.key, file, id: take.id, created: take.created, seconds: Math.round(take.seconds * 100) / 100, ...(take.timing !== undefined ? { timing: take.timing } : {}) });
   }
   const json = { voice, label: 'Mr. Washburn', saved: new Date().toISOString(), takes: list, units: units.map(unitForSite) };
   files.unshift({ name: `voice/${voice}/takes.json`, data: new TextEncoder().encode(JSON.stringify(json, null, 1)) });
@@ -902,6 +963,7 @@ async function publish() {
       } else {
         if (as === 'bum') entry.as = 'bum';
         if (take.key != null) entry.key = take.key;
+        Object.assign(entry, forSite(take.timing, itemById(take.pattern), take.bpm));
         (list.patterns[take.pattern] ||= []).push(entry);
       }
       if (!have.has(take.id)) send.push(take);
@@ -974,7 +1036,7 @@ async function restoreZip(file) {
     let added = 0;
     for (const t of json.takes || []) {
       if (have.has(t.id) || !entries[t.file] || !itemById(t.pattern)) continue;
-      await takeStore.put({ id: t.id, pattern: t.pattern, as: t.as || 'syllables', speed: t.speed, bpm: t.bpm, key: t.key ?? null, created: t.created, seconds: t.seconds, mp3: new Blob([entries[t.file]], { type: 'audio/mpeg' }) });
+      await takeStore.put({ id: t.id, pattern: t.pattern, as: t.as || 'syllables', speed: t.speed, bpm: t.bpm, key: t.key ?? null, created: t.created, seconds: t.seconds, ...(t.timing !== undefined ? { timing: t.timing } : {}), mp3: new Blob([entries[t.file]], { type: 'audio/mpeg' }) });
       added++;
     }
     for (const { patterns, ...x } of json.units || []) {

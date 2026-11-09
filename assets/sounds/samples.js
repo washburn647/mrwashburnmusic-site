@@ -130,7 +130,8 @@ export async function instrument(name, { lo = 0, hi = 127 } = {}) {
      await kyle.prepare(['rhythm/2-4/q-ee']);
      kyle.say('rhythm/2-4/q-ee', t, { bpm: 84 });
    say() picks the takes recorded nearest that tempo (or { speed: 'slow' }), never the same
-   take twice running, and stretches it to bpm. { key } moves a tonal take to another key
+   take twice running, and stretches it to bpm (from the tempo it was really sung at, when the
+   recorder measured that). { key } moves a tonal take to another key
    (sounding midi of do, or la in minor). Stretching moves pitch and tempo together, so a
    take sounds best near the tempo and key it was recorded in.
    { as: 'bum' } picks the pattern's takes on "bum" instead of syllables:
@@ -190,9 +191,10 @@ export async function takes(name) {
       const take = choose(id, { speed, bpm, key, as });
       if (!take) return () => {};
       const s = await load(take.file);
-      let rate = bpm && take.bpm ? bpm / take.bpm : 1;
+      // tempo and lead: how the take really kept the beat (timing.js), when the recorder measured it.
+      let rate = bpm && take.bpm ? bpm / (take.tempo || take.bpm) : 1;
       if (key != null && take.key != null) rate *= 2 ** ((key - take.key) / 12);
-      return play(s, Math.max(t, context().currentTime), { vol, dest, rate });
+      return play(s, Math.max(t - (take.lead || 0) / rate, context().currentTime), { vol, dest, rate });
     },
   };
 }
