@@ -27,6 +27,7 @@ import { LINES, lineById } from '/musician-maker/narration.js';
 const app = document.getElementById('app');
 const SPEEDS = { slow: 'Slow', medium: 'Medium', fast: 'Fast' };
 const MARKS = { familiar: 'Familiar', unfamiliar: 'Unfamiliar' };
+const RECORDED = { all: 'Any', done: 'Recorded', todo: 'Not yet' };
 const FILTERS = { all: 'All', familiar: 'Familiar', unfamiliar: 'Unfamiliar', unmarked: 'Unmarked' };
 const KINDS = { rhythm: 'Rhythm', tonal: 'Tonal' };
 const VOICES = { syllables: 'Syllables', bum: 'On “bum”' };
@@ -92,6 +93,7 @@ const settings = {
   firstNote: true,
   mic: '',
   filter: 'all',
+  recorded: 'all', // all, done (every speed has its takes, in the voice shown), todo
   folder: '', // its name
 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS)) || {}); } catch { /* defaults */ }
@@ -370,7 +372,9 @@ function render() {
   const removed = all.filter((p) => u.removed.includes(p.id));
   if (!removed.length) showRemoved = false;
   const markOf = (p) => u.marks[p.id] || 'unmarked';
-  const filtered = settings.filter === 'all' ? kept : kept.filter((p) => markOf(p) === settings.filter);
+  const complete = (p) => Object.keys(SPEEDS).every((sp) => done(p.id, sp));
+  const recordedOk = (p) => settings.recorded === 'all' || complete(p) === (settings.recorded === 'done');
+  const filtered = (settings.filter === 'all' ? kept : kept.filter((p) => markOf(p) === settings.filter)).filter(recordedOk);
   const off = kept.filter((p) => offbeatTakes(p.id).length);
   if (!off.length) showOffbeat = false;
   shown = showRemoved ? removed : showOffbeat ? off : filtered;
@@ -394,6 +398,9 @@ function render() {
       h('div', { class: 'bar' },
         seg(Object.fromEntries(Object.entries(FILTERS).map(([f, label]) => [f, `${label} ${counts[f]}`])), showRemoved ? '' : settings.filter,
           (v) => { settings.filter = v; showRemoved = false; showOffbeat = false; save(); render(); }),
+        seg(Object.fromEntries(Object.entries(RECORDED).map(([f, label]) => [f, `${label} ${f === 'all' ? kept.length : kept.filter((p) => complete(p) === (f === 'done')).length}`])),
+          showRemoved || showOffbeat ? '' : settings.recorded,
+          (v) => { settings.recorded = v; showRemoved = false; showOffbeat = false; save(); render(); }),
         removed.length ? h('button', { class: showRemoved ? 'on' : '', onclick: () => { showRemoved = !showRemoved; showOffbeat = false; render(); } }, `Removed ${removed.length}`) : null,
         off.length ? h('button', { class: `offbeat${showOffbeat ? ' on' : ''}`, title: 'Patterns with a take that may be off the beat', onclick: () => { showOffbeat = !showOffbeat; showRemoved = false; render(); } }, `Off the beat ${off.length}`) : null,
         unmeasured().length ? h('button', { disabled: !!checking, onclick: checkTiming }, checking || 'Check timing') : null,

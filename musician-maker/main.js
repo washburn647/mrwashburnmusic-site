@@ -20,7 +20,7 @@ import { mookie } from './mookie.js';
 import { MIC_SPEECH } from './narration.js';
 import * as TX from './transitions.js';
 import * as FX from './effects.js';
-import { cueId } from './cues.js';
+import { cueId, PRAISE } from './cues.js';
 import { notation } from '/assets/patterns/notation.js';
 import * as store from './store.js';
 import * as markup from './markup.js';
@@ -68,7 +68,6 @@ const SEATS = [['bass', 1], ['drums', 2], ['horns', 3], ['band', 4]];
 const seatInfo = (layer) => snd.layerInfo(snd.grooveNow(), layer);
 // The band parading in at a new tier: the layers that have joined so far, newest first.
 const bandAt = (tier) => SEATS.filter(([, t]) => t <= tier).map(([layer]) => seatInfo(layer).icon).reverse();
-const PRAISE = ['Yes!', 'Nice!', 'Got it!', 'Woo!', 'Yeah!'];
 const STICKERS = ['🧀', '🐭', '🥁', '🎺', '🎻', '🪕', '🎷', '🏆'];
 
 /* Small DOM builder. Text always goes in as text, never as HTML. */
@@ -1076,6 +1075,13 @@ function grade(item, turn) {
   return res;
 }
 
+let lastPraise = null;
+function nextPraise() {
+  const options = PRAISE.filter((c) => c !== lastPraise);
+  lastPraise = options[Math.floor(Math.random() * options.length)];
+  return lastPraise;
+}
+
 /* XP for a right answer: 10 (+5 perfect) × tempo × the mic (×1.5) × the task (Speak/Sing It
    ×1.5) × no notes to look at in Note It (×1.5) × a create answer's freshness × the combo. */
 function result(item, res, { onWin, onFail, t, quiet = false }) {
@@ -1114,8 +1120,11 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     } else if (repeats && !quiet) {
       flash('Nice! Try a new one next time', 'plus');
     } else {
+      // A praise word on screen, and said once Kyle has recorded it; never the same twice running.
+      const p = res.perfect ? null : nextPraise();
       if (res.perfect) snd.speak('perfect', t);
-      if (!quiet) flash(res.perfect ? 'PERFECT!' : PRAISE[Math.floor(Math.random() * PRAISE.length)], res.perfect ? 'plus gold' : 'plus');
+      else snd.speak(p.id, t);
+      if (!quiet) flash(res.perfect ? 'PERFECT!' : p.text, res.perfect ? 'plus gold' : 'plus');
     }
   } else {
     const was = R.combo;

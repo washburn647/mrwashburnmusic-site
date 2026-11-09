@@ -22,7 +22,28 @@ export const CUES = [
   { id: 'hot', text: 'Hot!' },
   { id: 'on-fire', text: 'On fire!' },
   { id: 'legendary', text: 'Legendary!' },
+  // Praise for a right answer (PRAISE), a different one each time.
+  { id: 'yes', text: 'Yes!', praise: true },
+  { id: 'nice', text: 'Nice!', praise: true },
+  { id: 'wow', text: 'Wow!', praise: true },
+  { id: 'great', text: 'Great!', praise: true },
+  { id: 'got-it', text: 'Got it!', praise: true },
+  { id: 'awesome', text: 'Awesome!', praise: true },
+  { id: 'amazing', text: 'Amazing!', praise: true },
+  { id: 'excellent', text: 'Excellent!', praise: true },
+  { id: 'fantastic', text: 'Fantastic!', praise: true },
+  { id: 'extraordinary', text: 'Extraordinary!', praise: true },
+  { id: 'sweet', text: 'Sweet!', praise: true },
+  { id: 'nailed-it', text: 'Nailed it!', praise: true },
+  { id: 'way-to-go', text: 'Way to go!', praise: true },
+  { id: 'you-got-it', text: 'You got it!', praise: true },
+  { id: 'super', text: 'Super!', praise: true },
+  { id: 'brilliant', text: 'Brilliant!', praise: true },
+  { id: 'woo', text: 'Woo!', praise: true },
+  { id: 'yeah', text: 'Yeah!', praise: true },
 ];
+
+export const PRAISE = CUES.filter((c) => c.praise);
 
 export const cueById = (id) => CUES.find((c) => c.id === id);
 
