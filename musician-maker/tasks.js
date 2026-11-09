@@ -86,6 +86,10 @@ const hearText = (hear, game) => ({
   'syllables/inst': 'in syllables, sometimes with the instrument',
 }[hear]);
 
+/* What Speak/Sing It is said on: "bum" when echoing at step 1 (the neutral syllable), the
+   rhythm syllables at every other step. Shown in the bubble by the mic and in the how-to. */
+export const sayOn = (step, pattern = null) => (step === 1 ? 'bum' : pattern?.meter === '6/8' ? 'du da di' : 'du de');
+
 /* The stimulus in a few words: "Listen" / "Read it" / "Listen and read". */
 export function look(stim) {
   if (stim.hear && stim.see) return 'both';
@@ -95,7 +99,7 @@ export function look(stim) {
 /* What to do, in a few words a young reader can take in at a glance: `how` is the line shown
    for the whole game, `go` the shout when it's the learner's turn. game gives the tap object
    and the instrument their names. */
-export function howTo({ task, step, stim }, game = null) {
+export function howTo({ task, step, stim, pattern }, game = null) {
   const kit = game?.kit || {};
   const create = step === 5 || step === 12;
   const l = look(stim);
@@ -103,7 +107,7 @@ export function howTo({ task, step, stim }, game = null) {
   const obj = kit.object?.name || 'the pad';
   const inst = kit.instrument?.name || 'the drum';
   const lines = {
-    say: create ? 'say your own answer' : step === 1 ? 'say it back on "bum"' : 'say it in du and de',
+    say: create ? `say your own answer in "${sayOn(step, pattern)}"` : step === 1 ? 'say it back on "bum"' : `say it in "${sayOn(step, pattern)}"`,
     tap: create ? `tap your own answer on ${obj}` : `tap it back on ${obj}`,
     play: create ? `play your own answer on ${inst}` : `play it back on ${inst}`,
     du: create ? 'answer on the du and du-de tiles, in time' : 'tap it on the du and du-de tiles, in time',
@@ -111,7 +115,7 @@ export function howTo({ task, step, stim }, game = null) {
   };
   // short: the line shown during a game, a glance long ("Listen, then tap.").
   const lead = { both: 'Listen and read', listen: 'Listen', read: 'Read' }[l];
-  const verb = create ? 'make your own' : { say: 'say it', tap: 'tap', play: 'play', du: 'tap', note: 'write it' }[task];
+  const verb = task === 'say' ? `${create ? 'make your own' : 'say it'} on "${sayOn(step, pattern)}"` : create ? 'make your own' : { tap: 'tap', play: 'play', du: 'tap', note: 'write it' }[task];
   const short = lead ? `${lead}, then ${verb}.` : `${verb[0].toUpperCase()}${verb.slice(1)}.`;
   return { how: `${first}${lines[task]}.`, short, go: taskById(task).cue, look: l };
 }

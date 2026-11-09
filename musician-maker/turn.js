@@ -17,7 +17,7 @@
    want a whole pattern of the learner's own, different from the call. */
 
 import { onsets, readTaps, fromCells, sylText, isCreate } from './steps.js';
-import { look, beatsOf } from './tasks.js';
+import { look, beatsOf, sayOn } from './tasks.js';
 import { art, lookOf } from './instruments.js';
 
 /* Fixed markup for the note tiles and the answer slots. */
@@ -91,7 +91,9 @@ export function makeTurn(item, game, ui) {
       // A big mic: it glows with the voice (--lv, set by the host) and bounces on each syllable.
       const pic = h('span', { class: 'big-art' });
       pic.innerHTML = art('mic'); // fixed markup
+      // The speech bubble says what to say it on: "bum" or the rhythm syllables.
       el = h('div', { class: 'big-inst look-mic' }, h('span', { class: 'big-glow' }), pic,
+        h('span', { class: `say-on${step === 1 ? ' bum' : ''}` }, sayOn(step, pattern)),
         listens ? null : h('small', {}, 'Turn the mic on to play this one'));
     } else {
       // Play It: the instrument itself, big, to play right on.
