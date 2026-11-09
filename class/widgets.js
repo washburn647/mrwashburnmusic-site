@@ -699,19 +699,29 @@ function draw(d, el) {
     });
     // The picture library: a tray of its pictures (tap one to put it on the board),
     // and ⭐ to keep the chosen picture in the group the tray shows.
+    // Typing in the tray finds pictures by name in every group.
     let tray = null, group = null;
+    const look = h('input', 'wg-tray-find');
+    look.type = 'search';
+    look.placeholder = '🔎';
+    look.addEventListener('input', () => paintTray());
+    look.addEventListener('keydown', (e) => e.stopPropagation());
     const paintTray = async () => {
       const groups = await library.groups();
       group = groups.find((g) => g.name === group) ? group : groups[0] && groups[0].name;
+      const q = look.value.trim().toLowerCase();
       const tabs = h('div', 'wg-tray-tabs');
       for (const g of groups) {
-        const b = h('button', 'wg-tray-tab' + (g.name === group ? ' on' : ''), g.name);
-        b.addEventListener('click', () => { group = g.name; paintTray(); });
+        const b = h('button', 'wg-tray-tab' + (!q && g.name === group ? ' on' : ''), g.name);
+        b.addEventListener('click', () => { group = g.name; look.value = ''; paintTray(); });
         tabs.append(b);
       }
       const pics = h('div', 'wg-tray-pics');
-      for (const pic of (groups.find((g) => g.name === group) || { pics: [] }).pics) {
+      const list = q ? groups.flatMap((g) => g.pics).filter((x) => x.name.toLowerCase().includes(q))
+        : (groups.find((g) => g.name === group) || { pics: [] }).pics;
+      for (const pic of list) {
         const b = h('button', 'wg-tray-pic');
+        b.title = pic.name;
         const img = h('img');
         img.src = pic.src;
         img.alt = '';
@@ -719,7 +729,7 @@ function draw(d, el) {
         b.addEventListener('click', async () => addPicture(await library.blob(pic.media)));
         pics.append(b);
       }
-      tray.replaceChildren(tabs, pics);
+      tray.replaceChildren(look, tabs, pics);
     };
     if (library) {
       tool('wg-lib', '📚', 'Picture library', (b) => {
@@ -728,10 +738,12 @@ function draw(d, el) {
         p.shade.append(tray);
         b.classList.add('on');
         paintTray();
+        look.focus();
       });
       keepBtn = tool('wg-keep-pic', '⭐', 'Keep in the picture library', async (b) => {
         if (!chosen || !chosen.blob) return;
-        await library.add(chosen.blob, group);
+        // Named for what was searched for (🔎), if anything.
+        await library.add(chosen.blob, group, find.value.trim());
         b.classList.add('on');
         setTimeout(() => b.classList.remove('on'), 900);
         if (tray) paintTray();
