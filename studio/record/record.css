@@ -86,3 +86,12 @@ input.name { border: 0; border-radius: 10px; padding: 8px 10px; background: #F6F
 .stage .now .word { font-size: 30px; font-weight: 600; color: #2F4A3A; }
 .stage .now .bum { font-weight: 600; }
 .hint { color: #5B6B5F; margin: 0 0 12px; }
+
+/* Narration: a script to read, at its own pace */
+.group-head { margin: 14px 0 4px; font-size: 15px; color: #6B7B70; text-transform: uppercase; letter-spacing: .06em; }
+.grid.lines { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.card .line-label { font-size: 14px; color: #2F4A3A; }
+.card .line-text { font-size: 13px; color: #6B7B70; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.stage .now.line { display: grid; gap: 4px; max-width: 760px; }
+.stage .now.line small { color: #6B7B70; }
+.stage .now.line .script { font-size: 20px; line-height: 1.4; color: #2F4A3A; }

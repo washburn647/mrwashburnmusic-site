@@ -155,7 +155,9 @@ async function start() {
     pins.append(pin);
     const note = { n, x: Math.round(x), y: Math.round(y), text: '', under };
     m.notes.push(note);
-    box.addEventListener('input', () => { note.text = box.value; });
+    // The box grows with the note, so the saved picture shows all of it.
+    const fit = () => { box.style.height = 'auto'; box.style.height = `${box.scrollHeight + 4}px`; };
+    box.addEventListener('input', () => { note.text = box.value; fit(); });
     box.addEventListener('pointerdown', (e) => e.stopPropagation());
     setTimeout(() => box.focus(), 0);
   }
@@ -229,9 +231,11 @@ async function shoot() {
       await video.play();
       stream.getVideoTracks()[0].addEventListener('ended', () => { capture = null; });
       capture = { stream, video };
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 700)); // the first frames can predate the prompt
     }
+    // Let the screen (toolbar hidden) reach the capture before taking the frame.
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await new Promise((r) => setTimeout(r, 250));
     const { video } = capture;
     const scale = Math.min(1, 1100 / Math.max(video.videoWidth, video.videoHeight));
     const c = document.createElement('canvas');

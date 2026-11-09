@@ -109,7 +109,11 @@ export function howTo({ task, step, stim }, game = null) {
     du: create ? 'answer on the du and du-de tiles, in time' : 'tap it on the du and du-de tiles, in time',
     note: create ? 'write your own answer with the notes' : 'tap the notes to write it',
   };
-  return { how: `${first}${lines[task]}.`, go: taskById(task).cue, look: l };
+  // short: the line shown during a game, a glance long ("Listen, then tap.").
+  const lead = { both: 'Listen and read', listen: 'Listen', read: 'Read' }[l];
+  const verb = create ? 'make your own' : { say: 'say it', tap: 'tap', play: 'play', du: 'tap', note: 'write it' }[task];
+  const short = lead ? `${lead}, then ${verb}.` : `${verb[0].toUpperCase()}${verb.slice(1)}.`;
+  return { how: `${first}${lines[task]}.`, short, go: taskById(task).cue, look: l };
 }
 
 /* An intro's lines for a task at a step, from the tables above (intro.js can replace them). */

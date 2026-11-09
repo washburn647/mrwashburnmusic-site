@@ -50,6 +50,9 @@ export function introFor(key, game = null) {
   };
 }
 
+/* An intro's words as one passage, the way 🔊 reads them. */
+export const introSpeech = (it) => [it.title.replace('/', ' or '), ...it.lines].join(' ');
+
 /* Show the intro in `host` and call done() when the learner is ready to play.
    ui: { h, notes, sylIcons, mic } from main.js (mic: the mic is on). game: whose object and
    instrument the practice uses. practice: just the practice round, from My progress (no NEW
@@ -88,15 +91,10 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
   const ready = () => { go.disabled = !practice && tries < it.tries; };
   ready();
 
-  // 🔊: the intro's words, read aloud by the device's voice (Kyle's recording can replace it).
-  const voice = typeof speechSynthesis !== 'undefined';
-  const stopVoice = () => { if (voice) speechSynthesis.cancel(); };
-  const readAloud = () => {
-    stopVoice();
-    const u = new SpeechSynthesisUtterance([it.title.replace('/', ' or '), ...it.lines].join(' '));
-    u.rate = 0.92;
-    speechSynthesis.speak(u);
-  };
+  // 🔊: Kyle's narration of this intro (narration.js), or the device's voice until it's recorded.
+  const voice = true;
+  const stopVoice = () => snd.hush();
+  const readAloud = () => snd.narrate(`intro-${key}`, introSpeech(it));
 
   const cell = cellOf(task.id, step.n);
   const hears = cell.some((x) => x.hear);

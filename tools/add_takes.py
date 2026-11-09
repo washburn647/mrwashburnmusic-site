@@ -4,7 +4,7 @@
 
 Unpacks the zip's mp3s into assets/sounds/voice/<voice>/ and lists them in
 assets/sounds/index.json by pattern id (see assets/patterns/patterns.js; "bum" takes carry
-"as": "bum") and cue words by id (musician-maker/cues.js), replacing that
+"as": "bum") and cue words by id (musician-maker/cues.js; narration as line/<id>, narration.js), replacing that
 voice's earlier list: the zip holds every take the recorder has, so takes deleted there go
 here too. The recorder's units (patterns kept, familiar or unfamiliar) go in
 assets/patterns/units.json.
@@ -20,7 +20,7 @@ import zipfile
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 OUT = os.path.join(ROOT, 'assets', 'sounds')
 UNITS = os.path.join(ROOT, 'assets', 'patterns', 'units.json')
-SAFE = re.compile(r'^voice/[a-z0-9]+/((rhythm|tonal)/[a-z0-9/-]+/(bum/)?[a-z]+(-[A-G][bs]?)?|cue/[a-z-]+)-\d+\.mp3$')
+SAFE = re.compile(r'^voice/[a-z0-9]+/((rhythm|tonal)/[a-z0-9/-]+/(bum/)?[a-z]+(-[A-G][bs]?)?|cue/(line/)?[a-z0-9-]+)-\d+\.mp3$')
 
 
 def main():
