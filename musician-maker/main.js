@@ -17,6 +17,7 @@ import { GAMES, mouseCatcher, bump } from './games.js';
 import * as OPT from './options.js';
 import { showIntro } from './intro.js';
 import { mookie } from './mookie.js';
+import { MIC_SPEECH } from './narration.js';
 import * as TX from './transitions.js';
 import * as FX from './effects.js';
 import { cueId } from './cues.js';
@@ -69,8 +70,6 @@ const seatInfo = (layer) => snd.layerInfo(snd.grooveNow(), layer);
 const bandAt = (tier) => SEATS.filter(([, t]) => t <= tier).map(([layer]) => seatInfo(layer).icon).reverse();
 const PRAISE = ['Yes!', 'Nice!', 'Got it!', 'Woo!', 'Yeah!'];
 const STICKERS = ['🧀', '🐭', '🥁', '🎺', '🎻', '🪕', '🎷', '🏆'];
-const GAGS = ['Mookie licks a paw. Coolly.', 'Mookie knocks a pencil off the desk.', 'Mookie does a little stretch.',
-  'Mookie stares at nothing for a while.', 'Mookie pretends that was on purpose.', 'Mookie purrs in 2/4.'];
 
 /* Small DOM builder. Text always goes in as text, never as HTML. */
 function h(tag, props = {}, ...kids) {
@@ -121,6 +120,7 @@ function seg(options, value, change) {
 
 /* Which screen is showing, for the page background (the title is a stage at night). */
 function scene(name) {
+  if (document.body.dataset.screen !== name) snd.hush();
   document.body.dataset.screen = name;
   markup.refresh();
 }
@@ -562,7 +562,8 @@ function micGate(go, problem = '') {
   app.replaceChildren(h('div', { class: 'progress howto mic-gate' },
     h('button', { class: 'back', 'aria-label': 'Back', onclick: title }, '‹'),
     h('div', { class: 'mic-big', 'aria-hidden': 'true' }, '🎤'),
-    h('h2', {}, 'Sing with the mic!'),
+    h('h2', { class: 'with-speak' }, 'Sing with the mic!',
+      h('button', { class: 'speak', 'aria-label': 'Read it to me', onclick: () => snd.narrate('mic', MIC_SPEECH) }, '🔊')),
     check, help,
     h('button', { class: 'play', onclick: () => { micChoice = 'mic'; go(); } }, 'Let\'s play'),
     h('button', { class: 'link', onclick: () => { micChoice = 'none'; go(); } }, 'Play without the mic')));
@@ -591,7 +592,6 @@ async function startRun(opts = {}) {
     combo: 0, runCombo: 0, runXP: 0, setXP: 0, setMisses: 0, setGames: 0, tempo: LADDER()[0],
     lastGame: null, micOn, paused: false, ended: false, win: null, api: null,
     groove: { mode: 'play', duckFrom: 0, duckUntil: 0, micFrom: Infinity },
-    before: Object.fromEntries(STEPS.slice(1).map((s) => [s.n, dir.step(s.n).s])),
     news: micError ? [micError] : [],
     log: recording ? [] : null, // Test mode: every turn, saved with the mic recording
   };
@@ -627,9 +627,16 @@ function lapPlan() {
   return plan;
 }
 
+/* Every step's strength now, to show what a set or lap added. */
+const strengths = () => Object.fromEntries(STEPS.slice(1).map((s) => [s.n, dir.step(s.n).s]));
+
 function beginLap() {
   R.plan = lapPlan();
   R.idx = 0;
+  R.lapBefore = strengths();
+  R.lapSteps = new Set();
+  R.setBefore = R.lapBefore;
+  R.setSteps = new Set();
   const g = pickGroove();
   if (g && snd.grooveList(UNIT.meter).length > 1) R.news.push(`Groove: ${g.name}`);
   countIn();
@@ -825,6 +832,34 @@ function callOut(item, game, t, spb) {
   snd.call(item.pattern, hear, t, spb, game.play);
   const syl = hear.startsWith('syllables');
   onsets(item.pattern).forEach((o, i) => later(t + o.b * spb, () => R.api.onCall(i, syl ? o.syl : null)));
+  if (item.task === 'du' && item.step === 2) fingerShows(item.pattern, t, spb);
+}
+
+/* Du It at step 2 (CS Rote): while the call plays, a finger taps the tile for each syllable
+   it says, in time (du-de twice), so the learner sees which tile is which. */
+function fingerShows(pattern, t, spb) {
+  const host = R.dom.controls;
+  const hand = h('span', { class: 'ghost', 'aria-hidden': 'true' }, '👆');
+  const tileOf = (o) => host.querySelector(pattern.cells[Math.floor(o.b)] === 'q' ? '.du-q' : '.du-ee');
+  const point = (tile) => {
+    if (!tile) return;
+    if (!hand.isConnected) host.append(hand);
+    const box = host.getBoundingClientRect();
+    const r = tile.getBoundingClientRect();
+    hand.style.left = `${r.left - box.left + r.width / 2}px`;
+    hand.style.top = `${r.top - box.top + r.height * 0.55}px`;
+    hand.classList.add('on');
+  };
+  onsets(pattern).forEach((o) => {
+    later(t + (o.b - 0.35) * spb, () => point(tileOf(o)));
+    later(t + o.b * spb, () => {
+      const tile = tileOf(o);
+      point(tile);
+      bump(hand, 'tap');
+      if (tile) bump(tile, 'hit');
+    });
+  });
+  later(t + 4 * spb, () => hand.remove());
 }
 
 /* What a turn needs from the run: the clock, sounds, the mic, and tap feedback drawn on the
@@ -1013,7 +1048,7 @@ function instruction(item, game) {
   const key = taskKey(item.task, item.step);
   const fresh = !st.seen[key];
   st.seen[key] = 1;
-  const { how, look } = howTo(item, game);
+  const { short: how, look } = howTo(item, game);
   return h('div', { class: `say${fresh ? ' new' : ''}` },
     st.mookie ? mookie('happy') : h('span', { class: 'ic' }, LOOK_ICON[look] || '✏️'),
     fresh ? h('b', { class: 'tag' }, 'NEW') : null,
@@ -1025,7 +1060,7 @@ function instruction(item, game) {
 function bigHow(item, game) {
   const wrap = R.dom.stage.parentElement;
   wrap.querySelector('.how-big')?.remove();
-  const el = h('div', { class: 'how-big' }, h('span', {}, howTo(item, game).how));
+  const el = h('div', { class: 'how-big' }, h('span', {}, howTo(item, game).short));
   el.style.animationDuration = `${Math.max(2.4, 4 * R.clock.spb())}s`;
   el.addEventListener('animationend', () => el.remove());
   wrap.append(el);
@@ -1047,6 +1082,8 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
   const rec = dir.record({ item, right: res.right, bpm: R.tempo });
   if (rec.mastered) R.news.push(`★ Step ${rec.mastered} mastered: ${STEPS[rec.mastered].name}`);
   R.setGames++;
+  R.setSteps?.add(item.step);
+  R.lapSteps?.add(item.step);
   if (res.right) {
     const before = tierOf(R.combo);
     R.combo++;
@@ -1114,42 +1151,88 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
 function breather(B, seg) {
   const T = (i) => R.clock.timeOf(i);
   R.groove.mode = 'breakdown';
-  const lines = [];
-  if (R.setMisses === 0 && R.setGames > 0) lines.push(`No misses! +${addXP(50)} XP`);
+  const chips = [];
+  if (R.combo >= 3) chips.push(['🔥', `${R.combo} in a row`]);
+  if (R.setMisses === 0 && R.setGames > 0) chips.push(['🎯', `No misses +${addXP(50)}`]);
   const lvBefore = levelOf(st.xp - R.setXP).n;
   const lv = levelOf(st.xp);
-  if (lv.n > lvBefore) lines.push(`Level up! ${lv.title}`);
+  if (lv.n > lvBefore) chips.push(['⬆️', `Level ${lv.n}`]);
   if (!R.force) {
     const opened = dir.advance();
     if (opened) {
-      lines.push(`NEW STEP: ${STEPS[opened].name}!`);
+      chips.push(['🆕', `Step ${opened}`]);
       snd.speak('new-step', T(B));
     }
-    if (dir.step(12).mastered && !st.unitDone) { st.unitDone = true; lines.push('Unit 1 complete!'); }
+    if (dir.step(12).mastered && !st.unitDone) { st.unitDone = true; chips.push(['🏆', 'Unit 1']); }
   }
-  lines.push(...R.news.splice(0));
+  const news = R.news.splice(0);
   const setXP = R.setXP;
+  const played = [...R.setSteps].sort((a, b) => a - b);
+  const before = R.setBefore;
   R.setXP = 0;
   R.setMisses = 0;
   R.setGames = 0;
+  R.setBefore = strengths();
+  R.setSteps = new Set();
   save();
+  const sets = R.plan.filter((x) => x.type === 'breather').length;
   later(T(B), () => {
-    const count = h('div', { class: 'big-xp' }, '+0');
-    overlay(h('div', { class: 'card breather' },
-      h('div', { class: 'cue-word small' }, `Set ${seg.set + 1} done`),
-      count,
-      R.combo >= 3 ? h('p', {}, `${R.combo} in a row, keep it going!`) : null,
-      ...lines.map((l) => h('p', { class: 'news' }, l)),
-      h('div', { class: 'gag' }, mookie('happy'), h('span', {}, GAGS[Math.floor(Math.random() * GAGS.length)]))));
-    // XP counts up on the beat, with a pop of notes; confetti for no misses or a level up.
-    for (let k = 1; k <= 4; k++) later(T(B + k), () => { count.textContent = `+${Math.round(setXP * k / 4)}`; bump(count, 'beat'); FX.burst(count, { kind: 'notes', count: 5, spread: 0.6 }); });
-    if (lines.some((l) => /No misses|Level up|NEW STEP|complete/.test(l))) later(T(B + 1), () => FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.2, count: 30, spread: 1.6 }));
+    const count = h('span', {}, '+0');
+    const spb = R.clock.spb();
+    overlay(h('div', { class: 'card breather win' },
+      h('div', { class: 'win-head' },
+        h('div', { class: 'set-dots', 'aria-label': `Set ${seg.set + 1} of ${sets}` },
+          ...Array.from({ length: sets }, (_, k) => h('i', { class: k <= seg.set ? 'on' : '' }))),
+        h('div', { class: 'cue-word small' }, `Set ${seg.set + 1} ✓`)),
+      h('div', { class: 'big-xp' }, h('span', { class: 'star' }, '⭐'), count),
+      chips.length ? h('div', { class: 'win-chips' }, ...chips.map(([ic, t]) => chip(ic, t))) : null,
+      growth(played, before, spb),
+      ...news.map((l) => h('p', { class: 'news' }, l)),
+      dancer(spb)));
+    // XP counts up on the beat, with a pop of notes; confetti for no misses, a level or a step.
+    for (let k = 1; k <= 4; k++) later(T(B + k), () => { count.textContent = `+${Math.round(setXP * k / 4)}`; bump(count.parentElement, 'beat'); FX.burst(count, { kind: 'notes', count: 5, spread: 0.6 }); });
+    if (chips.some(([ic]) => ic !== '🔥')) later(T(B + 1), () => FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.2, count: 30, spread: 1.6 }));
     hud();
   });
   R.clock.at(B + 8, () => {
     R.groove.mode = 'play';
     next(B + 8);
   });
+}
+
+const chip = (ic, text) => h('span', { class: 'win-chip' }, h('span', { 'aria-hidden': 'true' }, ic), text);
+
+/* Mookie dances to the beat on the set and lap screens. */
+function dancer(spb) {
+  const m = mookie('happy');
+  m.classList.add('dance');
+  m.style.animationDuration = `${2 * spb}s`;
+  return m;
+}
+
+/* The steps played, each with its strength before (filled) and what was added (growing in),
+   a ★ when it's mastered. */
+function growth(ns, before, spb) {
+  if (!ns.length) return null;
+  const rows = ns.map((n, i) => {
+    const s = STEPS[n];
+    const was = Math.round(before?.[n] ?? 0);
+    const now = Math.round(dir.step(n).s);
+    const add = h('i', { class: 'add' });
+    const lost = h('i', { class: 'lost' });
+    const base = h('i', { class: 'was' });
+    base.style.width = `${Math.min(was, now)}%`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      add.style.transitionDelay = lost.style.transitionDelay = `${0.3 + i * spb * 0.5}s`;
+      add.style.width = `${Math.max(0, now - was)}%`;
+      lost.style.width = `${Math.max(0, was - now)}%`;
+    }));
+    return h('div', { class: `sg ${s.band}` },
+      h('span', { class: 'sg-n' }, String(n), dir.step(n).mastered ? h('b', {}, '★') : null),
+      h('span', { class: 'sg-mid' }, h('small', {}, s.name), h('span', { class: 'sg-bar' }, base, add, lost)),
+      h('b', { class: 'sg-plus' }, now > was ? `+${now - was}` : ''));
+  });
+  return h('div', { class: 'sgrow' }, ...rows);
 }
 
 /* ---------------- boss ---------------- */
@@ -1215,7 +1298,7 @@ function boss(B) {
     later(T(call), () => {
       R.dom.prompt.querySelector('.notation')?.remove();
       R.dom.prompt.querySelector('.say')?.remove();
-      const { how, look } = howTo(item, game);
+      const { short: how, look } = howTo(item, game);
       R.dom.prompt.append(h('div', { class: 'say' }, h('span', { class: 'ic' }, LOOK_ICON[look] || '✏️'), h('span', {}, how)));
       if (item.stim.see) R.dom.prompt.append(notes(item.pattern));
       R.item = item;
@@ -1274,16 +1357,19 @@ function intermission() {
   R.clock.stop();
   R.groove.mode = 'off';
   snd.grooveStop();
-  const grown = STEPS.slice(1).filter((s) => dir.step(s.n).s - R.before[s.n] >= 5)
-    .map((s) => `${s.name} +${Math.round(dir.step(s.n).s - R.before[s.n])}`);
   const lv = levelOf(st.xp);
-  overlay(h('div', { class: 'card intermission' },
-    h('div', { class: 'cue-word small' }, `Lap ${R.lap + 1} done!`),
-    h('div', { class: 'big-xp' }, `+${R.runXP} XP`),
-    h('p', {}, `Best combo this run: ${R.runCombo} · Level ${lv.n} ${lv.title}`),
+  const tile = (ic, big, small) => h('div', { class: 'win-tile' }, h('span', { class: 'ic', 'aria-hidden': 'true' }, ic), h('b', {}, big), h('small', {}, small));
+  const nextN = R.force || st.frontier;
+  overlay(h('div', { class: 'card intermission win' },
+    h('div', { class: 'win-head' }, h('div', { class: 'cue-word small' }, `Lap ${R.lap + 1} ✓`)),
+    h('div', { class: 'win-tiles' },
+      tile('⭐', `+${R.runXP}`, 'XP'),
+      tile('🔥', String(R.runCombo), 'best in a row'),
+      tile('🏅', `Level ${lv.n}`, lv.title)),
     ...R.news.splice(0).map((n) => h('p', { class: 'news' }, n)),
-    grown.length ? h('p', {}, `Skills that grew: ${grown.join(', ')}`) : null,
-    h('p', {}, `Next up: ${STEPS[R.force || st.frontier].name}`),
+    growth([...R.lapSteps].sort((a, b) => a - b), R.lapBefore, 0.5),
+    h('div', { class: 'win-next' }, h('small', {}, 'Next'), h('span', { class: `sg-n ${STEPS[nextN].band}` }, String(nextN)), h('b', {}, STEPS[nextN].name)),
+    dancer(0.6),
     h('div', { class: 'row' },
       h('button', { class: 'play', onclick: () => { overlay(null); R.lap++; beginLap(); } }, 'Keep going'),
       h('button', { class: 'link', onclick: endRun }, 'Done for today'))));

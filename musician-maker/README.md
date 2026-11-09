@@ -25,6 +25,13 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   pulse and every other sound (scene, gags, effects, on the `fxBus`) goes nearly silent
   (`snd.clear`), so only the pattern to copy stands out. Each boss round ends with a 4-beat
   payoff, so its hit or miss never lands on the next call.
+- **Set and lap screens:** a set's breather shows its XP counting up, chips (🔥 in a row,
+  🎯 no misses, ⬆️ level, 🆕 step), and each step played in the set as a bar: its strength
+  before, and what the set added growing in (a ★ when mastered), with Mookie dancing on the
+  beat. The lap screen has tiles (XP, best in a row, level), the boss's result, the lap's
+  steps the same way, and the next step.
+- **Du It at step 2 (CS Rote):** while the call plays, a 👆 taps the tile for each syllable
+  in time. Not at 3 and 4, where hearing which is which is the skill.
 - **Band seats:** either side of the bouncing ball, one seat per layer (bass, drums, horns,
   keys). Each lights up when its layer joins at a combo tier and bobs on the beat.
 - **Tasks** (`tasks.js`, Kyle's writeup cell by cell): Speak/Sing It (steps 1–8, said or sung
@@ -67,6 +74,10 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   the site's sampled instruments for anything missing. Busses: the call on `master`, the
   groove on its own, everything else on `fxBus`, which `clear(from, to)` turns down.
 - `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
+- `narration.js`: the words behind every 🔊 button (the intros, the mic screen), which Kyle
+  records at `/studio/record/` (Narration: free length, one take each). They publish with the
+  cues as `line/<id>`; `sound.js` `narrate()` plays Kyle's take, or the device's voice until
+  there is one.
 - `grooves.json`: the grooves, made in the studio's Groove Lab (`/studio/groove/`, added with
   `tools/add_grooves.py`). The game plays what the Lab last published (`/api/live/grooves.json`)
   ahead of this file. Notes on a 16th-note grid in six layers, so they play at any tempo. A groove can have a
@@ -86,7 +97,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `intro.js`: task intros. The first time a task comes up at a step (`say-1`, `du-2`, …), the
   stream stops for a pop-up built for kids who don't read well yet: a picture strip (👂 listen
   and/or 👀 look ➜ the thing they do ➜ copy it or make your own), the lines with a 🔊 button that
-  reads them aloud (the device's voice), Kyle's recorded message when there is one (audio or
+  reads them aloud (Kyle's narration, or the device's voice until it's recorded), Kyle's recorded message when there is one (audio or
   video in `intros/`), and the turn itself. It plays a demo first: a 👆 hand taps the right
   tiles or the object in time (or the mic shows the syllables), then "Your turn!" and a slow
   practice try with no score; ▶ Watch shows it again. "Let's play"

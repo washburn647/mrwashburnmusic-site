@@ -10,7 +10,10 @@
    voice-kyle.zip (every take, tagged by pattern, plus the units): a backup Restore reads, and
    what tools/add_takes.py puts in the repo.
    Each pattern is recorded in syllables and on "bum" (Musician Maker's neutral call), and
-   Cue words holds Musician Maker's spoken cues (musician-maker/cues.js), at one speed. */
+   Cue words holds Musician Maker's spoken cues (musician-maker/cues.js), at one speed.
+   Narration holds the words behind Musician Maker's 🔊 read-aloud buttons
+   (musician-maker/narration.js): free length, no count-in, Record then Stop, one take each
+   (recording again replaces it). They publish with the cues, as line/<id>. */
 
 import * as samples from '/assets/sounds/samples.js';
 import { METERS, TONALITIES, KEYS, DEFAULT_UNITS, unitPatterns, conceptLabel, toneMidi, patternById } from '/assets/patterns/patterns.js';
@@ -18,6 +21,7 @@ import { notation } from '/assets/patterns/notation.js';
 import { h, confirmButton } from '../dom.js';
 import { makeZip, readZip } from './zip.js';
 import { CUES, cueById } from '/musician-maker/cues.js';
+import { LINES, lineById } from '/musician-maker/narration.js';
 
 const app = document.getElementById('app');
 const SPEEDS = { slow: 'Slow', medium: 'Medium', fast: 'Fast' };
@@ -26,6 +30,8 @@ const FILTERS = { all: 'All', familiar: 'Familiar', unfamiliar: 'Unfamiliar', un
 const KINDS = { rhythm: 'Rhythm', tonal: 'Tonal' };
 const VOICES = { syllables: 'Syllables', bum: 'On “bum”' };
 const CUE_UNIT = 'cues'; // the Cue words list, shown in place of a unit
+const LINE_UNIT = 'lines'; // the Narration list, the same way
+const LINE_MAX = 90; // seconds: a narration take stops on its own after this
 const CUE_SPEED = 'medium'; // cue words are recorded once, at this speed
 const ZIP_NAME = 'voice-kyle.zip';
 
@@ -281,16 +287,25 @@ let status = { text: '', bad: false };
 let folder = null; // where Save for site writes, once picked
 
 const cuesShown = () => settings.unit === CUE_UNIT;
+const linesShown = () => settings.unit === LINE_UNIT;
+const listShown = () => cuesShown() || linesShown(); // a Musician Maker list, not a unit
 const unitNow = () => units.find((u) => u.id === settings.unit) || units[0];
 const isCue = (id) => id?.startsWith('cue/');
+const isLine = (id) => id?.startsWith('cue/line/');
 const takeAs = (t) => t.as || 'syllables';
 const asFor = (id) => (isCue(id) ? 'cue' : settings.as);
 const takesFor = (id, speed) => takes.filter((t) => t.pattern === id && takeAs(t) === asFor(id)
   && (!speed || isCue(id) || t.speed === speed)).sort((a, b) => a.created - b.created);
-const done = (id, speed) => takesFor(id, speed).length >= settings.want;
+const done = (id, speed) => takesFor(id, speed).length >= (isLine(id) ? 1 : settings.want);
 // A cue word as the recorder handles it: 2 beats, no notation.
 const cueItem = (c) => ({ id: `cue/${c.id}`, kind: 'cue', text: c.text });
-const itemById = (id) => (isCue(id) ? (cueById(id.slice(4)) ? cueItem(cueById(id.slice(4))) : null) : patternById(id));
+// A narration line: read at its own pace, no beats.
+const lineItem = (l) => ({ id: `cue/line/${l.id}`, kind: 'line', text: l.text, label: l.label, group: l.group });
+const itemById = (id) => {
+  if (isLine(id)) return lineById(id.slice(9)) ? lineItem(lineById(id.slice(9))) : null;
+  if (isCue(id)) return cueById(id.slice(4)) ? cueItem(cueById(id.slice(4))) : null;
+  return patternById(id);
+};
 const tonicOf = (p) => (p.kind === 'tonal' ? settings.key[p.tonality] : null);
 const saveUnits = () => misc.put(units, 'units');
 
@@ -341,6 +356,7 @@ const describe = (u) => {
 
 function render() {
   if (cuesShown()) return renderCues();
+  if (linesShown()) return renderLines();
   const u = unitNow();
   const all = u ? unitPatterns(u) : [];
   const kept = all.filter((p) => !u.removed.includes(p.id));
@@ -422,6 +438,40 @@ function renderCues() {
   app.querySelector('.card.on')?.scrollIntoView({ block: 'nearest' });
 }
 
+/* Narration: each 🔊 spot's words, to read in your own way. Grouped like the app. */
+function renderLines() {
+  shown = LINES.map(lineItem);
+  if (!shown.some((c) => c.id === current)) current = (shown.find((c) => !done(c.id)) || shown[0]).id;
+  const have = shown.filter((c) => done(c.id)).length;
+  const groups = [...new Set(shown.map((c) => c.group))];
+  app.replaceChildren(
+    ...top(null),
+    h('div', { class: 'bar summary' },
+      h('h2', {}, 'Narration'),
+      h('span', { class: 'total' }, `${have} of ${shown.length} recorded`),
+    ),
+    h('p', { class: 'hint' }, 'What the 🔊 buttons in Musician Maker say. Pick one, tap Record, read it your way, then Stop. Recording again replaces it. Publish to site and the game plays yours; anything not recorded is read by the device\'s voice.'),
+    ...groups.flatMap((g) => [
+      h('h3', { class: 'group-head' }, g),
+      h('div', { class: 'grid lines' }, shown.filter((c) => c.group === g).map((c) => {
+        const pick = () => { if (!recording) { current = c.id; render(); } };
+        return h('div', {
+          class: `card${c.id === current ? ' on' : ''}${done(c.id) ? ' complete' : ''}`,
+          tabindex: 0,
+          dataset: { id: c.id },
+          onclick: pick,
+          onkeydown: (e) => { if (e.key === 'Enter' && e.target === e.currentTarget) pick(); },
+        },
+        h('b', { class: 'line-label' }, c.label),
+        h('span', { class: 'line-text' }, c.text),
+        h('span', { class: 'counts' }, h('span', { class: done(c.id) ? 'sp done' : 'sp' }, done(c.id) ? '✓ Recorded' : 'Not yet')));
+      })),
+    ]),
+    stage(null),
+  );
+  app.querySelector('.card.on')?.scrollIntoView({ block: 'nearest' });
+}
+
 /* Title, microphone and the unit picker: the top of every view. */
 function top(u) {
   const restore = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true, onchange: () => { restoreZip(restore.files[0]); restore.value = ''; } });
@@ -451,7 +501,9 @@ function top(u) {
       h('div', { class: 'group' },
         h('span', { class: 'label' }, 'Musician Maker'),
         h('span', { class: 'seg' }, h('button', { class: cuesShown() ? 'on' : '', onclick: () => pickUnit(CUE_UNIT) },
-          h('b', {}, 'Cue words'), h('small', {}, `${CUES.length} words`)))),
+          h('b', {}, 'Cue words'), h('small', {}, `${CUES.length} words`)),
+        h('button', { class: linesShown() ? 'on' : '', onclick: () => pickUnit(LINE_UNIT) },
+          h('b', {}, 'Narration'), h('small', {}, `${LINES.length} spots`)))),
     ),
   ];
 }
@@ -602,7 +654,7 @@ function observe() {
   app.querySelectorAll('.card .staff:empty').forEach((el) => observer.observe(el.parentElement));
 }
 
-const beatsOf = (p) => (p.kind === 'cue' ? 2 : p.kind === 'rhythm' ? p.cells.length : p.tones.length);
+const beatsOf = (p) => (p.kind === 'line' ? 0 : p.kind === 'cue' ? 2 : p.kind === 'rhythm' ? p.cells.length : p.tones.length);
 const bumOf = (p) => p.syllables.replace(/[a-z]+/gi, 'bum');
 
 function stage(u) {
@@ -612,6 +664,7 @@ function stage(u) {
   const list = takesFor(p.id, settings.speed);
   let now;
   if (p.kind === 'cue') now = h('div', { class: 'now' }, h('span', { class: 'word' }, p.text));
+  else if (p.kind === 'line') now = h('div', { class: 'now line' }, h('small', {}, p.label), h('span', { class: 'script' }, p.text));
   else {
     const staff = h('span', { class: 'staff' });
     staff.innerHTML = notation(p, tonicOf(p));
@@ -624,7 +677,8 @@ function stage(u) {
   return h('div', { class: 'stage' },
     now,
     h('div', { class: 'controls' },
-      p.kind === 'cue'
+      p.kind === 'line' ? h('span', { class: 'label' }, 'Record, read it, then Stop')
+      : p.kind === 'cue'
         ? h('span', { class: 'label' }, `${SPEEDS[CUE_SPEED]} ${settings.bpm[CUE_SPEED]} · ${list.length}`)
         : seg(Object.fromEntries(Object.entries(SPEEDS).map(([s, label]) => [s, `${label} ${settings.bpm[s]} · ${takesFor(p.id, s).length}`])),
           settings.speed, (v) => { if (!recording) { settings.speed = v; save(); render(); } }),
@@ -632,7 +686,7 @@ function stage(u) {
         h('button', { title: `${take.bpm} bpm`, onclick: () => playBlob(take.mp3) }, `▶ ${i + 1}${take.key != null ? ` ${pretty(keyName(p.tonality, take.key))}` : ''}`),
         h('button', { class: 'x', title: 'Delete take', onclick: async () => { await takeStore.delete(take.id); takes = await takeStore.all(); render(); } }, '×')))),
       h('span', { class: 'grow' }),
-      h('div', { class: 'beats' },
+      p.kind === 'line' ? null : h('div', { class: 'beats' },
         Array.from({ length: settings.countIn }, () => h('span', { class: 'count' })),
         Array.from({ length: beatsOf(p) }, () => h('span', { class: 'go' }))),
       h('div', { class: 'level', title: 'Microphone level' }, h('div')),
@@ -681,6 +735,7 @@ function record(p) {
   recorder.start();
   const begun = ctx.currentTime;
 
+  if (p.kind === 'line') return recordLine(p, recorder, parts, begun, btn);
   let t0 = begun + 0.2;
   if (p.kind === 'tonal') {
     // The key: tonic chord up and back to the tonic, then the pattern's first note.
@@ -748,6 +803,44 @@ function record(p) {
   recording = { cancel: () => finish(false) };
   btn.textContent = 'Stop';
   btn.classList.add('live');
+}
+
+/* A narration take: no count-in, as long as it takes; Stop keeps it. It replaces the line's
+   earlier take. */
+function recordLine(p, recorder, parts, begun, btn) {
+  say('Go: read it, then tap Stop');
+  const cap = setTimeout(() => finish(true), LINE_MAX * 1000);
+  let keep = true;
+  function finish(kept) {
+    keep = kept;
+    if (recorder.state !== 'inactive') recorder.stop();
+  }
+  recorder.onerror = (e) => say(`Recording failed: ${e.error?.message || 'unknown error'}`, true);
+  recorder.onstop = async () => {
+    clearTimeout(cap);
+    recording = null;
+    btn.textContent = 'Record';
+    btn.classList.remove('live');
+    if (!keep) { say('Stopped, nothing saved'); return; }
+    say('Saving…');
+    try {
+      const take = await processTake(new Blob(parts, { type: recorder.mimeType }), 0.05);
+      if (!take) { say('Too quiet, nothing saved. Check the microphone level.', true); return; }
+      const old = takesFor(p.id);
+      await takeStore.put({ id: crypto.randomUUID(), pattern: p.id, as: 'cue', speed: CUE_SPEED, bpm: 0, key: null, created: Date.now(), ...take });
+      for (const t of old) await takeStore.delete(t.id);
+      playBlob(take.mp3);
+      takes = await takeStore.all();
+      say(`Saved (${take.seconds.toFixed(1)} s)`);
+      render();
+    } catch (e) {
+      say(`Couldn't save the take: ${e.message}`, true);
+    }
+  };
+  recording = { cancel: () => finish(true) };
+  btn.textContent = 'Stop';
+  btn.classList.add('live');
+  void begun;
 }
 
 /* ---------- Save for site, and restore ---------- */
@@ -903,8 +996,8 @@ async function restoreZip(file) {
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('textarea, input, select') || e.ctrlKey || e.metaKey || e.altKey) return;
-  const u = cuesShown() ? null : unitNow();
-  if ((!u && !cuesShown()) || !current) return;
+  const u = listShown() ? null : unitNow();
+  if ((!u && !listShown()) || !current) return;
   if (e.code === 'Space') {
     if (e.target.closest('.rec')) return; // the button's own click
     e.preventDefault();

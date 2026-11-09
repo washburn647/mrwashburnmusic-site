@@ -485,6 +485,35 @@ export function speak(id, t) {
   return true;
 }
 
+/* Read aloud (a 🔊 button): Kyle's narration of that spot (narration.js id) once it's
+   recorded and published, otherwise the device's voice reading `text`. hush() stops it. */
+let talk = 0;
+let stopTalk = null;
+export async function narrate(id, text) {
+  hush();
+  const mine = ++talk;
+  const c = ac();
+  if (c.state === 'suspended') c.resume().catch(() => {});
+  await load();
+  if (mine !== talk) return;
+  if (kyle?.hasCue(`line/${id}`)) {
+    stopTalk = await kyle.cue(`line/${id}`, c.currentTime + 0.05, { dest: master });
+    if (mine !== talk) hush();
+    return;
+  }
+  if (typeof speechSynthesis === 'undefined') return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.92;
+  speechSynthesis.speak(u);
+}
+export function hush() {
+  talk++;
+  stopTalk?.();
+  stopTalk = null;
+  if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+}
+export const hasNarration = (id) => !!kyle?.hasCue(`line/${id}`);
+
 /* ---------- effects ---------- */
 
 export const fx = {
