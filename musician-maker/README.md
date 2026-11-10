@@ -54,6 +54,9 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   face, hat, glasses, what it holds and its background. Everything is a picture with a price; a
   tap tries it on, ✓ buys it, and short of notes a bar shows how far there is to go. The avatar
   dances with Mookie on the set and lap screens.
+  Grooves are bought there too (the 🎵 tab): the first groove is free, every other costs
+  `GROOVE_PRICE` notes (`avatar.js`; a groove in `grooves.json` can carry its own `price`). A tap
+  plays two bars of it. The title's Groove button and Mix only use grooves the learner has.
 
 ## Files
 

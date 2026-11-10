@@ -17,7 +17,7 @@ import { GAMES, mouseCatcher, bump } from './games.js';
 import * as OPT from './options.js';
 import { showIntro } from './intro.js';
 import { mookie } from './mookie.js';
-import { avatar, lookOf, token, EARN } from './avatar.js';
+import { avatar, lookOf, token, EARN, ownsGroove } from './avatar.js';
 import { closet } from './closet.js';
 import { MIC_SPEECH } from './narration.js';
 import * as TX from './transitions.js';
@@ -126,14 +126,21 @@ function scene(name) {
   markup.refresh();
 }
 
+/* The grooves the learner can play: the ones bought with music notes in the closet (and the
+   free one). A workshop test run plays any. */
+function myGrooves() {
+  const list = snd.grooveList(UNIT.meter);
+  return TEST ? list : list.filter((g) => ownsGroove(st, g, list));
+}
+
 /* Which groove plays: Mix (a different one each lap) or one the learner picks. Each tap
    moves to the next. The list loads with the sounds, so it fills in once they have. */
 function groovePick() {
-  const label = () => (st.groove === 'mix' ? 'Mix: a new one each lap' : snd.grooveList(UNIT.meter).find((g) => g.id === st.groove)?.name || 'Mix: a new one each lap');
+  const label = () => (st.groove === 'mix' ? 'Mix: a new one each lap' : myGrooves().find((g) => g.id === st.groove)?.name || 'Mix: a new one each lap');
   const small = h('small', {}, label());
   const b = h('button', { class: 'switch groove-pick', onclick: () => {
-    const ids = ['mix', ...snd.grooveList(UNIT.meter).map((g) => g.id)];
-    st.groove = ids[(ids.indexOf(st.groove) + 1) % ids.length] || 'mix';
+    const ids = ['mix', ...myGrooves().map((g) => g.id)];
+    st.groove = ids[(Math.max(0, ids.indexOf(st.groove)) + 1) % ids.length] || 'mix';
     save();
     small.textContent = label();
   } }, h('span', { class: 'sw-text' }, h('b', {}, 'Groove'), small), h('span', { class: 'gp-ico', 'aria-hidden': 'true' }, '♫'));
@@ -145,7 +152,7 @@ function groovePick() {
    meter can switch it with snd.setGrooveMeter: the groove carries on in its other version.) */
 function pickGroove() {
   snd.setGrooveMeter(UNIT.meter);
-  const list = snd.grooveList(UNIT.meter);
+  const list = myGrooves();
   if (st.groove !== 'mix' && list.some((g) => g.id === st.groove)) return snd.setGroove(st.groove);
   const others = list.filter((g) => g !== snd.grooveNow());
   const pool = others.length ? others : list;
@@ -212,7 +219,7 @@ function title() {
 /* The closet: dress up the avatar with music notes (closet.js). */
 function openCloset() {
   scene('closet');
-  closet(app, st, { save, back: title });
+  closet(app, st, { save, back: title, grooves: () => snd.grooveList(UNIT.meter) });
 }
 
 /* Say "du du-de du du" and watch the meter: shows whether the mic hears you, and how many
