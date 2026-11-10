@@ -15,6 +15,9 @@ const DEFAULTS = {
   pat: {}, // pattern id: strength
   feat: {}, // pattern feature: strength
   stickers: [],
+  tokens: 0, // music notes (♪) earned in runs, spent in the closet (avatar.js)
+  look: {}, // the avatar: slot -> item id (avatar.js ITEMS)
+  owned: [], // items bought: 'slot:id'
   seen: {}, // task-step: 1 once it has been played (its instruction stops saying NEW)
   intro: {}, // task-step: 1 once its task intro has been shown (intro.js)
   made: [], // the learner's last 12 create answers (pattern ids): repeats earn less
