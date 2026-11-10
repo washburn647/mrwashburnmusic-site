@@ -443,6 +443,8 @@ export function rigCat(kind = 'bindi') {
       if (tier >= 3 && down && moodName !== 'sneak') S.bob.v -= 150;
     },
     hop(power = 1) { S.bob.v -= 260 * power; S.squash.v += 2 * power; },
+    /* Petting Time: a hand pressing down on him. */
+    press(power = 1) { S.squash.v -= 2.4 * power; S.hb.v += 120 * power; S.earL.v -= 280 * power; S.earR.v += 280 * power; },
     stop() { cancelAnimationFrame(raf); raf = 0; },
   };
   start();

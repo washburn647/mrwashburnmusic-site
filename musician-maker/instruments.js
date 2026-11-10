@@ -48,6 +48,16 @@ const ART = {
       <ellipse cx="100" cy="50" rx="62" ry="16" fill="${RIM}"/>
       <ellipse class="head" cx="100" cy="48" rx="56" ry="12" fill="${HEAD}"/>
     </g></svg>`,
+  // A guiro: a ridged gourd and its scraper. The gourd and the stick take turns.
+  guiro: `<svg viewBox="0 0 200 140" aria-hidden="true">
+    <g class="part l">
+      <path d="M30 86 C30 56 62 44 104 44 C150 44 178 62 178 86 C178 110 150 124 104 124 C62 124 30 114 30 86 Z" fill="#c98a3c"/>
+      <path d="M40 74 C60 56 140 54 168 72" stroke="#e8b46a" stroke-width="6" fill="none" stroke-linecap="round" opacity=".7"/>
+      <g stroke="${WOOD_DARK}" stroke-width="4" stroke-linecap="round"><path d="M62 60 V112 M76 54 V118 M90 51 V121 M104 50 V122 M118 51 V121 M132 54 V118 M146 59 V113"/></g>
+      <circle cx="44" cy="88" r="5" fill="${WOOD_DARK}"/><circle cx="164" cy="88" r="5" fill="${WOOD_DARK}"/>
+    </g>
+    <g class="part r"><rect x="60" y="20" width="120" height="9" rx="4.5" fill="${WOOD}" transform="rotate(-14 120 24)"/>
+      <rect x="150" y="6" width="34" height="13" rx="6" fill="${WOOD_DARK}" transform="rotate(-14 167 12)"/></g></svg>`,
   mic: `<svg viewBox="0 0 200 160" aria-hidden="true">
     <path d="M60 70 Q60 118 100 118 Q140 118 140 70" stroke="#5b6168" stroke-width="8" fill="none" stroke-linecap="round"/>
     <rect x="94" y="118" width="12" height="26" fill="#5b6168"/>
@@ -70,6 +80,7 @@ export function lookOf(inst = {}) {
   if (s.startsWith('bongo')) return 'bongos';
   if (/bell|cowbell|agogo|triangle/.test(s)) return 'bell';
   if (/shaker|maraca/.test(s)) return 'maracas';
+  if (s === 'guiro') return 'guiro';
   return 'drum';
 }
 

@@ -1,0 +1,291 @@
+/* Petting Time (scene-pet.js). Shares the comic lettering, dust, bubbles, speed lines, cutaways,
+   googly eyes and sticker photos of Mouse Catcher (scenes.css, the ms- classes), Mookie's rig
+   and Rusty (scene-supper.css, the .kat classes). Pictures are in bg/ (bg/CREDITS.txt). */
+
+.scene-pt { container-type: size; overflow: hidden; isolation: isolate; background: #2a2433;
+  --u: min(1cqh, .9cqw); --seat-x: 52%; --pt-sleeve: #e58aa6; --pt-case: #d83a4a; }
+.pt-cam, .pt-bg, .pt-ride, .pt-glow { position: absolute; inset: 0; }
+.pt-bg { overflow: hidden; }
+.pt-seat svg, .pt-puddle svg, .pt-meter svg, .pt-palm svg, .pt-heart svg, .pt-sign svg, .pt-lamp svg, .pt-board svg, .pt-bike svg, .pt-tray svg,
+.pt-beanie svg, .pt-cactus svg, .pt-bloom svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+/* The seat (300 x 150, the sitting surface 40% down) and Mookie on it. */
+.pt-seat { position: absolute; left: calc(var(--seat-x) - 34 * var(--u)); bottom: calc(-2 * var(--u)); width: calc(68 * var(--u)); aspect-ratio: 2; z-index: 2; }
+.pt-front { z-index: 4; }
+.pt-mookie { left: calc(var(--seat-x) - 19.8 * var(--u)); bottom: calc(16 * var(--u)); height: calc(44 * var(--u)); z-index: 3; }
+.pt-mookie.wiggle { animation: pt-wiggle .26s ease-in-out; }
+.pt-mookie.nomming { animation: pt-nomming .18s linear; }
+.pt-mookie.kicks { animation: pt-kicks .11s linear; }
+@keyframes pt-wiggle { 20% { rotate: -4deg; } 50% { rotate: 4deg; } 80% { rotate: -3deg; } }
+@keyframes pt-nomming { 30% { rotate: -5deg; translate: -1% -2%; } 70% { rotate: 5deg; translate: 1% -2%; } }
+@keyframes pt-kicks { 50% { translate: 2% -3%; rotate: 5deg; } }
+
+/* ---------- the purr-o-meter ---------- */
+.pt-meter { position: absolute; left: 4%; top: 6%; width: calc(30 * var(--u)); aspect-ratio: 120 / 94; z-index: 1; transform: rotate(-3deg); transform-origin: 50% 0;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .28)); --purr: .12; }
+.pt-m-case { fill: var(--pt-case); stroke: #17171b; stroke-width: 3; }
+.pt-m-face { fill: #fff8ec; }
+.pt-m-name { fill: #fff8ec; }
+.pt-needle { transform-box: view-box; transform-origin: 60px 70px; transform: rotate(calc(-78deg + var(--purr) * 156deg)); transition: transform .28s cubic-bezier(.3, 1.9, .5, 1); }
+.pt-meter.max .pt-needle { animation: pt-max .1s linear infinite alternate; }
+@keyframes pt-max { from { transform: rotate(72deg); } to { transform: rotate(94deg); } }
+.scene-pt[data-beat="a"] .pt-meter { animation: pt-tick-a .22s ease-out; }
+.scene-pt[data-beat="b"] .pt-meter { animation: pt-tick-b .22s ease-out; }
+@keyframes pt-tick-a { 40% { transform: rotate(-3deg) scale(1.03); } }
+@keyframes pt-tick-b { 40% { transform: rotate(-3deg) scale(1.015); } }
+.scene-pt:not([data-tier="0"])[data-beat="a"] .pt-meter { animation: pt-bop-a .3s ease-out; }
+.scene-pt:not([data-tier="0"])[data-beat="b"] .pt-meter { animation: pt-bop-b .3s ease-out; }
+@keyframes pt-bop-a { 40% { transform: rotate(-9deg) scale(1.07); } }
+@keyframes pt-bop-b { 40% { transform: rotate(5deg) scale(1.04); } }
+
+/* ---------- the Pug on his pedestal; the jaw is the lower part of the same photo ---------- */
+.pt-pug { position: absolute; left: calc(var(--seat-x) - 51 * var(--u)); bottom: 5%; width: calc(17 * var(--u)); height: calc(27 * var(--u)); z-index: 4; }
+.pt-pug .p-in { position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 314 / 340; transform-origin: 50% 100%; z-index: 1; }
+.pt-pug .ms-photo { position: absolute; left: 0; top: 0; }
+.pt-pug .p-top { clip-path: inset(0 0 23% 0); }
+.pt-pug .p-jaw { clip-path: inset(77% 0 0 0); transition: transform .06s; }
+.pt-pug .p-mouth { position: absolute; left: 30%; top: 74%; width: 40%; height: 8%; border-radius: 40%; background: #1a0d0d; }
+.pt-pug.talk .p-jaw { transform: translateY(6%); }
+.scene-pt[data-beat="a"] .pt-pug .p-in { animation: pt-bob-a .25s ease-out; }
+.scene-pt[data-beat="b"] .pt-pug .p-in { animation: pt-bob-b .25s ease-out; }
+.pt-pug.sing .p-in { animation: pt-sing .4s ease-in-out; }
+.pt-pug.nod .p-in { animation: pt-nod .35s ease-in-out 2; }
+.pt-pug.tsk .p-in { animation: pt-tsk .5s ease-in-out 2; }
+.pt-pug.patted .p-in { animation: pt-patted .4s ease-out; }
+@keyframes pt-bob-a { 40% { transform: translateY(3%) rotate(-3deg); } }
+@keyframes pt-bob-b { 40% { transform: translateY(3%) rotate(3deg); } }
+@keyframes pt-sing { 30% { transform: translateY(-6%) rotate(-5deg) scale(1.05); } 60% { transform: translateY(0) rotate(3deg); } }
+@keyframes pt-nod { 50% { transform: translateY(5%) rotate(4deg); } }
+@keyframes pt-tsk { 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+@keyframes pt-patted { 30% { transform: scale(1.12, .8); } 65% { transform: scale(.95, 1.08); } }
+.pt-plinth { position: absolute; left: 20%; right: 20%; top: 60%; bottom: 12%; border: 2px solid #6b6f78; border-top: 0;
+  background: linear-gradient(90deg, #a9adb6, #f2f3f6 40%, #c9ccd4 70%, #9a9ea8); }
+.pt-plate { position: absolute; left: -14%; right: -14%; bottom: 0; height: 15%; display: grid; place-items: center; border-radius: 6px; background: #d9a62c; border: 2px solid #a87b16;
+  color: #4a2e0c; font-size: clamp(7px, 2.1 * var(--u), 12px); letter-spacing: .5px; white-space: nowrap; }
+
+/* ---------- the hand, on its very long arm. Its tilt matches REST in scene-pet.js. ---------- */
+.pt-hand { position: absolute; left: calc(var(--seat-x) + 20 * var(--u)); bottom: calc(62 * var(--u)); width: calc(22 * var(--u)); aspect-ratio: 1; z-index: 6;
+  transform: rotate(-12deg); pointer-events: none; }
+.pt-palm { position: absolute; inset: 0; transform-origin: 50% 60%; }
+.pt-sleeve { stroke: var(--pt-sleeve); }
+.pt-hand-photo.ms-photo { position: absolute; }
+.k-gauntlet .pt-hand-photo { left: -8%; top: -32%; width: 96%; }
+.k-gold .pt-hand-photo { left: 23.2%; top: -100%; width: 53.5%; }
+.pt-bones, .pt-bandage, .pt-spines { display: none; }
+.pt-hand.ouch .pt-bandage, .pt-hand.spiny .pt-spines, .pt-hand.bones .pt-bones { display: inline; }
+.pt-hand.bones .pt-art, .pt-hand.bones .pt-hand-photo { display: none; }
+/* In his mouth: the fingers are out of sight. */
+.pt-hand.bitten .pt-palm { clip-path: inset(-900% -900% 20% -900%); }
+.pt-hand.pat .pt-palm { animation: pt-pat .18s ease-out; }
+@keyframes pt-pat { 40% { transform: scale(1.12, .84); } }
+.pt-prong { transform-box: view-box; transform-origin: 50px 40px; }
+.pt-hand.pat .pt-prong.l { animation: pt-pinch-l .2s ease-out; }
+.pt-hand.pat .pt-prong.r { animation: pt-pinch-r .2s ease-out; }
+@keyframes pt-pinch-l { 40% { transform: rotate(-12deg); } }
+@keyframes pt-pinch-r { 40% { transform: rotate(12deg); } }
+.pt-hand.ouch .pt-palm, .pt-hand.spiny .pt-palm { animation: pt-throb .28s ease-in-out infinite alternate; }
+@keyframes pt-throb { from { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255, 60, 60, 0)); } to { transform: scale(1.14); filter: drop-shadow(0 0 8px rgba(255, 60, 60, .95)); } }
+.pt-palm.shake { animation: pt-shake .1s linear 3 !important; }
+@keyframes pt-shake { 25% { transform: translate(-5%, 0) rotate(-5deg); } 75% { transform: translate(5%, 0) rotate(5deg); } }
+.pt-palm.rattle { transform-origin: 50% 10%; animation: pt-rattle .15s ease-in-out 4 alternate !important; }
+@keyframes pt-rattle { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+/* What's left of it, spat back out. */
+.pt-spat { left: 0; bottom: auto; width: calc(15 * var(--u)); transform: none; z-index: 7; }
+.pt-spat .pt-arm { display: none; }
+.pt-spat .pt-palm { clip-path: none; animation: none; }
+
+/* ---------- hearts ---------- */
+.pt-heart { position: absolute; width: calc(6 * var(--u)); aspect-ratio: 32 / 30; margin: calc(-3 * var(--u)) 0 0 calc(-3 * var(--u)); pointer-events: none; }
+.pt-heart path { fill: #ff5c8a; stroke: #17171b; stroke-width: 2.5; stroke-linejoin: round; }
+.pt-heart.want { rotate: var(--rot); animation: pt-want .25s cubic-bezier(.3, 1.8, .5, 1); }
+.pt-heart.want path { fill: #fff; stroke-dasharray: 3 2.5; }
+.pt-heart.want.full path { fill: #ff5c8a; stroke-dasharray: none; }
+.pt-heart.want.pop { animation: pt-heart-pop .3s cubic-bezier(.3, 1.8, .5, 1); }
+.pt-heart.want.up { animation: pt-heart-up .6s ease-in forwards; }
+.pt-heart.want.drop { animation: pt-heart-drop .6s ease-in forwards; }
+.pt-heart.puff { animation: pt-puff .8s ease-out forwards; }
+.pt-heart.puff.big { width: calc(9 * var(--u)); }
+.pt-heart.fly { animation: pt-fly .85s cubic-bezier(.2, .8, .3, 1) forwards; }
+.pt-heart.rain { top: -6%; animation: pt-rain 1.25s linear forwards; }
+@keyframes pt-want { from { scale: 0; } }
+@keyframes pt-heart-pop { 0% { scale: 1; } 40% { scale: 1.7; } }
+@keyframes pt-heart-up { 20% { scale: 1.3; } to { translate: 0 -70cqh; opacity: 0; } }
+@keyframes pt-heart-drop { 20% { rotate: 30deg; } to { translate: 0 60cqh; rotate: 80deg; opacity: 0; } }
+@keyframes pt-puff { 0% { transform: scale(.3) rotate(0); opacity: 1; } 25% { transform: translate(0, calc(-3 * var(--u))) scale(1.1) rotate(var(--rot)); }
+  100% { transform: translate(var(--dx), calc(-14 * var(--u))) scale(.9) rotate(var(--rot)); opacity: 0; } }
+@keyframes pt-fly { 0% { transform: scale(.2); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(var(--s)); opacity: 0; } }
+@keyframes pt-rain { from { transform: translateY(0) rotate(var(--rot)) scale(var(--s)); } to { transform: translateY(115cqh) rotate(calc(var(--rot) * -1)) scale(var(--s)); } }
+
+/* ---------- the party ---------- */
+.pt-glow { z-index: 1; pointer-events: none; opacity: 0; transition: opacity .3s; mix-blend-mode: screen;
+  background: radial-gradient(ellipse at var(--seat-x) 55%, rgba(255, 120, 170, .55), transparent 62%); }
+.scene-pt[data-tier="2"] .pt-glow, .scene-pt[data-tier="3"] .pt-glow, .scene-pt[data-tier="4"] .pt-glow { opacity: 1; animation: pt-glow .6s ease-in-out infinite alternate; }
+@keyframes pt-glow { to { opacity: .45; } }
+.pt-lights { z-index: 5; }
+/* The howling dog (a Han dynasty tomb figure) pops up in the corner. */
+.pt-howl { position: absolute; right: 2%; bottom: 0; height: calc(34 * var(--u)); aspect-ratio: 299 / 320; z-index: 5; transform-origin: 50% 100%;
+  transform: translateY(110%); transition: transform .3s cubic-bezier(.2, 1.5, .5, 1); }
+.pt-howl .ms-photo { position: absolute; left: 0; top: 0; }
+.pt-howl.up { transform: translateY(14%); }
+.pt-howl.sing { animation: pt-howl .32s ease-out; }
+@keyframes pt-howl { 40% { scale: .96 1.1; rotate: -5deg; } }
+.scene-pt.pt-rumble .pt-cam { animation: pt-rumble .07s linear infinite; }
+@keyframes pt-rumble { 25% { transform: translate(-2px, 1px); } 75% { transform: translate(2px, -1px); } }
+.pt-cut { background: #ff9fc0; }
+.pt-cut.hunt { background: #ffd84a; }
+.pt-fx .ms-comic { font-size: clamp(18px, 6.5cqw, 34px); }
+.pt-fx .ms-comic.big { font-size: clamp(24px, 8.5cqw, 58px); }
+.pt-fx .ms-comic.hit { font-size: clamp(20px, 7cqw, 40px); }
+.pt-fx .ms-comic.love { color: #ff9fc0; }
+
+/* ---------- the wins' and misses' own things ---------- */
+.pt-long { position: absolute; z-index: 3; background: #17171b; border-radius: 0 0 46% 46% / 0 0 14px 14px; }
+.pt-long::before, .pt-long::after { content: ''; position: absolute; bottom: -3%; width: 38%; aspect-ratio: 30 / 16; border-radius: 50%; background: #17171b; }
+.pt-long::before { left: 4%; }
+.pt-long::after { right: 4%; }
+.pt-puddle { position: absolute; aspect-ratio: 240 / 76; z-index: 3; transform-origin: 50% 100%; }
+.pt-bike { position: absolute; aspect-ratio: 2; z-index: 3; }
+.pt-wheel { transform-box: fill-box; transform-origin: center; animation: spin .25s linear infinite; }
+.pt-tray { position: absolute; aspect-ratio: 170 / 80; z-index: 6; transform-origin: 50% 100%; }
+.pt-steam path { animation: pt-steam .7s ease-in-out infinite alternate; }
+.pt-steam path:nth-child(2) { animation-delay: -.35s; }
+@keyframes pt-steam { from { transform: translate(-2px, 2px); opacity: .4; } to { transform: translate(2px, -3px); opacity: .95; } }
+.pt-beanie { position: absolute; left: 33%; top: -3%; width: 34%; aspect-ratio: 100 / 72; animation: pt-pop .25s cubic-bezier(.3, 1.8, .5, 1); }
+.pt-prop { transform-box: fill-box; transform-origin: center; }
+.pt-beanie.spin .pt-prop { animation: pt-prop .12s linear infinite; }
+@keyframes pt-prop { 50% { transform: scaleX(-1); } }
+@keyframes pt-pop { from { scale: 0; } }
+.pt-cactus { position: absolute; inset: 0; animation: pt-pop .2s cubic-bezier(.3, 1.8, .5, 1); transform-origin: 50% 100%; }
+.pt-mookie.cactus > svg { visibility: hidden; }
+.pt-bloom { position: absolute; left: 56%; top: 9%; width: 17%; aspect-ratio: 1; animation: pt-pop .25s cubic-bezier(.3, 1.8, .5, 1); }
+
+/* ---------- boss: The Belly ---------- */
+.scene-pt.boss { --seat-x: 60%; }
+.scene-pt.boss .pt-mookie { left: calc(var(--seat-x) - 60 * var(--u)); bottom: 3%; height: calc(36 * var(--u)); z-index: 4; }
+.scene-pt.boss .pt-pug { display: none; }
+.pt-rusty { left: calc(var(--seat-x) - 22.5 * var(--u)); bottom: calc(14.5 * var(--u)); height: calc(50 * var(--u)); z-index: 3; rotate: 180deg; }
+.pt-rusty.taunt { animation: pt-taunt .3s ease-out; }
+.pt-rusty.flinch { animation: pt-flinch .2s ease-out; }
+.pt-rusty.rubbed { animation: pt-rubbed .4s ease-out; }
+.pt-rusty.pedal { animation: pt-pedal .12s linear infinite; }
+@keyframes pt-taunt { 30% { translate: 0 -4%; scale: 1.04; } }
+@keyframes pt-flinch { 40% { scale: 1.06 .94; } }
+@keyframes pt-rubbed { 25% { scale: 1.1 .9; } 60% { scale: .96 1.05; } }
+@keyframes pt-pedal { 25% { scale: 1.03 .97; } 75% { scale: .97 1.03; } }
+.pt-sign { position: absolute; left: calc(var(--seat-x) + 19 * var(--u)); bottom: calc(7 * var(--u)); height: calc(30 * var(--u)); aspect-ratio: 100 / 120; z-index: 2;
+  transform-origin: 50% 100%; rotate: var(--tilt, -4deg); transition: rotate .3s cubic-bezier(.3, 1.8, .5, 1); }
+.pt-sign .s-yes, .pt-sign.turned .s-no { display: none; }
+.pt-sign.turned .s-yes { display: inline; }
+.pt-sign .s-board { transform-box: fill-box; transform-origin: center; }
+.pt-sign.turned .s-board { animation: pt-turn .4s ease-in-out; }
+@keyframes pt-turn { 0% { transform: scaleX(1); } 25% { transform: scaleX(-1); } 50% { transform: scaleX(1); } 75% { transform: scaleX(-1); } }
+.pt-sign.wob { animation: pt-wob .3s ease-out; }
+@keyframes pt-wob { 40% { scale: 1.08 .94; } }
+
+/* ---------- five places (THEMES in scene-pet.js) ---------- */
+/* Grandma's: William Morris's Strawberry Thief on the wall, a floor lamp, a family portrait. */
+.scene-pt[data-theme="gran"] .pt-bg { background: #2c4a52 url(bg/strawberry-thief.jpg) center 30% / cover; }
+.pt-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 24%; border-top: calc(2.4 * var(--u)) solid #f3e6d2; box-shadow: 0 calc(-.7 * var(--u)) 0 #b79a78;
+  background: linear-gradient(180deg, rgba(40, 20, 10, .5), transparent 45%), url(bg/wood.jpg) 0 0 / calc(44 * var(--u)) auto; }
+.pt-portrait { position: absolute; left: calc(var(--seat-x) + 38 * var(--u)); bottom: calc(33 * var(--u)); width: calc(17 * var(--u)); aspect-ratio: 4 / 5; border-radius: 50%;
+  background: radial-gradient(ellipse, #f6ecd6, #cdb98f); border: calc(1.4 * var(--u)) solid #d9a62c; box-shadow: 0 0 0 2px #7a5a12, inset 0 0 0 2px #7a5a12, 0 4px 0 rgba(0, 0, 0, .3); }
+.pt-portrait .ms-photo { position: absolute; left: 32%; top: 9%; width: 36%; filter: none; }
+.pt-portrait b { position: absolute; left: -12%; right: -12%; bottom: -16%; height: 15%; display: grid; place-items: center; border-radius: 4px; background: #d9a62c; border: 2px solid #7a5a12;
+  color: #3a2a08; font-size: clamp(5px, 1.5 * var(--u), 9px); white-space: nowrap; }
+.pt-lamp { position: absolute; left: max(1%, calc(var(--seat-x) - 60 * var(--u))); bottom: 7%; height: calc(52 * var(--u)); aspect-ratio: 80 / 200; }
+.pt-shade { transform-box: fill-box; transform-origin: 50% 0; }
+.scene-pt[data-beat="a"] .pt-shade { animation: pt-sway-a .4s ease-out; }
+.scene-pt[data-beat="b"] .pt-shade { animation: pt-sway-b .4s ease-out; }
+@keyframes pt-sway-a { 40% { transform: rotate(-6deg); } }
+@keyframes pt-sway-b { 40% { transform: rotate(6deg); } }
+
+/* Inside a painting: Zoffany's Dutton family at cards, c. 1772, in a gilt frame. */
+.scene-pt[data-theme="paint"] { --pt-sleeve: #27407e; --pt-case: #8e1f3c; }
+.scene-pt[data-theme="paint"] .pt-bg { background: #3a4a44 url(bg/drawing-room.jpg) center 34% / cover; }
+.pt-gilt { position: absolute; inset: 0; pointer-events: none; border: calc(3 * var(--u)) solid;
+  border-image: linear-gradient(135deg, #f6e3a1, #b8902a 28%, #f1d375 50%, #8a6a1c 72%, #e0bb4a) 1;
+  box-shadow: inset 0 0 0 calc(.7 * var(--u)) #5e430c, inset 0 0 calc(9 * var(--u)) rgba(0, 0, 0, .5); }
+.pt-brass { position: absolute; left: 50%; bottom: calc(.6 * var(--u)); transform: translateX(-50%); padding: .1em .9em; border-radius: 3px; border: 1.5px solid #5e430c;
+  background: linear-gradient(180deg, #f6e3a1, #b8902a); color: #3a2a08; font-size: clamp(6px, 1.7 * var(--u), 10px); white-space: nowrap; z-index: 1; }
+.scene-pt[data-theme="paint"] .pt-tassel { transform-box: fill-box; transform-origin: 50% 0; }
+.scene-pt[data-theme="paint"][data-beat="a"] .pt-tassel { animation: pt-sway-a .4s ease-out; }
+.scene-pt[data-theme="paint"][data-beat="b"] .pt-tassel { animation: pt-sway-b .4s ease-out; }
+
+/* The cat cafe: brick, a string of bulbs, the chalkboard. */
+.scene-pt[data-theme="cafe"] { --pt-sleeve: #3f7a6a; --pt-case: #3f7a6a; }
+.scene-pt[data-theme="cafe"] .pt-bg { background: linear-gradient(180deg, rgba(50, 20, 10, .2), rgba(50, 20, 10, .45)), url(bg/brick.jpg) 0 0 / calc(60 * var(--u)) auto; }
+.scene-pt[data-theme="cafe"] .pt-floor { border-top-color: #3a2a20; box-shadow: none; }
+.pt-bulbs { position: absolute; left: -3%; right: -3%; top: 0; height: calc(12 * var(--u)); display: flex; justify-content: space-around; align-items: flex-start; }
+.pt-bulbs::before { content: ''; position: absolute; left: 0; right: 0; top: calc(-9 * var(--u)); height: calc(12 * var(--u)); border-bottom: 2px solid #1c1c22; border-radius: 0 0 50% 50%; }
+.pt-bulbs i { width: calc(3 * var(--u)); aspect-ratio: 3 / 4; border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%; border: 1.5px solid #1c1c22; background: #ffe9a6; transition: box-shadow .1s, filter .1s; filter: brightness(.75); }
+.pt-bulbs i:nth-child(1), .pt-bulbs i:nth-child(9) { margin-top: calc(.6 * var(--u)); }
+.pt-bulbs i:nth-child(2), .pt-bulbs i:nth-child(8) { margin-top: calc(1.6 * var(--u)); }
+.pt-bulbs i:nth-child(3), .pt-bulbs i:nth-child(7) { margin-top: calc(2.3 * var(--u)); }
+.pt-bulbs i:nth-child(4), .pt-bulbs i:nth-child(6) { margin-top: calc(2.8 * var(--u)); }
+.pt-bulbs i:nth-child(5) { margin-top: calc(3 * var(--u)); }
+.pt-bulbs i:nth-child(3n) { background: #ff9fb0; }
+.pt-bulbs i:nth-child(3n+1) { background: #9be8d8; }
+.scene-pt[data-beat="a"] .pt-bulbs i:nth-child(odd), .scene-pt[data-beat="b"] .pt-bulbs i:nth-child(even) { filter: brightness(1.15); box-shadow: 0 0 calc(2.4 * var(--u)) calc(.6 * var(--u)) rgba(255, 226, 150, .9); }
+.pt-board { position: absolute; left: calc(var(--seat-x) + 36 * var(--u)); bottom: calc(30 * var(--u)); height: calc(30 * var(--u)); aspect-ratio: 100 / 120; rotate: 3deg; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .3)); }
+.pt-toy { transform-box: fill-box; transform-origin: 50% 0; }
+.scene-pt[data-beat="a"] .pt-toy { animation: pt-swing-a .45s ease-out; }
+.scene-pt[data-beat="b"] .pt-toy { animation: pt-swing-b .45s ease-out; }
+@keyframes pt-swing-a { 40% { transform: rotate(-14deg); } }
+@keyframes pt-swing-b { 40% { transform: rotate(14deg); } }
+
+/* The Moon: Apollo 17's Taurus-Littrow valley, the Earth from Apollo 11. */
+.scene-pt[data-theme="moon"] { --pt-sleeve: #e7ebef; --pt-case: #5f6f8f; }
+.scene-pt[data-theme="moon"] .pt-bg { background: #05060a; }
+.pt-stars { position: absolute; inset: 0; animation: pt-twinkle 1.6s ease-in-out infinite alternate;
+  background-image: radial-gradient(1.4px 1.4px at 8% 14%, #fff, transparent), radial-gradient(1.2px 1.2px at 19% 38%, #fff, transparent), radial-gradient(1.6px 1.6px at 31% 9%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 44% 27%, #cfe0ff, transparent), radial-gradient(1.4px 1.4px at 57% 6%, #fff, transparent), radial-gradient(1.2px 1.2px at 66% 33%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 78% 15%, #ffe9c4, transparent), radial-gradient(1.2px 1.2px at 88% 40%, #fff, transparent), radial-gradient(1.4px 1.4px at 94% 8%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 25% 22%, #fff, transparent), radial-gradient(1.2px 1.2px at 72% 46%, #fff, transparent), radial-gradient(1.4px 1.4px at 50% 44%, #fff, transparent); }
+@keyframes pt-twinkle { to { opacity: .55; } }
+.pt-earth { position: absolute; left: calc(var(--seat-x) + 34 * var(--u)); bottom: calc(40 * var(--u)); width: calc(20 * var(--u)); aspect-ratio: 1; border-radius: 50%;
+  background: #05060a url(bg/earth.jpg) center / 108%; box-shadow: 0 0 calc(5 * var(--u)) rgba(120, 170, 255, .4); }
+.scene-pt[data-beat="a"] .pt-earth { animation: pt-earth-a .5s ease-out; }
+.scene-pt[data-beat="b"] .pt-earth { animation: pt-earth-b .5s ease-out; }
+@keyframes pt-earth-a { 40% { translate: 0 -6%; } }
+@keyframes pt-earth-b { 40% { translate: 0 4%; } }
+.pt-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 46%; background: #77797e url(bg/moon.jpg) center top / cover; }
+.scene-pt[data-theme="moon"] .pt-ride { animation: pt-float 2.6s ease-in-out infinite alternate; }
+@keyframes pt-float { from { translate: 0 0; } to { translate: 0 calc(-1.6 * var(--u)); } }
+.pt-flag { transform-box: fill-box; transform-origin: 0 50%; }
+.scene-pt[data-beat="a"] .pt-flag { animation: pt-flag-a .4s ease-out; }
+.scene-pt[data-beat="b"] .pt-flag { animation: pt-flag-b .4s ease-out; }
+@keyframes pt-flag-a { 40% { transform: skewY(8deg) scaleX(.92); } }
+@keyframes pt-flag-b { 40% { transform: skewY(-6deg); } }
+
+/* Under the Great Wave, in a rowing boat that rocks on the beat. */
+.scene-pt[data-theme="wave"] { --pt-sleeve: #1d3f6e; --pt-case: #1d3f6e; }
+.scene-pt[data-theme="wave"] .pt-bg { background: #e9dcc0 url(bg/great-wave.jpg) center 62% / cover; }
+.scene-pt[data-theme="wave"] .pt-ride { transform-origin: var(--seat-x) 92%; }
+.scene-pt[data-theme="wave"][data-beat="a"] .pt-ride { animation: pt-rock-a .5s ease-in-out; }
+.scene-pt[data-theme="wave"][data-beat="b"] .pt-ride { animation: pt-rock-b .5s ease-in-out; }
+@keyframes pt-rock-a { 45% { transform: rotate(-2.5deg) translateY(1%); } }
+@keyframes pt-rock-b { 45% { transform: rotate(2.5deg) translateY(-1%); } }
+
+@container (min-aspect-ratio: 3 / 2) {
+  .pt-meter { left: 6%; width: calc(34 * var(--u)); }
+  .scene-pt.boss > * { --seat-x: 53%; }
+  .scene-pt.boss .pt-pug { display: block; left: auto; right: 1%; }
+  .ms-cut.pt-cut .rig.ms-cut-face { width: auto; height: 190%; top: 86%; }
+}
+/* A tall, narrow stage (a phone held upright): bigger Mookie, a smaller Pug tucked in the corner. */
+@container (max-aspect-ratio: 4 / 5) {
+  /* (On the children: a container query can't restyle its own container.) */
+  .scene-pt > * { --u: min(1cqh, 1.2cqw); --seat-x: 55%; }
+  .pt-pug { left: 1%; width: calc(14 * var(--u)); height: calc(22 * var(--u)); }
+  .pt-meter { left: 3%; top: 4%; width: calc(26 * var(--u)); }
+  .pt-hand { left: auto; right: -3%; }
+  .pt-portrait, .pt-board, .pt-lamp { display: none; }
+  .pt-earth { left: auto; right: 4%; bottom: calc(70 * var(--u)); }
+  .scene-pt.boss > * { --seat-x: 60%; }
+  .scene-pt.boss .pt-mookie { left: -3%; height: calc(30 * var(--u)); }
+  .pt-sign { left: auto; right: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pt-stars, .scene-pt[data-theme="moon"] .pt-ride, .pt-glow, .pt-steam path, .scene-pt.pt-rumble .pt-cam, .pt-rusty.pedal,
+  .scene-pt[data-beat] .pt-ride, .scene-pt[data-beat] .pt-meter, .scene-pt[data-beat] .pt-earth { animation: none !important; }
+}

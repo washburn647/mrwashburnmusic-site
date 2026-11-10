@@ -1,0 +1,22 @@
+Pictures behind Petting Time (scene-pet.js). Every one is CC0 or public domain: free to use,
+no credit required, credited here anyway. All were cropped and shrunk.
+
+From the Cleveland Museum of Art Open Access collection (https://www.clevelandart.org/open-access), CC0:
+  strawberry-thief.jpg  Strawberry Thief, William Morris, printed c. 1936 at Merton Abbey. 1937.696
+                        https://clevelandart.org/art/1937.696
+  drawing-room.jpg      The Dutton Family in the Drawing Room of Sherborne Park, Gloucestershire,
+                        Johann Zoffany, c. 1772. 2023.122  https://clevelandart.org/art/2023.122
+
+From the Art Institute of Chicago (public domain, CC0; https://www.artic.edu/open-access):
+  great-wave.jpg        Under the Wave off Kanagawa (The Great Wave), Katsushika Hokusai, 1830/33.
+                        1925.3245  https://www.artic.edu/artworks/24645
+
+From NASA (public domain; https://images.nasa.gov):
+  moon.jpg              Panorama view of Apollo 17 lunar surface photos. jsc2004e52775
+                        https://images.nasa.gov/details/jsc2004e52775
+  earth.jpg             View of Earth taken by Apollo 11 crewmembers. as11-36-5337
+                        https://images.nasa.gov/details/as11-36-5337
+
+From ambientCG (https://ambientcg.com), CC0:
+  brick.jpg             Bricks 105   https://ambientcg.com/view?id=Bricks105
+  wood.jpg              Wood Floor 051   https://ambientcg.com/view?id=WoodFloor051

@@ -398,6 +398,85 @@ export function toon(name, t, opts = {}) {
       noise(t + 0.34, 0.16, 0.5 * vol, 'bandpass', 3000, 1200, 1.2);
       synth(t + 0.34, 520 * rate, 0.1, 0.12 * vol, fxBus, 'square', 0.5);
       break;
+    /* Petting Time (scene-pet.js) */
+    case 'pat': synth(t, 150 * rate, 0.07, 0.2 * vol, fxBus, 'sine', 0.6); noise(t, 0.05, 0.08 * vol, 'lowpass', 900, 300, 1); break;
+    case 'arf':
+      // A small dog with a lot to say: two short buzzy barks.
+      [0, 0.13].forEach((d) => {
+        synth(t + d, 430 * rate, 0.08, 0.15 * vol, fxBus, 'sawtooth', 0.62);
+        noise(t + d, 0.06, 0.12 * vol, 'bandpass', 1100, 600, 2);
+      });
+      break;
+    case 'howl': {
+      // A very old dog joins in: up, a long wobble, and down.
+      const o = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lg = ctx.createGain();
+      const f = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(260 * rate, t);
+      o.frequency.linearRampToValueAtTime(520 * rate, t + 0.22);
+      o.frequency.setValueAtTime(520 * rate, t + 0.6);
+      o.frequency.linearRampToValueAtTime(330 * rate, t + 0.95);
+      lfo.frequency.value = 6;
+      lg.gain.value = 9;
+      f.type = 'bandpass';
+      f.frequency.value = 900;
+      f.Q.value = 1.6;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.16 * vol, t + 0.08);
+      g.gain.setValueAtTime(0.16 * vol, t + 0.7);
+      g.gain.linearRampToValueAtTime(0, t + 0.95);
+      lfo.connect(lg).connect(o.frequency);
+      o.connect(f).connect(g).connect(fxBus);
+      o.start(t); lfo.start(t);
+      o.stop(t + 1); lfo.stop(t + 1);
+      break;
+    }
+    case 'vroom': {
+      // A purr with the throttle open: a motor that revs up, putters and revs again.
+      const o = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lg = ctx.createGain();
+      const f = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(55 * rate, t);
+      o.frequency.linearRampToValueAtTime(150 * rate, t + 0.3);
+      o.frequency.linearRampToValueAtTime(95 * rate, t + 0.45);
+      o.frequency.linearRampToValueAtTime(230 * rate, t + 0.95);
+      lfo.type = 'square';
+      lfo.frequency.setValueAtTime(26, t);
+      lfo.frequency.linearRampToValueAtTime(60, t + 0.95);
+      lg.gain.value = 0.1 * vol;
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(500, t);
+      f.frequency.linearRampToValueAtTime(1800, t + 0.95);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.17 * vol, t + 0.06);
+      g.gain.setValueAtTime(0.17 * vol, t + 0.8);
+      g.gain.linearRampToValueAtTime(0, t + 1);
+      lfo.connect(lg).connect(g.gain);
+      o.connect(f).connect(g).connect(fxBus);
+      o.start(t); lfo.start(t);
+      o.stop(t + 1.05); lfo.stop(t + 1.05);
+      break;
+    }
+    case 'slurp':
+      // A whole arm, like a noodle.
+      noise(t, 0.5, 0.26 * vol, 'bandpass', 400, 3400, 5);
+      synth(t, 180 * rate, 0.5, 0.1 * vol, fxBus, 'sine', 5);
+      synth(t + 0.5, 900 * rate, 0.05, 0.18 * vol, fxBus, 'sine', 2);
+      break;
+    case 'rotor':
+      // A propeller beanie: quick soft chops that speed up.
+      for (let k = 0, d = 0; k < 18; k++) {
+        noise(t + d, 0.04, 0.2 * vol, 'lowpass', 700, 250, 1);
+        d += Math.max(0.045, 0.1 - k * 0.005);
+      }
+      break;
+    case 'bones': [96, 91, 93, 86, 89, 84, 91].forEach((m, i) => note('marimba', m, t + i * 0.055, 0.12, 0.26 * vol)); break;
     default: break;
   }
 }

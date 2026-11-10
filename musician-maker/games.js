@@ -15,8 +15,9 @@
 import { mouseCatcher } from './scene-mouse.js';
 import { supperTime } from './scene-supper.js';
 import { brushingTime } from './scene-brush.js';
+import { pettingTime } from './scene-pet.js';
 
-export { mouseCatcher, supperTime, brushingTime };
+export { mouseCatcher, supperTime, brushingTime, pettingTime };
 
 /* Restart a CSS animation class. */
 export function bump(el, cls) {
@@ -25,12 +26,13 @@ export function bump(el, cls) {
   el.classList.add(cls);
 }
 
-export const GAMES = [mouseCatcher, supperTime, brushingTime];
+export const GAMES = [mouseCatcher, supperTime, brushingTime, pettingTime];
 
 export const KITS = {
   'mouse-catcher': { object: { name: 'the mouse', icon: '🐭' }, instrument: { name: 'the bongos', icon: '🪘', sound: 'bongo-high' } },
   'supper-time': { object: { name: 'the gong bowl', icon: '🥣' }, instrument: { name: 'the dinner bell', icon: '🔔', sound: 'cowbell' } },
   'brushing-time': { object: { name: 'the brush', icon: '🪮' }, instrument: { name: 'the maracas', icon: '🪇', sound: 'shaker' } },
+  'petting-time': { object: { name: 'Mookie', icon: '🐈‍⬛' }, instrument: { name: 'the guiro', icon: '🪵', sound: 'guiro' } },
 };
 const DEFAULT_KIT = { object: { name: 'the pad', icon: '👆' }, instrument: { name: 'the drum', icon: '🥁', sound: 'conga' } };
 for (const g of GAMES) g.kit ||= KITS[g.id] || DEFAULT_KIT;

@@ -39,6 +39,18 @@ From the Cleveland Museum of Art Open Access collection (https://www.clevelandar
   egg.png           Vessel in the Form of an Ostrich Egg, Egypt, New Kingdom, c. 1540-1296 BCE. 1914.620
                     https://clevelandart.org/art/1914.620
 
+  For Petting Time:
+  gold-hand.png     Arm Reliquary of the Apostles, Germany, Lower Saxony, Hildesheim, c. 1190.
+                    1930.739 (turned fingers down)  https://clevelandart.org/art/1930.739
+  gauntlet.png      Gothic Mitten Gauntlet for the Right Hand, South Germany or Austria
+                    (Innsbruck), c. 1490. 1916.2081  https://clevelandart.org/art/1916.2081
+  han-dog.png       Dog, China, Eastern Han dynasty, 25-220 CE. 1983.1
+                    https://clevelandart.org/art/1983.1
+
+From the Art Institute of Chicago (public domain, CC0; https://www.artic.edu/open-access):
+  pug.png           Box in the Form of a Pug's Head, Meissen Porcelain Manufactory, c. 1750.
+                    1968.662 (the Pug)  https://www.artic.edu/artworks/109858
+
 From iNaturalist, via GBIF (photographer chose CC0):
   mouse.png         House mouse (Mus musculus), photo by Astrid Osborne.
                     https://www.inaturalist.org/observations/341355944

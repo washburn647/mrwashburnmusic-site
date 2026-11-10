@@ -77,7 +77,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   (`/assets/patterns/units.json`) replace the built-in set once published.
 - `games.js`: the micro-games. A game is a scene and a gesture; it never knows the step or the
   task. Each has a kit (`KITS`): the object Tap It taps and the instrument Play It plays.
-  Mouse Catcher, Supper Time and Brushing Time are in their own files. A game with a `bossName` can host
+  Mouse Catcher, Supper Time, Brushing Time and Petting Time are in their own files. A game with a `bossName` can host
   the boss; `main.js` takes turns between them by lap.
 - `sound.js`: the groove, calls, cue words, effects. Uses Kyle's recordings where they're on
   the site (takes on "bum" and in syllables, cue words, groove loops per layer and tempo) and
@@ -85,7 +85,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   groove on its own, everything else on `fxBus`, which `clear(from, to)` turns down.
 - `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
 - `instruments.js`: the big drawn instruments Play It is played right on (bongos, a bell,
-  maracas, a drum, picked from the kit's sound or its `look`), and Speak/Sing It's big mic,
+  maracas, a guiro, a drum, picked from the kit's sound or its `look`), and Speak/Sing It's big mic,
   which glows with the voice. Each tap strikes the other side or hand.
 - `narration.js`: the words behind every 🔊 button (the intros, the mic screen), which Kyle
   records at `/studio/record/` (Narration: free length, one take each). They publish with the
@@ -171,22 +171,40 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   nests in the knots and lays an ancient egg, static turns him into a dandelion, the brush
   gets stuck and stays as a hat. The boss is Rusty, The Mane Event, fluffed to twice his size:
   each hit brushes out an armful, the last takes his whole coat off and he's tiny underneath.
+- `scene-pet.js`: Petting Time (styles in `scene-pet.css`), rhythm only: Mookie loafs on a seat
+  and a hand on a very long arm pets him once per tap (he squishes, a heart fills, the
+  purr-o-meter climbs). The Pug (a Meissen porcelain pug's head from c. 1750, googly eyes, a
+  ventriloquist's jaw) barks the call, and each note hangs an empty heart over Mookie's head.
+  The hand changes every game (`HANDS`: cartoon glove, knight's gauntlet, oven mitt, a golden
+  reliquary hand from c. 1190, robot claw, foam finger) and so does the place (`THEMES`:
+  grandma's armchair on William Morris wallpaper, inside a 1772 painting, a cat cafe, the
+  Moon, a rowing boat under Hokusai's Great Wave; the pictures are in `bg/`). Wins: hearts and
+  a pat for the Pug, melts into a puddle, his purr motor starts and he rides off, long cat,
+  makes biscuits, a propeller beanie. Misses are cheerful bites: a love bite and a bandage,
+  the belly trap, slurps the whole arm, the hand comes back as bones, suddenly a cactus. At
+  big combos a Han dynasty dog howls along and it rains hearts. The boss is Rusty, The Belly,
+  upside down beside a DO NOT PET sign: each hit is a belly rub that sets his legs going, the
+  last one and he pedals away.
 - `cats.js`: Bindi and Rusty, rigged like Mookie (springs, moods, tiptoe steps, rubber-hose
   reach, fur that poofs, bandit masks). Drawn from Kyle's photos of them, which aren't kept here.
 - `props/`: the photo props, CC0 museum objects cut out with a sticker edge
   (`props/CREDITS.txt`). New props should be CC0 or public domain, transparent PNG, about
   320px on the long side.
+- `bg/`: background pictures for Petting Time, CC0 or public domain paintings, prints,
+  NASA photos and textures (`bg/CREDITS.txt`), JPEG, under about 150 KB each.
 - `rig.js`: rigged Mookie for scenes: springs on body, head, ears, eyes, arms and tail; moods
   (idle, hunt, happy, smug, star, shock, dizzy, and for Supper Time sleep, eat, sad); `reach()`
   to any point on the page. For Brushing Time, a coat: classes `furry` (size from `fluff()`,
-  tufts from `tuft()`), `tangled` and `sleek` on the svg.
+  tufts from `tuft()`), `tangled` and `sleek` on the svg. For Petting Time, the mood `purr`
+  and `press()` (squished by a pat), `thump()` (the tail) and `knead()` (biscuits).
 - `critters.js`: the mouse and The Big Cheese, with props (shades, flag, crown, bandage).
   `photoMouse()` is the mouse as a real photo with the same props and API; Mouse Catcher uses it.
 - `fx/`: cartoon sound effects from Kenney's CC0 packs (`fx/CREDITS.txt`); `toon()` in
   `sound.js` plays them and synthesizes the rest (slide whistle, squeak, raspberry, zip, bike
   horn, frog croak, gong, choir, and for Supper Time the bowl ding, meow, yowl, chomp, burp,
   cluck, fanfare, hiss, snore and tiptoe, and for Brushing Time the brush, sproing, ting,
-  spritz, static zap, purr, roar and sneeze).
+  spritz, static zap, purr, roar and sneeze, and for Petting Time the pat, arf, howl, vroom,
+  slurp, rotor and rattling bones).
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `avatar.js`: the learner's avatar (drawn SVG, one look per device), the items and their prices
   (`ITEMS`), what runs pay in notes (`EARN`) and the note coin (`token()`).
