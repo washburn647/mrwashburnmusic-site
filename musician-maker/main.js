@@ -17,6 +17,8 @@ import { GAMES, mouseCatcher, bump } from './games.js';
 import * as OPT from './options.js';
 import { showIntro } from './intro.js';
 import { mookie } from './mookie.js';
+import { avatar, lookOf, token, EARN, ownsGroove } from './avatar.js';
+import { closet } from './closet.js';
 import { MIC_SPEECH } from './narration.js';
 import * as TX from './transitions.js';
 import * as FX from './effects.js';
@@ -124,14 +126,21 @@ function scene(name) {
   markup.refresh();
 }
 
+/* The grooves the learner can play: the ones bought with music notes in the closet (and the
+   free one). A workshop test run plays any. */
+function myGrooves() {
+  const list = snd.grooveList(UNIT.meter);
+  return TEST ? list : list.filter((g) => ownsGroove(st, g, list));
+}
+
 /* Which groove plays: Mix (a different one each lap) or one the learner picks. Each tap
    moves to the next. The list loads with the sounds, so it fills in once they have. */
 function groovePick() {
-  const label = () => (st.groove === 'mix' ? 'Mix: a new one each lap' : snd.grooveList(UNIT.meter).find((g) => g.id === st.groove)?.name || 'Mix: a new one each lap');
+  const label = () => (st.groove === 'mix' ? 'Mix: a new one each lap' : myGrooves().find((g) => g.id === st.groove)?.name || 'Mix: a new one each lap');
   const small = h('small', {}, label());
   const b = h('button', { class: 'switch groove-pick', onclick: () => {
-    const ids = ['mix', ...snd.grooveList(UNIT.meter).map((g) => g.id)];
-    st.groove = ids[(ids.indexOf(st.groove) + 1) % ids.length] || 'mix';
+    const ids = ['mix', ...myGrooves().map((g) => g.id)];
+    st.groove = ids[(Math.max(0, ids.indexOf(st.groove)) + 1) % ids.length] || 'mix';
     save();
     small.textContent = label();
   } }, h('span', { class: 'sw-text' }, h('b', {}, 'Groove'), small), h('span', { class: 'gp-ico', 'aria-hidden': 'true' }, '♫'));
@@ -143,7 +152,7 @@ function groovePick() {
    meter can switch it with snd.setGrooveMeter: the groove carries on in its other version.) */
 function pickGroove() {
   snd.setGrooveMeter(UNIT.meter);
-  const list = snd.grooveList(UNIT.meter);
+  const list = myGrooves();
   if (st.groove !== 'mix' && list.some((g) => g.id === st.groove)) return snd.setGroove(st.groove);
   const others = list.filter((g) => g !== snd.grooveNow());
   const pool = others.length ? others : list;
@@ -180,6 +189,7 @@ function title() {
         h('div', { class: 'beam' }),
         ...['q', 'ee', 'q', 'ee', 'q'].map(floatNote),
         mookie('happy'),
+        h('button', { class: 'hero-av', 'aria-label': 'Dress up', onclick: openCloset }, avatar(lookOf(st))),
         h('div', { class: 'rug' })),
       h('button', { class: 'play big-play', onclick: () => startRun() }, h('span', { class: 'tri' }), 'Play'),
       h('button', { class: 'link', onclick: howToPlay }, 'How to play')),
@@ -199,8 +209,17 @@ function title() {
       h('div', { class: 'switches' },
         toggle('Mookie mode', 'An easier pace', st.mookie, (v) => { st.mookie = v; dir = makeDirector(st); save(); }),
         groovePick()),
-      h('button', { class: 'to-map', onclick: progress },
-        h('span', { class: 'staff-ico' }), 'My progress'))));
+      h('div', { class: 'to-row' },
+        h('button', { class: 'to-closet', 'aria-label': `Dress up: ${st.tokens} music notes`, onclick: openCloset },
+          avatar(lookOf(st), { cls: 'mini' }), token(), h('b', {}, String(st.tokens))),
+        h('button', { class: 'to-map', onclick: progress },
+          h('span', { class: 'staff-ico' }), 'My progress')))));
+}
+
+/* The closet: dress up the avatar with music notes (closet.js). */
+function openCloset() {
+  scene('closet');
+  closet(app, st, { save, back: title, grooves: () => snd.grooveList(UNIT.meter) });
 }
 
 /* Say "du du-de du du" and watch the meter: shows whether the mic hears you, and how many
@@ -588,7 +607,7 @@ async function startRun(opts = {}) {
   if (recording) mic.recordStart();
   R = {
     ctx, clock: makeClock(ctx), force: opts.force || TEST?.step || null, lap: 0, plan: [], idx: 0,
-    combo: 0, runCombo: 0, runXP: 0, setXP: 0, setMisses: 0, setGames: 0, tempo: LADDER()[0],
+    combo: 0, runCombo: 0, runXP: 0, setXP: 0, runTokens: 0, setTokens: 0, setMisses: 0, setGames: 0, tempo: LADDER()[0],
     lastGame: null, micOn, paused: false, ended: false, win: null, api: null,
     groove: { mode: 'play', duckFrom: 0, duckUntil: 0, micFrom: Infinity },
     news: micError ? [micError] : [],
@@ -599,7 +618,8 @@ async function startRun(opts = {}) {
     st.days++;
     st.lastDay = today();
     addXP(50);
-    R.news.push('Daily downbeat! +50 XP');
+    addTokens(EARN.daily);
+    R.news.push(`Daily downbeat! +50 XP +${EARN.daily} ♪`);
   }
   buildRunDom();
   R.clock.onBeat((i, t, spb) => {
@@ -683,6 +703,7 @@ function buildRunDom() {
   const d = {};
   d.level = h('div', { class: 'lvl' });
   d.xp = h('div', { class: 'xp' });
+  d.tokens = h('div', { class: 'tokens' });
   d.combo = h('div', { class: 'combo' });
   d.tempo = h('div', { class: 'tempo' });
   d.sets = h('div', { class: 'sets' });
@@ -699,7 +720,7 @@ function buildRunDom() {
   d.overlay = h('div', { class: 'overlay' });
   d.flash = h('div', { class: 'flash' });
   app.replaceChildren(h('div', { class: 'run' },
-    h('header', { class: 'hud' }, h('div', { class: 'hud-l' }, d.level, d.xp), d.combo, h('div', { class: 'hud-r' }, d.pulse, d.tempo, d.pause)),
+    h('header', { class: 'hud' }, h('div', { class: 'hud-l' }, d.level, h('div', { class: 'hud-xp' }, d.xp, d.tokens)), d.combo, h('div', { class: 'hud-r' }, d.pulse, d.tempo, d.pause)),
     d.sets,
     h('div', { class: 'stage-wrap' }, d.stage, d.cue, d.flash),
     d.prompt, h('div', { class: 'lane' },
@@ -725,6 +746,8 @@ function hud() {
   }
   d.xpFill.style.width = `${Math.round(lv.frac * 100)}%`;
   d.xpText.textContent = ` ${st.xp} XP`;
+  d.tokens.replaceChildren(token(), String(st.tokens || 0));
+  d.tokens.setAttribute('aria-label', `${st.tokens || 0} music notes`);
   const t = tierOf(R.combo);
   d.combo.className = `combo t${t}`;
   d.combo.replaceChildren(h('b', {}, R.combo ? `${R.combo} in a row` : ''), t ? h('span', {}, ` ×${t + 1} ${TIER_NAMES[t]}`) : '');
@@ -752,6 +775,14 @@ function addXP(n) {
   n = Math.round(n);
   st.xp += n;
   if (R) { R.runXP += n; R.setXP += n; }
+  return n;
+}
+
+/* Music notes (♪) for the avatar's closet. */
+function addTokens(n) {
+  st.tokens = (st.tokens || 0) + n;
+  if (R) { R.runTokens += n; R.setTokens += n; }
+  if (R?.dom?.tokens) { hud(); bump(R.dom.tokens, 'fx-got'); }
   return n;
 }
 
@@ -1105,6 +1136,9 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
       st.made = [...st.made, res.got.id].slice(-12);
     }
     const gained = addXP((10 + (res.perfect ? 5 : 0)) * (TEMPO_XP[R.tempo] || 1) * (res.mic ? 1.5 : 1) * mult * (tier + 1));
+    // A note every few right answers (the count carries over between runs).
+    st.toNote = (st.toNote || 0) + 1;
+    if (st.toNote >= EARN.every) { st.toNote = 0; addTokens(1); }
     onWin();
     snd.fx.win(t);
     // Right: confetti (stars when perfect) that grows with the combo, and the XP flies to the counter.
@@ -1162,7 +1196,12 @@ function breather(B, seg) {
   R.groove.mode = 'breakdown';
   const chips = [];
   if (R.combo >= 3) chips.push(['🔥', `${R.combo} in a row`]);
-  if (R.setMisses === 0 && R.setGames > 0) chips.push(['🎯', `No misses +${addXP(50)}`]);
+  if (R.setMisses === 0 && R.setGames > 0) {
+    chips.push(['🎯', `No misses +${addXP(50)}`]);
+    addTokens(EARN.clean);
+  }
+  if (R.setTokens) chips.push([token(), `+${R.setTokens}`]);
+  R.setTokens = 0;
   const lvBefore = levelOf(st.xp - R.setXP).n;
   const lv = levelOf(st.xp);
   if (lv.n > lvBefore) chips.push(['⬆️', `Level ${lv.n}`]);
@@ -1200,7 +1239,7 @@ function breather(B, seg) {
       dancer(spb)));
     // XP counts up on the beat, with a pop of notes; confetti for no misses, a level or a step.
     for (let k = 1; k <= 4; k++) later(T(B + k), () => { count.textContent = `+${Math.round(setXP * k / 4)}`; bump(count.parentElement, 'beat'); FX.burst(count, { kind: 'notes', count: 5, spread: 0.6 }); });
-    if (chips.some(([ic]) => ic !== '🔥')) later(T(B + 1), () => FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.2, count: 30, spread: 1.6 }));
+    if (chips.some(([ic]) => typeof ic === 'string' && ic !== '🔥')) later(T(B + 1), () => FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.2, count: 30, spread: 1.6 }));
     hud();
   });
   R.clock.at(B + 8, () => {
@@ -1216,7 +1255,11 @@ function dancer(spb) {
   const m = mookie('happy');
   m.classList.add('dance');
   m.style.animationDuration = `${2 * spb}s`;
-  return m;
+  // The learner's avatar dances with him, half a bar behind.
+  const a = avatar(lookOf(st), { cls: 'dance' });
+  a.style.animationDuration = `${2 * spb}s`;
+  a.style.animationDelay = `${-spb}s`;
+  return h('div', { class: 'dancers' }, m, a);
 }
 
 /* The steps played, each with its strength before (filled) and what was added (growing in),
@@ -1342,13 +1385,15 @@ function boss(B) {
     if (hits >= 3) {
       R.api.win();
       const gained = addXP(100);
+      addTokens(EARN.boss);
       const sticker = STICKERS.find((s) => !st.stickers.includes(s));
       if (sticker) st.stickers.push(sticker);
-      R.news.push(`Beat ${game.bossName}! +${gained} XP${sticker ? ` and a new sticker ${sticker}` : ''}`);
+      R.news.push(`Beat ${game.bossName}! +${gained} XP +${EARN.boss} ♪${sticker ? ` and a new sticker ${sticker}` : ''}`);
     } else {
       R.api.fail();
       addXP(20);
-      R.news.push(`${game.bossName} got away. Next lap!`);
+      addTokens(EARN.bossTry);
+      R.news.push(`${game.bossName} got away. +${EARN.bossTry} ♪ Next lap!`);
     }
     save();
     R.dom.controls.replaceChildren();
@@ -1373,6 +1418,7 @@ function intermission() {
     h('div', { class: 'win-head' }, h('div', { class: 'cue-word small' }, `Lap ${R.lap + 1} ✓`)),
     h('div', { class: 'win-tiles' },
       tile('⭐', `+${R.runXP}`, 'XP'),
+      tile(token('big'), `+${R.runTokens}`, 'notes'),
       tile('🔥', String(R.runCombo), 'best in a row'),
       tile('🏅', `Level ${lv.n}`, lv.title)),
     ...R.news.splice(0).map((n) => h('p', { class: 'news' }, n)),

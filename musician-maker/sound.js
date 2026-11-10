@@ -626,7 +626,8 @@ export function checkGrooves(list) {
       if (v) versions[meter] = v;
     }
     const layerInfo2 = info(g.layerInfo);
-    return { id: g.id, name: String(g.name || g.id), key: Number.isInteger(g.key) ? g.key : 0, ...(layerInfo2 ? { layerInfo: layerInfo2 } : {}), versions };
+    return { id: g.id, name: String(g.name || g.id), key: Number.isInteger(g.key) ? g.key : 0, ...(layerInfo2 ? { layerInfo: layerInfo2 } : {}),
+      ...(Number.isInteger(g.price) && g.price >= 0 ? { price: g.price } : {}), versions }; // price: music notes, in the closet
   }).filter((g) => Object.keys(g.versions).length);
 }
 

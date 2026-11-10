@@ -47,6 +47,16 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - **XP:** 10 a right answer, +5 for perfect timing, × tempo (1, 1.5, 2), × 1.5 by mic,
   × the task's own (above), × combo. +50 for a set with no misses, +100 for beating the boss, +50 for the first run of
   the day. No game over, no leaderboards, no streak that can break.
+- **Music notes (♪) and the avatar:** runs also pay music notes, a gold note coin: 1 every 3
+  right answers, +1 for a set with no misses, +3 for beating the boss (+1 when he gets away), +2
+  for the first run of the day (`EARN` in `avatar.js`; a full lap pays about 10 at most). They're spent in the closet (title screen: the avatar beside Mookie,
+  or the note count) on the learner's own avatar: an animal (cat, bunny, bear, dog), its color,
+  face, hat, glasses, what it holds and its background. Everything is a picture with a price; a
+  tap tries it on, ✓ buys it, and short of notes a bar shows how far there is to go. The avatar
+  dances with Mookie on the set and lap screens.
+  Grooves are bought there too (the 🎵 tab): the first groove is free, every other costs
+  `GROOVE_PRICE` notes (`avatar.js`; a groove in `grooves.json` can carry its own `price`). A tap
+  plays two bars of it. The title's Groove button and Mix only use grooves the learner has.
 
 ## Files
 
@@ -178,6 +188,9 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   cluck, fanfare, hiss, snore and tiptoe, and for Brushing Time the brush, sproing, ting,
   spritz, static zap, purr, roar and sneeze).
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
+- `avatar.js`: the learner's avatar (drawn SVG, one look per device), the items and their prices
+  (`ITEMS`), what runs pay in notes (`EARN`) and the note coin (`token()`).
+- `closet.js`: the dress-up screen. Its 🔊 reads `closet` from `narration.js`.
 - `store.js`: progress on this device (localStorage). No accounts, names or analytics.
 
 Every game shows a what-to-do line (`howTo` in `tasks.js`), marked NEW the first time that
