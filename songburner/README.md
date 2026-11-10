@@ -64,6 +64,17 @@ November 2026):
 5. Optional, to keep seats free: turn on seat expiration (Team & Resources >
    Users), so testers who stop using it give their seat back after a month.
 
+**Beta requests.** Next to Sign in, "Apply for beta" asks for an email and a yes to
+"I'm 13 or older". Requests wait in the studio (Song Burner > Testers) until you
+press Done, and drop off by themselves once that person signs in. To have them
+emailed to you as well:
+
+1. Cloudflare dashboard > mrwashburnmusic.com > **Email > Email Routing**: turn it
+   on, add an address on the site, and verify your own inbox as a destination.
+2. In `wrangler.jsonc`, add `"send_email": [{ "name": "BETA_MAIL" }]`.
+3. In the Worker's **Settings > Variables and Secrets**, add `BETA_TO` (your
+   verified inbox) and `BETA_FROM` (the site address). Not in this repo.
+
 Removing a tester: take their address off the policy, then remove them under
 **Team & Resources > Users** to free the seat. Then press **Remove** next to them
 in the studio (below): that deletes their cloud copy and ends their session.

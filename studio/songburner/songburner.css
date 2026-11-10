@@ -85,3 +85,9 @@ a.button:hover, a.button:focus-visible { box-shadow: 0 0 0 2px #2F4A3A; outline:
   .book-name { flex-basis: 100%; }
   .book-name span { display: block; margin-left: 0; }
 }
+
+/* Beta requests */
+.req-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #F0EADB; flex-wrap: wrap; }
+.req-row:last-child { border-bottom: 0; }
+.req-mail { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.req-row .quiet { color: #8A968C; font-size: 14px; }

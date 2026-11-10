@@ -722,6 +722,11 @@ with the title in it. Same plate, same heat chip, same progress block, same
 burner and list buttons in the same corner. Underneath, one row of four: Start
 Game and Start Quiz wide and equal, Songbook and Edit narrower and equal.
 
+**Apply for beta sits beside Sign in** (beta 1.05), for someone who is not a
+tester yet: an email and an "I’m 13 or older" box, and Send stays off until the
+box is ticked. Nothing else is asked. The request goes to Kyle's studio, not to
+an account, so applying changes nothing on the device.
+
 **On the web there is no Songbook button.** The songbook doc is Kyle's own, and
 nobody else can open it, so the web app shows neither Songbook nor "Add this to
 the songbook doc" (beta 1.04). They moved to the studio's Song Burner page,
