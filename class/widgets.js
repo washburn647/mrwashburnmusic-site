@@ -727,7 +727,7 @@ function draw(d, el) {
         tabs.append(b);
       }
       const pics = h('div', 'wg-tray-pics');
-      const list = q ? groups.flatMap((g) => g.pics).filter((x) => x.name.toLowerCase().includes(q))
+      const list = q ? groups.flatMap((g) => g.pics).filter((x, i, all) => x.name.toLowerCase().includes(q) && all.findIndex((y) => y.media === x.media) === i)
         : (groups.find((g) => g.name === group) || { pics: [] }).pics;
       for (const pic of list) {
         const b = h('button', 'wg-tray-pic');
