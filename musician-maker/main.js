@@ -1136,7 +1136,9 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
       st.made = [...st.made, res.got.id].slice(-12);
     }
     const gained = addXP((10 + (res.perfect ? 5 : 0)) * (TEMPO_XP[R.tempo] || 1) * (res.mic ? 1.5 : 1) * mult * (tier + 1));
-    addTokens(EARN.right);
+    // A note every few right answers (the count carries over between runs).
+    st.toNote = (st.toNote || 0) + 1;
+    if (st.toNote >= EARN.every) { st.toNote = 0; addTokens(1); }
     onWin();
     snd.fx.win(t);
     // Right: confetti (stars when perfect) that grows with the combo, and the XP flies to the counter.

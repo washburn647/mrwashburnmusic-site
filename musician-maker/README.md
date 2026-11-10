@@ -47,9 +47,9 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - **XP:** 10 a right answer, +5 for perfect timing, × tempo (1, 1.5, 2), × 1.5 by mic,
   × the task's own (above), × combo. +50 for a set with no misses, +100 for beating the boss, +50 for the first run of
   the day. No game over, no leaderboards, no streak that can break.
-- **Music notes (♪) and the avatar:** runs also pay music notes, a gold note coin: 1 a right
-  answer, +3 for a set with no misses, +10 for beating the boss (+3 when he gets away), +5 for
-  the first run of the day. They're spent in the closet (title screen: the avatar beside Mookie,
+- **Music notes (♪) and the avatar:** runs also pay music notes, a gold note coin: 1 every 3
+  right answers, +1 for a set with no misses, +3 for beating the boss (+1 when he gets away), +2
+  for the first run of the day (`EARN` in `avatar.js`; a full lap pays about 10 at most). They're spent in the closet (title screen: the avatar beside Mookie,
   or the note count) on the learner's own avatar: an animal (cat, bunny, bear, dog), its color,
   face, hat, glasses, what it holds and its background. Everything is a picture with a price; a
   tap tries it on, ✓ buys it, and short of notes a bar shows how far there is to go. The avatar

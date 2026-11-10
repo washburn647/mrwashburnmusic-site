@@ -50,7 +50,7 @@ export const groovePrice = (g, list) => (g === list[0] || g.id === 'basic' ? 0 :
 export const ownsGroove = (st, g, list) => groovePrice(g, list) === 0 || (st.owned || []).includes(`groove:${g.id}`);
 
 /* What a run pays in notes (main.js). */
-export const EARN = { right: 1, clean: 3, boss: 10, bossTry: 3, daily: 5 };
+export const EARN = { every: 3, clean: 1, boss: 3, bossTry: 1, daily: 2 }; // 1 note every 3 right answers
 
 // fur, belly, darker (ears, feet)
 const COLORS = {

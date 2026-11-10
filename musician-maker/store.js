@@ -16,6 +16,7 @@ const DEFAULTS = {
   feat: {}, // pattern feature: strength
   stickers: [],
   tokens: 0, // music notes (♪) earned in runs, spent in the closet (avatar.js)
+  toNote: 0, // right answers since the last note earned
   look: {}, // the avatar: slot -> item id (avatar.js ITEMS)
   owned: [], // items bought: 'slot:id'
   seen: {}, // task-step: 1 once it has been played (its instruction stops saying NEW)
