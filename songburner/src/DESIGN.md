@@ -722,6 +722,14 @@ with the title in it. Same plate, same heat chip, same progress block, same
 burner and list buttons in the same corner. Underneath, one row of four: Start
 Game and Start Quiz wide and equal, Songbook and Edit narrower and equal.
 
+**On the web there is no Songbook button.** The songbook doc is Kyle's own, and
+nobody else can open it, so the web app shows neither Songbook nor "Add this to
+the songbook doc" (beta 1.04). They moved to the studio's Song Burner page,
+Songbook tab, which reads the library on that device: open the doc at a song,
+or copy a song as rich text in the doc's conventions and paste it at the end.
+The web cannot write to a Google Doc without a Google sign-in, so copy and paste
+it is. The Google Sheets version still shows both.
+
 **The results screen is a row of tiles, not a column of sentences.** Three
 stacked paragraphs of prose is a lot of reading for a screen you look at for
 four seconds on your way to the next game. The same facts fit across one row:
@@ -2475,7 +2483,8 @@ is the point — they are a reading of the library, not a filing system.
 | **Fridge** | Cold, still worth something, losing a little every night. |
 | **Freezer** | Worn all the way to zero. A single run restarts them. |
 
-They live in a menu that also holds Everything, the two burners, and your own
+In the menu each one reads in a few words (*Hot, a week or less left*), the name
+on its own line above. They live in a menu that also holds Everything, the two burners, and your own
 lists — reached by **tapping Pantry while already on the Pantry**. Since a
 gesture like that is invisible, the Pantry tab wears a small chevron, and the
 same menu hangs off a bar at the top of the page that names what you are looking

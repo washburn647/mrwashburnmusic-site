@@ -822,6 +822,11 @@
       syncNow().catch(function () {});
     }
   });
+  /* Practised offline: the runs are saved here already, so catch the cloud up
+     as soon as the connection is back rather than at the next change. */
+  window.addEventListener('online', function () {
+    if (account()) syncNow().catch(function () {});
+  });
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden' && syncTimer) {
       clearTimeout(syncTimer); syncTimer = null;

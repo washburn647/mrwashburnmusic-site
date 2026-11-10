@@ -1121,13 +1121,13 @@
    */
   var SMART_LISTS = [
     { id: 'plate',   name: 'Plate',
-      sub: 'Hot, with more than a week left. Nothing to do here.' },
+      sub: 'Hot, more than a week left' },
     { id: 'counter', name: 'Counter',
-      sub: 'Hot, but a week or less. These are the ones about to turn.' },
+      sub: 'Hot, a week or less left' },
     { id: 'fridge',  name: 'Fridge',
-      sub: 'Cold, still worth something, losing a little every night.' },
+      sub: 'Cold, still has points' },
     { id: 'freezer', name: 'Freezer',
-      sub: 'Worn all the way to zero. They owe nothing, so a single run restarts them.' }
+      sub: 'Cold, no points left' }
   ];
 
   function onSmartList(s, which) {
@@ -1188,7 +1188,7 @@
       sheet.appendChild(b);
     }
 
-    row('', 'Everything', 'The whole pantry.', S.songs.length,
+    row('', 'Everything', 'Every song', S.songs.length,
         !S.smartList && S.activeListId === null,
         function () { S.smartList = ''; S.activeListId = null; after(); });
 
@@ -3530,7 +3530,9 @@
       acts.appendChild(gameBtn);
       acts.appendChild(quizBtn);
 
-      if (S.docUrl) {
+      /* The songbook doc is Kyle's own, so its buttons live in the studio on the
+         web. Only the Google version shows them here. */
+      if (S.docUrl && !ON_WEB) {
         var docBtn = el('a', 'btn btn-outline act-narrow');
         docBtn.href = S.docUrl + (idx.headingId ? '#heading=' + idx.headingId : '');
         docBtn.target = '_blank';
@@ -3550,7 +3552,7 @@
 
       // No songbook set means nowhere to write it, so the button is not offered
       // rather than offered and failing.
-      if (idx.source !== 'doc' && S.docUrl) {
+      if (idx.source !== 'doc' && S.docUrl && !ON_WEB) {
         var toDoc = el('button', 'btn btn-outline btn-block', 'Add this to the songbook doc');
         toDoc.style.marginBottom = '16px';
         toDoc.addEventListener('click', function () {
