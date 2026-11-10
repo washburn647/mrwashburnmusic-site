@@ -10189,6 +10189,11 @@
     var sec = setSection('acc', 'Account', '');
     var card = sec.node, body = sec.body;
 
+    function privacy() {
+      var a = el('a', 'acct-privacy', 'Privacy');
+      a.href = 'privacy/';
+      body.appendChild(a);
+    }
     function paint() {
       var acc = cl.account();
       body.innerHTML = '';
@@ -10203,6 +10208,7 @@
         if (acc || !cl.apply) {
           inBtn.className = 'btn btn-primary btn-block';
           body.appendChild(inBtn);
+          privacy();
           return;
         }
         /* Not a tester yet: ask to be one. Kyle gets the request and adds them. */
@@ -10232,6 +10238,7 @@
         form.appendChild(ageRow);
         form.appendChild(send);
         body.appendChild(form);
+        privacy();
         askBtn.addEventListener('click', function () {
           form.style.display = form.style.display === 'none' ? '' : 'none';
           if (form.style.display === '') mail.focus();
@@ -10287,6 +10294,7 @@
           .catch(function (e) { toast(e.message); });
       });
       body.appendChild(del);
+      privacy();
     }
     /* Repainted by sync news while the card is on screen, and dropped after. */
     S.paintAccount = function () {

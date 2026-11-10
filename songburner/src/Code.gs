@@ -4419,6 +4419,8 @@ button { font-family: inherit; }
 .acct-state.is-bad { color: var(--incorrect); }
 .acct-btns { display: flex; gap: 8px; }
 .acct-btns .btn { flex: 1; }
+.acct-privacy { display: inline-block; margin-top: 12px; margin-left: 16px; font-size: 13px; color: var(--text-muted); }
+.acct-btns + .acct-privacy, .apply-form + .acct-privacy, .btn-block + .acct-privacy { margin-left: 0; }
 .apply-form { margin-top: 12px; display: grid; gap: 10px; }
 .apply-age { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .apply-age input { width: 18px; height: 18px; margin: 0; }
@@ -16661,6 +16663,11 @@ body {
     var sec = setSection('acc', 'Account', '');
     var card = sec.node, body = sec.body;
 
+    function privacy() {
+      var a = el('a', 'acct-privacy', 'Privacy');
+      a.href = 'privacy/';
+      body.appendChild(a);
+    }
     function paint() {
       var acc = cl.account();
       body.innerHTML = '';
@@ -16675,6 +16682,7 @@ body {
         if (acc || !cl.apply) {
           inBtn.className = 'btn btn-primary btn-block';
           body.appendChild(inBtn);
+          privacy();
           return;
         }
         /* Not a tester yet: ask to be one. Kyle gets the request and adds them. */
@@ -16704,6 +16712,7 @@ body {
         form.appendChild(ageRow);
         form.appendChild(send);
         body.appendChild(form);
+        privacy();
         askBtn.addEventListener('click', function () {
           form.style.display = form.style.display === 'none' ? '' : 'none';
           if (form.style.display === '') mail.focus();
@@ -16759,6 +16768,7 @@ body {
           .catch(function (e) { toast(e.message); });
       });
       body.appendChild(del);
+      privacy();
     }
     /* Repainted by sync news while the card is on screen, and dropped after. */
     S.paintAccount = function () {
