@@ -9,6 +9,8 @@
    Brushing Time gives him a coat (classes on the svg): "furry" (a fluffy outline, size from
    m.fluff(n), and tufts that sproing out with m.tuft(i)), "tangled" (knots) and "sleek"
    (gloss, sparkles and a slicked-back quiff).
+   Petting Time adds purr (eyes shut, a grin, paws down), m.press() (a hand on his head),
+   m.thump() (the tail slaps the floor) and m.knead() (making biscuits).
    Fixed markup only: nothing a learner types goes in here. Stops itself when removed. */
 
 import { fur } from './cats.js';
@@ -110,6 +112,8 @@ const MOODS = {
   sleep: { eyes: 'sleep', mouth: 'w', dil: 1, crouch: 0.9, tail: 0.08, tailSpeed: 0.8, ears: -5 },
   eat: { eyes: 'happy', mouth: 'chew', dil: 1, crouch: 0.2, tail: 0.6, tailSpeed: 6, ears: 5, blush: true },
   sad: { eyes: 'open', mouth: 'wavy', dil: 2.8, crouch: 0.5, tail: 0.04, tailSpeed: 0.8, ears: -16, sweat: true },
+  // Petting Time: being petted.
+  purr: { eyes: 'happy', mouth: 'grin', dil: 1, crouch: 0.25, tail: 0.5, tailSpeed: 4, ears: 3, blush: true },
 };
 
 export function rigMookie() {
@@ -136,6 +140,8 @@ export function rigMookie() {
     aL: spring(14, 500, 28), aR: spring(-14, 500, 28),
     // Reach: 0 = arm at its angle, 1 = rubber-hose all the way to the reach point.
     reachR: spring(0, 1100, 46),
+    // A tail thump: the whole tail curls down to the floor and springs back.
+    thump: spring(0, 320, 13),
   };
   let mood = MOODS.idle;
   let moodName = 'idle';
@@ -204,7 +210,7 @@ export function rigMookie() {
     const amp = mood.tail;
     for (let i = 1; i <= n; i++) {
       const f = i / n;
-      ang += -0.32 + Math.sin(t - i * 0.55) * amp * f * 0.9;
+      ang += -0.32 + Math.sin(t - i * 0.55) * amp * f * 0.9 + S.thump.x * 0.11;
       x += Math.cos(ang) * 11;
       y += Math.sin(ang) * 11;
       pts.push([x, y]);
@@ -335,6 +341,16 @@ export function rigMookie() {
       const t = all[((i % all.length) + all.length) % all.length];
       t.classList.toggle('up', on);
       return t;
+    },
+    /* Petting Time: a hand pressing on his head (he squishes, his ears go flat), a tail
+       thump, and a push with one front paw (side 1 or -1), for making biscuits. */
+    press(power = 1) { S.squash.v -= 2.6 * power; S.hb.v += 150 * power; S.earL.v -= 320 * power; S.earR.v += 320 * power; S.bell.v += 200; },
+    thump(power = 1) { S.thump.v += 30 * power; },
+    knead(side = 1) {
+      const a = side > 0 ? S.aL : S.aR;
+      a.v += side * 900;
+      S.bob.v += 60;
+      S.lean.v += side * 50;
     },
     /* A quick hop (on a win, say). */
     hop(power = 1) { S.bob.v -= 260 * power; S.squash.v += 2 * power; S.bell.v += 500; },
