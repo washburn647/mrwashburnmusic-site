@@ -5,9 +5,12 @@
    - Defaults: the settings every tester starts from. A tester's own changes still win; what they
      never changed follows these. Built from Song Burner's own rules (/songburner/engine.js), so
      the ranges and dials are the app's. Kept on this device as a draft; Publish puts only what
-     differs from the built-in values on the site (/api/live/songburner.json). */
+     differs from the built-in values on the site (/api/live/songburner.json).
+   - Songbook: open Kyle's songbook doc and copy songs into it (songbook.js). The public app
+     does not show these. */
 
 import { h, confirmButton } from '../dom.js';
+import { songbook } from './songbook.js';
 
 const app = document.getElementById('app');
 const R = window.SongBurnerEngine({}).settings;
@@ -294,13 +297,18 @@ function render() {
   const pick = (id, name) => h('button', { class: tab === id ? 'on' : '', onclick: () => { tab = id; save(TAB_KEY, id); render(); } }, name);
   app.replaceChildren(
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '← Studio'), h('h1', {}, 'Song Burner')),
-    h('div', { class: 'seg' }, pick('users', 'Testers'), pick('defaults', 'Defaults')),
-    ...[tab === 'users' ? usersView() : defaultsView()].flat());
+    h('div', { class: 'seg' }, pick('users', 'Testers'), pick('defaults', 'Defaults'), pick('book', 'Songbook')),
+    ...[tab === 'users' ? usersView() : tab === 'book' ? bookView() : defaultsView()].flat());
   if (focus) {
     const el = [...app.querySelectorAll('[aria-label]')].find((x) => x.getAttribute('aria-label') === focus);
-    if (el) el.focus();
+    if (el) {
+      el.focus();
+      if (el.type === 'search' || el.type === 'url') el.setSelectionRange?.(el.value.length, el.value.length);
+    }
   }
 }
+
+const bookView = songbook(() => render());
 
 render();
 loadUsers();

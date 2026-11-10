@@ -889,6 +889,7 @@ async function songBurnerApi(request, env, path, ctx) {
     return vault.clear();
   }
   if (method === 'PUT') {
+    if (Number(request.headers.get('Content-Length')) > MAX_LIBRARY * 4) return reply({ error: 'too big' }, 413);
     const text = await request.text();
     if (text.length > MAX_LIBRARY) return reply({ error: 'too big' }, 413);
     let lib;
