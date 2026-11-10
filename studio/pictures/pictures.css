@@ -11,9 +11,21 @@
 .pics-group .bar { margin-bottom: 10px; }
 .pics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
 .pic { position: relative; display: flex; flex-direction: column; gap: 6px; }
-.pic .img { aspect-ratio: 1; border-radius: 12px; background: #F6F1E4 repeating-conic-gradient(#EFE8D6 0 25%, #F6F1E4 0 50%) 0 0 / 16px 16px; display: grid; place-items: center; overflow: hidden; }
+.pic .img { cursor: zoom-in; aspect-ratio: 1; border-radius: 12px; background: #F6F1E4 repeating-conic-gradient(#EFE8D6 0 25%, #F6F1E4 0 50%) 0 0 / 16px 16px; display: grid; place-items: center; overflow: hidden; }
 .pic img { max-width: 92%; max-height: 92%; }
 .pic input { border: 0; border-radius: 8px; padding: 4px 6px; background: #F6F1E4; min-width: 0; }
 .pic .x { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; padding: 0; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; box-shadow: none; }
 .pic .move { position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; padding: 0; border-radius: 50%; background: rgba(255,255,255,.9); }
 .drop-here { outline: 3px dashed #2F4A3A; }
+.pics-view { position: fixed; inset: 0; z-index: 10; background: rgba(20,30,24,.75); display: grid; place-items: center; padding: 16px; }
+.pics-view[hidden] { display: none; }
+.pics-view .box { background: #fff; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: min(900px, 100%); max-height: 100%; box-sizing: border-box; }
+.pics-view img { width: min(868px, calc(100vw - 64px)); height: 65vh; object-fit: contain; align-self: center; border-radius: 8px; background: #F6F1E4 repeating-conic-gradient(#EFE8D6 0 25%, #F6F1E4 0 50%) 0 0 / 16px 16px; }
+.pics-view .row { display: flex; gap: 8px; align-items: center; }
+.pics-view .row input { flex: 1; min-width: 0; border: 0; border-radius: 10px; padding: 8px 12px; background: #F6F1E4; font-size: 18px; }
+.pics-view .row .icon { font-size: 20px; }
+.pics-view .row .icon:disabled { visibility: hidden; }
+.pics-view .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pics-view .chip { padding: 4px 12px; border-radius: 999px; background: #F6F1E4; box-shadow: none; }
+.pics-view .chip.on { background: #2F4A3A; color: #F6F1E4; }
+.pics-view .chip:disabled { cursor: default; opacity: 1; }

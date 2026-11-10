@@ -61,7 +61,7 @@ export async function pickFromLibrary() {
       shown = g;
       const q = find.value.trim().toLowerCase();
       tabs.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', !q && c.textContent === g.name));
-      const pics = q ? rec.groups.flatMap((x) => x.pics).filter((p) => (p.name || '').toLowerCase().includes(q)) : g.pics;
+      const pics = q ? rec.groups.flatMap((x) => x.pics).filter((p, i, all) => (p.name || '').toLowerCase().includes(q) && all.findIndex((y) => y.media === p.media) === i) : g.pics;
       grid.replaceChildren(...pics.map((p) => el('button', {
         title: p.name || '',
         class: 'pics-cell' + (picked.includes(p.media) ? ' on' : ''),
