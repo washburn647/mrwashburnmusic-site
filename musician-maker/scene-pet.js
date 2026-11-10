@@ -309,12 +309,15 @@ const CACTUS = `<svg viewBox="0 0 200 222" aria-hidden="true">
 
 /* Real photos, cut out like stickers: CC0 museum objects (props/CREDITS.txt). */
 const PROPS = ['pug', 'han-dog', 'gauntlet', 'gold-hand', 'bastet', 'trophy'];
+const BACKDROPS = ['strawberry-thief', 'wood', 'drawing-room', 'brick', 'moon', 'earth', 'great-wave'];
 const propUrl = (name) => new URL(`./props/${name}.png`, import.meta.url).href;
 let preloaded = false;
 function preload() {
   if (preloaded) return;
   preloaded = true;
   PROPS.forEach((n) => { const i = new Image(); i.src = propUrl(n); });
+  // The places' pictures too (scene-pet.css shows them), so the next place is there when its turn comes.
+  BACKDROPS.forEach((n) => { const i = new Image(); i.src = new URL(`./bg/${n}.jpg`, import.meta.url).href; });
 }
 function photo(name, cls = '') {
   const i = document.createElement('img');
