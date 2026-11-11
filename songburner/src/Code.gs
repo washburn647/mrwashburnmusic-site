@@ -14,7 +14,7 @@
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.04';
+var BUILD    = 'beta 1.05';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -4305,6 +4305,12 @@ html, body {
   margin: 0; padding: 0; background: var(--paper); color: var(--text-ink);
   font-family: var(--font-body); -webkit-tap-highlight-color: transparent;
 }
+/* NO DOUBLE-TAP ZOOM - beta 1.05. Two quick taps on an iPad zoomed the page,
+   and the games are made of quick taps. manipulation keeps scrolling and
+   pinch zoom and drops only the double-tap; it has to sit on the element
+   being tapped, which is why it is on everything and not just on body. The
+   few things that set their own touch-action are more specific and win. */
+* { touch-action: manipulation; }
 body { min-height: 100vh; display: flex; flex-direction: column; }
 button { font-family: inherit; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
@@ -5187,6 +5193,11 @@ a.btn-icon { text-decoration: none; }
   display: inline-block; margin: 0 3px 3px 0; padding: 3px 8px; border-radius: 6px;
   border: 1px solid transparent; background: transparent;
   font-family: var(--font-body); font-size: 15px; color: var(--text-ink); cursor: pointer;
+}
+/* A long press steps back, so it must not select the word or open the
+   callout over it. */
+.imp-chip, .imp-row {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 .imp-chip.flagged {
   background: var(--incorrect-bg); border-color: var(--incorrect);
@@ -13581,27 +13592,70 @@ body {
    * So the secondary click steps back. On a PC that is the right mouse button,
    * which is free: there is nothing in this app a context menu over a game
    * board has ever been wanted for, and suppressing it there costs nothing.
-   * A phone has no second button and keeps the forward tap alone - the ring is
-   * short on Easy, which is what a phone mostly plays, and a long-press already
-   * means something to the browser.
+   *
+   * ON GLASS, A LONG PRESS IS THE SECOND BUTTON - beta 1.05. It used to be left
+   * to the browser, which on an iPad meant selecting the word and offering to
+   * copy it: no use to anyone mid-game. Holding a chip for HOLD_MS now steps
+   * back one, and the click that follows the release is swallowed so the hold
+   * does not also step forward. Android fires contextmenu on a long press as
+   * well; while a finger is down that is ignored, so one hold is one step.
+   * A finger that moves is scrolling, and cancels the hold.
    */
   function cellTapBack(c) { c.at = (c.at + c.ring.length - 1) % c.ring.length; }
+  var HOLD_MS = 450, HOLD_SLOP = 10;
+  /* Shared, not per chip: redraw throws the pressed chip away, so the click
+     that ends a hold lands on its replacement. The first click swallowed
+     clears it, so a quick tap after a hold still counts. */
+  var ringClickMutedUntil = 0;
+  /* redraw removes the held chip, and a removed node hears no pointerup - so
+     the lift that unmutes is heard on the document, once for the whole app. */
+  function ringLift() {
+    if (ringClickMutedUntil === Infinity) ringClickMutedUntil = Date.now() + 350;
+  }
+  document.addEventListener('pointerup', ringLift, true);
+  document.addEventListener('pointercancel', ringLift, true);
   /** Wire both directions onto one chip. redraw takes no arguments. */
   function bindRingTaps(btn, c, redraw) {
-    btn.addEventListener('click', function () { cellTap(c); redraw(); });
+    var timer = null, x0 = 0, y0 = 0, touching = false;
+    function cancel() { if (timer) { clearTimeout(timer); timer = null; } }
+    btn.addEventListener('click', function () {
+      if (Date.now() < ringClickMutedUntil) { ringClickMutedUntil = 0; return; }
+      cellTap(c); redraw();
+    });
+    function holdBack() {
+      cancel();
+      ringClickMutedUntil = Infinity;     // until the finger lifts
+      cellTapBack(c);
+      redraw();
+    }
     btn.addEventListener('contextmenu', function (ev) {
       ev.preventDefault();
+      if (Date.now() < ringClickMutedUntil) return;  // this hold already stepped
+      if (touching) { if (timer) holdBack(); return; }
       if (c.ring.length < 3) return;      // nothing a second direction can reach
       cellTapBack(c);
       redraw();
     });
+    btn.addEventListener('pointerdown', function (ev) {
+      if (ev.pointerType === 'mouse') return;
+      touching = true; x0 = ev.clientX; y0 = ev.clientY;
+      cancel();
+      timer = setTimeout(holdBack, HOLD_MS);
+    });
+    btn.addEventListener('pointermove', function (ev) {
+      if (timer && (Math.abs(ev.clientX - x0) > HOLD_SLOP ||
+                    Math.abs(ev.clientY - y0) > HOLD_SLOP)) cancel();
+    });
+    function lift() { touching = false; cancel(); }
+    btn.addEventListener('pointerup', lift);
+    btn.addEventListener('pointercancel', lift);
   }
 
-  /* Said only where it can be done. A right-click hint on a phone is an
-     instruction for a button that is not there. */
+  /* Said in the words of the device in hand: right-click on a PC, hold on
+     glass. A tablet used to be told to right-click. */
   function ringBackHint() {
-    return deviceNow() === 'phone' ? ''
-      : ' Right-click to go back one.';
+    return deviceNow() === 'desktop' ? ' Right-click to go back one.'
+      : ' Hold to go back one.';
   }
 
   function startImpostor(song, idx, mode, level, decoys, unit) {
