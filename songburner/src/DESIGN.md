@@ -976,12 +976,25 @@ plausible — going one too far is the commonest thing that happens. Tapping rou
 again is not difficulty, it is the long way to somewhere you have already been.
 
 The secondary click is free on a PC: nothing in this app has ever wanted a
-context menu over a game board, so suppressing it there costs nothing. A phone
-has no second button and keeps the forward tap alone — the ring is short on
-Easy, which is what a phone mostly plays, and a long-press already means
-something to the browser. The hint on the board is printed only where the
-gesture exists; a right-click instruction on a phone is a button that is not
-there.
+context menu over a game board, so suppressing it there costs nothing.
+
+**On a phone or tablet, holding a chip is the second button (beta 1.05).** It
+was left to the browser at first, which on an iPad meant selecting the word and
+offering to copy it mid-game. A hold of 450 ms now steps back one; the click
+that follows the release is swallowed so the hold does not also step forward,
+and a finger that moves more than 10 px is a scroll and cancels it. Android also
+fires `contextmenu` on a long press; while a finger is down that is ignored, so
+one hold is one step. The chips are `user-select: none` and
+`-webkit-touch-callout: none`. The hint on the board names the gesture of the
+device in hand: right-click on a PC, hold on glass.
+
+### No double-tap zoom — beta 1.05
+
+The games are made of quick taps, and two of them close together zoomed the
+page on an iPad. Every element is `touch-action: manipulation`, which drops the
+double-tap zoom and keeps scrolling and pinch zoom. It is on `*` rather than
+`body` because touch-action is not inherited; the few things that set their own
+(drag handles, the gig stage) are more specific and win.
 
 ### Walking back through a section game — 1.52
 
