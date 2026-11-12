@@ -26,9 +26,10 @@ export const MENU = -1;                    // the index Present gives a grade's 
     opts.openDeck(link): another library deck for a { deck } link, as { deck, media, deckId,
     deckName, index } or with menu (a built menu) to open on. opts.menuFor(deckId, grade, { only,
     title }): a built menu, for links to a deck's own menu slides. opts.strict: a grade shows
-    only the slides tagged for it. opts.noTimings: keep no record of time on screen (the sub view). */
+    only the slides tagged for it. opts.noTimings: keep no record of time on screen (the sub view).
+    opts.group(i): the next and previous keys stay among slides of the same group (a sub song's). */
 export function present(record, startAt, media, onClose, findGoogle, opts = {}) {
-  const { grade, menu, openDeck, menuFor, strict, noTimings } = opts;
+  const { grade, menu, openDeck, menuFor, strict, noTimings, group } = opts;
   let deck = record.deck;
   let deckId = record.id;
   let deckName = record.name;
@@ -162,6 +163,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     let i = index + dir;
     while (i >= 0 && i < deck.slides.length && skip(deck.slides[i])) i += dir;
     if (i < 0 || i >= deck.slides.length) return;
+    if (group && deckId === record.id && group(i) !== group(index)) return;
     show(i);
   }
 
@@ -204,6 +206,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     else if (link.jump === 'previous') step(-1);
     else if (link.jump === 'first') show(0);
     else if (link.jump === 'last') show(deck.slides.length - 1);
+    else if (link.jump === 'menu') { if (curMenu()) show(MENU); }
     else if (link.url && SPINNER_URL.test(link.url)) spinnerOverlay(root);
     else if (link.url) window.open(link.url, '_blank', 'noopener');
   }

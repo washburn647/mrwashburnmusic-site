@@ -260,6 +260,7 @@ function deckMedia(deck, out) {
       take(el.fill);
     }
   }
+  if (deck && deck.subSongs && typeof deck.subSongs.lock === 'string') out.add(deck.subSongs.lock);
 }
 
 function sameText(a, b) {

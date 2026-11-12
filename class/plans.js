@@ -306,10 +306,21 @@ export function indexSongs(deck, names) {
   return index;
 }
 
-/** Average minutes per class a song took, from the timings Present saved. normName -> { min, n }. */
+/** Average minutes per class a song took, from the timings Present saved. normName -> { min, n, runs }.
+    A song timed in whole-class runs (kind 'run', see present.js) goes by those alone; others go
+    by every stretch its slides were on screen, a day's stretches in one deck as one sitting. */
 export function songTimes(timings) {
   const sittings = new Map();                // song|deck|day -> ms
+  const runs = new Map();                    // song -> [ms]
   for (const t of timings) {
+    if (t.kind === 'run') {
+      for (const x of t.songs || []) {
+        const k = normName(x.song);
+        if (!runs.has(k)) runs.set(k, []);
+        runs.get(k).push(x.ms);
+      }
+      continue;
+    }
     if (!t.song) continue;
     const key = normName(t.song) + '|' + t.deck + '|' + new Date(t.at).toDateString();
     sittings.set(key, (sittings.get(key) || 0) + t.ms);
@@ -322,7 +333,8 @@ export function songTimes(timings) {
     sums.set(song, s);
   }
   const out = new Map();
-  for (const [song, s] of sums) out.set(song, { min: s.ms / s.n / 60000, n: s.n });
+  for (const [song, s] of sums) out.set(song, { min: s.ms / s.n / 60000, n: s.n, runs: false });
+  for (const [song, list] of runs) out.set(song, { min: list.reduce((a, b) => a + b, 0) / list.length / 60000, n: list.length, runs: true });
   return out;
 }
 

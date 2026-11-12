@@ -15,6 +15,7 @@ import { makeTemplate } from './builder.js';
 import * as sync from './sync.js';
 import './library.js';
 import { showSub, refreshSub } from './subs.js';
+import { refreshSubSongs } from './subsongs.js';
 
 const CATEGORIES = ['Vocal Warmup', 'Song Fragments', 'Simple Songs', 'Arioso', 'Movement Exploration',
   'Form and Expression', 'Beat Motions', 'Songtales'];
@@ -474,4 +475,6 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 // Song slides take their grades from the plan's Max columns, so load it first.
 store.listPlans().then((years) => {
   store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1]));
+  // The sub songs' unlock dates follow the plan and calendar.
+  return refreshSubSongs(years.find((y) => y.year === schoolYear()) || years[years.length - 1]);
 }).catch(() => {}).finally(() => { route(); sync.syncNow(); });

@@ -110,6 +110,19 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   type to find by name in every group, tap a picture to put it on the board; ⭐ keeps the chosen
   board picture in the tray's group, named for what 🔎 last searched. Think/speak's picture list
   takes them too ("From the library", with a search). One synced record (`library`, below).
+- Lists (`lists.js`) colors its cells by value (a scale for Min., Eng. and Cmf., a color per
+  choice for Turns, Pos. and Loc., done / some / none left for each grade). Timed, beside Min., is
+  the song's average from Present (`songTimes`: whole-class runs when a song has any, otherwise
+  its time on screen); tapping it makes it the Min.
+- `subsongs.js`: sub songs. In Sub plans, Kyle taps a category deck's song to make it a sub song:
+  its slides are copied into the "Sub songs" deck (`deck.subSongs`, each slide tagged
+  `subSong`), where ✎ opens them in the editor to add videos, sounds and the like for the sub.
+  Each song is locked for a grade until the calendar reaches the class that first slates it
+  (`from`, worked out from the plan when the app opens and on Sub plans), as class menus lock;
+  🔒 / 🔓 unlocks one by hand. The Sub songs deck always goes to the sub with the sub deck. At
+  /sub/ the sub picks a grade and gets the workout: a menu per category in plan order, each with
+  → to the next category; a song's slides keep the keys to that song, and its Menu link (or a ▦
+  button added for the sub) goes back to the menu.
 - `subs.js` (`#/sub`) and `/sub/` (`sub/index.html`, `sub/sub.js`): sub plans. Kyle picks a deck
   and a code (6+ letters or numbers; case, spaces and dashes don't count); a substitute types the
   code at /sub/ and presents that deck, and the decks it links into (`linkedDecks`, sent again
