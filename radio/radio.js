@@ -3,14 +3,18 @@
   'use strict';
 
   const LO = 87.5, HI = 108.0;
-  const LOCK = 0.25;   // MHz either side of a station where its name shows
+  const ON = 0.05;     // tuned right on: the readout shows the station's number and name, the
+                       // meter is full, and only that station plays
+  const SETTLE = 5000; // ms after the last turn before stations loaded ahead are let go
   const HEAR = 0.6;    // MHz either side where it starts to bleed through the static
   const AHEAD = 1.6;   // MHz either side where it starts loading, when "Load nearby stations" is on
   const MAXCH = 3;     // streams open at once
-  const WHEEL_PX = 90; // a tuning wheel moves this many pixels per MHz
+  const WHEEL_PX = 140; // a tuning wheel moves this many pixels per MHz
+  const KNOB_DEG = 180; // the tuning knob turns this many degrees per MHz
+  const NOTCH = 60;     // scroll distance (px) per tenth, so a fast scroll can't outrun the loading
   const KEY = 'mwm-radio';
   const SKINS = { antique: '#3A2617', atomic: '#7FC8BC', eighties: '#14121C', modern: '#F6F1E4' };
-  const OPTS = { tuner: 'knob', static: 0.7, chatter: true, scanWait: 7, ahead: true };
+  const OPTS = { tuner: 'knob', static: 0.7, chatter: true, scanWait: 7, ahead: true, tag: 'tuning' };
 
   const $ = (id) => document.getElementById(id);
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -33,6 +37,9 @@
   const opts = state.opts;
   delete opts.shape;
   if (!['knob', 'across', 'updown'].includes(opts.tuner)) opts.tuner = 'knob';
+  if (!['off', 'tuning', 'always'].includes(opts.tag)) opts.tag = 'tuning';
+  // a phone on "save data" gets no loading ahead
+  const saveData = !!(navigator.connection && navigator.connection.saveData);
   let saveTimer = 0;
   function save() {
     clearTimeout(saveTimer);
@@ -46,6 +53,20 @@
   const freqEl = $('freq'), nameEl = $('name'), meter = $('meter');
   const powerBtn = $('power'), scanBtn = $('scan'), tuneKnob = $('tune'), volKnob = $('vol');
   const bars = [...meter.querySelectorAll('i')];
+  // the number on the needle (Options: off, while tuning, always)
+  const tag = document.createElement('span');
+  tag.className = 'tag';
+  tag.setAttribute('aria-hidden', 'true');
+  needle.appendChild(tag);
+  dial.dataset.tag = opts.tag;
+  let tagTimer = 0;
+  function showTag() {
+    dial.dataset.tag = opts.tag;
+    if (opts.tag !== 'tuning') return;
+    dial.classList.add('tuning');
+    clearTimeout(tagTimer);
+    tagTimer = setTimeout(() => dial.classList.remove('tuning'), 1500);
+  }
 
   // ---------- dial ----------
   const pct = (f) => ((f - LO) / (HI - LO)) * 100;
@@ -178,7 +199,9 @@
     const closest = (x, within) => live.filter((s) => dist(s, x) < within).sort((a, b) => dist(a, x) - dist(b, x))[0];
     if (glideTarget != null) add(closest(glideTarget, 0.05));
     add(closest(f, HEAR));
-    if (opts.ahead) {
+    // parked on a station: keep only that stream open, to save data
+    const parked = glideTarget == null && !scanning && now - lastTurn > SETTLE && closest(f, ON);
+    if (opts.ahead && !saveData && !parked) {
       if (scanNext) add(scanNext);
       add(nextStation(1, f, live)); add(nextStation(-1, f, live));
       live.filter((s) => dist(s, f) < AHEAD).sort((a, b) => dist(a, f) - dist(b, f)).forEach(add);
@@ -196,10 +219,12 @@
 
     best = 0;
     const t = ctx ? ctx.currentTime : 0;
+    // right on a station: that one alone, nothing bleeding in from its neighbours
+    const lock = closest(f, ON);
     for (const ch of chans.values()) {
       const d = Math.abs(f - ch.st.freq);
-      let c = d < 0.08 ? 1 : clamp(1 - (d - 0.08) / (HEAR - 0.08), 0, 1);
-      if (!ch.ready) c = 0;
+      let c = d < ON ? 1 : clamp(1 - (d - ON) / (HEAR - ON), 0, 1);
+      if (!ch.ready || (lock && ch.st !== lock)) c = 0;
       best = Math.max(best, c);
       // half-tuned stations fade in and out
       const flutter = c > 0 && c < 0.95 ? 1 - (1 - c) * 0.6 * Math.random() : 1;
@@ -328,7 +353,7 @@
   function paintName() {
     const { st, d } = nearest(state.freq);
     let name = '', here = null;
-    if (on && st && d < LOCK) {
+    if (on && st && d < ON) {
       here = st;
       name = failedUrls.has(st.url) ? 'No signal' : st.name;
     }
@@ -339,7 +364,8 @@
     const f = state.freq;
     needle.style.left = pct(f) + '%';
     tuneKnob.style.setProperty('--off', ((f - LO) * WHEEL_PX).toFixed(1) + 'px');
-    tuneKnob.style.setProperty('--a', ((f - LO) * 120) + 'deg');
+    tuneKnob.style.setProperty('--a', ((f - LO) * KNOB_DEG) + 'deg');
+    if (tag) tag.textContent = fmt(f);
     tuneKnob.setAttribute('aria-valuenow', fmt(f));
     tuneKnob.setAttribute('aria-valuetext', fmt(f) + ' FM');
     volKnob.style.setProperty('--a', (-135 + state.vol * 270) + 'deg');
@@ -350,15 +376,15 @@
   }
 
   // ---------- tuning ----------
-  let glide = 0;
+  let glide = 0, lastTurn = 0;
   function setFreq(f) {
     state.freq = clamp(f, LO, HI);
+    lastTurn = performance.now();
+    showTag();
     save(); paint();
   }
-  function snap() {
-    const { st, d } = nearest(state.freq);
-    setFreq(st && d < LOCK ? st.freq : r1(state.freq));
-  }
+  // let go of the dial: it rests on the nearest tenth, wherever the stations are
+  function settle() { setFreq(r1(state.freq)); }
   function stopGlide() { cancelAnimationFrame(glide); glide = 0; glideTarget = null; }
   function glideTo(target, done) {
     stopGlide();
@@ -423,8 +449,8 @@
     let last = null;
     const angle = (e) => {
       const ax = axis && axis();
-      if (ax === 'x') return e.clientX * 120 / WHEEL_PX;
-      if (ax === 'y') return -e.clientY * 120 / WHEEL_PX;
+      if (ax === 'x') return e.clientX * KNOB_DEG / WHEEL_PX;
+      if (ax === 'y') return -e.clientY * KNOB_DEG / WHEEL_PX;
       const r = el.getBoundingClientRect();
       return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
     };
@@ -448,10 +474,7 @@
     const end = () => { if (last == null) return; last = null; el.classList.remove('grab'); if (onEnd) onEnd(); };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
-    el.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      onKey(e.deltaY < 0 || e.deltaX < 0 ? 1 : -1, false);
-    }, { passive: false });
+    el.addEventListener('wheel', (e) => scrolled(e, onKey), { passive: false });
     el.addEventListener('keydown', (e) => {
       const k = e.key;
       if (k === 'ArrowUp' || k === 'ArrowRight') onKey(1, false);
@@ -463,16 +486,29 @@
     });
   }
 
-  let wheelSnap = 0;
+  // A scroll moves a tenth per notch of a mouse wheel; a trackpad's many small deltas add up
+  // to the same, so a flick can't race past stations faster than they load.
+  let scrollAcc = 0, scrollAt = 0;
+  function scrolled(e, onKey) {
+    e.preventDefault();
+    const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1;
+    const dy = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * unit;
+    const now = performance.now();
+    if (now - scrollAt > 300) scrollAcc = 0;
+    scrollAt = now;
+    scrollAcc += dy;
+    // one wheel notch (about 100 px) is always at least a tenth
+    if (Math.abs(dy) >= NOTCH) { scrollAcc = 0; onKey(dy < 0 ? 1 : -1, false); return; }
+    while (Math.abs(scrollAcc) >= NOTCH) {
+      const dir = scrollAcc < 0 ? 1 : -1;
+      scrollAcc += dir * NOTCH;
+      onKey(dir, false);
+    }
+  }
   knob(tuneKnob,
-    (d) => { userTouch(); setFreq(state.freq + d / 120); },
-    (dir, big) => {
-      userTouch();
-      setFreq(r1(state.freq) + dir * (big ? 1 : 0.1));
-      clearTimeout(wheelSnap);
-      wheelSnap = setTimeout(snap, 400);
-    },
-    snap,
+    (d) => { userTouch(); setFreq(state.freq + d / KNOB_DEG); },
+    (dir, big) => { userTouch(); setFreq(r1(state.freq) + dir * (big ? 1 : 0.1)); },
+    settle,
     () => (opts.tuner === 'across' ? 'x' : opts.tuner === 'updown' ? 'y' : null));
   function setTuner() {
     document.body.dataset.tuner = opts.tuner;
@@ -500,7 +536,8 @@
     setFreq(dialFreq(e));
   });
   dial.addEventListener('pointermove', (e) => { if (dialDrag) setFreq(dialFreq(e)); });
-  const dialEnd = () => { if (dialDrag) { dialDrag = false; snap(); } };
+  const dialEnd = () => { if (dialDrag) { dialDrag = false; settle(); } };
+  dial.addEventListener('wheel', (e) => scrolled(e, (dir) => { userTouch(); setFreq(r1(state.freq) + dir * 0.1); }), { passive: false });
   dial.addEventListener('pointerup', dialEnd);
   dial.addEventListener('pointercancel', dialEnd);
 
@@ -587,6 +624,7 @@
       opts[k] = v === 'true' ? true : v === 'false' ? false : isNaN(+v) ? v : +v;
       save(); paintOpts();
       if (k === 'tuner') setTuner();
+      if (k === 'tag') showTag();
       engine();
     });
   }
@@ -704,7 +742,7 @@
     for (const s of list) {
       const li = document.createElement('li');
       li.classList.toggle('clash', clashes(s));
-      li.classList.toggle('here', Math.abs(s.freq - state.freq) < LOCK);
+      li.classList.toggle('here', Math.abs(s.freq - state.freq) < ON);
 
       const go = document.createElement('button');
       go.className = 'go'; go.type = 'button';
