@@ -57,6 +57,15 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 - `lists.js` (`#/plan/lists`): a category's songs as on its sheet: details, per-grade Plan / Max
   / Left (the planner's Max), the sheet's extra columns (Key, Lessons, Notes...). Add, rename
   (renames in the plans too), shelve, remove (only when no class uses it).
+- The library starts with "This week": each grade's current class from the calendar
+  (`classAsOf` for today, in the plan for this school year), its built deck or a placeholder
+  with Build. A built class's page has Rebuild (`saveBuild` in `planner.js`, as the planner and
+  calendar use): the deck is made again from the category decks as they are now, keeping its id
+  and the background on its title slide. Other hand edits to a built deck are replaced.
+  Presenting a built class from its first slide to its last, every slide shown, saves a run
+  when Present closes (a `timings` row with `kind: 'run'`: each song's time and the total; time
+  in a deck a slide links to counts for that slide). The class's page lists them under Times.
+- Present keeps the screen awake (Screen Wake Lock) while it is open.
 - The library groups decks: the category decks, then classes (built ones, the Class template,
   imported class decks), then everything else. The Class template deck is made once from an
   imported class deck like "1 29" (its title and exit slides); builds use it, so that deck can go.
@@ -144,7 +153,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 - `store.js`: IndexedDB. Decks and pictures live on the device they were imported on.
   `timings` gets a row each time a slide is on screen for 2 seconds or more
   (deck, slide, song, milliseconds), for average song lengths later.
-- `sw.js`: keeps an offline copy of the app (not the data).
+- `sw.js`: keeps an offline copy of the app (not the data). Network first, but after 3 seconds
+  the last copy answers, so slow school wifi doesn't hold the app up.
 - `fonts/`: Comic Neue (SIL Open Font License), the stand-in for Comic Sans MS,
   which Chromebooks don't have.
 

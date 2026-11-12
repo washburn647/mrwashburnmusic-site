@@ -56,6 +56,9 @@ main.lib { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
 .deck-card { background: var(--card); border-radius: 16px; overflow: hidden; border: 1px solid var(--line);
   text-align: left; padding: 0; display: block; width: 100%; }
 .deck-card:hover { box-shadow: 0 4px 0 var(--wheat); }
+.deck-card.to-build { border-style: dashed; cursor: default; }
+.deck-card.to-build:hover { box-shadow: none; }
+.deck-card.to-build .thumb { display: flex; align-items: center; justify-content: center; background: transparent; }
 .deck-card .meta { padding: 10px 14px 12px; }
 .deck-card .name { font-weight: 600; font-size: 17px; }
 .deck-card .count { color: var(--muted); font-size: 14px; }
@@ -65,6 +68,12 @@ main.lib { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
 .deck-head { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; flex-wrap: wrap; }
 .deck-head h2 { margin: 0; font-weight: 600; font-size: 26px; flex: 1; min-width: 200px; }
 .slides { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.runs { margin-top: 28px; overflow-x: auto; }
+.runs h3 { margin: 0 0 8px; }
+.runs table { border-collapse: collapse; font-size: 14px; }
+.runs th, .runs td { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.runs th { font-weight: 600; color: var(--muted); }
+.runs td:first-child, .runs th:first-child { text-align: left; }
 .slide-card { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
   background: var(--card); text-align: left; }
 .slide-card:hover { outline: 3px solid var(--wheat); }
