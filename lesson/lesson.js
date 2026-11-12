@@ -14,6 +14,10 @@ import { openPlayer, PIECE_MODES } from './player.js';
 import { openPractice } from './practice.js';
 import * as snd from './sound.js';
 
+// Opened over plain http (a typed address can land there), the browser has no crypto.subtle,
+// so a student's pages can't be unlocked: go to the https page.
+if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) location.replace(`https://${location.host}${location.pathname}${location.search}${location.hash}`);
+
 const main = document.getElementById('page');
 
 function el(tag, props = {}, ...kids) {
