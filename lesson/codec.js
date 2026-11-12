@@ -9,12 +9,11 @@
    An item has a piece or a deck, not both. (Older pages also had stickers, goals and tempos.)
    v1 (older links): { v: 1, n, i, d, m, t: [[title, detail, link]] } */
 
-async function pipe(bytes, stream) {
-  return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
-}
+import { inflateRaw, deflateRaw } from './inflate.js';
 
 export async function encodeLesson(page) {
-  const bytes = await pipe(new TextEncoder().encode(JSON.stringify(page)), new CompressionStream('deflate-raw'));
+  const bytes = await deflateRaw(new TextEncoder().encode(JSON.stringify(page)));
+  if (!bytes) throw new Error('This browser cannot make lesson links');
   let bin = '';
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -82,7 +81,7 @@ export function cleanDeck(c, { studio = false } = {}) {
 export async function decodeLesson(text) {
   const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
   const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  return cleanPage(JSON.parse(new TextDecoder().decode(await pipe(bytes, new DecompressionStream('deflate-raw')))));
+  return cleanPage(JSON.parse(new TextDecoder().decode(await inflateRaw(bytes))));
 }
 
 /* Only the fields a page may have, in the shapes it may have them. */
