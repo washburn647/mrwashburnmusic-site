@@ -409,6 +409,8 @@ function newId() {
 
 function route() {
   main.classList.toggle('wide', location.hash.startsWith('#/plan'));
+  const here = location.hash.match(/^#\/(plan\/calendar|plan\/lists|plan|sub)?/);
+  for (const a of $('#views').children) a.classList.toggle('on', a.getAttribute('href') === '#/' + ((here && here[1]) || ''));
   const plan = location.hash.match(/^#\/plan(?:\/(calendar|lists))?/);
   if (plan) { showPlanner(main, plan[1] || 'plan'); return; }
   if (location.hash.startsWith('#/sub')) { showSub(main); return; }

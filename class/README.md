@@ -10,6 +10,7 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 ## Files
 
 - `index.html`, `app.js`: the library (`#/`) and one deck's slides (`#/deck/<id>`), plus importing.
+  The header links Decks, Planner, Calendar, Lists and Sub plans, the one on show highlighted.
 - `editor.js`: the slide editor (`#/deck/<id>/edit/<n>`). Select, move (with snapping; Alt turns
   it off), resize, type in boxes, add text, shapes and pictures, links, marks, layer order
   (Ctrl+↑ or Ctrl+↓ one step, with Shift to the front or back), slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only

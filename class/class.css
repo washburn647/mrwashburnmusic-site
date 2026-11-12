@@ -38,6 +38,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .top img { height: 40px; }
 .top h1 { font-size: 22px; font-weight: 600; margin: 0; }
 .top .spacer { flex: 1; }
+.top .views { display: flex; gap: 8px; flex-wrap: wrap; }
+.top .views .btn.on { background: var(--forest); color: #fff; border-color: var(--forest); }
 .sync:not(.btn) { font-size: 22px; line-height: 1; cursor: pointer; user-select: none; color: #2E7D5B; }
 .sync.syncing { animation: sync-pulse 1s ease-in-out infinite alternate; }
 .sync.offline { color: #9a9a9a; }
@@ -372,8 +374,6 @@ main.lib.wide { max-width: none; padding: 0; }
 .lib-h:first-child { margin-top: 0; }
 .pl-grid th.cls, .pl-grid td.cls { width: 78px; }
 .pl-grid td.cls .when { display: block; font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; }
-.pl-views .chip { text-decoration: none; color: inherit; }
-.pl-views .chip.on { color: var(--cream); }
 .cal-body { flex: 1; min-height: 0; display: flex; overflow: auto; }
 .cal-main { flex: 1; padding: 14px 18px; min-width: 0; }
 .cal-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }

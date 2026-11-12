@@ -93,9 +93,7 @@ function header(ctx, ...extra) {
     remember('year', v);
     ctx.reload();
   });
-  const views = el('span', { class: 'grades pl-views' }, VIEWS.map(([k, name, href]) =>
-    el('a', { class: 'chip' + (k === ctx.view ? ' on' : ''), href }, name)));
-  return el('div', { class: 'pl-head' }, views, yearSel, ...extra);
+  return el('div', { class: 'pl-head' }, yearSel, ...extra);
 }
 
 /** Build a class's deck into the library (replacing the last build) and open it. */
