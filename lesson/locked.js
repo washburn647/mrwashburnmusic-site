@@ -8,6 +8,7 @@
    (lesson pages as in codec.js; their pieces point into the shared p). */
 
 import { API } from './paths.js';
+import { inflateRaw, deflateRaw } from './inflate.js';
 
 const WORDS = `
   acorn angel apple apron arrow badge bagel baker banjo beach beans bear bell berry bike bird blue
@@ -75,9 +76,6 @@ const b64 = (bytes) => {
   return btoa(bin);
 };
 const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-async function pipe(bytes, stream) {
-  return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
-}
 async function sha256(text) {
   return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))));
 }
@@ -99,14 +97,17 @@ export function keysFor(code) {
 
 export async function seal(key, data) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const packed = await pipe(new TextEncoder().encode(JSON.stringify(data)), new CompressionStream('deflate-raw'));
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, packed));
-  return { iv: b64(iv), ct: b64(ct) };
+  const json = new TextEncoder().encode(JSON.stringify(data));
+  // Older iPads can't compress: their results go up as they are (z: 0).
+  const packed = await deflateRaw(json);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, packed || json));
+  return { iv: b64(iv), ct: b64(ct), ...(packed ? {} : { z: 0 }) };
 }
 
 export async function unseal(key, box) {
   const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(box.iv) }, key, unb64(box.ct));
-  return JSON.parse(new TextDecoder().decode(await pipe(new Uint8Array(plain), new DecompressionStream('deflate-raw'))));
+  const bytes = new Uint8Array(plain);
+  return JSON.parse(new TextDecoder().decode(box.z === 0 ? bytes : await inflateRaw(bytes)));
 }
 
 async function call(path, init) {

@@ -738,7 +738,7 @@ export class Box extends DurableObject {
     const count = (await this.ctx.storage.get('count')) || 0;
     if (count >= MAX_RESULTS) return reply({ error: 'full' }, 507);
     const key = `r:${String(Date.now()).padStart(15, '0')}:${crypto.randomUUID().slice(0, 8)}`;
-    await this.ctx.storage.put({ [key]: { iv: r.iv, ct: r.ct }, count: count + 1 });
+    await this.ctx.storage.put({ [key]: { iv: r.iv, ct: r.ct, ...(r.z === 0 ? { z: 0 } : {}) }, count: count + 1 });
     return reply({ ok: true });
   }
 

@@ -2,6 +2,7 @@
    loading OpenSheetMusicDisplay (lesson/vendor, BSD licence) to draw them. */
 
 import { OSMD_SRC } from './paths.js';
+import { inflateRaw } from './inflate.js';
 
 const scripts = {};
 export function loadScript(src) {
@@ -24,10 +25,7 @@ export async function loadOSMD() {
 
 /* ---------- Reading files: .musicxml / .xml, or compressed .mxl (a zip) ---------- */
 
-async function inflate(bytes) {
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
+const inflate = (bytes) => inflateRaw(bytes);
 
 async function unzip(buf) {
   const v = new DataView(buf);
