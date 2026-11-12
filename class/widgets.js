@@ -1,7 +1,8 @@
 /* Widgets: slide elements that do something in Present.
    { t: 'wg', kind, x, y, w, h, ... }
    - timer:   secs (counts down from it; 0 counts up). Tap to start or pause.
-   - spinner: picks a student. Names stay on this device (see names below),
+   - spinner: picks a student, a number, a letter. Names stay on this device (see names below);
+     list, the name of the list it opens on, is set in the editor,
               never in a deck, so they never leave it.
    - video:   url (YouTube) or media (a video file kept on the device), name
    - sound:   media (a sound file kept on the device), name
@@ -145,6 +146,40 @@ function saveNames(v) {
   try { localStorage.setItem(NAMES_KEY, JSON.stringify(v)); } catch (e) { /* storage blocked */ }
 }
 
+// Lists every device has, so a spinner set to one works on any Chromebook (and in the sub view).
+const BUILTIN = {
+  'Numbers 1–20': Array.from({ length: 20 }, (_, i) => String(i + 1)),
+  'Letters A–Z': Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i))
+};
+const listOf = (names, list) => names.lists[list] || BUILTIN[list] || [];
+
+/** In the editor: which list a spinner opens on (el.list). Resolves the name, '' for the
+    last one used, or null when backed out. Only the list's name goes in the deck. */
+export function pickSpinnerList(current) {
+  return new Promise((resolve) => {
+    const names = loadNames();
+    const all = [...new Set([...Object.keys(names.lists).sort(), ...Object.keys(BUILTIN), ...(current ? [current] : [])])];
+    const box = h('div', 'wg-names');
+    const card = h('div', 'wg-names-box wg-dialog');
+    const pick = h('select', 'wg-names-title');
+    const none = h('option', null, 'The last list used');
+    none.value = '';
+    pick.append(none, ...all.map((k) => { const o = h('option', null, k); o.value = k; o.selected = k === current; return o; }));
+    const ok = h('button', 'btn', 'Done');
+    const cancel = h('button', 'btn quiet', 'Cancel');
+    const bar = h('div', 'wg-names-row');
+    bar.append(h('span', 'spacer'), cancel, ok);
+    card.append(pick, bar);
+    box.append(card);
+    (document.fullscreenElement || document.body).append(box);
+    pick.focus();
+    const done = (v) => { box.remove(); resolve(v); };
+    cancel.addEventListener('click', () => done(null));
+    ok.addEventListener('click', () => done(pick.value));
+    box.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') done(null); if (e.key === 'Enter') done(pick.value); });
+  });
+}
+
 // Who has had a turn, per list, for this sitting only.
 const turns = new Map();
 
@@ -159,14 +194,14 @@ function spinner(d, el) {
     p = panel(d, 'wg-panel-spin', (me) => { me.shade.remove(); p = null; });
     const w = h('div', 'wg wg-spinner');
     p.box.append(w);
-    spinnerBody(w);
+    spinnerBody(w, el.list);
   });
   every(d, 500, () => {}, () => { if (p) p.close(); });
 }
 
 /* The wheel. A name picked comes off the wheel until everyone has had a turn;
    "Leave in" puts the last one back, ↺ puts everyone back. */
-function spinnerBody(d) {
+function spinnerBody(d, preset) {
   d.classList.add('wg-spin');
   const wheelBox = h('div', 'wg-wheel');
   const pointer = h('div', 'wg-pointer');
@@ -184,24 +219,28 @@ function spinnerBody(d) {
   d.append(wheelBox, pointer, result, bar);
 
   let names = loadNames();
-  let list = names.last && names.lists[names.last] ? names.last : Object.keys(names.lists)[0] || '';
+  // A spinner set up with a list opens on it; others on the last list used here.
+  let list = preset && listOf(names, preset).length ? preset
+    : names.last && names.lists[names.last] ? names.last : Object.keys(names.lists)[0] || '';
   let angle = 0, spinning = false;
 
   const left = () => {
-    const all = names.lists[list] || [];
+    const all = listOf(names, list);
     const had = turns.get(list) || new Set();
     const rest = all.filter((n) => !had.has(n));
     return rest.length ? rest : all;
   };
 
   function fillPick() {
-    pick.replaceChildren(...Object.keys(names.lists).sort().map((k) => {
+    const keys = Object.keys(names.lists).sort();
+    if (list && !keys.includes(list)) keys.push(list);
+    pick.replaceChildren(...keys.map((k) => {
       const o = h('option', null, k);
       o.value = k;
       o.selected = k === list;
       return o;
     }));
-    pick.hidden = !Object.keys(names.lists).length;
+    pick.hidden = !keys.length;
   }
 
   function drawWheel() {
@@ -259,7 +298,7 @@ function spinnerBody(d) {
       spinning = false;
       result.textContent = n[k];
       const had = turns.get(list) || new Set();
-      if (had.size >= (names.lists[list] || []).length) had.clear();
+      if (had.size >= listOf(names, list).length) had.clear();
       had.add(n[k]);
       turns.set(list, had);
       last = n[k];
@@ -275,7 +314,7 @@ function spinnerBody(d) {
     nameIn.value = list;
     nameIn.placeholder = 'Class';
     const area = h('textarea', 'wg-names-list');
-    area.value = (names.lists[list] || []).join('\n');
+    area.value = listOf(names, list).join('\n');
     area.placeholder = 'One name per line';
     const save = h('button', 'btn', 'Save');
     const del = h('button', 'btn danger', 'Delete');

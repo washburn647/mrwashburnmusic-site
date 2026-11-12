@@ -13,7 +13,7 @@ import { present } from './present.js';
 import * as store from './store.js';
 import { el, thumb, addMediaUrl, loadHashes } from './ui.js';
 import { pickFromLibrary } from './library.js';
-import { KINDS, youtubeId, spotifyPath, editPictures, editPlaces } from './widgets.js';
+import { KINDS, youtubeId, spotifyPath, editPictures, editPlaces, pickSpinnerList } from './widgets.js';
 
 const SHAPES = [
   ['rect', 'Rectangle'], ['roundRect', 'Rounded rectangle'], ['ellipse', 'Circle'],
@@ -119,8 +119,8 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     FONTS.map((f) => el('option', { value: f }, f)));
   fontSel.addEventListener('change', () => { setRuns({ font: fontSel.value }); fontSel.blur(); });
   const sizeOut = el('span', { class: 'ed-size' }, '');
-  const smaller = tool('A−', 'Smaller text', () => resizeText(-1));
-  const bigger = tool('A+', 'Bigger text', () => resizeText(1));
+  const smaller = tool('A−', 'Smaller text (Ctrl+Shift+<)', () => resizeText(-1));
+  const bigger = tool('A+', 'Bigger text (Ctrl+Shift+>)', () => resizeText(1));
   const boldBtn = tool(el('b', {}, 'B'), 'Bold (Ctrl+B)', () => toggleStyle('b', 'bold'));
   const italicBtn = tool(el('i', {}, 'I'), 'Italic (Ctrl+I)', () => toggleStyle('i', 'italic'));
   const underBtn = tool(el('u', {}, 'U'), 'Underline (Ctrl+U)', () => toggleStyle('u', 'underline'));
@@ -496,6 +496,12 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   // What a widget needs to work. Returns false when the teacher backs out.
   async function configure(e) {
+    if (e.kind === 'spinner') {
+      const list = await pickSpinnerList(e.list || '');
+      if (list == null) return false;
+      if (list) e.list = list; else delete e.list;
+      return true;
+    }
     if (e.kind === 'timer') {
       const v = window.prompt('Count down from (minutes:seconds), or 0 to count up', e.secs ? Math.floor(e.secs / 60) + ':' + String(e.secs % 60).padStart(2, '0') : '1:00');
       if (v == null) return false;
@@ -572,7 +578,6 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
 
   async function setUpWidget(i) {
     const e = structuredClone(cur().els[i]);
-    if (e.kind === 'spinner') return;
     if (!(await configure(e))) return;
     change(() => { ws().els[i] = e; });
   }
@@ -895,12 +900,14 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
     change(() => eachRun((r) => Object.assign(r, props)));
   }
 
+  // Text sizes, as Google Slides steps through them (Ctrl+Shift+> and <).
+  const SIZES = [6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 44, 48, 54, 60, 66, 72, 80, 88, 96, 120, 144, 168, 200];
   function resizeText(dir) {
     commitText();
     if (!sel.length) return;
     change(() => eachRun((r) => {
       const sz = r.sz || 18;
-      r.sz = Math.max(6, Math.min(200, dir > 0 ? sz + (sz < 20 ? 2 : 4) : sz - (sz <= 20 ? 2 : 4)));
+      r.sz = dir > 0 ? SIZES.find((x) => x > sz) || 200 : [...SIZES].reverse().find((x) => x < sz) || 6;
     }), 'size');
   }
 
@@ -1156,6 +1163,13 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
       e.preventDefault();
       if (redoing) doRedo(); else doUndo();
       if (t && t.blur && t !== document.body) t.blur();
+      return;
+    }
+    if (mod && e.shiftKey && !e.altKey && (e.code === 'Period' || e.code === 'Comma' || k === '>' || k === '<') && !field) {
+      e.preventDefault();
+      const at = editing ? sel.slice() : null;
+      resizeText(e.code === 'Period' || k === '>' ? 1 : -1);
+      if (at && at.length === 1) editText(at[0]);
       return;
     }
     if (editing && mod && ['b', 'i', 'u'].includes(k.toLowerCase())) {

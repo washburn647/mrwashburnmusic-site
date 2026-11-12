@@ -8,6 +8,7 @@ import * as store from './store.js';
 import { el, loadHashes } from './ui.js';
 import * as sync from './sync.js';
 import { normName, categoryDeck, indexSongs, schoolYear } from './plans.js';
+import { songSection, SECTIONS } from './marks.js';
 import { subDeck, setSubSong, setOpen, refreshSubSongs, songKey } from './subsongs.js';
 
 const API = '/api/class/sub';
@@ -145,7 +146,17 @@ async function songsSection(main) {
     }));
     const media = await loadHashes([...icons.values()].filter(Boolean));
     const count = songs.filter((n) => tagged.has(songKey(category, n))).length;
-    const grid = el('div', { class: 'sub-grid' }, songs.map((n) => {
+    // Move Its and dances after the usual songs, under a line of their own.
+    const partOf = (n) => songSection(src.deck.slides[index.get(normName(n))[0]]);
+    songs.sort((a, b) => SECTIONS.indexOf(partOf(a)) - SECTIONS.indexOf(partOf(b)));
+    let part = 'main';
+    const grid = el('div', { class: 'sub-grid' }, songs.flatMap((n) => {
+      const p = partOf(n);
+      const sep = p !== part ? el('div', { class: 'slide-sep' }, p === 'moveIt' ? 'Move It' : 'Dances') : null;
+      part = p;
+      return [sep, chip(n)];
+    }));
+    function chip(n) {
       const key = songKey(category, n);
       const t = tagged.get(key);
       const at = t && rec ? rec.deck.slides.findIndex((x) => x.subSong === key) : -1;
@@ -160,7 +171,7 @@ async function songsSection(main) {
             onclick: () => { location.hash = '#/deck/' + rec.id + '/edit/' + (Math.max(0, at) + 1); } }, '✎'),
           el('button', { class: 'btn quiet small' + (t.open ? ' on' : ''), title: t.open ? 'Unlocked' : 'Locks until the class reaches it',
             onclick: async () => { await setOpen(key, !t.open); showSub(main); } }, t.open ? '🔓' : '🔒')) : null);
-    }));
+    }
     const d = el('details', { class: 'sub-cat', open: count || opened.has(category) ? true : null },
       el('summary', {}, category, count ? el('span', { class: 'count' }, String(count)) : null), grid);
     d.addEventListener('toggle', () => { if (d.open) opened.add(category); else opened.delete(category); });

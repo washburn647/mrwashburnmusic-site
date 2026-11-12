@@ -12,7 +12,7 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 - `index.html`, `app.js`: the library (`#/`) and one deck's slides (`#/deck/<id>`), plus importing.
   The header links Decks, Planner, Calendar, Lists and Sub plans, the one on show highlighted.
 - `editor.js`: the slide editor (`#/deck/<id>/edit/<n>`). Select, move (with snapping; Alt turns
-  it off), resize, type in boxes, add text, shapes and pictures, links, marks, layer order
+  it off), resize, type in boxes (Ctrl+Shift+> and < step text size as Google Slides does, 11 included), add text, shapes and pictures, links, marks, layer order
   (Ctrl+↑ or Ctrl+↓ one step, with Shift to the front or back), slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only
   the slides it touches. Slide links follow their slide when slides move. Saves as it goes.
 - `ui.js`: helpers the pages share (thumbnails, picture URLs).
@@ -37,6 +37,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   own tab; a copied picture pastes in with Ctrl+V, and "Use as background" turns a picture into
   the slide background. In-app search would need an API key on a server, which this site
   doesn't have yet.
+- A deck page shows a deck's Move Its and dances apart from its usual songs, each under a line
+  of its own (in every sort); the Sub plans song list does the same.
 - `planner.js`, `plans.js`, `xlsx.js`: the planner (`#/plan`), ported from the Apps Script
   planner. Import DATABASE.xlsx once per year (read in the browser, kept in IndexedDB `plans`).
   Grade tabs, years ("New year" keeps the catalog, empties plans, zeroes Max), catalog with Max,
@@ -91,6 +93,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   and takes pictures: 🔎 opens a Google Images tab for see-through pictures (SafeSearch on);
   a copied picture pastes in (Ctrl+V or 📋), a picture file drops in, and ✋ moves and sizes
   them (✕ takes one off). Pictures stay under the ink and are never saved to the deck.
+  A spinner opens on the list set for it in the editor (`el.list`, only the list's name; double-click
+  it to change), or on the last list used. Numbers 1–20 and Letters A–Z are on every device.
   The spinner takes a picked name off the wheel until everyone has had a turn; "Leave in" puts
   it back, ↺ puts everyone back. Think/speak (`pics: [{ media }]`, chosen in the editor) opens on
   white with a speak row and a think row; a tap moves a picture to the other row in its column,

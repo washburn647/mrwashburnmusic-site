@@ -532,3 +532,6 @@ button.pics-cell.on { border-color: var(--forest); box-shadow: 0 0 0 3px var(--w
 .sub-tools { display: flex; justify-content: center; gap: 6px; padding: 0 0 8px; }
 .sub-tools .btn.on { background: #e3f1e0; }
 .sub-pick-grades { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+/* A deck's Move Its and dances, apart from its usual songs */
+.slide-sep { grid-column: 1 / -1; margin: 18px 0 2px; padding-top: 12px; border-top: 3px solid var(--wheat); font-weight: 600; font-size: 18px; color: var(--forest); }
+.slide-sep.plain { padding-top: 0; }

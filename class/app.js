@@ -21,6 +21,7 @@ const CATEGORIES = ['Vocal Warmup', 'Song Fragments', 'Simple Songs', 'Arioso', 
   'Form and Expression', 'Beat Motions', 'Songtales'];
 
 const LOCK = 'e8a2199e2a0d291cde34b6ad10564b06';     // the lock picture the decks' menus use
+const PART_LABELS = { main: '', moveIt: 'Move It', dance: 'Dances' };
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -184,14 +185,25 @@ async function showDeck(id, startPresenting, editAt) {
     s.song && s.song.icon ? el('img', { class: 'song-icon', src: media(s.song.icon), alt: '' }) : null,
     el('span', { class: 'cap-t' }, s.title || ''),
     s.grades && s.grades.length ? el('span', { class: 'cap-g' }, s.grades.join(' ')) : null));
+  // Move Its and dances sit apart from the usual songs, each under a line of its own.
+  const parts = new Set(rec.deck.slides.filter((s) => s.song && s.song.kind === 'song').map(songSection));
+  let part = 'main';
+  const apart = (s) => {
+    if (parts.size < 2 || !s.song || s.song.kind !== 'song') return;
+    const p = songSection(s);
+    if (p === part) return;
+    part = p;
+    grid.append(el('div', { class: 'slide-sep' + (p === 'main' ? ' plain' : '') }, PART_LABELS[p]));
+  };
   if (sort === 'deck') {
-    rec.deck.slides.forEach((s, i) => { if (fits(s) && !(grade && s.menu)) grid.append(card(s, i)); });
+    rec.deck.slides.forEach((s, i) => { if (fits(s) && !(grade && s.menu)) { apart(s); grid.append(card(s, i)); } });
   } else {
     // Sorted, a deck shows its songs only, each song's slides together.
     const groups = sortGroups(rec, songGroups(rec, plan, fits), sort, plan, grade);
     let dragged = null;
     for (const g of groups) {
       for (const i of g.slides) {
+        apart(rec.deck.slides[i]);
         const c = card(rec.deck.slides[i], i);
         if (sort === 'custom') {
           c.draggable = true;
