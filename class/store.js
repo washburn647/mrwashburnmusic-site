@@ -226,6 +226,7 @@ export function mediaOf(deck) {
     }
   }
   if (deck.subSongs && deck.subSongs.lock) out.add(deck.subSongs.lock);   // the sub menus' lock
+  if (deck.subSongs && deck.subSongs.looks) for (const l of Object.values(deck.subSongs.looks)) take(l && l.bg);
   return [...out];
 }
 

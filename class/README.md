@@ -117,9 +117,12 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 - `subsongs.js`: sub songs. In Sub plans, Kyle taps a category deck's song to make it a sub song:
   its slides are copied into the "Sub songs" deck (`deck.subSongs`, each slide tagged
   `subSong`), where ✎ opens them in the editor to add videos, sounds and the like for the sub.
-  Each song is locked for a grade until the calendar reaches the class that first slates it
-  (`from`, worked out from the plan when the app opens and on Sub plans), as class menus lock;
-  🔒 / 🔓 unlocks one by hand. The Sub songs deck always goes to the sub with the sub deck. At
+  A grade sees a song unlocked when an earlier grade has it (last year) or the calendar has
+  reached the class that first slates it; locked when the grade has it later this year (a
+  Max, or a later class); not at all when only a later grade has it (`from`, worked out from
+  the plan when the app opens and on Sub plans). 🔒 / 🔓 unlocks one by hand. Each category's
+  menus take the look of its deck's menu slide (`looks`: background and title box). Sub plans
+  has no deck to pick: the code opens the Sub songs deck. At
   /sub/ the sub picks a grade and gets the workout: a menu per category in plan order, each with
   → to the next category; a song's slides keep the keys to that song, and its Menu link (or a ▦
   button added for the sub) goes back to the menu.

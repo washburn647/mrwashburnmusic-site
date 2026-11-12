@@ -3,7 +3,7 @@
    a connection; the last copy that loaded is kept for when there is none, or
    when the network takes more than 3 seconds.
    Decks and pictures are not in here - they live in IndexedDB (see store.js). */
-var CACHE = 'class-shell-v10';
+var CACHE = 'class-shell-v11';
 var SHELL = ['./', 'index.html', 'class.css', 'app.js', 'pptx.js', 'zip.js', 'render.js',
              'present.js', 'store.js', 'marks.js', 'editor.js', 'ui.js', 'menus.js', 'planner.js', 'plans.js', 'builder.js', 'xlsx.js', 'widgets.js', 'calendar.js', 'lists.js', 'sync.js', 'library.js', 'subs.js', 'subsongs.js', 'manifest.webmanifest',
              'fonts/comic-neue-latin-400-normal.woff2', 'fonts/comic-neue-latin-400-italic.woff2',
