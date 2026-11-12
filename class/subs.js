@@ -1,5 +1,4 @@
-/* Sub plans (#/sub): which deck a substitute gets, and the code that opens it at
-   /sub/. The website keeps the setting (/api/class/sub, see subApi in worker/index.js)
+/* Sub plans (#/sub): the code that opens the sub songs (the Sub songs deck) at /sub/. The website keeps the setting (/api/class/sub, see subApi in worker/index.js)
    with the ids of the decks the sub deck links into, so links work there too; when
    those links change, the app sends the new list (refreshSub, after each sync). The Sub songs
    deck (subsongs.js) always goes along, for the sub view's song menus. Below the setting,
@@ -9,6 +8,7 @@ import * as store from './store.js';
 import { el, loadHashes } from './ui.js';
 import * as sync from './sync.js';
 import { normName, categoryDeck, indexSongs, schoolYear } from './plans.js';
+import { songSection, SECTIONS } from './marks.js';
 import { subDeck, setSubSong, setOpen, refreshSubSongs, songKey } from './subsongs.js';
 
 const API = '/api/class/sub';
@@ -69,10 +69,6 @@ function newCode() {
   return Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => abc[b % abc.length]).join('');
 }
 
-function newId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
-
 export async function showSub(main) {
   document.title = 'Sub plans · Class';
   main.replaceChildren(el('div', { class: 'deck-head' }, el('h2', {}, 'Sub plans')));
@@ -85,10 +81,6 @@ export async function showSub(main) {
     main.append(el('p', { class: 'sub-note' }, 'Sign in to sync first (the cloud at the top).'));
     return;
   }
-  const decks = await store.listDecks();
-  const pick = el('select', { class: 'sub-deck' },
-    el('option', { value: '' }, '—'),
-    decks.map((d) => el('option', { value: d.id, selected: d.id === set.deck }, d.name)));
   const code = el('input', { class: 'sub-code', value: set.code || newCode(), maxlength: 40, autocomplete: 'off', spellcheck: 'false' });
   const msg = el('p', { class: 'sub-note' });
   const where = location.host + '/sub';
@@ -97,10 +89,7 @@ export async function showSub(main) {
     status.replaceChildren(set.code
       ? el('span', {}, where + ' · ', el('b', {}, set.code))
       : el('span', {}, 'Off'));
-    edit.hidden = !pick.value;
   };
-  const edit = el('button', { class: 'btn quiet', onclick: () => { location.hash = '#/deck/' + pick.value + '/edit'; } }, 'Edit');
-  pick.addEventListener('change', paint);
 
   const save = async (body) => {
     msg.textContent = '';
@@ -113,22 +102,16 @@ export async function showSub(main) {
     }
   };
 
+  // The sub gets the sub songs: a code opens the Sub songs deck, and the sub picks PK, K or 1.
   main.append(el('div', { class: 'sub-form' },
     status,
-    el('label', {}, 'Deck ', pick, edit,
-      el('button', { class: 'btn quiet', onclick: async () => {
-        const now = Date.now();
-        const rec = { id: newId(), name: 'Sub plans', created: now, updated: now,
-          deck: { w: 960, h: 540, slides: [{ bg: { type: 'solid', color: '#FFFFFF' }, els: [] }] } };
-        await store.putDeck(rec);
-        location.hash = '#/deck/' + rec.id + '/edit';
-      } }, '+ New')),
     el('label', {}, 'Code ', code,
       el('button', { class: 'btn quiet', title: 'New code', onclick: () => { code.value = newCode(); } }, '↻')),
     el('div', { class: 'sub-row' },
-      el('button', { class: 'btn', onclick: () => {
-        if (!pick.value) { msg.textContent = 'Pick a deck.'; return; }
-        save({ code: code.value, deck: pick.value, decks: withSongs(pick.value, linkedDecks(pick.value, decks), decks) });
+      el('button', { class: 'btn', onclick: async () => {
+        const rec = await subDeck();
+        if (!rec) { msg.textContent = 'Tag a sub song first.'; return; }
+        save({ code: code.value, deck: rec.id, decks: [] });
       } }, 'Save'),
       el('button', { class: 'btn quiet', onclick: () => save({ code: '' }) }, 'Turn off')),
     msg));
@@ -163,7 +146,17 @@ async function songsSection(main) {
     }));
     const media = await loadHashes([...icons.values()].filter(Boolean));
     const count = songs.filter((n) => tagged.has(songKey(category, n))).length;
-    const grid = el('div', { class: 'sub-grid' }, songs.map((n) => {
+    // Move Its and dances after the usual songs, under a line of their own.
+    const partOf = (n) => songSection(src.deck.slides[index.get(normName(n))[0]]);
+    songs.sort((a, b) => SECTIONS.indexOf(partOf(a)) - SECTIONS.indexOf(partOf(b)));
+    let part = 'main';
+    const grid = el('div', { class: 'sub-grid' }, songs.flatMap((n) => {
+      const p = partOf(n);
+      const sep = p !== part ? el('div', { class: 'slide-sep' }, p === 'moveIt' ? 'Move It' : 'Dances') : null;
+      part = p;
+      return [sep, chip(n)];
+    }));
+    function chip(n) {
       const key = songKey(category, n);
       const t = tagged.get(key);
       const at = t && rec ? rec.deck.slides.findIndex((x) => x.subSong === key) : -1;
@@ -178,7 +171,7 @@ async function songsSection(main) {
             onclick: () => { location.hash = '#/deck/' + rec.id + '/edit/' + (Math.max(0, at) + 1); } }, '✎'),
           el('button', { class: 'btn quiet small' + (t.open ? ' on' : ''), title: t.open ? 'Unlocked' : 'Locks until the class reaches it',
             onclick: async () => { await setOpen(key, !t.open); showSub(main); } }, t.open ? '🔓' : '🔒')) : null);
-    }));
+    }
     const d = el('details', { class: 'sub-cat', open: count || opened.has(category) ? true : null },
       el('summary', {}, category, count ? el('span', { class: 'count' }, String(count)) : null), grid);
     d.addEventListener('toggle', () => { if (d.open) opened.add(category); else opened.delete(category); });

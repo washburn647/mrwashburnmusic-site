@@ -3,11 +3,14 @@
    (deck.subSongs). The sub view (/sub/) makes a menu of them for each category in plan
    order, a workout: pick a song, come back to the menu, go on to the next category.
 
-   deck.subSongs = { categories: [name], lock: media, songs: [{ key, category, name, icon,
+   deck.subSongs = { categories: [name], lock: media, looks: { category: { bg, els: [title box] } },
+                     songs: [{ key, category, name, icon,
                      from: { grade: 'YYYY-MM-DD' | '' | null }, open }] }
    A song's slides are the deck's slides with slide.subSong === its key, so the editor can
    add, move and remove them freely. `from` is when each grade reaches the song on the
-   calendar ('' already: an earlier grade has it; null: not planned for that grade), worked
+   calendar ('' already: an earlier grade has it, so the class had it last year; a date far
+   ahead: the grade has a Max for it but no class slates it yet; null: only a later grade
+   has it, so it stays off this grade's menu), worked
    out here from the plan, so the sub view needs no plan. `open` is Kyle's manual unlock. */
 
 import * as store from './store.js';
@@ -64,7 +67,7 @@ export async function setSubSong(plan, category, name, on) {
     dropSlides(rec.deck, (s) => s.subSong === key);
   } else return rec;
   sub.lock = await lockPicture();
-  refresh(rec, plan);
+  refresh(rec, plan, decks);
   rec.updated = Date.now();
   await store.putDeck(rec);
   return rec;
@@ -82,20 +85,32 @@ export async function setOpen(key, open) {
 
 /** Bring the unlock dates and categories up to date with the plan; saves when they change. */
 export async function refreshSubSongs(plan) {
-  const rec = await subDeck();
+  const decks = await store.listDecks();
+  const rec = await subDeck(decks);
   if (!rec || !plan) return;
   const was = JSON.stringify(rec.deck.subSongs);
   rec.deck.subSongs.lock = await lockPicture();
-  refresh(rec, plan);
+  refresh(rec, plan, decks);
   if (JSON.stringify(rec.deck.subSongs) === was) return;
   rec.updated = Date.now();
   await store.putDeck(rec);
 }
 
-function refresh(rec, plan) {
+function refresh(rec, plan, decks) {
   const sub = rec.deck.subSongs;
   if (!plan) return;
   sub.categories = plan.categories.slice();
+  // Each category's menus look like its own deck's menu: its background and title box.
+  sub.looks = sub.looks || {};
+  for (const c of sub.categories) {
+    const src = decks && categoryDeck(decks, c);
+    const menus = src ? src.deck.slides.filter((x) => x.menu) : [];
+    const m = menus.find((x) => !/^(PK|K|1)\s/i.test(x.title || '')) || menus[0];
+    if (!m) continue;
+    const head = m.els.filter((e) => e.text && e.y < 120 && e.text.paras.some((p) => p.runs.some((r) => (r.t || '').trim())))
+      .sort((a, b) => b.w * b.h - a.w * a.h)[0];
+    sub.looks[c] = { bg: m.bg ? structuredClone(m.bg) : null, els: head ? [structuredClone(head)] : [] };
+  }
   const first = new Map();                   // grade|category -> song -> first class
   for (const s of sub.songs) {
     const from = {};
@@ -105,7 +120,9 @@ function refresh(rec, plan) {
       const k = g + '|' + s.category;
       if (!first.has(k)) first.set(k, firstClasses(plan, s.category, g));
       const no = info && first.get(k).get(normName(info.name));
-      from[g] = no ? classStart(plan, g, no) : null;
+      // This grade has it this year (a Max, or slated): locked until its first class comes.
+      // Only a later grade has it: not on this grade's menu at all.
+      from[g] = no ? classStart(plan, g, no) : info && info.max[g] > 0 ? '9999-12-31' : null;
     });
     s.from = from;
   }
@@ -162,6 +179,8 @@ export function workoutMenu(deck, grade, n, today) {
   }
   // The icons keep clear of a band at the bottom, where the next button goes.
   const BAND = 84;
+  const look = sub.looks && sub.looks[category];
+  if (look) slides.push({ ...look, els: look.els.map((e) => ({ ...e, link: undefined })), menu: true, title: category });
   const menu = buildMenu({ ...deck, slides, h: deck.h - BAND }, null, category,
     { only, locked, lock: sub.lock, title: grade + ' ' + category });
   menu.grade = grade;

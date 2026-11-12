@@ -261,6 +261,7 @@ function deckMedia(deck, out) {
     }
   }
   if (deck && deck.subSongs && typeof deck.subSongs.lock === 'string') out.add(deck.subSongs.lock);
+  if (deck && deck.subSongs && deck.subSongs.looks) for (const l of Object.values(deck.subSongs.looks)) take(l && l.bg);
 }
 
 function sameText(a, b) {

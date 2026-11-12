@@ -12,7 +12,7 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 - `index.html`, `app.js`: the library (`#/`) and one deck's slides (`#/deck/<id>`), plus importing.
   The header links Decks, Planner, Calendar, Lists and Sub plans, the one on show highlighted.
 - `editor.js`: the slide editor (`#/deck/<id>/edit/<n>`). Select, move (with snapping; Alt turns
-  it off), resize, type in boxes, add text, shapes and pictures, links, marks, layer order
+  it off), resize, type in boxes (Ctrl+Shift+> and < step text size as Google Slides does, 11 included), add text, shapes and pictures, links, marks, layer order
   (Ctrl+↑ or Ctrl+↓ one step, with Shift to the front or back), slide strip with drag to reorder. Undo keeps earlier lists of slides: each change copies only
   the slides it touches. Slide links follow their slide when slides move. Saves as it goes.
 - `ui.js`: helpers the pages share (thumbnails, picture URLs).
@@ -37,6 +37,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   own tab; a copied picture pastes in with Ctrl+V, and "Use as background" turns a picture into
   the slide background. In-app search would need an API key on a server, which this site
   doesn't have yet.
+- A deck page shows a deck's Move Its and dances apart from its usual songs, each under a line
+  of its own (in every sort); the Sub plans song list does the same.
 - `planner.js`, `plans.js`, `xlsx.js`: the planner (`#/plan`), ported from the Apps Script
   planner. Import DATABASE.xlsx once per year (read in the browser, kept in IndexedDB `plans`).
   Grade tabs, years ("New year" keeps the catalog, empties plans, zeroes Max), catalog with Max,
@@ -91,6 +93,8 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   and takes pictures: 🔎 opens a Google Images tab for see-through pictures (SafeSearch on);
   a copied picture pastes in (Ctrl+V or 📋), a picture file drops in, and ✋ moves and sizes
   them (✕ takes one off). Pictures stay under the ink and are never saved to the deck.
+  A spinner opens on the list set for it in the editor (`el.list`, only the list's name; double-click
+  it to change), or on the last list used. Numbers 1–20 and Letters A–Z are on every device.
   The spinner takes a picked name off the wheel until everyone has had a turn; "Leave in" puts
   it back, ↺ puts everyone back. Think/speak (`pics: [{ media }]`, chosen in the editor) opens on
   white with a speak row and a think row; a tap moves a picture to the other row in its column,
@@ -117,9 +121,12 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
 - `subsongs.js`: sub songs. In Sub plans, Kyle taps a category deck's song to make it a sub song:
   its slides are copied into the "Sub songs" deck (`deck.subSongs`, each slide tagged
   `subSong`), where ✎ opens them in the editor to add videos, sounds and the like for the sub.
-  Each song is locked for a grade until the calendar reaches the class that first slates it
-  (`from`, worked out from the plan when the app opens and on Sub plans), as class menus lock;
-  🔒 / 🔓 unlocks one by hand. The Sub songs deck always goes to the sub with the sub deck. At
+  A grade sees a song unlocked when an earlier grade has it (last year) or the calendar has
+  reached the class that first slates it; locked when the grade has it later this year (a
+  Max, or a later class); not at all when only a later grade has it (`from`, worked out from
+  the plan when the app opens and on Sub plans). 🔒 / 🔓 unlocks one by hand. Each category's
+  menus take the look of its deck's menu slide (`looks`: background and title box). Sub plans
+  has no deck to pick: the code opens the Sub songs deck. At
   /sub/ the sub picks a grade and gets the workout: a menu per category in plan order, each with
   → to the next category; a song's slides keep the keys to that song, and its Menu link (or a ▦
   button added for the sub) goes back to the menu.
@@ -145,6 +152,9 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
     this device's stays as a copy if it differs, and links between decks follow.
   - The deck open in the editor is never swapped out under it. Pulled changes redraw the
     library, a deck's page and the planner, but never Present.
+  - A new device's empty library and planner show Sign in, then "Syncing…" while the first
+    sync runs. Each kind (decks, plans, library, timings) shows as soon as it arrives, and a
+    picture that fails to download doesn't stop the rest.
   - Spinner names are not synced. The service worker never caches `/api/`.
 - `pptx.js` (with `zip.js`): converts a .pptx into the deck format below, right in the browser.
 - `render.js`: draws one slide on a 960 x 540 stage. Present mode, thumbnails and
