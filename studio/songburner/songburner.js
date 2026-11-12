@@ -33,6 +33,7 @@ let draft = null;           // what is being edited, full
 let status = '';
 let gameId = GAMES[0].id;
 let users = null, usersErr = '', now = Date.now();
+let requests = [];
 
 function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function save(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
@@ -73,6 +74,32 @@ async function loadUsers() {
   render();
 }
 
+/* Beta requests from the app's Apply for beta. Add the address to the Access policy, then Done. */
+async function loadRequests() {
+  try {
+    const r = await fetch('/studio/api/songburner/requests', { cache: 'no-store' });
+    if (r.ok) requests = (await r.json()).requests || [];
+  } catch (e) {}
+  render();
+}
+
+async function dropRequest(q) {
+  const r = await fetch(`/studio/api/songburner/requests/${q.id}`, { method: 'DELETE' });
+  if (r.ok) requests = requests.filter((x) => x.id !== q.id);
+  render();
+}
+
+function requestsView() {
+  if (!requests.length) return null;
+  const list = requests.slice().sort((a, b) => a.at - b.at);
+  return h('div', { class: 'card' }, h('h2', {}, `Waiting to join (${list.length})`),
+    list.map((q) => h('div', { class: 'req-row' },
+      h('span', { class: 'req-mail' }, q.email),
+      h('span', { class: 'quiet' }, ago(q.at)),
+      h('button', { onclick: (e) => { navigator.clipboard.writeText(q.email).then(() => { e.target.textContent = 'Copied'; }, () => {}); } }, 'Copy'),
+      h('button', { onclick: () => dropRequest(q) }, 'Done'))));
+}
+
 async function remove(u) {
   const r = await fetch(`/studio/api/songburner/users/${u.id}`, { method: 'DELETE' });
   if (!r.ok) { usersErr = `Could not remove (${r.status})`; render(); return; }
@@ -81,13 +108,14 @@ async function remove(u) {
 }
 
 function usersView() {
-  if (usersErr) return h('p', { class: 'status bad' }, usersErr);
-  if (!users) return h('p', { class: 'status' }, 'Loading…');
+  if (usersErr) return [requestsView(), h('p', { class: 'status bad' }, usersErr)];
+  if (!users) return [requestsView(), h('p', { class: 'status' }, 'Loading…')];
   const list = users.slice().sort((a, b) => (b.seen || 0) - (a.seen || 0));
   const active = list.filter((u) => week(u) > 0).length;
   const box = (n, label) => h('div', { class: 'total-box' }, h('b', {}, String(n)), h('span', {}, label));
   const cell = (label, text, cls) => h('td', { 'data-label': label, class: cls }, text);
   return [
+    requestsView(),
     h('div', { class: 'totals' },
       box(list.length, 'Testers'),
       box(active, 'Practiced this week'),
@@ -298,7 +326,7 @@ function render() {
   app.replaceChildren(
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '← Studio'), h('h1', {}, 'Song Burner')),
     h('div', { class: 'seg' }, pick('users', 'Testers'), pick('defaults', 'Defaults'), pick('book', 'Songbook')),
-    ...[tab === 'users' ? usersView() : tab === 'book' ? bookView() : defaultsView()].flat());
+    ...[tab === 'users' ? usersView() : tab === 'book' ? bookView() : defaultsView()].flat(2).filter((x) => x != null));
   if (focus) {
     const el = [...app.querySelectorAll('[aria-label]')].find((x) => x.getAttribute('aria-label') === focus);
     if (el) {
@@ -312,4 +340,5 @@ const bookView = songbook(() => render());
 
 render();
 loadUsers();
+loadRequests();
 loadDefaults();

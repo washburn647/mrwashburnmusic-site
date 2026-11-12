@@ -4425,6 +4425,11 @@ button { font-family: inherit; }
 .acct-state.is-bad { color: var(--incorrect); }
 .acct-btns { display: flex; gap: 8px; }
 .acct-btns .btn { flex: 1; }
+.acct-privacy { display: inline-block; margin-top: 12px; margin-left: 16px; font-size: 13px; color: var(--text-muted); }
+.acct-btns + .acct-privacy, .apply-form + .acct-privacy, .btn-block + .acct-privacy { margin-left: 0; }
+.apply-form { margin-top: 12px; display: grid; gap: 10px; }
+.apply-age { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.apply-age input { width: 18px; height: 18px; margin: 0; }
 .beta-pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
   text-transform: uppercase; background: var(--gold-soft); color: var(--ink); border-radius: 999px; padding: 2px 8px; }
 /* ============ Settings sections - beta 1.0 ============ */
@@ -16712,6 +16717,11 @@ body {
     var sec = setSection('acc', 'Account', '');
     var card = sec.node, body = sec.body;
 
+    function privacy() {
+      var a = el('a', 'acct-privacy', 'Privacy');
+      a.href = 'privacy/';
+      body.appendChild(a);
+    }
     function paint() {
       var acc = cl.account();
       body.innerHTML = '';
@@ -16721,9 +16731,60 @@ body {
         body.appendChild(el('p', 'set-sub', acc && acc.expired
           ? 'Sign in again to keep syncing.'
           : 'Sign in to keep your songs and progress on every device.'));
-        var inBtn = el('button', 'btn btn-primary btn-block', 'Sign in');
+        var inBtn = el('button', 'btn btn-primary', 'Sign in');
         inBtn.addEventListener('click', function () { cl.signIn(); });
-        body.appendChild(inBtn);
+        if (acc || !cl.apply) {
+          inBtn.className = 'btn btn-primary btn-block';
+          body.appendChild(inBtn);
+          privacy();
+          return;
+        }
+        /* Not a tester yet: ask to be one. Kyle gets the request and adds them. */
+        var pair = el('div', 'acct-btns');
+        var askBtn = el('button', 'btn btn-outline', 'Apply for beta');
+        pair.appendChild(inBtn);
+        pair.appendChild(askBtn);
+        body.appendChild(pair);
+        var form = el('form', 'apply-form');
+        form.style.display = 'none';
+        var mail = el('input', 'form-input');
+        mail.type = 'email';
+        mail.required = true;
+        mail.maxLength = 254;
+        mail.placeholder = 'Your email';
+        mail.autocomplete = 'email';
+        var ageRow = el('label', 'apply-age');
+        var age = el('input');
+        age.type = 'checkbox';
+        ageRow.appendChild(age);
+        ageRow.appendChild(el('span', '', 'I’m 13 or older'));
+        var send = el('button', 'btn btn-gold btn-block', 'Send');
+        send.type = 'submit';
+        send.disabled = true;
+        age.addEventListener('change', function () { send.disabled = !age.checked; });
+        form.appendChild(mail);
+        form.appendChild(ageRow);
+        form.appendChild(send);
+        body.appendChild(form);
+        privacy();
+        askBtn.addEventListener('click', function () {
+          form.style.display = form.style.display === 'none' ? '' : 'none';
+          if (form.style.display === '') mail.focus();
+        });
+        form.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          if (!age.checked) return;
+          send.disabled = true;
+          send.textContent = 'Sending...';
+          cl.apply(mail.value.trim()).then(function () {
+            form.replaceWith(el('p', 'set-sub', 'Request sent.'));
+            askBtn.disabled = true;
+          }).catch(function (e) {
+            send.disabled = false;
+            send.textContent = 'Send';
+            toast(e.message);
+          });
+        });
         return;
       }
       sec.peek(syncState.state === 'error' ? 'Not synced' : 'Synced');
@@ -16761,6 +16822,7 @@ body {
           .catch(function (e) { toast(e.message); });
       });
       body.appendChild(del);
+      privacy();
     }
     /* Repainted by sync news while the card is on screen, and dropped after. */
     S.paintAccount = function () {

@@ -156,6 +156,11 @@ button { font-family: inherit; }
 .acct-state.is-bad { color: var(--incorrect); }
 .acct-btns { display: flex; gap: 8px; }
 .acct-btns .btn { flex: 1; }
+.acct-privacy { display: inline-block; margin-top: 12px; margin-left: 16px; font-size: 13px; color: var(--text-muted); }
+.acct-btns + .acct-privacy, .apply-form + .acct-privacy, .btn-block + .acct-privacy { margin-left: 0; }
+.apply-form { margin-top: 12px; display: grid; gap: 10px; }
+.apply-age { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.apply-age input { width: 18px; height: 18px; margin: 0; }
 .beta-pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
   text-transform: uppercase; background: var(--gold-soft); color: var(--ink); border-radius: 999px; padding: 2px 8px; }
 /* ============ Settings sections - beta 1.0 ============ */

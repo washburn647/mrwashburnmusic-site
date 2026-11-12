@@ -17,6 +17,7 @@
    (the Access application's Audience tag). */
 
 import { DurableObject } from 'cloudflare:workers';
+import { EmailMessage } from 'cloudflare:email';
 
 const KINDS = new Set(['decks', 'plans', 'library']);
 const ID = /^[\w.-]{1,80}$/;
@@ -856,6 +857,7 @@ async function songBurnerApi(request, env, path, ctx) {
     out.headers.append('Set-Cookie', sbCookie('', 0));
     return out;
   }
+  if (path === 'apply') return betaApply(request, env, ctx);
   // The session cookie, or an Access token while /api/songburner/ is still behind Access too.
   const feed = /^feed\/([0-9a-f]{64})\/([A-Za-z0-9_-]{16,100})$/.exec(path);
   if (feed) return dashFeed(request, env, feed[1], feed[2]);
@@ -901,6 +903,48 @@ async function songBurnerApi(request, env, path, ctx) {
     return res;
   }
   return reply({ error: 'method not allowed' }, 405);
+}
+
+/* APPLY FOR THE BETA. Anyone can ask, with an email and a yes to "13 or older". The request is
+   kept in the roster Vault for the studio's Testers tab, and, once Email Routing is on, mailed
+   to Kyle: a send_email binding named BETA_MAIL, with BETA_TO (his verified address) and
+   BETA_FROM (an address on the site) set in the Worker's settings, never in this repo.
+   No sign-in, so it is held to a few a day from one place and a few hundred waiting. */
+const EMAIL_RE = /^[^\s@<>",;]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+
+async function betaApply(request, env, ctx) {
+  if (request.method !== 'POST') return reply({ error: 'method not allowed' }, 405);
+  if (Number(request.headers.get('Content-Length')) > 2048) return reply({ error: 'too big' }, 413);
+  let body;
+  try { body = JSON.parse(await request.text()); } catch { return reply({ error: 'bad request' }, 400); }
+  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+  if (body?.age13 !== true) return reply({ error: 'age' }, 400);
+  if (email.length > 254 || !EMAIL_RE.test(email)) return reply({ error: 'email' }, 400);
+  const from = await sha256('beta-ip:' + (request.headers.get('CF-Connecting-IP') || ''));
+  const res = await sbRoster(env).apply(await sha256(email), email, from);
+  if (res === 'busy') return reply({ error: 'busy' }, 429);
+  if (res === 'new' && env.BETA_MAIL && env.BETA_TO && env.BETA_FROM && ctx) {
+    ctx.waitUntil(betaMail(env, email).catch(() => {}));
+  }
+  return reply({ ok: true });
+}
+
+function betaMail(env, email) {
+  const raw = [
+    `From: Song Burner <${env.BETA_FROM}>`,
+    `To: <${env.BETA_TO}>`,
+    'Subject: Song Burner beta request',
+    `Message-ID: <${crypto.randomUUID()}@${env.BETA_FROM.split('@')[1]}>`,
+    `Date: ${new Date().toUTCString()}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    `${email} asked to join the Song Burner beta and says they are 13 or older.`,
+    '',
+    'Add them in Zero Trust: Access controls > Applications > Song Burner beta > Policies.',
+    ''
+  ].join('\r\n');
+  return env.BETA_MAIL.send(new EmailMessage(env.BETA_FROM, env.BETA_TO, raw));
 }
 
 const MAX_DASH = 512 * 1024;
@@ -1016,6 +1060,9 @@ async function songBurnerStudio(request, env, path) {
   const method = request.method;
   const roster = sbRoster(env);
   if (path === 'users' && method === 'GET') return reply({ users: await roster.list(), now: Date.now() });
+  if (path === 'requests' && method === 'GET') return reply({ requests: await roster.requests() });
+  const q = /^requests\/([0-9a-f]{64})$/.exec(path);
+  if (q && method === 'DELETE') { await roster.dropRequest(q[1]); return reply({ ok: true }); }
   const m = /^users\/([0-9a-f]{64})$/.exec(path);
   if (m && method === 'DELETE') {
     await env.VAULTS.get(env.VAULTS.idFromName('songburner:' + m[1])).remove();
@@ -1145,6 +1192,7 @@ export class Vault extends DurableObject {
     u.email = email;
     u.seen = now;
     await this.ctx.storage.put(key, u);
+    if (fresh) await this.ctx.storage.delete('r:' + hash);   // signed in, so no longer waiting
     return fresh;
   }
 
@@ -1158,6 +1206,32 @@ export class Vault extends DurableObject {
 
   async forget(hash) {
     await this.ctx.storage.delete('u:' + hash);
+  }
+
+  /** A beta request: 'new', 'again' (already waiting), or 'busy' (too many). */
+  async apply(hash, email, from) {
+    const key = 'r:' + hash;
+    if (await this.ctx.storage.get(key)) return 'again';
+    const day = Math.floor(Date.now() / DAY);
+    const ipKey = `ip:${day}:${from}`;
+    const n = (await this.ctx.storage.get(ipKey)) || 0;
+    if (n >= 5) return 'busy';
+    const waiting = await this.ctx.storage.list({ prefix: 'r:', limit: 301 });
+    if (waiting.size >= 300) return 'busy';
+    await this.ctx.storage.put({ [key]: { email, at: Date.now() }, [ipKey]: n + 1 });
+    // yesterday's counts are no longer needed
+    const old = await this.ctx.storage.list({ prefix: 'ip:', end: `ip:${day}:` });
+    if (old.size) await this.ctx.storage.delete([...old.keys()]);
+    return 'new';
+  }
+
+  async requests() {
+    const all = await this.ctx.storage.list({ prefix: 'r:' });
+    return [...all].map(([k, r]) => ({ id: k.slice(2), ...r }));
+  }
+
+  async dropRequest(hash) {
+    await this.ctx.storage.delete('r:' + hash);
   }
 
   async list() {

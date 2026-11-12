@@ -800,7 +800,25 @@
     });
   }
 
+  /* Ask Kyle to be let into the beta. No sign-in needed. */
+  function apply(email) {
+    return fetch(API + 'apply', {
+      method: 'POST', credentials: 'omit', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, age13: true })
+    }).then(function (res) {
+      if (res.ok) return true;
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        var e = new Error(j.error === 'email' ? 'That email doesn’t look right.'
+          : j.error === 'busy' ? 'Too many requests. Try again tomorrow.'
+          : 'Could not send (' + res.status + ').');
+        throw e;
+      });
+    });
+  }
+
   var cloud = {
+    apply: apply,
     account: account,
     signIn: function () { location.href = SIGNIN_URL; },
     signOut: signOut,
