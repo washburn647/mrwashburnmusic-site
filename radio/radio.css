@@ -107,6 +107,23 @@ main { width: min(740px, 100%); }
 .dial .pip b { bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); }
 .dial .mark .pip { bottom: 9%; left: -3.5px; }
 .dial .needle { top: 8%; bottom: 6%; width: 3px; margin-left: -1.5px; }
+.needle .tag {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -2px);
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--needle);
+  color: #fff;
+  font: 600 13px/1.3 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.radio.on .dial[data-tag="always"] .tag,
+.radio.on .dial[data-tag="tuning"].tuning .tag { opacity: 1; transition-duration: .1s; }
 
 /* ---------- readout ---------- */
 .readout {
