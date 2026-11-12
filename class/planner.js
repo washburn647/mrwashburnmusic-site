@@ -93,29 +93,36 @@ function header(ctx, ...extra) {
     remember('year', v);
     ctx.reload();
   });
-  const views = el('span', { class: 'grades pl-views' }, VIEWS.map(([k, name, href]) =>
-    el('a', { class: 'chip' + (k === ctx.view ? ' on' : ''), href }, name)));
-  return el('div', { class: 'pl-head' }, views, yearSel, ...extra);
+  return el('div', { class: 'pl-head' }, yearSel, ...extra);
 }
 
 /** Build a class's deck into the library (replacing the last build) and open it. */
 async function buildAndOpen(ctx, grade, no) {
-  const { rec } = ctx;
   await saving;                             // build from the plan on screen, once it is saved
+  const id = await saveBuild(ctx.rec, grade, no);
+  if (!id) return false;
+  location.hash = '#/deck/' + id;
+  return true;
+}
+
+/** Build a class's deck into the library, replacing the last build of it (same id, so its
+    timings stay with it) and keeping the background Kyle gave its title slide. The deck's id,
+    or null when it could not be built. */
+export async function saveBuild(plan, grade, no) {
   try {
-    ctx.decks = await store.listDecks();
-    const { deck, name, missing } = buildClass(rec, grade, no, ctx.decks);
-    const old = ctx.decks.find((d) => d.deck.built && d.deck.built.year === rec.year && d.deck.built.grade === grade && d.deck.built.no === no);
+    const decks = await store.listDecks();
+    const { deck, name, missing } = buildClass(plan, grade, no, decks);
+    const old = decks.find((d) => d.deck.built && d.deck.built.year === plan.year && d.deck.built.grade === grade && d.deck.built.no === no);
+    if (old && old.deck.slides[0] && old.deck.slides[0].bg) deck.slides[0].bg = structuredClone(old.deck.slides[0].bg);
     const now = Date.now();
     const id = old ? old.id : now.toString(36) + Math.random().toString(36).slice(2, 8);
-    await store.putDeck({ id, name, created: old ? old.created : now, updated: now, source: 'planner ' + rec.year, deck });
+    await store.putDeck({ id, name, created: old ? old.created : now, updated: now, source: 'planner ' + plan.year, deck });
     if (missing.length) window.alert('Built ' + name + ' without: ' + missing.join(', ') + '.');
-    location.hash = '#/deck/' + id;
-    return true;
+    return id;
   } catch (err) {
     console.error(err);
     window.alert(err.message);
-    return false;
+    return null;
   }
 }
 

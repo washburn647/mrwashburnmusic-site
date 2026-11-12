@@ -9,12 +9,13 @@ import { openEditor } from './editor.js';
 import { el, thumb, loadMedia } from './ui.js';
 import * as store from './store.js';
 import { missingIcons, forGrade, taggedFor, GRADES, songSection, SECTIONS } from './marks.js';
-import { showPlanner } from './planner.js';
-import { gradeHint, normName, classAsOf, lockedSlides, indexSongs, firstClasses } from './plans.js';
+import { showPlanner, saveBuild } from './planner.js';
+import { gradeHint, normName, classAsOf, lockedSlides, indexSongs, firstClasses, readClass, schoolYear } from './plans.js';
 import { makeTemplate } from './builder.js';
 import * as sync from './sync.js';
 import './library.js';
 import { showSub, refreshSub } from './subs.js';
+import { refreshSubSongs } from './subsongs.js';
 
 const CATEGORIES = ['Vocal Warmup', 'Song Fragments', 'Simple Songs', 'Arioso', 'Movement Exploration',
   'Form and Expression', 'Beat Motions', 'Songtales'];
@@ -56,9 +57,20 @@ async function showLibrary() {
     const x = order(a), y = order(b);
     return x[0] - y[0] || x[1] - y[1];
   });
+  // This week's classes, from the calendar: one each for PK, K and 1, built or not yet.
+  const now = years.find((y) => y.year === schoolYear()) || await currentPlan();
+  const current = [];
+  if (now) for (const g of now.grades) {
+    const no = classAsOf(now, g, today());
+    if (!no) continue;
+    const rec = decks.find((d) => d.deck.built && d.deck.built.year === now.year && d.deck.built.grade === g && d.deck.built.no === no);
+    const cls = readClass(now, g, no);
+    current.push(rec || { grade: g, no, slated: !!(cls && cls.songs.length) });
+  }
   const sections = [
+    ['This week', current],
     ['Category decks', decks.filter(isCat)],
-    ['Classes', classes],
+    ['Classes', classes.filter((d) => !current.includes(d))],
     ['Other', decks.filter((d) => !isCat(d) && !isClass(d))]
   ];
   const out = [];
@@ -66,6 +78,7 @@ async function showLibrary() {
     if (!list.length) continue;
     const grid = el('div', { class: 'decks' });
     for (const rec of list) {
+      if (!rec.deck) { grid.append(placeholder(now, rec)); continue; }
       const media = await loadMedia(rec.deck);
       const first = rec.deck.slides.find((s) => !s.hidden) || rec.deck.slides[0];
       grid.append(el('button', { class: 'deck-card', onclick: () => { location.hash = '#/deck/' + rec.id; } },
@@ -77,6 +90,17 @@ async function showLibrary() {
     out.push(el('h2', { class: 'lib-h' }, title), grid);
   }
   main.replaceChildren(...out);
+}
+
+/** A class on the calendar with no deck yet: its name and a Build button. */
+function placeholder(plan, { grade, no, slated }) {
+  const btn = el('button', { class: 'btn', disabled: !slated, onclick: async () => {
+    btn.disabled = true;
+    if (await saveBuild(plan, grade, no)) showLibrary(); else btn.disabled = false;
+  } }, 'Build');
+  return el('div', { class: 'deck-card to-build' },
+    el('div', { class: 'thumb' }, btn),
+    el('div', { class: 'meta' }, el('div', { class: 'name' }, grade + ' ' + no)));
 }
 
 // ---- one deck --------------------------------------------------------------
@@ -102,9 +126,13 @@ async function showDeck(id, startPresenting, editAt) {
     const r = await store.getDeck(deckId);
     return r ? gradeMenu(r, g, await loadMedia(r.deck), built, plan, extra) : null;
   };
-  const run = (i, wantMenu) => present(rec, wantMenu ? MENU : i, media, (at) => {
+  const run = (i, wantMenu) => present(rec, wantMenu ? MENU : i, media, (at, saved) => {
     const card = main.querySelector('.slide-card[data-n="' + at + '"]');
     if (card) card.scrollIntoView({ block: 'center' });
+    if (saved) saved.then(async () => {
+      const now = await classTimes(rec), was = main.querySelector('.runs');
+      if (was) was.replaceWith(now); else if (now) main.append(now);
+    });
   }, findGoogle, { grade: grade || (built && built.grade), menu, menuFor, strict,
                    openDeck: (link) => openDeck(link, built, grade) });
   const first = () => Math.max(0, rec.deck.slides.findIndex((s) => !s.hidden && fits(s) && !(grade && s.menu)));
@@ -126,6 +154,10 @@ async function showDeck(id, startPresenting, editAt) {
     grade ? el('button', { class: 'btn quiet', onclick: () => run(0, true) }, '▦ Menu') : null,
     el('button', { class: 'btn', onclick: () => run(first()) }, '▶ Present'),
     el('button', { class: 'btn quiet', onclick: () => { location.hash = '#/deck/' + rec.id + '/edit'; } }, 'Edit'),
+    built && plan ? el('button', { class: 'btn quiet', onclick: async (e) => {
+      e.target.disabled = true;
+      if (await saveBuild(plan, built.grade, built.no)) showDeck(id); else e.target.disabled = false;
+    } }, 'Rebuild') : null,
     el('button', { class: 'btn danger', onclick: async () => {
       if (!window.confirm('Remove "' + rec.name + '"?')) return;
       await store.deleteDeck(rec.id);
@@ -184,8 +216,33 @@ async function showDeck(id, startPresenting, editAt) {
       }
     }
   }
-  main.replaceChildren(head, summary || '', warn || '', grid);
+  main.replaceChildren(head, summary || '', warn || '', grid, built ? await classTimes(rec) : '');
   if (startPresenting) run(first());
+}
+
+/** The times kept each time this class was presented start to finish (present.js). */
+async function classTimes(rec) {
+  const runs = (await store.listTimings().catch(() => [])).filter((t) => t.kind === 'run' && t.deck === rec.id)
+    .sort((a, b) => b.at - a.at);
+  if (!runs.length) return '';
+  const songs = [...new Set(runs.flatMap((r) => r.songs.map((x) => x.song)))];
+  const date = (at) => new Date(at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return el('div', { class: 'runs' },
+    el('h3', {}, 'Times'),
+    el('table', {},
+      el('tr', {}, el('th', {}, ''), ...songs.map((n) => el('th', {}, n)), el('th', {}, 'Total')),
+      runs.map((r) => el('tr', {},
+        el('td', {}, date(r.at)),
+        ...songs.map((n) => {
+          const hit = r.songs.find((x) => x.song === n);
+          return el('td', {}, hit ? clock(hit.ms) : '');
+        }),
+        el('td', {}, clock(r.ms))))));
+}
+
+function clock(ms) {
+  const t = Math.round(ms / 1000);
+  return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
 }
 
 /** A category deck a built class deck links into: a slide, or its menu for the
@@ -353,6 +410,8 @@ function newId() {
 
 function route() {
   main.classList.toggle('wide', location.hash.startsWith('#/plan'));
+  const here = location.hash.match(/^#\/(plan\/calendar|plan\/lists|plan|sub)?/);
+  for (const a of $('#views').children) a.classList.toggle('on', a.getAttribute('href') === '#/' + ((here && here[1]) || ''));
   const plan = location.hash.match(/^#\/plan(?:\/(calendar|lists))?/);
   if (plan) { showPlanner(main, plan[1] || 'plan'); return; }
   if (location.hash.startsWith('#/sub')) { showSub(main); return; }
@@ -416,4 +475,6 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 // Song slides take their grades from the plan's Max columns, so load it first.
 store.listPlans().then((years) => {
   store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1]));
+  // The sub songs' unlock dates follow the plan and calendar.
+  return refreshSubSongs(years.find((y) => y.year === schoolYear()) || years[years.length - 1]);
 }).catch(() => {}).finally(() => { route(); sync.syncNow(); });

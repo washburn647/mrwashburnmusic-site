@@ -225,6 +225,7 @@ export function mediaOf(deck) {
       take(el.fill);
     }
   }
+  if (deck.subSongs && deck.subSongs.lock) out.add(deck.subSongs.lock);   // the sub menus' lock
   return [...out];
 }
 

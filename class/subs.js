@@ -1,11 +1,15 @@
 /* Sub plans (#/sub): which deck a substitute gets, and the code that opens it at
    /sub/. The website keeps the setting (/api/class/sub, see subApi in worker/index.js)
    with the ids of the decks the sub deck links into, so links work there too; when
-   those links change, the app sends the new list (refreshSub, after each sync). */
+   those links change, the app sends the new list (refreshSub, after each sync). The Sub songs
+   deck (subsongs.js) always goes along, for the sub view's song menus. Below the setting,
+   Kyle tags sub songs, unlocks them by hand and opens their sub versions to edit. */
 
 import * as store from './store.js';
-import { el } from './ui.js';
+import { el, loadHashes } from './ui.js';
 import * as sync from './sync.js';
+import { normName, categoryDeck, indexSongs, schoolYear } from './plans.js';
+import { subDeck, setSubSong, setOpen, refreshSubSongs, songKey } from './subsongs.js';
 
 const API = '/api/class/sub';
 const KEEP = 'class.sub';                  // { deck, decks } as last sent
@@ -34,6 +38,12 @@ export function linkedDecks(id, decks) {
   return out.slice(1);
 }
 
+/** The decks to send with the sub deck: those it links into, and the Sub songs deck. */
+function withSongs(deck, linked, decks) {
+  const songs = decks.find((d) => d.deck.subSongs);
+  return songs && songs.id !== deck && !linked.includes(songs.id) ? [...linked, songs.id] : linked;
+}
+
 async function send(body) {
   const res = await fetch(API, { method: 'PUT', cache: 'no-store', redirect: 'manual',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -49,7 +59,7 @@ export async function refreshSub() {
   if (!had || !had.deck) return;
   const decks = await store.listDecks();
   if (!decks.some((d) => d.id === had.deck)) return;
-  const now = linkedDecks(had.deck, decks);
+  const now = withSongs(had.deck, linkedDecks(had.deck, decks), decks);
   if (JSON.stringify(now) === JSON.stringify(had.decks)) return;
   try { await send({ deck: had.deck, decks: now }); } catch (e) { /* next time */ }
 }
@@ -118,9 +128,62 @@ export async function showSub(main) {
     el('div', { class: 'sub-row' },
       el('button', { class: 'btn', onclick: () => {
         if (!pick.value) { msg.textContent = 'Pick a deck.'; return; }
-        save({ code: code.value, deck: pick.value, decks: linkedDecks(pick.value, decks) });
+        save({ code: code.value, deck: pick.value, decks: withSongs(pick.value, linkedDecks(pick.value, decks), decks) });
       } }, 'Save'),
       el('button', { class: 'btn quiet', onclick: () => save({ code: '' }) }, 'Turn off')),
     msg));
   paint();
+  main.append(await songsSection(main));
+}
+
+/** Sub songs, by category: tap a song to tag it (or untag it), ✎ edits its sub version,
+    the lock opens it for the sub whether or not the class has reached it. */
+const opened = new Set();                  // categories opened on the page, kept while it redraws
+
+async function songsSection(main) {
+  const box = el('div', { class: 'sub-songs' });
+  const years = await store.listPlans().catch(() => []);
+  const plan = years.find((y) => y.year === schoolYear()) || years[years.length - 1];
+  if (!plan) return box;
+  await refreshSubSongs(plan);
+  const decks = await store.listDecks();
+  const rec = await subDeck(decks);
+  const tagged = new Map(rec ? rec.deck.subSongs.songs.map((x) => [x.key, x]) : []);
+  const out = [el('h2', {}, 'Sub songs')];
+  for (const category of plan.categories) {
+    const src = categoryDeck(decks, category);
+    if (!src) continue;
+    const list = (plan.catalog[category] || []).map((x) => x.name);
+    const index = indexSongs(src.deck, list);
+    const songs = list.filter((n) => (index.get(normName(n)) || []).length);
+    if (!songs.length) continue;
+    const icons = new Map(songs.map((n) => {
+      const sl = src.deck.slides[index.get(normName(n))[0]];
+      return [n, sl.song && sl.song.icon];
+    }));
+    const media = await loadHashes([...icons.values()].filter(Boolean));
+    const count = songs.filter((n) => tagged.has(songKey(category, n))).length;
+    const grid = el('div', { class: 'sub-grid' }, songs.map((n) => {
+      const key = songKey(category, n);
+      const t = tagged.get(key);
+      const at = t && rec ? rec.deck.slides.findIndex((x) => x.subSong === key) : -1;
+      return el('div', { class: 'sub-song' + (t ? ' on' : '') },
+        el('button', { class: 'sub-pick', title: t ? 'Sub song' : '', onclick: async () => {
+          if (t && !window.confirm('Take ' + n + ' out of the sub songs? Its sub version goes too.')) return;
+          try { await setSubSong(plan, category, n, !t); } catch (e) { window.alert(e.message); }
+          showSub(main);
+        } }, icons.get(n) ? el('img', { src: media(icons.get(n)), alt: '' }) : null, el('span', {}, n)),
+        t ? el('span', { class: 'sub-tools' },
+          el('button', { class: 'btn quiet small', title: 'Edit the sub version',
+            onclick: () => { location.hash = '#/deck/' + rec.id + '/edit/' + (Math.max(0, at) + 1); } }, '✎'),
+          el('button', { class: 'btn quiet small' + (t.open ? ' on' : ''), title: t.open ? 'Unlocked' : 'Locks until the class reaches it',
+            onclick: async () => { await setOpen(key, !t.open); showSub(main); } }, t.open ? '🔓' : '🔒')) : null);
+    }));
+    const d = el('details', { class: 'sub-cat', open: count || opened.has(category) ? true : null },
+      el('summary', {}, category, count ? el('span', { class: 'count' }, String(count)) : null), grid);
+    d.addEventListener('toggle', () => { if (d.open) opened.add(category); else opened.delete(category); });
+    out.push(d);
+  }
+  box.replaceChildren(...out);
+  return box;
 }

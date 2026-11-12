@@ -9,7 +9,9 @@
    things to play with. Widgets (widgets.js) work here, and only here.
 
    Each slide's timer box counts up only while that slide is on screen, and
-   every stretch on screen is saved, so songs can be timed on average later. */
+   every stretch on screen is saved, so songs can be timed on average later.
+   A built class deck shown from start to finish also saves the whole run (its
+   songs' times and the total) when Present closes; the deck page lists them. */
 
 import { renderSlide } from './render.js';
 import { logTiming } from './store.js';
@@ -24,9 +26,10 @@ export const MENU = -1;                    // the index Present gives a grade's 
     opts.openDeck(link): another library deck for a { deck } link, as { deck, media, deckId,
     deckName, index } or with menu (a built menu) to open on. opts.menuFor(deckId, grade, { only,
     title }): a built menu, for links to a deck's own menu slides. opts.strict: a grade shows
-    only the slides tagged for it. opts.noTimings: keep no record of time on screen (the sub view). */
+    only the slides tagged for it. opts.noTimings: keep no record of time on screen (the sub view).
+    opts.group(i): the next and previous keys stay among slides of the same group (a sub song's). */
 export function present(record, startAt, media, onClose, findGoogle, opts = {}) {
-  const { grade, menu, openDeck, menuFor, strict, noTimings } = opts;
+  const { grade, menu, openDeck, menuFor, strict, noTimings, group } = opts;
   let deck = record.deck;
   let deckId = record.id;
   let deckName = record.name;
@@ -77,10 +80,19 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   const slideKey = () => deckId + ':' + index;
   const elapsed = () => (onScreen.get(slideKey()) || 0) + (since == null ? 0 : performance.now() - since);
 
+  // A built class deck presented start to finish keeps its times as one run (classRun).
+  // Time spent in a deck a slide links to counts for that slide.
+  const runMs = new Map();                  // slide index of the class deck -> ms
+  const isClass = !!(record.deck.built && !noTimings);
+
   function pause() {
     if (since == null) return;
     const ms = performance.now() - since;
     since = null;
+    if (isClass) {
+      const from = deckId === record.id ? index : (trail.find((t) => t.deckId === record.id) || {}).index;
+      if (from != null && from !== MENU) runMs.set(from, (runMs.get(from) || 0) + ms);
+    }
     if (index === MENU) return;
     onScreen.set(slideKey(), (onScreen.get(slideKey()) || 0) + ms);
     if (ms < 2000 || noTimings) return;     // flicking past a slide isn't teaching it
@@ -101,8 +113,19 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   }
   const ticker = setInterval(paintTimers, 250);
 
+  // Keep the screen awake while presenting: a song can sit on one slide for minutes.
+  let lock = null;
+  function keepAwake() {
+    if (lock || document.hidden || !navigator.wakeLock) return;
+    navigator.wakeLock.request('screen').then((l) => {
+      lock = l;
+      l.addEventListener('release', () => { if (lock === l) lock = null; });
+      if (!root.isConnected) { lock = null; l.release().catch(() => {}); }
+    }).catch(() => {});
+  }
+
   function onVisibility() {
-    if (document.hidden) pause(); else resume();
+    if (document.hidden) pause(); else { resume(); keepAwake(); }
   }
 
   function clamp(i) { return Math.max(0, Math.min(deck.slides.length - 1, i)); }
@@ -140,6 +163,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     let i = index + dir;
     while (i >= 0 && i < deck.slides.length && skip(deck.slides[i])) i += dir;
     if (i < 0 || i >= deck.slides.length) return;
+    if (group && deckId === record.id && group(i) !== group(index)) return;
     show(i);
   }
 
@@ -182,6 +206,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     else if (link.jump === 'previous') step(-1);
     else if (link.jump === 'first') show(0);
     else if (link.jump === 'last') show(deck.slides.length - 1);
+    else if (link.jump === 'menu') { if (curMenu()) show(MENU); }
     else if (link.url && SPINNER_URL.test(link.url)) spinnerOverlay(root);
     else if (link.url) window.open(link.url, '_blank', 'noopener');
   }
@@ -237,16 +262,38 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     e.preventDefault();
   }
 
+  /** Every slide of the class shown, the last one included: save the run. */
+  function classRun() {
+    const slides = record.deck.slides;
+    const shown = slides.map((sl, i) => i).filter((i) => !skip(slides[i]));
+    if (!isClass || !shown.length || !shown.every((i) => runMs.has(i))) return null;
+    const songs = [];
+    for (const i of shown) {
+      const p = slides[i].plan;
+      if (!p) continue;
+      const name = p.song || p.category + ' ?';
+      const last = songs[songs.length - 1];
+      if (last && last.song === name) last.ms += runMs.get(i);
+      else songs.push({ song: name, category: p.category, ms: runMs.get(i) });
+    }
+    for (const x of songs) x.ms = Math.round(x.ms);
+    const ms = Math.round(shown.reduce((a, i) => a + runMs.get(i), 0));
+    return logTiming({ kind: 'run', deck: record.id, deckName: record.name, built: record.deck.built,
+                at: Date.now(), ms, songs, slides: slides.map((sl, i) => Math.round(runMs.get(i) || 0)) }).catch(() => null);
+  }
+
   function close() {
     pause();
+    const saved = classRun();
     clearInterval(ticker);
     document.removeEventListener('visibilitychange', onVisibility);
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('resize', fit);
     clearTimeout(hideTimer);
+    if (lock) { lock.release().catch(() => {}); lock = null; }
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     root.remove();
-    if (onClose) onClose(index);
+    if (onClose) onClose(index, saved);
   }
 
   // Swipe on a touch screen.
@@ -268,6 +315,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   document.body.appendChild(root);
   root.requestFullscreen().catch(() => {});
   root.focus();
+  keepAwake();
   show(index);
   wake();
   return { show, close };
