@@ -33,6 +33,16 @@ let gradePick = null;                     // the grade the deck pages show, or n
 async function showLibrary() {
   document.title = 'Class · Mr. Washburn Music';
   const decks = await store.listDecks();
+  if (!decks.length && sync.getStatus() === 'signin') {
+    // A new device: everything is on the website, once signed in.
+    main.replaceChildren(el('div', { class: 'empty' },
+      el('p', {}, el('a', { class: 'btn', href: '/api/class/login' }, 'Sign in'))));
+    return;
+  }
+  if (!decks.length && sync.getStatus() === 'syncing') {
+    main.replaceChildren(el('div', { class: 'empty' }, el('h2', {}, 'Syncing…')));
+    return;
+  }
   if (!decks.length) {
     main.replaceChildren(el('div', { class: 'empty' },
       el('h2', {}, 'No decks on this device yet'),
@@ -454,6 +464,8 @@ const LOOK = { signin: ['Sign in', 'Sign in'], syncing: ['☁', 'Syncing…'], o
   offline: ['☁', 'Offline'], error: ['☁', 'Sync failed'] };
 sync.onStatus((s, detail) => {
   cloud.hidden = s === 'off';
+  // An empty library waits on sync: show sign in, syncing, or what came down.
+  if (main.querySelector(':scope > .empty') && !location.hash.startsWith('#/sub')) route();
   if (s === 'ok') refreshSub();
   if (s === 'off') return;
   const [text, title] = LOOK[s];

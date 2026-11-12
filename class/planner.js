@@ -5,6 +5,7 @@
    built into a deck for the library. Everything saves to this device. */
 
 import * as store from './store.js';
+import * as sync from './sync.js';
 import { el } from './ui.js';
 import { readWorkbook } from './xlsx.js';
 import { fromWorkbook, schoolYear, nextYearLabel, newYear, SPECIALS, KIDS_CHOICE, NULL_SLOT, isSpecial,
@@ -127,6 +128,8 @@ export async function saveBuild(plan, grade, no) {
 }
 
 function emptyView(main) {
+  if (sync.getStatus() === 'signin') return el('div', { class: 'empty' }, el('p', {}, el('a', { class: 'btn', href: '/api/class/login' }, 'Sign in')));
+  if (sync.getStatus() === 'syncing') return el('div', { class: 'empty' }, el('h2', {}, 'Syncing…'));
   return el('div', { class: 'empty' },
     el('h2', {}, 'No plan on this device yet'),
     el('p', {}, el('button', { class: 'btn', onclick: () => importWorkbook(main, []) }, 'Import DATABASE.xlsx')));

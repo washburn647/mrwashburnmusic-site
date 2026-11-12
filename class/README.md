@@ -152,6 +152,9 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
     this device's stays as a copy if it differs, and links between decks follow.
   - The deck open in the editor is never swapped out under it. Pulled changes redraw the
     library, a deck's page and the planner, but never Present.
+  - A new device's empty library and planner show Sign in, then "Syncing…" while the first
+    sync runs. Each kind (decks, plans, library, timings) shows as soon as it arrives, and a
+    picture that fails to download doesn't stop the rest.
   - Spinner names are not synced. The service worker never caches `/api/`.
 - `pptx.js` (with `zip.js`): converts a .pptx into the deck format below, right in the browser.
 - `render.js`: draws one slide on a 960 x 540 stage. Present mode, thumbnails and

@@ -100,7 +100,11 @@ async function run() {
     const server = await json('state');
     const b = book();
     const media = new Set(server.media);
-    for (const [kind, k] of Object.entries(KINDS)) await syncKind(kind, k.key, server[kind] || {}, b, media, pulled);
+    for (const [kind, k] of Object.entries(KINDS)) {
+      await syncKind(kind, k.key, server[kind] || {}, b, media, pulled);
+      // A new device shows each kind as it arrives, not only when everything has.
+      if (pulled.length) { const list = pulled.splice(0); for (const fn of pulledFns) fn(list); }
+    }
     await syncTimings(server.timings, b);
     keep(b);
     set('ok');
@@ -258,8 +262,8 @@ async function fetchMedia(hashes) {
   const have = new Set(await store.mediaKeys());
   await pool(hashes.filter((h) => !have.has(h)), async (hash) => {
     const res = await api('media/' + hash);
-    if (res.status === 404) return;
-    if (!res.ok) throw new Error('Fetching a picture: ' + res.status);
+    // One picture that won't come down doesn't hold up the rest; the next sync tries again.
+    if (!res.ok) { if (res.status !== 404) console.warn('Fetching a picture: ' + res.status); return; }
     const blob = await res.blob();
     let name = res.headers.get('X-Name') || '';
     try { name = decodeURIComponent(name); } catch (e) { /* as is */ }
