@@ -487,8 +487,11 @@ sync.onPulled((list) => {
   if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && main.contains(a)) return;
   const m = location.hash.match(/^#\/deck\/([\w-]+)/);
   if (m && !list.some((x) => x.kind === 'decks' && x.id === m[1])) return;
-  if (list.some((x) => x.kind === 'plans')) store.listPlans().then((years) => store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1])));
-  route();
+  // A new plan changes the songs' grades: take it in before redrawing.
+  const hinted = list.some((x) => x.kind === 'plans')
+    ? store.listPlans().then((years) => store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1])))
+    : Promise.resolve();
+  hinted.catch(() => {}).then(() => route());
 });
 
 function recall(k) { try { return localStorage.getItem('class.' + k); } catch (e) { return null; } }
