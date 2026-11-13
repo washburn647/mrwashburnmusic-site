@@ -14,7 +14,7 @@
    songs' times and the total) when Present closes; the deck page lists them. */
 
 import { renderSlide } from './render.js';
-import { logTiming } from './store.js';
+import { logTiming, TIMING_V } from './store.js';
 import { forGrade, taggedFor, GRADES } from './marks.js';
 import { spinnerOverlay } from './widgets.js';
 
@@ -95,12 +95,6 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     }
     if (index === MENU) return;
     onScreen.set(slideKey(), (onScreen.get(slideKey()) || 0) + ms);
-    if (ms < 2000 || noTimings) return;     // flicking past a slide isn't teaching it
-    const slide = deck.slides[index];
-    const song = slide.plan ? slide.plan.song : slide.song ? slide.song.name : null;
-    logTiming({ deck: deckId, deckName, slide: index, gid: slide.gid || null,
-                song, category: slide.plan ? slide.plan.category : null, title: slide.title || '',
-                ms: Math.round(ms), at: Date.now() }).catch(() => {});
   }
 
   function resume() {
@@ -278,7 +272,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     }
     for (const x of songs) x.ms = Math.round(x.ms);
     const ms = Math.round(shown.reduce((a, i) => a + runMs.get(i), 0));
-    return logTiming({ kind: 'run', deck: record.id, deckName: record.name, built: record.deck.built,
+    return logTiming({ kind: 'run', v: TIMING_V, deck: record.id, deckName: record.name, built: record.deck.built,
                 at: Date.now(), ms, songs, slides: slides.map((sl, i) => Math.round(runMs.get(i) || 0)) }).catch(() => null);
   }
 

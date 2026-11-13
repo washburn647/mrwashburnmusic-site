@@ -497,6 +497,7 @@ function remember(k, v) { try { localStorage.setItem('class.' + k, v); } catch (
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // Song slides take their grades from the plan's Max columns, so load it first.
+store.purgeTimings().catch(() => {});
 store.listPlans().then((years) => {
   store.setGradeHint(gradeHint(years.find((y) => y.year === recall('year')) || years[years.length - 1]));
   // The sub songs' unlock dates follow the plan and calendar.

@@ -65,9 +65,11 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   with Build. A built class's page has Rebuild (`saveBuild` in `planner.js`, as the planner and
   calendar use): the deck is made again from the category decks as they are now, keeping its id
   and the background on its title slide. Other hand edits to a built deck are replaced.
-  Presenting a built class from its first slide to its last, every slide shown, saves a run
+  Presenting a built class with every slide shown, through to the end screen, saves a run
   when Present closes (a `timings` row with `kind: 'run'`: each song's time and the total; time
-  in a deck a slide links to counts for that slide). The class's page lists them under Times.
+  in a deck a slide links to counts for that slide). Nothing else is timed, so a quick look in
+  Present leaves no times. The class's page lists them under Times. Runs carry `v: 2`; older
+  timings were cleared and are dropped on every device (`purgeTimings`, `TIMING_V` in `store.js`).
 - Present keeps the screen awake (Screen Wake Lock) while it is open.
 - The library groups decks: the category decks, then classes (built ones, the Class template,
   imported class decks), then everything else. The Class template deck is made once from an
@@ -116,8 +118,7 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   takes them too ("From the library", with a search). One synced record (`library`, below).
 - Lists (`lists.js`) colors its cells by value (a scale for Min., Eng. and Cmf., a color per
   choice for Turns, Pos. and Loc., done / some / none left for each grade). Timed, beside Min., is
-  the song's average from Present (`songTimes`: whole-class runs when a song has any, otherwise
-  its time on screen); tapping it makes it the Min.
+  the song's average over whole-class runs (`songTimes`); tapping it makes it the Min.
 - `subsongs.js`: sub songs. In Sub plans, Kyle taps a category deck's song to make it a sub song:
   its slides are copied into the "Sub songs" deck (`deck.subSongs`, each slide tagged
   `subSong`), where ✎ opens them in the editor to add videos, sounds and the like for the sub.
@@ -175,8 +176,7 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   (only with no year plan; with one, songs go by the plan).
   Runs on import and on every load.
 - `store.js`: IndexedDB. Decks and pictures live on the device they were imported on.
-  `timings` gets a row each time a slide is on screen for 2 seconds or more
-  (deck, slide, song, milliseconds), for average song lengths later.
+  `timings` gets a row for each whole-class run (see the library above), for average song lengths.
 - `sw.js`: keeps an offline copy of the app (not the data). Network first, but after 3 seconds
   the last copy answers, so slow school wifi doesn't hold the app up.
 - `fonts/`: Comic Neue (SIL Open Font License), the stand-in for Comic Sans MS,
