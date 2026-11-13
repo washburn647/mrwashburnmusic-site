@@ -203,7 +203,9 @@ async function showDeck(id, startPresenting, editAt) {
     el('span', { class: 'cap-t' }, s.title || ''),
     s.grades && s.grades.length ? el('span', { class: 'cap-g' }, s.grades.join(' ')) : null));
   // Move Its and dances sit apart from the usual songs, each under a line of its own.
-  const parts = new Set(rec.deck.slides.filter((s) => s.song && s.song.kind === 'song').map(songSection));
+  // Only in a category deck: a class deck lists its songs in order, as they come.
+  const classDeck = built || rec.deck.template || /^(PK|K|\d)\s+\d+$/i.test(rec.name.trim());
+  const parts = new Set(classDeck ? [] : rec.deck.slides.filter((s) => s.song && s.song.kind === 'song').map(songSection));
   let part = 'main';
   const apart = (s) => {
     if (parts.size < 2 || !s.song || s.song.kind !== 'song') return;

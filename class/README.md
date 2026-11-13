@@ -37,8 +37,9 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   own tab; a copied picture pastes in with Ctrl+V, and "Use as background" turns a picture into
   the slide background. In-app search would need an API key on a server, which this site
   doesn't have yet.
-- A deck page shows a deck's Move Its and dances apart from its usual songs, each under a line
-  of its own (in every sort); the Sub plans song list does the same.
+- A category deck's page shows its Move Its and dances apart from its usual songs, each under a
+  line of its own (in every sort); the Sub plans song list does the same. Class decks list their
+  songs in order.
 - `planner.js`, `plans.js`, `xlsx.js`: the planner (`#/plan`), ported from the Apps Script
   planner. Import DATABASE.xlsx once per year (read in the browser, kept in IndexedDB `plans`).
   Grade tabs, years ("New year" keeps the catalog, empties plans, zeroes Max), catalog with Max,
