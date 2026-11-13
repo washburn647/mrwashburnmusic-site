@@ -94,29 +94,31 @@ async function add(items, gi = into) {
   busy++;
   say('Adding…');
   try {
-    const hashes = [];
+    const added = [];
     for (const it of items) {
       if (typeof it === 'string') {
         const blob = dataBlob(it);
-        hashes.push(blob ? await upload(blob, name) : await grab(it.trim(), name));
+        added.push({ media: blob ? await upload(blob, name) : await grab(it.trim(), name), name });
       } else {
-        hashes.push(await upload(it, name || (it.name || '').replace(/\.[^.]+$/, '')));
+        // A file is named by its file name unless a name is typed.
+        const n = name || (it.name || '').replace(/\.[^.]+$/, '');
+        added.push({ media: await upload(it, n), name: n });
       }
     }
     await change((r) => {
       const g = r.groups[gi] || r.groups[0];
       const all = r.groups.flatMap((x) => x.pics);
-      for (const media of hashes) {
-        // A picture has one name, whichever groups it's in.
-        if (name) for (const x of all) if (x.media === media) x.name = name;
+      for (const { media, name: n } of added) {
+        // A picture has one name, whichever groups it's in; a file's name fills in one left blank.
+        for (const x of all) if (x.media === media && (name || !x.name)) x.name = n || '';
         if (g.pics.some((p) => p.media === media)) continue;
         const was = all.find((p) => p.media === media);
-        g.pics.push({ media, name: name || (was && was.name) || '' });
+        g.pics.push({ media, name: (was && was.name) || n || '' });
       }
     });
     nameBox.value = '';
     pasteBox.value = '';
-    say(hashes.length === 1 ? 'Added.' : hashes.length + ' added.');
+    say(added.length === 1 ? 'Added.' : added.length + ' added.');
   } catch (e) {
     say(e.message, true);
   } finally {
