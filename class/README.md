@@ -71,7 +71,7 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   Present leaves no times. The class's page lists them under Times. Runs carry `v: 2`; older
   timings were cleared and are dropped on every device (`purgeTimings`, `TIMING_V` in `store.js`).
 - Present keeps the screen awake (Screen Wake Lock) while it is open.
-- The library groups decks: the category decks, then classes (built ones, the Class template,
+- The library groups decks: the category decks (in plan order), then classes (built ones, the Class template,
   imported class decks), then everything else. The Class template deck is made once from an
   imported class deck like "1 29" (its title and exit slides); builds use it, so that deck can go.
 - `builder.js`: Build on a planner row makes that class's deck in the library, as the Apps
