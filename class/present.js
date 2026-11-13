@@ -98,7 +98,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   }
 
   function resume() {
-    if (since == null && !document.hidden) since = performance.now();
+    if (since == null) since = performance.now();
   }
 
   function paintTimers() {
@@ -118,8 +118,10 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     }).catch(() => {});
   }
 
+  // A slide keeps its time while Present is behind another tab or app (a game, Google Earth):
+  // only showing another slide stops it.
   function onVisibility() {
-    if (document.hidden) pause(); else { resume(); keepAwake(); }
+    if (!document.hidden) keepAwake();
   }
 
   function clamp(i) { return Math.max(0, Math.min(deck.slides.length - 1, i)); }
