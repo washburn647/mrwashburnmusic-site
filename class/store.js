@@ -19,8 +19,8 @@ function db() {
         if (!d.objectStoreNames.contains('decks')) d.createObjectStore('decks', { keyPath: 'id' });
         // media: { hash, type, blob, name, rights }
         if (!d.objectStoreNames.contains('media')) d.createObjectStore('media', { keyPath: 'hash' });
-        // timings: one row each time a slide is on screen, for how long songs take.
-        // { deck, deckName, slide, gid, song, ms, at }
+        // timings: one row each time a built class deck is presented start to finish (present.js).
+        // { kind: 'run', v, deck, deckName, built, at, ms, songs, slides }
         if (!d.objectStoreNames.contains('timings')) d.createObjectStore('timings', { autoIncrement: true });
         // plans: one record per school year (see plans.js).
         if (!d.objectStoreNames.contains('plans')) d.createObjectStore('plans', { keyPath: 'year' });
@@ -124,7 +124,12 @@ export function libraryMedia(rec) {
   return rec ? [...new Set(rec.groups.flatMap((g) => g.pics.map((p) => p.media)))] : [];
 }
 
-/** Record how long a slide was on screen. */
+/* Timings from before v 2 (single slides, or runs that didn't need the end screen) were
+   cleared: they're dropped on every device and never counted again. */
+export const TIMING_V = 2;
+const current = (row) => row && row.kind === 'run' && row.v >= TIMING_V;
+
+/** Record a whole-class run. */
 export function logTiming(row) {
   return tx('timings', 'readwrite', (s) => wrap(s.add(row))).then((r) => { changed('timings'); return r; });
 }
@@ -137,7 +142,7 @@ export function unsyncedTimings() {
     req.onsuccess = () => {
       const c = req.result;
       if (!c) { resolve(out); return; }
-      if (!c.value.synced) out.push({ key: c.key, row: c.value });
+      if (!c.value.synced && current(c.value)) out.push({ key: c.key, row: c.value });
       c.continue();
     };
     req.onerror = () => reject(req.error);
@@ -149,11 +154,25 @@ export function markTimings(list) {
 }
 
 export function addTimings(rows) {
-  return tx('timings', 'readwrite', (s) => { for (const row of rows) s.add({ ...row, synced: true }); });
+  return tx('timings', 'readwrite', (s) => { for (const row of rows) if (current(row)) s.add({ ...row, synced: true }); });
 }
 
 export function listTimings() {
-  return tx('timings', 'readonly', (s) => wrap(s.getAll()));
+  return tx('timings', 'readonly', (s) => wrap(s.getAll())).then((rows) => rows.filter(current));
+}
+
+/** Drop the cleared timings kept on this device. */
+export function purgeTimings() {
+  return tx('timings', 'readwrite', (s) => new Promise((resolve, reject) => {
+    const req = s.openCursor();
+    req.onsuccess = () => {
+      const c = req.result;
+      if (!c) { resolve(); return; }
+      if (!current(c.value)) c.delete();
+      c.continue();
+    };
+    req.onerror = () => reject(req.error);
+  }));
 }
 
 export function putDeck(record, quiet) {
