@@ -60,8 +60,11 @@ async function showLibrary() {
   }
   // The category decks first, then classes (built here, the template, imported class decks), then the rest.
   const years = await store.listPlans().catch(() => []);
-  const cats = new Set((years.length ? years[years.length - 1].categories : CATEGORIES).map(normName));
+  const catOrder = (years.length ? years[years.length - 1].categories : CATEGORIES).map(normName);
+  const cats = new Set(catOrder);
   const isCat = (d) => cats.has(normName(d.name));
+  // The category decks in plan order, Vocal Warmup first, Songtales last.
+  const catDecks = decks.filter(isCat).sort((a, b) => catOrder.indexOf(normName(a.name)) - catOrder.indexOf(normName(b.name)));
   const isClass = (d) => d.deck.built || d.deck.template || /^(PK|K|\d)\s+\d+$/i.test(d.name.trim());
   const order = (d) => d.deck.template ? [-1, 0] : [['PK', 'K', '1', '2'].indexOf(d.name.split(/\s+/)[0].toUpperCase()), Number(d.name.split(/\s+/)[1]) || 0];
   const classes = decks.filter((d) => !isCat(d) && isClass(d)).sort((a, b) => {
@@ -80,7 +83,7 @@ async function showLibrary() {
   }
   const sections = [
     ['This week', current],
-    ['Category decks', decks.filter(isCat)],
+    ['Category decks', catDecks],
     ['Classes', classes.filter((d) => !current.includes(d))],
     ['Other', decks.filter((d) => !isCat(d) && !isClass(d))]
   ];
