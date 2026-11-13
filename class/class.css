@@ -79,6 +79,11 @@ main.lib { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
 .slide-card { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
   background: var(--card); text-align: left; }
 .slide-card:hover { outline: 3px solid var(--wheat); }
+.slide-card { position: relative; }
+.slide-card .slide-edit { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1;
+  background: rgba(255, 255, 255, .9); color: var(--forest); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); cursor: pointer; }
+.slide-card .slide-edit:hover { background: var(--wheat); }
 .slide-card .cap { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); padding: 5px 8px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slide-card .cap b { color: var(--forest); }

@@ -194,6 +194,10 @@ async function showDeck(id, startPresenting, editAt) {
     title: s.hidden ? 'Hidden slide (skipped when you click through)' : 'Present from here',
     onclick: () => run(i)
   }, thumb(s, rec.deck, media),
+  el('span', { class: 'slide-edit', role: 'button', title: 'Edit this slide', onclick: (e) => {
+    e.stopPropagation();
+    location.hash = '#/deck/' + rec.id + '/edit/' + (i + 1);
+  } }, '⚙'),
   el('div', { class: 'cap' }, el('b', {}, String(i + 1)),
     s.song && s.song.icon ? el('img', { class: 'song-icon', src: media(s.song.icon), alt: '' }) : null,
     el('span', { class: 'cap-t' }, s.title || ''),
