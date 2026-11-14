@@ -205,7 +205,7 @@ body[data-who="grownups"] {
 .pill:hover { background: var(--ink); color: var(--paper); }
 .pill-switch { background: var(--ink); color: var(--paper); }
 .pill-switch:hover { background: var(--moss); border-color: var(--moss); }
-@media (max-width: 520px) { .brand span { display: none; } }
+@media (max-width: 520px) { .brand span { display: none; } .tag { font-size: 12px; padding-inline: 7px; } }
 
 /* ---------- Hero ---------- */
 
@@ -355,6 +355,7 @@ body[data-who="grownups"] {
   border-radius: 999px;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
   color: var(--muted);
   border: 1.5px dashed currentColor;
 }
