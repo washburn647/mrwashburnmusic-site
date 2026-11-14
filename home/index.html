@@ -34,28 +34,13 @@
   </section>
 
   <div class="site" id="site" hidden>
-    <header class="top">
-      <a class="brand" href="/home/" aria-label="Mr. Washburn Music"><img src="/assets/logo/option-f-notes-badge-icon.svg" alt="" width="44" height="44"><span>Mr. Washburn Music</span></a>
-      <div class="top-right">
-        <button class="pill" id="sound" type="button" aria-pressed="true">Sound on</button>
-        <button class="pill pill-switch" id="switch" type="button"></button>
+    <div class="stage">
+      <div class="slides" id="slides" aria-hidden="true">
+        <div class="slide shot1"><span>Photo 1</span></div>
+        <div class="slide shot2"><span>Photo 2</span></div>
+        <div class="slide shot3"><span>Photo 3</span></div>
       </div>
-    </header>
-
-    <main>
-      <section class="hero">
-        <div class="hero-text">
-          <h1 id="headline"></h1>
-          <p id="lede"></p>
-        </div>
-        <div class="photos" id="photos">
-          <figure class="photo"><div class="shot shot1"><span>Photo 1</span></div></figure>
-          <figure class="photo"><div class="shot shot2"><span>Photo 2</span></div></figure>
-          <figure class="photo"><div class="shot shot3"><span>Photo 3</span></div></figure>
-          <button class="next" id="next" type="button" aria-label="Next photo"></button>
-        </div>
-      </section>
-
+      <div class="tint" aria-hidden="true"></div>
       <svg class="waves" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
         <path d="M0 30 C200 -10 400 70 600 30 S1000 -10 1200 30"/>
         <path d="M0 45 C200 5 400 85 600 45 S1000 5 1200 45"/>
@@ -63,7 +48,24 @@
         <path d="M0 75 C200 35 400 115 600 75 S1000 35 1200 75"/>
         <path d="M0 90 C200 50 400 130 600 90 S1000 50 1200 90"/>
       </svg>
+      <header class="top wrap">
+        <a class="brand" href="/home/" aria-label="Mr. Washburn Music"><img src="/assets/logo/option-f-notes-badge-icon.svg" alt="" width="44" height="44"><span>Mr. Washburn Music</span></a>
+        <div class="top-right">
+          <button class="pill" id="sound" type="button" aria-pressed="true">Sound on</button>
+          <button class="pill pill-switch" id="switch" type="button"></button>
+        </div>
+      </header>
+      <section class="hero wrap">
+        <div class="hero-text">
+          <h1 id="headline"></h1>
+          <p id="lede"></p>
+          <div class="dots" id="dots"></div>
+        </div>
+        <button class="bignote" id="bignote" type="button" aria-label="Play a note"><i class="bigstem"></i><i class="bighead"><i class="face"></i></i></button>
+      </section>
+    </div>
 
+    <main class="wrap">
       <section class="menu">
         <div class="menu-head">
           <button class="play" id="play" type="button" aria-label="Play the tune"><i></i></button>
@@ -73,7 +75,7 @@
       </section>
     </main>
 
-    <footer>© 2026 Mr. Washburn Music</footer>
+    <footer class="wrap">© 2026 Mr. Washburn Music</footer>
   </div>
 
   <div class="card" id="card" hidden></div>

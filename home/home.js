@@ -9,9 +9,11 @@ const PLACES = {
   videos: { name: 'Song Videos', about: 'Sing and move along with Mr. Washburn.' },
   games: { name: 'Games', about: 'Quick games for ears, eyes and voices.' },
   museum: { name: 'Instrument Museum', about: 'Play every instrument in the hall.' },
-  oldtime: { name: 'Old Time Corner', about: '' },
-  family: { name: 'Parent & Child Corner', about: '' },
-  fame: { name: 'Hall of Fame', about: '' },
+  oldtime: { name: 'Old Time Corner', about: 'Old time tunes to play along with, one part at a time or all together.' },
+  family: { name: 'Parent & Child Corner', about: 'Music to make at home with babies and young kids.' },
+  fame: { name: 'Hall of Fame', about: 'Each year’s honored composers, people and more.' },
+  library: { name: 'Music Library', about: 'Recordings to listen to.' },
+  courses: { name: 'Instrument Courses', about: 'First steps on an instrument.' },
   myLesson: { name: 'My Lesson', about: 'Sign in to your lesson page.', href: '/lesson/' },
   lessons: { name: 'Private Lessons', about: 'Lessons with Mr. Washburn.', extra: { label: 'Student sign-in', href: '/lesson/' } },
 };
@@ -31,7 +33,7 @@ const SIDES = {
     lede: 'Songs, games and lessons from Mr. Washburn.',
     other: 'Kids',
     notes: [['burner', 4, 1], ['radio', 4, 1], ['maker', 5, 1], ['videos', 6, 1], ['games', 6, 1], ['museum', 5, 1],
-      ['oldtime', 4, 1], ['family', 3, 1], ['fame', 2, 1], ['lessons', 2, 1]],
+      ['oldtime', 4, 1], ['family', 3, 1], ['fame', 2, 1], ['library', 2, 1], ['courses', 3, 1], ['lessons', 4, 1]],
   },
 };
 
@@ -308,30 +310,36 @@ playBtn.addEventListener('click', () => {
   tuneTimers.push(setTimeout(stopTune, at * 1000 + 300));
 });
 
-/* ---------- Photos ---------- */
+/* ---------- Photos, behind the top of the page ---------- */
 
-const photos = [...document.querySelectorAll('.photo')];
-let front = 0;
-let photoTimer = 0;
+const slides = [...document.querySelectorAll('.slide')];
+const dots = slides.map((_, i) => el('button', { type: 'button', 'aria-label': `Photo ${i + 1}`, onclick: () => { showSlide(i); runSlides(); } }));
+$('dots').append(...dots);
+let slide = 0;
+let slideTimer = 0;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 
-function placePhotos() {
-  photos.forEach((p, i) => { p.dataset.pos = (i - front + photos.length) % photos.length; });
+function showSlide(i) {
+  slide = (i + slides.length) % slides.length;
+  slides.forEach((s, k) => s.classList.toggle('on', k === slide));
+  dots.forEach((d, k) => d.classList.toggle('on', k === slide));
 }
-function nextPhoto() {
-  const leaving = photos[front];
-  leaving.classList.add('leaving');
-  setTimeout(() => leaving.classList.remove('leaving'), 450);
-  front = (front + 1) % photos.length;
-  placePhotos();
+function runSlides() {
+  clearInterval(slideTimer);
+  if (!still.matches) slideTimer = setInterval(() => { if (!document.hidden && !site.hidden) showSlide(slide + 1); }, 5000);
 }
-function runPhotos() {
-  clearInterval(photoTimer);
-  if (!still.matches) photoTimer = setInterval(() => { if (!document.hidden && !site.hidden) nextPhoto(); }, 4500);
-}
-$('next').addEventListener('click', () => { nextPhoto(); runPhotos(); });
-placePhotos();
-runPhotos();
+showSlide(0);
+runSlides();
+
+/* The big note plays too. */
+const bigNote = $('bignote');
+let bigTurn = 0;
+bigNote.addEventListener('click', () => {
+  ring([-3, -1, 1, 4, 1, -1][bigTurn++ % 6], 0, 1.4);
+  bigNote.classList.remove('boing');
+  void bigNote.offsetWidth;
+  bigNote.classList.add('boing');
+});
 
 /* ---------- Start ---------- */
 
