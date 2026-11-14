@@ -13,6 +13,10 @@
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
 
+# The new homepage, a draft until it replaces the coming soon page.
+/home/*
+  X-Robots-Tag: noindex, nofollow
+
 /songburner/sw.js
   Cache-Control: no-cache
 
