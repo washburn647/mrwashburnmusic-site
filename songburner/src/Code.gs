@@ -14,7 +14,7 @@
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.05';
+var BUILD    = 'beta 1.06';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -589,14 +589,17 @@ function unitCounts(sections) {
 function songFromRow(r) {
   return {
     id: r.id,
-    title: r.title,
-    titleKey: r.titleKey,
-    artist: r.artist,
+    /* TEXT STAYS TEXT. A sheet hands "1979" back as a number and "TRUE" back as
+       a boolean, so a song called 22 or a band called 311 reached the page as a
+       number and broke everything that searched or sorted titles. */
+    title: textOf(r.title),
+    titleKey: textOf(r.titleKey),
+    artist: textOf(r.artist),
     meta: parseJson(r.meta, []),
     sections: parseJson(r.sections, []),
     listIds: parseJson(r.listIds, []),
-    youtube: r.youtube,
-    spotify: r.spotify,
+    youtube: textOf(r.youtube),
+    spotify: textOf(r.spotify),
     needsChorusTag: r.needsChorusTag === true || r.needsChorusTag === 'TRUE' || r.needsChorusTag === 'true',
     source: r.source,
     createdAt: Number(r.createdAt) || 0,
@@ -954,6 +957,11 @@ function heatNorm(t) {
     if ((c >= 48 && c <= 57) || (c >= 97 && c <= 122)) out += s2.charAt(i);
   }
   return out;
+}
+
+/** A cell that holds typed text, as text, whatever the sheet turned it into. */
+function textOf(v) {
+  return v === null || v === undefined ? '' : String(v);
 }
 
 function parseJson(v, fallback) {
@@ -2671,7 +2679,7 @@ function apiInit() {
   var attempts = readRows(TAB_ATTEMPTS, ATTEMPT_COLS);
   var lists = readRows(TAB_LISTS, LIST_COLS).map(function (r) {
     return {
-      id: r.id, name: r.name, createdAt: Number(r.createdAt) || 0,
+      id: r.id, name: textOf(r.name), createdAt: Number(r.createdAt) || 0,
       role: r.role || '', order: parseJson(r.order, [])
     };
   });
@@ -7233,7 +7241,9 @@ body {
      until something else happened to evict it. */
   /* s11 - 1.70. The index carries playKey and capo too (the set list shows
      every song's before any lyrics load), and a list carries its own order. */
-  var CACHE_VERSION = 's11';
+  /* s12 - beta 1.06. Titles, artists and list names always arrive as text. An
+     index cached before that can hold a title that is a number. */
+  var CACHE_VERSION = 's12';
 
   /* Dropping a song has to clear BOTH caches. Clearing only the in-memory one
      left the stored copy behind, so the next open painted the old lyrics. */
@@ -7385,6 +7395,18 @@ body {
   /* The closed-beta cloud copy, from host.js. Null in the Sheets version. */
   function cloud() {
     return (ON_WEB && window.SongBurnerHost && window.SongBurnerHost.cloud) || null;
+  }
+
+  /* LOOKING THINGS UP ON THE WEB IS FOR SIGNED-IN TESTERS - beta 1.06. Lyrics
+     search and the YouTube and Spotify searches bring back whatever those
+     services hold, unfiltered, and the website is open to anyone. Testers are
+     13 and up; everyone else adds songs by hand. The Sheets version is
+     unaffected. */
+  function canSearchWeb() {
+    if (!ON_WEB) return true;
+    var cl = cloud();
+    var acc = cl && cl.account();
+    return !!(acc && !acc.expired);
   }
   var syncState = { state: '', at: 0, message: '' };
 
@@ -15807,6 +15829,7 @@ body {
     function serviceSearch(kind) {
       var t = wrap.querySelector('#fTitle').value.trim();
       var a = wrap.querySelector('#fArtist').value.trim();
+      if (!canSearchWeb()) return;
       if (!t) { toast('Type a title first'); return; }
       var q = encodeURIComponent(t + (a ? ' ' + a : ''));
       var url = kind === 'yt'
@@ -15820,6 +15843,12 @@ body {
     /* ---- look the words up rather than typing them ---- */
     var findBtn = wrap.querySelector('#findLyrics');
     var findNote = wrap.querySelector('#findNote');
+
+    if (!canSearchWeb()) {
+      wrap.querySelector('#ytFind').style.display = 'none';
+      wrap.querySelector('#spFind').style.display = 'none';
+      findBtn.parentNode.style.display = 'none';
+    }
 
     function fillFrom(sections) {
       var hasText = false;
@@ -15840,6 +15869,7 @@ body {
     findBtn.addEventListener('click', function () {
       var t = wrap.querySelector('#fTitle').value.trim();
       var ar = wrap.querySelector('#fArtist').value.trim();
+      if (!canSearchWeb()) return;
       if (!t) { toast('Type a title first'); return; }
       findBtn.disabled = true;
       findBtn.textContent = 'Searching...';

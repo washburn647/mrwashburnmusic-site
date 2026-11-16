@@ -3350,6 +3350,27 @@ the saved copy straight away for fifteen seconds, so a bad connection costs
 2.5 seconds once rather than once per file. It only falls back to the saved
 page for page loads, never for a script or a font.
 
+**One queue for everything that touches the library — beta 1.06.** Every engine
+call, every sync merge, backup, restore and the wipe on sign out go through
+`enqueue` in host.js, one after another. Before 1.06 only the sync merge
+claimed the queue and engine calls never waited on it, so a run saved while a
+sync or a backup was reloading the library from IndexedDB was dropped from
+memory and erased by the next save. Testing found one lost song in sixty with
+syncs overlapping saves; with the queue, none in a hundred and fifty.
+
+**Text stays text — beta 1.06.** host.js stores cells the way Sheets hands them
+back, so a title like "22" or an artist like "311" came back a number and the
+Pantry filter threw on it. `songFromRow` and the list reader now return
+title, artist, links and list names through `textOf`, and host.js only turns a
+string into a number when nothing is lost ("007" stays "007") and only turns
+exactly `TRUE`/`FALSE` into booleans.
+
+**Searching the web is for signed-in testers — beta 1.06.** Lyrics search and
+the YouTube and Spotify Find buttons return whatever those services hold,
+unfiltered, and the website is open to anyone. On the web they show only for a
+signed-in tester (13 and up), and host.js's `UrlFetchApp` refuses for anyone
+else. The Sheets version keeps them.
+
 ## Working on the code
 
 The page lives in one template literal at the bottom. Three characters must

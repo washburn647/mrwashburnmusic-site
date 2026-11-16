@@ -1,5 +1,5 @@
 /* GENERATED from src/Code.gs by tools/build_songburner.py. Do not edit.
-   The server half of Song Burner beta 1.05. host.js calls this once per request with
+   The server half of Song Burner beta 1.06. host.js calls this once per request with
    its stand-ins for the Apps Script services. */
 window.SongBurnerEngine = function (services) {
 var SpreadsheetApp = services.SpreadsheetApp;
@@ -25,7 +25,7 @@ var HtmlService = services.HtmlService;
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.05';
+var BUILD    = 'beta 1.06';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -600,14 +600,17 @@ function unitCounts(sections) {
 function songFromRow(r) {
   return {
     id: r.id,
-    title: r.title,
-    titleKey: r.titleKey,
-    artist: r.artist,
+    /* TEXT STAYS TEXT. A sheet hands "1979" back as a number and "TRUE" back as
+       a boolean, so a song called 22 or a band called 311 reached the page as a
+       number and broke everything that searched or sorted titles. */
+    title: textOf(r.title),
+    titleKey: textOf(r.titleKey),
+    artist: textOf(r.artist),
     meta: parseJson(r.meta, []),
     sections: parseJson(r.sections, []),
     listIds: parseJson(r.listIds, []),
-    youtube: r.youtube,
-    spotify: r.spotify,
+    youtube: textOf(r.youtube),
+    spotify: textOf(r.spotify),
     needsChorusTag: r.needsChorusTag === true || r.needsChorusTag === 'TRUE' || r.needsChorusTag === 'true',
     source: r.source,
     createdAt: Number(r.createdAt) || 0,
@@ -965,6 +968,11 @@ function heatNorm(t) {
     if ((c >= 48 && c <= 57) || (c >= 97 && c <= 122)) out += s2.charAt(i);
   }
   return out;
+}
+
+/** A cell that holds typed text, as text, whatever the sheet turned it into. */
+function textOf(v) {
+  return v === null || v === undefined ? '' : String(v);
 }
 
 function parseJson(v, fallback) {
@@ -2682,7 +2690,7 @@ function apiInit() {
   var attempts = readRows(TAB_ATTEMPTS, ATTEMPT_COLS);
   var lists = readRows(TAB_LISTS, LIST_COLS).map(function (r) {
     return {
-      id: r.id, name: r.name, createdAt: Number(r.createdAt) || 0,
+      id: r.id, name: textOf(r.name), createdAt: Number(r.createdAt) || 0,
       role: r.role || '', order: parseJson(r.order, [])
     };
   });

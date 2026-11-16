@@ -748,7 +748,9 @@
      until something else happened to evict it. */
   /* s11 - 1.70. The index carries playKey and capo too (the set list shows
      every song's before any lyrics load), and a list carries its own order. */
-  var CACHE_VERSION = 's11';
+  /* s12 - beta 1.06. Titles, artists and list names always arrive as text. An
+     index cached before that can hold a title that is a number. */
+  var CACHE_VERSION = 's12';
 
   /* Dropping a song has to clear BOTH caches. Clearing only the in-memory one
      left the stored copy behind, so the next open painted the old lyrics. */
@@ -900,6 +902,18 @@
   /* The closed-beta cloud copy, from host.js. Null in the Sheets version. */
   function cloud() {
     return (ON_WEB && window.SongBurnerHost && window.SongBurnerHost.cloud) || null;
+  }
+
+  /* LOOKING THINGS UP ON THE WEB IS FOR SIGNED-IN TESTERS - beta 1.06. Lyrics
+     search and the YouTube and Spotify searches bring back whatever those
+     services hold, unfiltered, and the website is open to anyone. Testers are
+     13 and up; everyone else adds songs by hand. The Sheets version is
+     unaffected. */
+  function canSearchWeb() {
+    if (!ON_WEB) return true;
+    var cl = cloud();
+    var acc = cl && cl.account();
+    return !!(acc && !acc.expired);
   }
   var syncState = { state: '', at: 0, message: '' };
 
@@ -9322,6 +9336,7 @@
     function serviceSearch(kind) {
       var t = wrap.querySelector('#fTitle').value.trim();
       var a = wrap.querySelector('#fArtist').value.trim();
+      if (!canSearchWeb()) return;
       if (!t) { toast('Type a title first'); return; }
       var q = encodeURIComponent(t + (a ? ' ' + a : ''));
       var url = kind === 'yt'
@@ -9335,6 +9350,12 @@
     /* ---- look the words up rather than typing them ---- */
     var findBtn = wrap.querySelector('#findLyrics');
     var findNote = wrap.querySelector('#findNote');
+
+    if (!canSearchWeb()) {
+      wrap.querySelector('#ytFind').style.display = 'none';
+      wrap.querySelector('#spFind').style.display = 'none';
+      findBtn.parentNode.style.display = 'none';
+    }
 
     function fillFrom(sections) {
       var hasText = false;
@@ -9355,6 +9376,7 @@
     findBtn.addEventListener('click', function () {
       var t = wrap.querySelector('#fTitle').value.trim();
       var ar = wrap.querySelector('#fArtist').value.trim();
+      if (!canSearchWeb()) return;
       if (!t) { toast('Type a title first'); return; }
       findBtn.disabled = true;
       findBtn.textContent = 'Searching...';
