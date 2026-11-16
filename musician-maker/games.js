@@ -1,7 +1,8 @@
 /* The micro-games. A game is a silly world and a gesture; the engine hands it a question
    and grades the answer. Each game draws its scene into the stage and returns:
      onCall(i, syl)  a note of the call sounds (syl is set when the call is in syllables)
-     onTap()         the learner tapped (or spoke) a note
+     onTap(fb)       the learner tapped (or spoke) a note; fb.cls is its timing when known
+                     (on, close, off, idle outside the turn, tap with nothing to time it by)
      win(), fail()   the payoff gag
      onBeat(down, spb, tier)  every beat of the groove (down: beat 1 of the 2/4 bar; tier:
                      the combo tier), so the scene shows the pulse and parties with the band
@@ -16,8 +17,9 @@ import { mouseCatcher } from './scene-mouse.js';
 import { supperTime } from './scene-supper.js';
 import { brushingTime } from './scene-brush.js';
 import { pettingTime } from './scene-pet.js';
+import { litterbox } from './scene-litter.js';
 
-export { mouseCatcher, supperTime, brushingTime, pettingTime };
+export { mouseCatcher, supperTime, brushingTime, pettingTime, litterbox };
 
 /* Restart a CSS animation class. */
 export function bump(el, cls) {
@@ -26,13 +28,14 @@ export function bump(el, cls) {
   el.classList.add(cls);
 }
 
-export const GAMES = [mouseCatcher, supperTime, brushingTime, pettingTime];
+export const GAMES = [mouseCatcher, supperTime, brushingTime, pettingTime, litterbox];
 
 export const KITS = {
   'mouse-catcher': { object: { name: 'the mouse', icon: '🐭' }, instrument: { name: 'the bongos', icon: '🪘', sound: 'bongo-high' } },
   'supper-time': { object: { name: 'the gong bowl', icon: '🥣' }, instrument: { name: 'the dinner bell', icon: '🔔', sound: 'cowbell' } },
   'brushing-time': { object: { name: 'the brush', icon: '🪮' }, instrument: { name: 'the maracas', icon: '🪇', sound: 'shaker' } },
   'petting-time': { object: { name: 'Mookie', icon: '🐈‍⬛' }, instrument: { name: 'the guiro', icon: '🪵', sound: 'guiro' } },
+  litterbox: { object: { name: 'Mookie\'s paw', icon: '🐾' }, instrument: { name: 'the litter tub', icon: '🥁', sound: 'log-drum-low' } },
 };
 const DEFAULT_KIT = { object: { name: 'the pad', icon: '👆' }, instrument: { name: 'the drum', icon: '🥁', sound: 'conga' } };
 for (const g of GAMES) g.kit ||= KITS[g.id] || DEFAULT_KIT;

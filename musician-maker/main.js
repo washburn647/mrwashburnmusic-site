@@ -900,7 +900,7 @@ function turnUi(tResp, spb) {
     now: () => R.ctx.currentTime,
     latency: () => snd.latency(),
     hit: (name, vol) => snd.hit(name, R.ctx.currentTime, vol),
-    onPress: () => R.api?.onTap(),
+    onPress: (fb) => R.api?.onTap(fb),
     // Tap feedback: a ripple where the finger landed, coloured by timing when the answer is
     // known (on time, close, off), and a tick on the beat lane where the tap fell.
     feel: ({ el, ev, b, open, cls, word }) => {
