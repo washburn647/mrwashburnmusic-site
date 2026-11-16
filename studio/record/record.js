@@ -13,7 +13,9 @@
    Cue words holds Musician Maker's spoken cues (musician-maker/cues.js), at one speed.
    Narration holds the words behind Musician Maker's 🔊 read-aloud buttons
    (musician-maker/narration.js): free length, no count-in, Record then Stop, one take each
-   (recording again replaces it). They publish with the cues, as line/<id>. */
+   (recording again replaces it). They publish with the cues, as line/<id>.
+   Slide audio (tracks.js) is the class app's: recordings in layers for its slides, kept
+   privately with the class files, never published to the site. */
 
 import * as samples from '/assets/sounds/samples.js';
 import { timing, offbeat, forSite } from '/assets/sounds/timing.js';
@@ -23,6 +25,7 @@ import { h, confirmButton } from '../dom.js';
 import { makeZip, readZip } from './zip.js';
 import { CUES, cueById } from '/musician-maker/cues.js';
 import { LINES, lineById } from '/musician-maker/narration.js';
+import * as slideAudio from './tracks.js';
 
 const app = document.getElementById('app');
 const SPEEDS = { slow: 'Slow', medium: 'Medium', fast: 'Fast' };
@@ -33,6 +36,7 @@ const KINDS = { rhythm: 'Rhythm', tonal: 'Tonal' };
 const VOICES = { syllables: 'Syllables', bum: 'On “bum”' };
 const CUE_UNIT = 'cues'; // the Cue words list, shown in place of a unit
 const LINE_UNIT = 'lines'; // the Narration list, the same way
+const SLIDE_UNIT = 'slides'; // Slide audio (tracks.js)
 const LINE_MAX = 90; // seconds: a narration take stops on its own after this
 const CUE_SPEED = 'medium'; // cue words are recorded once, at this speed
 const ZIP_NAME = 'voice-kyle.zip';
@@ -293,6 +297,7 @@ let folder = null; // where Save for site writes, once picked
 
 const cuesShown = () => settings.unit === CUE_UNIT;
 const linesShown = () => settings.unit === LINE_UNIT;
+const slidesShown = () => settings.unit === SLIDE_UNIT;
 const listShown = () => cuesShown() || linesShown(); // a Musician Maker list, not a unit
 const unitNow = () => units.find((u) => u.id === settings.unit) || units[0];
 const isCue = (id) => id?.startsWith('cue/');
@@ -366,6 +371,10 @@ const describe = (u) => {
 };
 
 function render() {
+  if (slidesShown()) {
+    app.replaceChildren(...top(null), ...slideAudio.view());
+    return;
+  }
   if (cuesShown()) return renderCues();
   if (linesShown()) return renderLines();
   const u = unitNow();
@@ -495,16 +504,18 @@ function renderLines() {
 /* Title, microphone and the unit picker: the top of every view. */
 function top(u) {
   const restore = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true, onchange: () => { restoreZip(restore.files[0]); restore.value = ''; } });
-  const pickUnit = (id) => { if (recording) return; settings.unit = id; showRemoved = false; current = null; save(); render(); };
+  const pickUnit = (id) => { if (recording || slideAudio.busy()) return; settings.unit = id; showRemoved = false; current = null; save(); render(); };
   return [
     h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Voice recorder'),
-      h('button', { onclick: () => restore.click() }, 'Restore'),
-      restore,
-      settings.folder && window.showDirectoryPicker ? h('button', { class: 'icon', title: 'Change folder', onclick: () => saveForSite(true) }, `Folder: ${settings.folder}`) : null,
-      h('button', { onclick: () => saveForSite() }, 'Download'),
-      h('button', { class: 'primary', disabled: publishing, onclick: publish }, publishing ? 'Publishing…' : 'Publish to site'),
+      ...(slidesShown() ? [] : [
+        h('button', { onclick: () => restore.click() }, 'Restore'),
+        restore,
+        settings.folder && window.showDirectoryPicker ? h('button', { class: 'icon', title: 'Change folder', onclick: () => saveForSite(true) }, `Folder: ${settings.folder}`) : null,
+        h('button', { onclick: () => saveForSite() }, 'Download'),
+        h('button', { class: 'primary', disabled: publishing, onclick: publish }, publishing ? 'Publishing…' : 'Publish to site'),
+      ]),
     ),
     micBar(),
     h('div', { class: 'bar units' },
@@ -524,6 +535,10 @@ function top(u) {
           h('b', {}, 'Cue words'), h('small', {}, `${CUES.length} words`)),
         h('button', { class: linesShown() ? 'on' : '', onclick: () => pickUnit(LINE_UNIT) },
           h('b', {}, 'Narration'), h('small', {}, `${LINES.length} spots`)))),
+      h('div', { class: 'group' },
+        h('span', { class: 'label' }, 'Class'),
+        h('span', { class: 'seg' }, h('button', { class: slidesShown() ? 'on' : '', onclick: () => pickUnit(SLIDE_UNIT) },
+          h('b', {}, 'Slide audio'), h('small', {}, 'Layers')))),
     ),
   ];
 }
@@ -1072,6 +1087,7 @@ async function restoreZip(file) {
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('textarea, input, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (slidesShown()) return; // tracks.js has its own keys
   const u = listShown() ? null : unitNow();
   if ((!u && !listShown()) || !current) return;
   if (e.code === 'Space') {
@@ -1113,5 +1129,16 @@ document.addEventListener('keydown', (e) => {
 navigator.permissions?.query({ name: 'microphone' })
   .then((p) => { if (p.state === 'granted' && !mic) startMic(settings.mic).then(render); })
   .catch(() => { /* not supported: the button turns it on */ });
+
+slideAudio.setup({
+  render,
+  active: slidesShown,
+  getMic: () => mic,
+  ensureMic: async () => {
+    if (!mic) { await startMic(settings.mic); render(); }
+    return mic;
+  },
+  micError: () => micError,
+});
 
 show();

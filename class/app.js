@@ -14,6 +14,7 @@ import { gradeHint, normName, classAsOf, lockedSlides, indexSongs, firstClasses,
 import { makeTemplate } from './builder.js';
 import * as sync from './sync.js';
 import './library.js';
+import './tracks.js';
 import { showSub, refreshSub } from './subs.js';
 import { refreshSubSongs } from './subsongs.js';
 

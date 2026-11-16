@@ -13,6 +13,7 @@ import { present } from './present.js';
 import * as store from './store.js';
 import { el, thumb, addMediaUrl, loadHashes } from './ui.js';
 import { pickFromLibrary } from './library.js';
+import { pickTrack } from './tracks.js';
 import { KINDS, youtubeId, spotifyPath, editPictures, editPlaces, pickSpinnerList } from './widgets.js';
 
 const SHAPES = [
@@ -483,7 +484,7 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
   }
 
   const WIDGET_SIZE = { timer: [240, 120], spinner: [110, 110], video: [220, 70], sound: [160, 160], spotify: [220, 70],
-    draw: [110, 110], thinkspeak: [110, 110], streetview: [110, 110] };
+    draw: [110, 110], thinkspeak: [110, 110], streetview: [110, 110], player: [220, 70] };
 
   async function addWidget(kind) {
     commitText();
@@ -538,6 +539,13 @@ export function openEditor(rec, startAt, { media, findGoogle, onExit }) {
       });
       if (!pics) return false;
       e.pics = pics;
+      return true;
+    }
+    if (e.kind === 'player') {
+      const t = await pickTrack(e.track || '', cur().song && cur().song.name);
+      if (!t) return false;
+      e.track = t.id;
+      e.name = t.name;
       return true;
     }
     if (e.kind === 'streetview') {
