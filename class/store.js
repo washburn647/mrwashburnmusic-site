@@ -24,7 +24,8 @@ function db() {
         if (!d.objectStoreNames.contains('timings')) d.createObjectStore('timings', { autoIncrement: true });
         // plans: one record per school year (see plans.js).
         if (!d.objectStoreNames.contains('plans')) d.createObjectStore('plans', { keyPath: 'year' });
-        // library: the picture library, one record { id: 'pictures', groups: [{ name, pics: [{ media }] }] }.
+        // library: the picture library, one record { id: 'pictures', groups: [{ name, pics: [{ media }] }] },
+        // and slide recordings, one record each { id: 'audio-…', kind: 'audio', layers } (tracks.js).
         if (!d.objectStoreNames.contains('library')) d.createObjectStore('library', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
@@ -119,9 +120,12 @@ export function deleteLibrary(id, quiet) {
   return tx('library', 'readwrite', (s) => wrap(s.delete(id))).then(() => { if (!quiet) changed('library', id, true); });
 }
 
-/** Every picture hash the picture library holds. */
+/** Every picture hash the picture library holds, or the sound files of a slide recording
+    (tracks.js), which are kept in the same store. */
 export function libraryMedia(rec) {
-  return rec ? [...new Set(rec.groups.flatMap((g) => g.pics.map((p) => p.media)))] : [];
+  if (!rec) return [];
+  if (Array.isArray(rec.layers)) return [...new Set(rec.layers.map((l) => l.media).filter(Boolean))];
+  return [...new Set((rec.groups || []).flatMap((g) => g.pics.map((p) => p.media)))];
 }
 
 /* Timings from before v 2 (single slides, or runs that didn't need the end screen) were

@@ -7,6 +7,13 @@
   var NBSP = String.fromCharCode(160);
 
   /* ---------- tiny helpers, all regex-free on purpose ---------- */
+  /** An http(s) address as typed, or '' for anything else. */
+  function webLink(v) {
+    var t = String(v === null || v === undefined ? '' : v).trim();
+    var low = t.toLowerCase();
+    return (low.indexOf('https://') === 0 || low.indexOf('http://') === 0) ? t : '';
+  }
+
   function esc(s) {
     return String(s === null || s === undefined ? '' : s)
       .split('&').join('&amp;').split('<').join('&lt;')
@@ -748,7 +755,9 @@
      until something else happened to evict it. */
   /* s11 - 1.70. The index carries playKey and capo too (the set list shows
      every song's before any lyrics load), and a list carries its own order. */
-  var CACHE_VERSION = 's11';
+  /* s12 - beta 1.06. Titles, artists and list names always arrive as text. An
+     index cached before that can hold a title that is a number. */
+  var CACHE_VERSION = 's12';
 
   /* Dropping a song has to clear BOTH caches. Clearing only the in-memory one
      left the stored copy behind, so the next open painted the old lyrics. */
@@ -900,6 +909,18 @@
   /* The closed-beta cloud copy, from host.js. Null in the Sheets version. */
   function cloud() {
     return (ON_WEB && window.SongBurnerHost && window.SongBurnerHost.cloud) || null;
+  }
+
+  /* LOOKING THINGS UP ON THE WEB IS FOR SIGNED-IN TESTERS - beta 1.06. Lyrics
+     search and the YouTube and Spotify searches bring back whatever those
+     services hold, unfiltered, and the website is open to anyone. Testers are
+     13 and up; everyone else adds songs by hand. The Sheets version is
+     unaffected. */
+  function canSearchWeb() {
+    if (!ON_WEB) return true;
+    var cl = cloud();
+    var acc = cl && cl.account();
+    return !!(acc && !acc.expired);
   }
   var syncState = { state: '', at: 0, message: '' };
 
@@ -3469,10 +3490,13 @@
         '</div>' +
         progressStrip(idx);
       head.appendChild(top);
-      if (song.youtube || song.spotify) {
+      /* Only a web address becomes a link: a backup or a synced library can
+         carry anything in these two cells. */
+      var ytUrl = webLink(song.youtube), spUrl = webLink(song.spotify);
+      if (ytUrl || spUrl) {
         var links = '<div class="link-row">';
-        if (song.youtube) links += '<a class="link-chip" href="' + esc(song.youtube) + '" target="_blank" rel="noopener">&#9654; YouTube</a>';
-        if (song.spotify) links += '<a class="link-chip" href="' + esc(song.spotify) + '" target="_blank" rel="noopener">&#9834; Spotify</a>';
+        if (ytUrl) links += '<a class="link-chip" href="' + esc(ytUrl) + '" target="_blank" rel="noopener">&#9654; YouTube</a>';
+        if (spUrl) links += '<a class="link-chip" href="' + esc(spUrl) + '" target="_blank" rel="noopener">&#9834; Spotify</a>';
         links += '</div>';
         head.innerHTML += links;
       }
@@ -7590,6 +7614,8 @@
        own statistics. */
     if (!practice) {
       var attempt = {
+        // its id is fixed here, so sending it again can never write it twice
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         songId: song.id, date: Date.now(), accuracy: accuracy,
         totalWords: totalWords, correctWords: correctWords,
         mode: mode, seconds: secs, device: dev,
@@ -9322,6 +9348,7 @@
     function serviceSearch(kind) {
       var t = wrap.querySelector('#fTitle').value.trim();
       var a = wrap.querySelector('#fArtist').value.trim();
+      if (!canSearchWeb()) return;
       if (!t) { toast('Type a title first'); return; }
       var q = encodeURIComponent(t + (a ? ' ' + a : ''));
       var url = kind === 'yt'
@@ -9335,6 +9362,12 @@
     /* ---- look the words up rather than typing them ---- */
     var findBtn = wrap.querySelector('#findLyrics');
     var findNote = wrap.querySelector('#findNote');
+
+    if (!canSearchWeb()) {
+      wrap.querySelector('#ytFind').style.display = 'none';
+      wrap.querySelector('#spFind').style.display = 'none';
+      findBtn.parentNode.style.display = 'none';
+    }
 
     function fillFrom(sections) {
       var hasText = false;
@@ -9355,6 +9388,7 @@
     findBtn.addEventListener('click', function () {
       var t = wrap.querySelector('#fTitle').value.trim();
       var ar = wrap.querySelector('#fArtist').value.trim();
+      if (!canSearchWeb()) return;
       if (!t) { toast('Type a title first'); return; }
       findBtn.disabled = true;
       findBtn.textContent = 'Searching...';

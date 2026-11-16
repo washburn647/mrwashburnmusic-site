@@ -540,3 +540,49 @@ button.pics-cell.on { border-color: var(--forest); box-shadow: 0 0 0 3px var(--w
 /* A deck's Move Its and dances, apart from its usual songs */
 .slide-sep { grid-column: 1 / -1; margin: 18px 0 2px; padding-top: 12px; border-top: 3px solid var(--wheat); font-weight: 600; font-size: 18px; color: var(--forest); }
 .slide-sep.plain { padding-top: 0; }
+
+/* Recording widget: the player docks along the bottom, the slide still showing (widgets.js) */
+.slide-stage .wg-player.wg-off { opacity: .45; cursor: default; }
+.slide-stage .wg-player.wg-loading { opacity: .7; cursor: progress; }
+.present.has-dock .bar { bottom: 196px; }
+.wg-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 45; cursor: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 18px 16px; background: rgba(255, 253, 247, .97); color: var(--forest); box-shadow: 0 -6px 24px rgba(0, 0, 0, .35);
+  font-family: "Fredoka", ui-rounded, sans-serif; font-size: 18px; }
+.wg-drow { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.wg-dbtn { border: 0; border-radius: 12px; background: rgba(47, 74, 58, .1); color: var(--forest); font: inherit; font-weight: 600;
+  min-width: 52px; height: 52px; padding: 0 14px; font-size: 20px; }
+.wg-dbtn:hover { background: rgba(47, 74, 58, .2); }
+.wg-dbtn.on { background: var(--forest); color: var(--cream); }
+.wg-dplay { min-width: 76px; font-size: 24px; background: var(--forest); color: var(--cream); }
+.wg-dplay:hover { background: var(--moss); }
+.wg-dhide { margin-left: auto; background: transparent; }
+.wg-dtime { font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 6.5em; text-align: center; }
+.wg-dock input[type=range] { accent-color: var(--forest); cursor: pointer; }
+.wg-dseek { flex: 1; min-width: 120px; height: 28px; }
+.wg-dseek.looping { background: linear-gradient(90deg, transparent var(--a), rgba(217, 178, 111, .55) var(--a), rgba(217, 178, 111, .55) var(--b), transparent var(--b));
+  border-radius: 8px; }
+.wg-dtitle { font-weight: 600; max-width: 22%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-dlayers { display: flex; gap: 10px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.wg-dlayer { display: flex; flex-direction: column; align-items: stretch; gap: 4px; border-radius: 14px; padding: 4px; background: rgba(47, 74, 58, .06); }
+.wg-dlayer .wg-dlname { height: 48px; text-decoration: line-through; color: var(--muted); background: transparent;
+  box-shadow: inset 0 0 0 2px var(--line); }
+.wg-dlayer.on .wg-dlname { text-decoration: none; color: var(--cream); background: var(--moss); box-shadow: none; }
+.wg-dlevel { width: 100%; min-width: 110px; height: 18px; }
+.wg-dlayer:not(.on) .wg-dlevel { opacity: .4; }
+.wg-dvolbox { display: flex; align-items: center; gap: 8px; flex: 0 1 38%; min-width: 220px; }
+.wg-dvicon { font-size: 26px; }
+.wg-dvol { flex: 1; height: 44px; }
+.wg-dvol::-webkit-slider-runnable-track { height: 16px; border-radius: 8px; background: var(--sage); }
+.wg-dvol::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 40px; height: 40px; margin-top: -12px; border-radius: 50%;
+  background: var(--forest); border: 4px solid var(--card); box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+.wg-dvol { -webkit-appearance: none; appearance: none; background: transparent; }
+.wg-dvol::-moz-range-track { height: 16px; border-radius: 8px; background: var(--sage); }
+.wg-dvol::-moz-range-thumb { width: 32px; height: 32px; border-radius: 50%; background: var(--forest); border: 4px solid var(--card); }
+@media (max-width: 760px) {
+  .wg-dock .wg-drow { flex-wrap: wrap; }
+  .wg-dtitle { max-width: 100%; }
+  .wg-dvolbox { flex-basis: 100%; }
+}
+.wg-dinsts { display: flex; gap: 4px; padding: 4px; border-radius: 16px; background: rgba(217, 178, 111, .25); }
+.wg-dinst .wg-dlname { text-decoration: none; }
+.wg-dlayer.wg-dinst.on .wg-dlname { background: var(--forest); }

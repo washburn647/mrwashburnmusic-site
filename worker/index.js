@@ -1,6 +1,6 @@
 /* The site is static files. This Worker only answers /api/:
    - /api/class/ (and /studio/api/class/, for the studio's picture library): the Class app's
-     files kept on the website (decks, pictures, plans, picture library, timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
+     files kept on the website (decks, pictures, plans, picture library, slide recordings, timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
      and every request is checked here too, so a missing Access rule never opens it up.
    - /api/s/ and /studio/api/s/: a locked box for each private lesson student (see Box).
    - /studio/api/lessons/: the studio's lesson pages (students, pieces, practice library), kept
@@ -209,8 +209,9 @@ async function grabPicture(request, bucket) {
    A new code makes a new key. Wrong codes are rate limited (SUB_LIMIT, per address).
    PUT  /api/class/sub   { code, deck, decks } sets it (no code: keeps it); { code: '' } turns it off (Kyle only)
    GET  /api/class/sub   what is set (Kyle only)
-   POST /api/sub/open    { code } -> { start, decks: [{ id, name, deck }], key }
-   GET  /api/sub/media/<hash>   with X-Sub-Key: a picture of those decks */
+   POST /api/sub/open    { code } -> { start, decks: [{ id, name, deck }], tracks: [{ id, name, layers }], key }
+   GET  /api/sub/media/<hash>   with X-Sub-Key: a picture of those decks, or a layer of a recording
+                                their Recording widgets play (slide audio, class/tracks.js) */
 const SUB = 'sub/config.json', SUB_ALLOW = 'sub/media.json';
 const normCode = (c) => String(c || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -264,6 +265,15 @@ function deckMedia(deck, out) {
   if (deck && deck.subSongs && deck.subSongs.looks) for (const l of Object.values(deck.subSongs.looks)) take(l && l.bg);
 }
 
+/** Recordings a deck's Recording widgets play (slide audio). */
+function deckTracks(deck, out) {
+  for (const s of (deck && deck.slides) || []) {
+    for (const el of s.els || []) {
+      if (el.t === 'wg' && el.kind === 'player' && typeof el.track === 'string' && el.track.startsWith('audio-') && ID.test(el.track)) out.add(el.track);
+    }
+  }
+}
+
 function sameText(a, b) {
   const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
   let d = x.length ^ y.length;
@@ -284,21 +294,35 @@ async function subApi(request, env, [what, id, extra]) {
     if (!c || !c.code || !normCode(code) || !sameText(normCode(code), normCode(c.code))) {
       return reply({ error: 'That code doesn\'t open anything.' }, 403);
     }
-    const decks = [], media = new Set();
+    const decks = [], media = new Set(), trackIds = new Set();
     for (const deckId of c.decks || [c.deck]) {
       const o = await bucket.get('decks/' + deckId);
       if (!o || (o.customMetadata || {}).gone === '1') continue;
       const rec = JSON.parse(await o.text());
       deckMedia(rec.deck, media);
+      deckTracks(rec.deck, trackIds);
       decks.push({ id: rec.id, name: rec.name, deck: rec.deck });
     }
     if (!decks.some((d) => d.id === c.deck)) return reply({ error: 'That code doesn\'t open anything.' }, 403);
+    // Only what playing them needs: names and layers, never anything else in the library.
+    const tracks = [];
+    for (const id of trackIds) {
+      const o = await bucket.get('library/' + id);
+      if (!o || (o.customMetadata || {}).gone === '1') continue;
+      let t = null;
+      try { t = JSON.parse(await o.text()); } catch (e) { continue; }
+      if (!t || t.kind !== 'audio' || !Array.isArray(t.layers)) continue;
+      const layers = t.layers.filter((l) => l && typeof l.media === 'string' && HASH.test(l.media))
+        .map((l) => ({ id: l.id, name: l.name, kind: l.kind, media: l.media, nudge: l.nudge || 0, vol: l.vol ?? 1 }));
+      for (const l of layers) media.add(l.media);
+      tracks.push({ id: t.id, name: t.name, layers });
+    }
     const allow = [...media].sort();
     const had = await readJson(bucket, SUB_ALLOW);
     if (!had || had.key !== c.key || JSON.stringify(had.media) !== JSON.stringify(allow)) {
       await bucket.put(SUB_ALLOW, JSON.stringify({ key: c.key, media: allow }), { httpMetadata: { contentType: 'application/json' } });
     }
-    return reply({ start: c.deck, decks, key: c.key });
+    return reply({ start: c.deck, decks, tracks, key: c.key });
   }
   if (what === 'media' && id && HASH.test(id) && extra === undefined && request.method === 'GET') {
     const key = request.headers.get('X-Sub-Key') || '';
@@ -658,7 +682,7 @@ export class Live extends DurableObject {
     return reply({ ok: true });
   }
 
-  /* list: { label, patterns: { id: [{ take, speed, bpm, key?, as?, tempo?, lead? }] }, cues: { id: [{ take, speed, bpm }] }, units? }
+  /* list: { label, patterns: { id: [{ take, speed, bpm, key?, as?, style?, tempo?, lead? }] }, cues: { id: [{ take, speed, bpm }] }, units? }
      Every take it names must be uploaded already. */
   async putVoice(voice, text) {
     let list;
@@ -675,6 +699,8 @@ export class Live extends DurableObject {
           used.add(o.take);
           const entry = { file: `/api/live/voice/${voice}/${o.take}.mp3`, speed: String(o.speed || ''), bpm: Number(o.bpm) || 0 };
           if (o.as === 'bum') entry.as = 'bum';
+          // The voice a rhythm take is in (normal, robot...), from the recorder's list.
+          if (typeof o.style === 'string' && /^[a-z0-9-]{1,24}$/.test(o.style)) entry.style = o.style;
           if (typeof o.key === 'number') entry.key = o.key;
           // How the take really kept the beat (assets/sounds/timing.js).
           if (typeof o.tempo === 'number' && o.tempo > 20 && o.tempo < 300) entry.tempo = o.tempo;
@@ -772,7 +798,8 @@ export class Box extends DurableObject {
    GET    /api/songburner/dashboard turn the dashboard feed on    { feed } (the same link each time)
    POST   /api/songburner/dashboard a new feed link; the old stops { feed }
    DELETE /api/songburner/dashboard turn the feed off
-   PUT    /api/songburner/dashboard where the songs stand now     { on } (stored only while on)
+   PUT    /api/songburner/dashboard where the songs stand now     { on } (stored only while on;
+                                     with X-SB-Probe: 1, only says whether the feed is on)
    GET    /api/songburner/feed/:hash/:key   the feed itself, no sign-in: the key is the lock
 
    THE DASHBOARD FEED. Kyle's second-screen dashboard (a page on his PC, outside this site)
@@ -961,6 +988,8 @@ async function dashSetup(request, vault, hash, method) {
   }
   if (method === 'DELETE') { await vault.dashOff(); return reply({ ok: true }); }
   if (method === 'PUT') {
+    // The app asks first, so a tester who never turned the feed on sends no song titles at all.
+    if (request.headers.get('X-SB-Probe') === '1') return reply({ on: await vault.dashIsOn() });
     const text = await request.text();
     if (text.length > MAX_DASH) return reply({ error: 'too big' }, 413);
     let snap;
@@ -1134,7 +1163,10 @@ export class Vault extends DurableObject {
   }
 
   async clear() {
+    // A tester deleting their own copy must not undo a removal from the studio: keep 'cut'.
+    const cut = await this.ctx.storage.get('cut');
     await this.ctx.storage.deleteAll();
+    if (cut) await this.ctx.storage.put('cut', cut);
     return reply({ ok: true });
   }
 
@@ -1163,6 +1195,10 @@ export class Vault extends DurableObject {
       await this.ctx.storage.put('dashkey', key);
     }
     return key;
+  }
+
+  async dashIsOn() {
+    return !!(await this.ctx.storage.get('dashkey'));
   }
 
   async dashOff() {

@@ -83,7 +83,7 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   grade's built menu with songs the plan hasn't reached yet locked.
 - `widgets.js`: slide elements that work in Present (`{ t: 'wg', kind }`): timer (counts down
   and chimes, or up), spinner, video (YouTube, through the no-cookie player, or a video file),
-  sound file, Spotify, drawing box, think/speak, Street View. Added from the editor's 🧩 menu;
+  sound file, Spotify, drawing box, think/speak, Street View, Recording (slide audio, below). Added from the editor's 🧩 menu;
   double-click one to change it. Elsewhere they draw as labels or icons. What a widget is set up
   with lives on its element, so it saves with the slide and copies with it (duplicate slide, Ctrl+C
   and Ctrl+V, even into another deck, and class builds).
@@ -109,6 +109,24 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   unless 💾 saves a PNG to the device's downloads. The spinner's class lists live only in this browser's localStorage
   (`class.names`), never in a deck, so student names stay on the device. A slide's old link to
   an online name spinner opens this spinner instead.
+- `tracks.js`, `mixer.js`: slide audio. Recordings in layers (instrument, voice...) made in the
+  studio's voice recorder (`/studio/record/`, Slide audio, `studio/record/tracks.js`): each
+  layer is recorded while the others play on headphones, moved earlier by the browser's
+  reported in/out latency and the mp3's own delay, with a per-layer Nudge (ms) by hand. Each
+  recording is a `library` record (`{ id: 'audio-…', kind: 'audio', name, song, bpm, countIn,
+  click, layers: [{ id, name, media, seconds, nudge, vol }] }`), saved straight on the website
+  like the picture library and synced here; its layers are mp3s in `media`, tagged classroom.
+  The editor's 🧩 Recording widget (`{ t: 'wg', kind: 'player', track, name }`) ties one to a
+  slide (the slide's song's recordings listed first). In Present, tapping it docks a player along
+  the bottom with the slide still showing: play/pause, seek, loop (whole, or A to B), a big
+  volume (remembered on the device, `class.playerVol`), and each layer on or off with its own
+  level. A layer's `kind` is `inst`, `voice` or `other` (`kindOf` in `mixer.js`; older layers go
+  by name): instruments are choices, one at a time (the first plays to start), so a song can
+  have piano and guitar accompaniments to pick from. `mixer.js` lines the layers up into one length so they loop together. It plays on
+  across slides that carry the same recording, and stops on a slide without it. ✕ hides the
+  player, ■ on the box stops it. The sub view plays them too: `/api/sub/open` sends the
+  recordings the sub decks' Recording widgets use (names and layers only), and their layers come
+  through `/api/sub/media/` with the sub key, like the pictures.
 - `library.js`: the picture library, pictures kept for the drawing box and think/speak, in
   groups (a game's pictures), each with a name. Kept up in the studio (`/studio/pictures/`,
   straight on the website through `/studio/api/class/`): paste a picture or its address (the
@@ -200,6 +218,8 @@ link = { slide: index } | { url } | { gdoc, gslide, url } | { jump: 'next' | 'pr
 
 ```
 library = { id: 'pictures', name, created, updated, groups: [{ name, pics: [{ media, name }] }] }
+        | { id: 'audio-…', kind: 'audio', name, song, bpm, countIn, click, created, updated,
+            layers: [{ id, name, media, seconds, nudge, vol }] }
 ```
 
 Pictures are stored once each, keyed by a hash of their bytes (`media`), with a

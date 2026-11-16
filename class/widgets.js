@@ -12,6 +12,11 @@
               moves a picture to the other row, in its own column
    - streetview: places [{ name, src }], Google Maps embeds (Share > Embed a
               map), the first where it starts, the rest in a list under it
+   - player:  track (a slide recording's id, see tracks.js), name. Tapped, a
+              player docks at the bottom of the screen, the slide still showing:
+              play, seek, loop (all, or A to B), one big volume, each layer on
+              or off with its own level. It plays on while the next slides carry
+              the same recording, and stops on a slide without it.
    The spinner, video, Spotify, the drawing box, think/speak and Street View
    sit on the slide as a small box (ICON_ONLY: just their icon); tapped, they
    open big over the slide (OPENS), clear of the slide's scaling. Elsewhere
@@ -19,10 +24,12 @@
    Everything set up in the editor lives on the element, so it saves with the
    slide and goes wherever the slide or element is copied. */
 
+import { Mixer, decodeLayers, audioContext, kindOf } from './mixer.js';
+
 export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify', draw: 'Drawing box',
-  thinkspeak: 'Think/speak', streetview: 'Street View' };
-const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵', draw: '✏', thinkspeak: '💬', streetview: '🌍' };
-const OPENS = ['spinner', 'video', 'spotify', 'draw', 'thinkspeak', 'streetview'];
+  thinkspeak: 'Think/speak', streetview: 'Street View', player: 'Recording' };
+const ICONS = { timer: '⏱', spinner: '🎡', video: '▶', sound: '🔊', spotify: '🎵', draw: '✏', thinkspeak: '💬', streetview: '🌍', player: '🎚' };
+const OPENS = ['spinner', 'video', 'spotify', 'draw', 'thinkspeak', 'streetview', 'player'];
 const ICON_ONLY = ['spinner', 'draw', 'thinkspeak', 'streetview'];   // on the slide, just their icon
 const INK = ['#000000', '#D04B4B', '#3B83C0', '#4A9C5C', '#E8A33D', '#9257BD'];
 const COLORS = ['#E8A33D', '#5E7D4F', '#3B83C0', '#D04B4B', '#9257BD', '#C9A41F', '#4A9C5C', '#DD8033'];
@@ -49,7 +56,7 @@ export function drawWidget(el, opts = {}) {
     d.append(icon(el.kind), h('span', 'wg-label', label(el)));
     return d;
   }
-  const make = { timer, spinner, video, sound, spotify, draw, thinkspeak, streetview }[el.kind];
+  const make = { timer, spinner, video, sound, spotify, draw, thinkspeak, streetview, player }[el.kind];
   if (make) make(d, el, opts);
   // A widget is for using: clicks on it are not "show the controls" clicks.
   d.addEventListener('click', (e) => e.stopPropagation());
@@ -58,7 +65,7 @@ export function drawWidget(el, opts = {}) {
 
 export function label(el) {
   if (el.kind === 'timer') return el.secs ? clock(el.secs) : '0:00 +';
-  if (['sound', 'video', 'spotify'].includes(el.kind)) return el.name || KINDS[el.kind];
+  if (['sound', 'video', 'spotify', 'player'].includes(el.kind)) return el.name || KINDS[el.kind];
   if (el.kind === 'streetview') return el.name || (el.places && el.places[0] && el.places[0].name) || KINDS.streetview;
   return KINDS[el.kind] || '';
 }
@@ -1072,4 +1079,200 @@ export function editPlaces(places) {
     ok.addEventListener('click', () => done(rows.filter((x) => x.src).map((x) => ({ name: (x.name || '').trim(), src: x.src }))));
     box.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') done(null); });
   });
+}
+
+// ---- recording (slide audio) ---------------------------------------------------
+// Where recordings come from (tracks.js, or sub.js in the sub view): { get(id) -> track,
+// blob(hash) -> Blob, remember (false: keep the volume off the device) }.
+
+let tracks = null;
+export function useTracks(t) { tracks = t; }
+
+const VOL_KEY = 'class.playerVol';
+let live = null;                           // { track, mixer, owner, dock, ... } the one playing now
+
+function savedVolume() {
+  try { const v = Number(localStorage.getItem(VOL_KEY)); return v >= 0 && v <= 1 && localStorage.getItem(VOL_KEY) != null ? v : 0.8; } catch (e) { return 0.8; }
+}
+
+function endLive() {
+  if (!live) return;
+  const l = live;
+  live = null;
+  clearInterval(l.tick);
+  l.mixer.dispose();
+  l.dock.remove();
+  if (l.host) l.host.classList.remove('has-dock');
+  stopButtons(l.track, false);
+}
+
+function stopButtons(track, show) {
+  for (const n of document.querySelectorAll('.wg-player')) {
+    const s = n.querySelector('.wg-stop');
+    if (s) s.hidden = !(show && n.dataset.track === track);
+  }
+}
+
+function player(d, el) {
+  tile(d, el);
+  const stop = h('button', 'wg-btn wg-stop', '■');
+  stop.title = 'Stop';
+  stop.hidden = !(live && live.track === el.track && live.mixer.playing);
+  d.append(stop);
+  if (!tracks || !el.track) { d.classList.add('wg-off'); return; }
+  d.dataset.track = el.track;
+  // The same recording on the next slide carries on playing.
+  if (live && live.track === el.track) live.owner = d;
+  stop.addEventListener('click', (e) => { e.stopPropagation(); if (live && live.track === el.track) endLive(); });
+  d.addEventListener('click', () => openPlayer(d, el));
+  every(d, 500, () => {}, () => {
+    // Gone from the screen: give the next slide a moment to take it over.
+    setTimeout(() => {
+      if (live && live.owner === d) endLive();
+    }, 50);
+  });
+}
+
+async function openPlayer(d, el) {
+  if (live && live.track === el.track) {
+    live.owner = d;
+    live.dock.hidden = false;
+    live.host.classList.add('has-dock');
+    return;
+  }
+  endLive();
+  d.classList.add('wg-loading');
+  let mixer;
+  let track;
+  try {
+    track = await tracks.get(el.track);
+    if (!track) throw new Error('gone');
+    const layers = await decodeLayers(track.layers, tracks.blob);
+    if (!layers.length) throw new Error('empty');
+    mixer = new Mixer(layers, audioContext());
+  } catch (e) {
+    d.classList.remove('wg-loading');
+    d.classList.add('wg-off');
+    return;
+  }
+  d.classList.remove('wg-loading');
+  if (!d.isConnected) { mixer.dispose(); return; }
+  const host = d.closest('.present') || document.body;
+  const dock = dockFor(mixer, track);
+  host.append(dock.node);
+  host.classList.add('has-dock');
+  live = { track: el.track, mixer, owner: d, dock: dock.node, host, tick: setInterval(dock.paint, 200) };
+  mixer.play(0);
+  dock.paint();
+}
+
+/** The player along the bottom of the screen. */
+function dockFor(mixer, track) {
+  const node = h('div', 'wg-dock');
+  const btn = (text, title, cls) => {
+    const b = h('button', 'wg-dbtn' + (cls ? ' ' + cls : ''), text);
+    b.title = title;
+    b.setAttribute('aria-label', title);
+    b.addEventListener('click', () => b.blur());
+    return b;
+  };
+  const range = (cls, max, value) => {
+    const r = h('input', cls);
+    r.type = 'range';
+    r.min = 0;
+    r.max = max;
+    r.step = 'any';
+    r.value = value;
+    r.addEventListener('change', () => r.blur());
+    return r;
+  };
+
+  const play = btn('▶', 'Play', 'wg-dplay');
+  const back = btn('⏮', 'Back to the start');
+  const time = h('span', 'wg-dtime');
+  const seek = range('wg-dseek', 1000, 0);
+  const loop = btn('🔁', 'Loop');
+  const A = btn('A', 'Loop from here');
+  const B = btn('B', 'Loop to here');
+  const hide = btn('✕', 'Hide (keeps playing)', 'wg-dhide');
+  const top = h('div', 'wg-drow');
+  top.append(play, back, time, seek, loop, A, B, hide);
+
+  const layers = h('div', 'wg-dlayers');
+  // Instruments are choices: one plays at a time (the first to start), or none. Voices and
+  // other layers turn on and off on their own.
+  const insts = mixer.layers.map((l, i) => i).filter((i) => kindOf(mixer.layers[i]) === 'inst');
+  const chips = mixer.layers.map((l, i) => {
+    const inst = insts.includes(i);
+    const c = h('div', 'wg-dlayer on' + (inst ? ' wg-dinst' : ''));
+    const t = btn(l.name || 'Layer ' + (i + 1), l.name || 'Layer ' + (i + 1), 'wg-dlname');
+    const lv = range('wg-dlevel', 1, l.level);
+    lv.title = 'Level';
+    t.addEventListener('click', () => {
+      const on = !mixer.layers[i].on;
+      if (inst && on) for (const j of insts) if (j !== i) mixer.setLayer(j, false);
+      mixer.setLayer(i, on);
+      chips.forEach((x, j) => x.classList.toggle('on', mixer.layers[j].on));
+    });
+    lv.addEventListener('input', () => mixer.setLevel(i, Number(lv.value)));
+    c.append(t, lv);
+    return c;
+  });
+  for (const j of insts.slice(1)) { mixer.setLayer(j, false); chips[j].classList.remove('on'); }
+  if (insts.length) {
+    const group = h('div', 'wg-dinsts');
+    group.append(...insts.map((i) => chips[i]));
+    layers.append(group);
+  }
+  layers.append(...chips.filter((c, i) => !insts.includes(i)));
+  const vol = range('wg-dvol', 1, savedVolume());
+  vol.title = 'Volume';
+  const volBox = h('label', 'wg-dvolbox');
+  volBox.append(h('span', 'wg-dvicon', '🔈'), vol, h('span', 'wg-dvicon', '🔊'));
+  const bottom = h('div', 'wg-drow');
+  bottom.append(h('span', 'wg-dtitle', track.name || ''), layers, volBox);
+  node.append(top, bottom);
+
+  mixer.setVolume(Number(vol.value));
+  vol.addEventListener('input', () => {
+    mixer.setVolume(Number(vol.value));
+    if (tracks && tracks.remember !== false) try { localStorage.setItem(VOL_KEY, vol.value); } catch (e) { /* storage blocked */ }
+  });
+
+  let dragging = false;
+  seek.addEventListener('input', () => { dragging = true; time.textContent = clock(Number(seek.value) / 1000 * mixer.duration) + ' / ' + clock(mixer.duration); });
+  seek.addEventListener('change', () => { dragging = false; mixer.seek(Number(seek.value) / 1000 * mixer.duration); paint(); });
+  play.addEventListener('click', () => { if (mixer.playing) mixer.pause(); else mixer.play(); paint(); });
+  back.addEventListener('click', () => { mixer.seek(mixer.loop && mixer.a != null ? mixer.a : 0); paint(); });
+  loop.addEventListener('click', () => { mixer.setLoop(!mixer.loop); paint(); });
+  A.addEventListener('click', () => { mixer.setLoop(mixer.loop || mixer.a == null, mixer.a == null ? mixer.position() : null, mixer.b); paint(); });
+  B.addEventListener('click', () => { mixer.setLoop(mixer.loop || mixer.b == null, mixer.a, mixer.b == null ? mixer.position() : null); paint(); });
+  hide.addEventListener('click', () => {
+    node.hidden = true;
+    if (live) live.host.classList.remove('has-dock');
+  });
+  mixer.onend = paint;
+
+  // Taps and swipes in here are for the player, not for Present.
+  for (const t of ['click', 'touchstart', 'touchend', 'pointerdown']) node.addEventListener(t, (e) => e.stopPropagation(), { passive: t !== 'click' });
+
+  function paint() {
+    const dur = mixer.duration || 1;
+    const p = mixer.position();
+    play.textContent = mixer.playing ? '❚❚' : '▶';
+    play.title = mixer.playing ? 'Pause' : 'Play';
+    if (!dragging) {
+      seek.value = String(p / dur * 1000);
+      time.textContent = clock(p) + ' / ' + clock(mixer.duration);
+    }
+    loop.classList.toggle('on', mixer.loop);
+    A.classList.toggle('on', mixer.a != null);
+    B.classList.toggle('on', mixer.b != null);
+    const a = (mixer.a ?? 0) / dur * 100, b = (mixer.b ?? dur) / dur * 100;
+    seek.style.setProperty('--a', a + '%');
+    seek.style.setProperty('--b', b + '%');
+    seek.classList.toggle('looping', mixer.loop);
+    stopButtons(live ? live.track : '', mixer.playing);
+  }
+  return { node, paint };
 }

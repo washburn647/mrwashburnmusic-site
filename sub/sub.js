@@ -3,13 +3,15 @@
    memory: nothing is stored on the device, and no time on screen is recorded.
    With Kyle's sub songs (the Sub songs deck, class/subsongs.js) the sub also picks a grade
    and goes through a menu of songs for each category, the workout.
-   See subApi in worker/index.js and class/subs.js. */
+   Recording widgets play the slide audio those decks use (class/tracks.js), fetched with the
+   same key. See subApi in worker/index.js and class/subs.js. */
 
 import { present } from '/class/present.js';
 import { buildMenu } from '/class/menus.js';
 import { mediaOf } from '/class/store.js';
 import { iconWidgets, GRADES } from '/class/marks.js';
 import { workoutMenu, workoutParts, withMenuButtons } from '/class/subsongs.js';
+import { useTracks } from '/class/widgets.js';
 
 const $ = (s) => document.querySelector(s);
 const urls = new Map();                    // picture hash -> object URL
@@ -46,6 +48,16 @@ async function open(code) {
   if (!res.ok) { msg.textContent = out.error || 'That didn\'t work.'; return; }
   for (const d of out.decks) iconWidgets(d.deck);
   bundle = { start: out.start, key: out.key, decks: new Map(out.decks.map((d) => [d.id, d])) };
+  // Slide audio: the recordings these decks play, fetched when a player opens, kept in memory only.
+  const tracks = new Map((out.tracks || []).map((t) => [t.id, { ...t, kind: 'audio' }]));
+  useTracks({
+    get: async (id) => tracks.get(id) || null,
+    blob: async (hash) => {
+      const r = await fetch('/api/sub/media/' + hash, { headers: { 'X-Sub-Key': bundle.key }, cache: 'no-store' });
+      return r.ok ? r.blob() : null;
+    },
+    remember: false
+  });
   const rec = bundle.decks.get(bundle.start);
   await loadPictures(rec.deck);
   msg.textContent = '';
