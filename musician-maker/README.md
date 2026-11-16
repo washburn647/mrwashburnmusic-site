@@ -11,7 +11,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 ## A run
 
 - **Lap:** three sets of 4 micro-games (3 in Mookie mode) at 92, 108 and 126 bpm, each
-  followed by an 8-beat breather, then a boss (The Big Cheese, The Big Fluff or The Mane Event, by turns) and an intermission where the
+  followed by an 8-beat breather, then a boss (The Big Cheese, The Big Fluff, The Mane Event, The Belly or The Big Stink, by turns) and an intermission where the
   learner can stop. The next lap starts back at 92. A rung is held when the learner is
   struggling.
 - **Micro-game:** cue (4 beats) · call (4) · the learner's turn (4; Note It 8) · payoff (4;
@@ -77,7 +77,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   (`/assets/patterns/units.json`) replace the built-in set once published.
 - `games.js`: the micro-games. A game is a scene and a gesture; it never knows the step or the
   task. Each has a kit (`KITS`): the object Tap It taps and the instrument Play It plays.
-  Mouse Catcher, Supper Time, Brushing Time and Petting Time are in their own files. A game with a `bossName` can host
+  Mouse Catcher, Supper Time, Brushing Time, Petting Time and Litterbox are in their own files. A game with a `bossName` can host
   the boss; `main.js` takes turns between them by lap.
 - `sound.js`: the groove, calls, cue words, effects. Uses Kyle's recordings where they're on
   the site (takes on "bum" and in syllables, cue words, groove loops per layer and tempo) and
@@ -185,6 +185,21 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   big combos a Han dynasty dog howls along and it rains hearts. The boss is Rusty, The Belly,
   upside down beside a DO NOT PET sign: each hit is a belly rub that sets his legs going, the
   last one and he pedals away.
+- `scene-litter.js`: Litterbox (styles in `scene-litter.css`), rhythm only, seen from straight
+  above. The sand is a heightfield on a canvas: it piles, slumps and keeps every mark, and the
+  marks carry over, fading, into the next game. The Stink (green gas, a too-human face) sings
+  the call from the corner, and each note burps a stinklet out of the sand where it falls in
+  time (a du-de is two small ones close together), so the row is the notation. Each tap is a
+  scratch of Mookie's paw (on a long arm from below the screen) that buries the next one, as
+  well as the tap's timing deserves: on time a neat mound, close a lopsided one it peeks out
+  of, way off sand on the screen's glass and it stays out. Taps outside the turn bury nothing.
+  The scene gets the timing from `onTap(fb)` (`turn.js` passes it). Worlds take turns
+  (`WORLDS`: zen garden, Sahara, a slice of cake, deep sea floor, glitter disco). Wins: his face
+  rises over the rim like a moon, a sphinx with his face, the Stink in a jar, a raked smiley,
+  the zoomies. Misses, the room gets stinky: a zoom out to a green planet, the houseplant
+  faints, the screen peels off, a fly in a tuxedo conducts the stinklets, Mookie strolls off.
+  Combo: the box floats, stinklets in shades, disco sand, Bindi and Rusty peer in like gods. The
+  boss is The Big Stink, with four arms: each hit buries one, and at the end Mookie sits on it.
 - `cats.js`: Bindi and Rusty, rigged like Mookie (springs, moods, tiptoe steps, rubber-hose
   reach, fur that poofs, bandit masks). Drawn from Kyle's photos of them, which aren't kept here.
 - `props/`: the photo props, CC0 museum objects cut out with a sticker edge

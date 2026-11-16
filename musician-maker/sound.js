@@ -477,6 +477,39 @@ export function toon(name, t, opts = {}) {
       }
       break;
     case 'bones': [96, 91, 93, 86, 89, 84, 91].forEach((m, i) => note('marimba', m, t + i * 0.055, 0.12, 0.26 * vol)); break;
+    /* Litterbox (scene-litter.js) */
+    case 'scratch':
+      // Claws through litter: two quick gritty rakes.
+      noise(t, 0.07, 0.3 * vol, 'bandpass', 2600 * rate, 1200 * rate, 1.4);
+      noise(t + 0.06, 0.09, 0.24 * vol, 'bandpass', 3200 * rate, 1500 * rate, 1.4);
+      break;
+    case 'blorp':
+      // A stink bubbles up out of the sand: a wet low gulp that bends down.
+      synth(t, 210 * rate, 0.16, 0.2 * vol, fxBus, 'sine', 0.45);
+      synth(t, 105 * rate, 0.14, 0.1 * vol, fxBus, 'triangle', 0.6);
+      noise(t, 0.08, 0.08 * vol, 'lowpass', 600, 200, 3);
+      break;
+    case 'buzz': {
+      // A fly, a long way from home, in a tuxedo.
+      const o = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lg = ctx.createGain();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.value = 190 * rate;
+      lfo.frequency.value = 9;
+      lg.gain.value = 40;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.05 * vol, t + 0.05);
+      g.gain.setValueAtTime(0.05 * vol, t + 0.8);
+      g.gain.linearRampToValueAtTime(0, t + 0.9);
+      lfo.connect(lg).connect(o.frequency);
+      o.connect(g).connect(fxBus);
+      o.start(t); lfo.start(t);
+      o.stop(t + 0.95); lfo.stop(t + 0.95);
+      break;
+    }
+    case 'fog': noise(t, 1.1, 0.16 * vol, 'lowpass', 180, 900, 1.5); synth(t, 55, 1, 0.1 * vol, fxBus, 'sawtooth', 0.8); break;
     default: break;
   }
 }

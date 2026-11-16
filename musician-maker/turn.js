@@ -38,7 +38,9 @@ export const WHY = {
 
 /* item: { task, step, stim, pattern }. game: for its object, instrument and sounds.
    ui: { h, now() audio time, latency(), hit(name, vol), mic (the mic is on), tResp (audio time
-   the turn starts), spb, feel(info) optional: tap feedback for the host to draw }.
+   the turn starts), spb, feel(info) optional: tap feedback for the host to draw, onPress(fb)
+   optional: a press, with its timing ({ cls: on, close, off, idle (outside the turn) or tap
+   (nothing to time it against) }; none for Note It, which isn't in time) }.
    Returns { el, beats, keys(e), input(time, fromMic, ev), grade(), reveal(res), inputs() }. */
 export function makeTurn(item, game, ui) {
   const { h } = ui;
@@ -120,8 +122,9 @@ export function makeTurn(item, game, ui) {
       if (task === 'play') el.dataset.side = el.dataset.side === 'l' ? 'r' : 'l';
       bumpEl(el, 'hit');
       if (task === 'tap') tapFun(el, ev);
-      ui.feel?.({ el, ev, t, b: (t - tResp) / spb, open: isOpen, ...(isOpen ? judge(t) : { cls: 'idle', word: '' }) });
-      ui.onPress?.();
+      const fb = isOpen ? judge(t) : { cls: 'idle', word: '' };
+      ui.feel?.({ el, ev, t, b: (t - tResp) / spb, open: isOpen, ...fb });
+      ui.onPress?.(fb);
     };
     keys = (e) => {
       if (!tapIn) return false;
@@ -146,7 +149,7 @@ export function makeTurn(item, game, ui) {
         if (Math.abs(t - near.t) <= tol && near.syl !== syl) fb = { cls: 'off', word: `${TILES.find((x) => x.id === near.syl).label}!` };
       }
       ui.feel?.({ el: tile, ev, t, b: (t - tResp) / spb, open: isOpen, ...fb });
-      ui.onPress?.();
+      ui.onPress?.(fb);
     };
     input = () => {};
     keys = (e) => {
