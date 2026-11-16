@@ -19,6 +19,8 @@
    patterns stay straight. A pattern is done when every wanted voice has its takes at every speed.
    Session records every take still wanted, one after another: voice by voice and speed by
    speed, it says the voice and speed when they change, counts in, records, saves and moves on.
+   A take timing.js finds off the beat asks to be redone (Redo off-beat): a session says
+   "Again" and goes again by itself, keeping the third try in a row (flagged ⚠).
    Slide audio (tracks.js) is the class app's: recordings in layers for its slides, kept
    privately with the class files, never published to the site. */
 
@@ -110,6 +112,7 @@ const settings = {
   wantFor: {}, // takes wanted for one word or pattern, where it differs from want
   countIn: 4,
   firstNote: true,
+  redo: true, // an off-beat take asks to be done again instead of saving
   mic: '',
   filter: 'all',
   recorded: 'all', // all, done (every speed has its takes, in the voice shown), todo
@@ -452,6 +455,7 @@ function render() {
         Object.entries(SPEEDS).map(([s, label]) => h('label', {}, label, number(() => settings.bpm[s], (v) => { settings.bpm[s] = v; }, 30, 220))),
         h('label', {}, 'Takes', number(() => settings.want, (v) => { settings.want = v; }, 1, 10)),
         h('label', {}, 'Count-in', number(() => settings.countIn, (v) => { settings.countIn = v; }, 1, 8)),
+        h('label', { title: 'An off-beat take asks to be done again' }, h('input', { type: 'checkbox', checked: settings.redo, onchange: (e) => { settings.redo = e.target.checked; save(); } }), 'Redo off-beat'),
         u.kind === 'tonal' ? h('label', {}, h('input', { type: 'checkbox', checked: settings.firstNote, onchange: (e) => { settings.firstNote = e.target.checked; save(); } }), 'First note') : null,
       ),
       h('div', { class: `grid${wide ? ' wide' : ''}` }, shown.map((p) => card(p, u))),
@@ -777,6 +781,10 @@ function stage(u) {
         Array.from({ length: beatsOf(p) }, () => h('span', { class: 'go' }))),
       h('div', { class: 'level', title: 'Microphone level' }, h('div')),
       st,
+      held && held.p.id === p.id ? h('span', { class: 'held' },
+        h('button', { onclick: () => playBlob(held.rec.mp3) }, '▶ Listen'),
+        h('button', { onclick: keepHeld }, 'Keep'),
+        h('button', { class: 'primary', onclick: redoHeld }, 'Redo')) : null,
       u && !session && !listShown() ? h('button', { title: 'Record every take still wanted, one after another', disabled: !!recording, onclick: startSession }, '▶ Session') : null,
       h('button', { class: 'rec', onclick: toggleRecording }, 'Record'),
     ));
@@ -786,6 +794,7 @@ function stage(u) {
 
 async function toggleRecording() {
   if (recording) return recording.cancel();
+  held = null; // an off-beat take waiting: recording again means it isn't wanted
   const p = current && itemById(current);
   if (!p) return;
   say('');
@@ -907,7 +916,29 @@ function record(p) {
       const take = await processTake(new Blob(parts, { type: recorder.mimeType }), downbeat - begun - beat / 4);
       if (!take) { say('Too quiet, nothing saved. Check the microphone level.', true); afterTake('quiet'); return; }
       const t = p.kind === 'cue' ? undefined : await measure(take.mp3, p, bpm);
-      await takeStore.put({ id: crypto.randomUUID(), pattern: p.id, as, speed, bpm, key, ...(style ? { style } : {}), created: Date.now(), ...take, ...(t === undefined ? {} : { timing: t }) });
+      const rec = { id: crypto.randomUUID(), pattern: p.id, as, speed, bpm, key, ...(style ? { style } : {}), created: Date.now(), ...take, ...(t === undefined ? {} : { timing: t }) };
+      // Off the beat: ask for it again. In a session it goes again by itself, and the third
+      // try in a row is kept (flagged ⚠) so the session moves on.
+      if (settings.redo && t !== undefined && offbeat(t, bpm)) {
+        if (session) {
+          session.offTries = (session.offTries || 0) + 1;
+          if (session.offTries < 3) {
+            say(`Off the beat: again (${session.offTries} of 3)`, true);
+            render();
+            await speak('Again');
+            afterTake('redo');
+            return;
+          }
+        } else {
+          held = { rec, p };
+          playBlob(take.mp3);
+          say('Off the beat. Redo it?', true);
+          render();
+          return;
+        }
+      }
+      if (session) session.offTries = 0;
+      await takeStore.put(rec);
       if (!session) playBlob(take.mp3);
       takes = await takeStore.all();
       say(p.kind === 'cue' ? `Saved: take ${takesFor(p.id).length}` : `Saved: ${style ? `${styleName(style)}, ` : ''}${SPEEDS[speed]}${as === 'bum' ? ' bum' : ''} take ${takesFor(p.id, speed, style).length}${t !== undefined && offbeat(t, bpm) ? ', but it may be off the beat ⚠' : ''}`, t !== undefined && offbeat(t, bpm));
@@ -1120,6 +1151,27 @@ async function restoreZip(file) {
   }
 }
 
+/* ---------- An off-beat take, waiting: redo it or keep it ---------- */
+
+let held = null; // { rec, p }
+
+async function keepHeld() {
+  if (!held) return;
+  const { rec } = held;
+  held = null;
+  await takeStore.put(rec);
+  takes = await takeStore.all();
+  say('Kept (flagged ⚠)');
+  render();
+}
+
+function redoHeld() {
+  held = null;
+  say('');
+  render();
+  toggleRecording();
+}
+
 /* ---------- Voices for rhythm patterns ---------- */
 
 const rhythmTakes = () => takes.filter((t) => isRhythm(t.pattern));
@@ -1254,6 +1306,7 @@ async function sessionStep() {
 function afterTake(result) {
   if (!session) return;
   if (result === 'cancel') { session.paused = true; render(); return; }
+  if (result === 'redo') { setTimeout(sessionStep, 200); return; }
   if (result === 'saved') session.fails = 0;
   else if (++session.fails >= 3) { session.paused = true; say('Paused: three takes in a row didn\'t save. Check the microphone.', true); }
   render();
@@ -1264,6 +1317,7 @@ function sessionSkip() {
   if (!session) return;
   const it = sessionItems(session.u)[0];
   if (it) session.skip.add(sessionKey(it));
+  session.offTries = 0;
   if (recording) recording.cancel();
   session.paused = false;
   setTimeout(sessionStep, 300);

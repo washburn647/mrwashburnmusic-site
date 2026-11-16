@@ -130,3 +130,4 @@ input.style-new { border: 0; border-radius: 10px; padding: 7px 10px; background:
 .session .grow { flex: 1; }
 .session button { min-height: 46px; font-size: 17px; }
 .layer select.lkind { border: 0; border-radius: 10px; padding: 6px 8px; background: #fff; }
+.held { display: inline-flex; gap: 6px; }
