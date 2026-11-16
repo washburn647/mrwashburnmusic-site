@@ -24,7 +24,7 @@
    Everything set up in the editor lives on the element, so it saves with the
    slide and goes wherever the slide or element is copied. */
 
-import { Mixer, decodeLayers, audioContext } from './mixer.js';
+import { Mixer, decodeLayers, audioContext, kindOf } from './mixer.js';
 
 export const KINDS = { timer: 'Timer', spinner: 'Spinner', video: 'Video', sound: 'Sound', spotify: 'Spotify', draw: 'Drawing box',
   thinkspeak: 'Think/speak', streetview: 'Street View', player: 'Recording' };
@@ -1199,17 +1199,32 @@ function dockFor(mixer, track) {
   top.append(play, back, time, seek, loop, A, B, hide);
 
   const layers = h('div', 'wg-dlayers');
+  // Instruments are choices: one plays at a time (the first to start), or none. Voices and
+  // other layers turn on and off on their own.
+  const insts = mixer.layers.map((l, i) => i).filter((i) => kindOf(mixer.layers[i]) === 'inst');
   const chips = mixer.layers.map((l, i) => {
-    const c = h('div', 'wg-dlayer on');
+    const inst = insts.includes(i);
+    const c = h('div', 'wg-dlayer on' + (inst ? ' wg-dinst' : ''));
     const t = btn(l.name || 'Layer ' + (i + 1), l.name || 'Layer ' + (i + 1), 'wg-dlname');
     const lv = range('wg-dlevel', 1, l.level);
     lv.title = 'Level';
-    t.addEventListener('click', () => { mixer.setLayer(i, !mixer.layers[i].on); c.classList.toggle('on', mixer.layers[i].on); });
+    t.addEventListener('click', () => {
+      const on = !mixer.layers[i].on;
+      if (inst && on) for (const j of insts) if (j !== i) mixer.setLayer(j, false);
+      mixer.setLayer(i, on);
+      chips.forEach((x, j) => x.classList.toggle('on', mixer.layers[j].on));
+    });
     lv.addEventListener('input', () => mixer.setLevel(i, Number(lv.value)));
     c.append(t, lv);
     return c;
   });
-  layers.append(...chips);
+  for (const j of insts.slice(1)) { mixer.setLayer(j, false); chips[j].classList.remove('on'); }
+  if (insts.length) {
+    const group = h('div', 'wg-dinsts');
+    group.append(...insts.map((i) => chips[i]));
+    layers.append(group);
+  }
+  layers.append(...chips.filter((c, i) => !insts.includes(i)));
   const vol = range('wg-dvol', 1, savedVolume());
   vol.title = 'Volume';
   const volBox = h('label', 'wg-dvolbox');

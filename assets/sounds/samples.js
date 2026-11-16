@@ -134,6 +134,8 @@ export async function instrument(name, { lo = 0, hi = 127 } = {}) {
    recorder measured that). { key } moves a tonal take to another key
    (sounding midi of do, or la in minor). Stretching moves pitch and tempo together, so a
    take sounds best near the tempo and key it was recorded in.
+   Rhythm takes are in voices (style: normal, robot, excited...); say() picks among them all,
+   or only { style } when the pattern has takes in it.
    { as: 'bum' } picks the pattern's takes on "bum" instead of syllables:
      kyle.has(id, 'bum') && kyle.say(id, t, { bpm, as: 'bum' });
    Cue words (Musician Maker's spoken cues) play as recorded, never twice the same running:
@@ -160,8 +162,9 @@ export async function takes(name) {
     last.set(tag, take);
     return take;
   };
-  const choose = (id, { speed, bpm, key, as }) => {
+  const choose = (id, { speed, bpm, key, as, style }) => {
     let options = (patterns[id] || []).filter((o) => asOf(o) === as);
+    if (style && options.some((o) => (o.style || 'normal') === style)) options = options.filter((o) => (o.style || 'normal') === style);
     if (speed) options = options.filter((o) => o.speed === speed);
     else if (bpm) {
       const gap = (o) => Math.abs(Math.log(o.bpm / bpm));
@@ -187,8 +190,9 @@ export async function takes(name) {
       if (!take) return () => {};
       return play(await load(take.file), Math.max(t, context().currentTime), { vol, dest });
     },
-    async say(id, t, { speed = null, bpm = null, key = null, as = 'syllables', vol = 1, dest } = {}) {
-      const take = choose(id, { speed, bpm, key, as });
+    styles: (id, as = 'syllables') => [...new Set((patterns[id] || []).filter((o) => asOf(o) === as).map((o) => o.style || 'normal'))],
+    async say(id, t, { speed = null, bpm = null, key = null, as = 'syllables', style = null, vol = 1, dest } = {}) {
+      const take = choose(id, { speed, bpm, key, as, style });
       if (!take) return () => {};
       const s = await load(take.file);
       // tempo and lead: how the take really kept the beat (timing.js), when the recorder measured it.

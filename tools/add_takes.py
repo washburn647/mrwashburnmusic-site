@@ -45,6 +45,8 @@ def main():
                 continue
             if t.get('as') == 'bum':
                 entry['as'] = 'bum'
+            if t.get('style'):
+                entry['style'] = t['style']
             if t.get('key') is not None:
                 entry['key'] = t['key']
             patterns.setdefault(t['pattern'], []).append(entry)

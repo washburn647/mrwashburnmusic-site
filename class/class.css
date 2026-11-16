@@ -583,3 +583,6 @@ button.pics-cell.on { border-color: var(--forest); box-shadow: 0 0 0 3px var(--w
   .wg-dtitle { max-width: 100%; }
   .wg-dvolbox { flex-basis: 100%; }
 }
+.wg-dinsts { display: flex; gap: 4px; padding: 4px; border-radius: 16px; background: rgba(217, 178, 111, .25); }
+.wg-dinst .wg-dlname { text-decoration: none; }
+.wg-dlayer.wg-dinst.on .wg-dlname { background: var(--forest); }

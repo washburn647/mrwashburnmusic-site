@@ -14,6 +14,11 @@
    Narration holds the words behind Musician Maker's 🔊 read-aloud buttons
    (musician-maker/narration.js): free length, no count-in, Record then Stop, one take each
    (recording again replaces it). They publish with the cues, as line/<id>.
+   Rhythm patterns are recorded in voices (styles: normal, sing-songy, low, robot, monotone,
+   excited, or ones Kyle adds), each take tagged with its voice (style) and filed by it; tonal
+   patterns stay straight. A pattern is done when every wanted voice has its takes at every speed.
+   Session records every take still wanted, one after another: voice by voice and speed by
+   speed, it says the voice and speed when they change, counts in, records, saves and moves on.
    Slide audio (tracks.js) is the class app's: recordings in layers for its slides, kept
    privately with the class files, never published to the site. */
 
@@ -34,6 +39,15 @@ const RECORDED = { all: 'Any', done: 'Recorded', todo: 'Not yet' };
 const FILTERS = { all: 'All', familiar: 'Familiar', unfamiliar: 'Unfamiliar', unmarked: 'Unmarked' };
 const KINDS = { rhythm: 'Rhythm', tonal: 'Tonal' };
 const VOICES = { syllables: 'Syllables', bum: 'On “bum”' };
+// Rhythm patterns are recorded in voices (styles); tonal patterns only straight.
+const STYLES = [
+  { id: 'normal', name: 'Normal' },
+  { id: 'singsong', name: 'Sing-songy' },
+  { id: 'low', name: 'Low' },
+  { id: 'robot', name: 'Robot' },
+  { id: 'monotone', name: 'Monotone' },
+  { id: 'excited', name: 'Excited' },
+];
 const CUE_UNIT = 'cues'; // the Cue words list, shown in place of a unit
 const LINE_UNIT = 'lines'; // the Narration list, the same way
 const SLIDE_UNIT = 'slides'; // Slide audio (tracks.js)
@@ -100,6 +114,9 @@ const settings = {
   filter: 'all',
   recorded: 'all', // all, done (every speed has its takes, in the voice shown), todo
   folder: '', // its name
+  styles: STYLES, // the voices rhythm patterns are recorded in
+  styleOn: STYLES.map((x) => x.id), // the ones wanted (a pattern is done when each has its takes)
+  style: 'normal', // the one shown
 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS)) || {}); } catch { /* defaults */ }
 // The first speeds were 60, 80 and 100; a device still on them moves to the new ones.
@@ -304,15 +321,26 @@ const isCue = (id) => id?.startsWith('cue/');
 const isLine = (id) => id?.startsWith('cue/line/');
 const takeAs = (t) => t.as || 'syllables';
 const asFor = (id) => (isCue(id) ? 'cue' : settings.as);
-const takesFor = (id, speed) => takes.filter((t) => t.pattern === id && takeAs(t) === asFor(id)
-  && (!speed || isCue(id) || t.speed === speed)).sort((a, b) => a.created - b.created);
+const isRhythm = (id) => !!id?.startsWith('rhythm/');
+const takeStyle = (t) => (isRhythm(t.pattern) ? t.style || 'normal' : null);
+const styleName = (id) => settings.styles.find((x) => x.id === id)?.name || id;
+// The voices a pattern is recorded in: the ones wanted, for rhythm; none for the rest.
+const onStyles = () => {
+  const on = settings.styles.filter((x) => settings.styleOn.includes(x.id)).map((x) => x.id);
+  return on.length ? on : [settings.style];
+};
+const stylesOf = (id) => (isRhythm(id) ? onStyles() : [null]);
+const takesFor = (id, speed, style = settings.style) => takes.filter((t) => t.pattern === id && takeAs(t) === asFor(id)
+  && (!speed || isCue(id) || t.speed === speed) && (!isRhythm(id) || takeStyle(t) === style)).sort((a, b) => a.created - b.created);
 // A take that needs a listen: timing.js couldn't line it up with the beat. Unmeasured takes
 // (from before the check) aren't flagged until Check timing measures them.
 const flagged = (t) => t.timing !== undefined && offbeat(t.timing, t.bpm);
-const offbeatTakes = (id) => takesFor(id).filter(flagged);
+const offbeatTakes = (id) => takes.filter((t) => t.pattern === id && takeAs(t) === asFor(id) && flagged(t));
 const unmeasured = () => takes.filter((t) => t.timing === undefined && !isCue(t.pattern));
 const wantOf = (id) => (isLine(id) ? 1 : settings.wantFor[id] ?? settings.want);
-const done = (id, speed) => takesFor(id, speed).length >= wantOf(id);
+const done = (id, speed, style) => takesFor(id, speed, style ?? settings.style).length >= wantOf(id);
+// Every speed, in every voice wanted.
+const complete = (id) => Object.keys(SPEEDS).every((sp) => stylesOf(id).every((st) => done(id, sp, st ?? undefined)));
 // A cue word as the recorder handles it: 2 beats, no notation.
 const cueItem = (c) => ({ id: `cue/${c.id}`, kind: 'cue', text: c.text });
 // A narration line: read at its own pace, no beats.
@@ -383,8 +411,7 @@ function render() {
   const removed = all.filter((p) => u.removed.includes(p.id));
   if (!removed.length) showRemoved = false;
   const markOf = (p) => u.marks[p.id] || 'unmarked';
-  const complete = (p) => Object.keys(SPEEDS).every((sp) => done(p.id, sp));
-  const recordedOk = (p) => settings.recorded === 'all' || complete(p) === (settings.recorded === 'done');
+  const recordedOk = (p) => settings.recorded === 'all' || complete(p.id) === (settings.recorded === 'done');
   const filtered = (settings.filter === 'all' ? kept : kept.filter((p) => markOf(p) === settings.filter)).filter(recordedOk);
   const off = kept.filter((p) => offbeatTakes(p.id).length);
   if (!off.length) showOffbeat = false;
@@ -403,20 +430,22 @@ function render() {
         u.kind === 'tonal' ? h('select', { onchange: (e) => { settings.key[u.tonality] = Number(e.target.value); save(); render(); } },
           KEYS[u.tonality].map((k) => h('option', { value: k.midi, selected: k.midi === settings.key[u.tonality] }, `${u.tonality === 'major' ? 'Do' : 'La'} = ${pretty(k.name)}`))) : null,
         h('span', { class: 'grow' }),
+        u.kind === 'rhythm' && rhythmTakes().length ? confirmButton(`Delete rhythm takes (${rhythmTakes().length})`, 'Delete every rhythm take?', deleteRhythmTakes) : null,
         h('button', { class: editing ? 'on' : '', onclick: () => { editing = !editing; render(); } }, editing ? 'Done' : 'Edit unit'),
       ),
       editing ? unitEditor(u) : null,
+      u.kind === 'rhythm' ? styleBar(kept) : null,
       h('div', { class: 'bar' },
         seg(Object.fromEntries(Object.entries(FILTERS).map(([f, label]) => [f, `${label} ${counts[f]}`])), showRemoved ? '' : settings.filter,
           (v) => { settings.filter = v; showRemoved = false; showOffbeat = false; save(); render(); }),
-        seg(Object.fromEntries(Object.entries(RECORDED).map(([f, label]) => [f, `${label} ${f === 'all' ? kept.length : kept.filter((p) => complete(p) === (f === 'done')).length}`])),
+        seg(Object.fromEntries(Object.entries(RECORDED).map(([f, label]) => [f, `${label} ${f === 'all' ? kept.length : kept.filter((p) => complete(p.id) === (f === 'done')).length}`])),
           showRemoved || showOffbeat ? '' : settings.recorded,
           (v) => { settings.recorded = v; showRemoved = false; showOffbeat = false; save(); render(); }),
         removed.length ? h('button', { class: showRemoved ? 'on' : '', onclick: () => { showRemoved = !showRemoved; showOffbeat = false; render(); } }, `Removed ${removed.length}`) : null,
         off.length ? h('button', { class: `offbeat${showOffbeat ? ' on' : ''}`, title: 'Patterns with a take that may be off the beat', onclick: () => { showOffbeat = !showOffbeat; showRemoved = false; render(); } }, `Off the beat ${off.length}`) : null,
         unmeasured().length ? h('button', { disabled: !!checking, onclick: checkTiming }, checking || 'Check timing') : null,
         h('span', { class: 'grow' }),
-        h('span', { class: 'label' }, 'Voice'),
+        h('span', { class: 'label' }, 'Say'),
         seg(VOICES, settings.as, (v) => { if (!recording) { settings.as = v; current = null; save(); render(); } }),
       ),
       h('div', { class: 'bar settings' },
@@ -656,7 +685,7 @@ function card(p, u) {
   const key = drawKey(p);
   if (drawn.has(key)) staff.innerHTML = notation(p, tonicOf(p));
   return h('div', {
-    class: `card${p.id === current && !out ? ' on' : ''}${m ? ` ${m}` : ''}${Object.keys(SPEEDS).every((s) => done(p.id, s)) ? ' complete' : ''}`,
+    class: `card${p.id === current && !out ? ' on' : ''}${m ? ` ${m}` : ''}${complete(p.id) ? ' complete' : ''}`,
     tabindex: 0,
     dataset: { id: p.id },
     onclick: pick,
@@ -722,9 +751,11 @@ function stage(u) {
     now = h('div', { class: 'now' }, staff, h('span', { class: 'syl' },
       settings.as === 'bum' ? h('span', { class: 'bum' }, bumOf(p)) : p.syllables,
       settings.as === 'bum' ? h('small', {}, ` · ${p.syllables}`) : null,
+      isRhythm(p.id) ? h('small', {}, ` · ${styleName(settings.style)}`) : null,
       m ? h('small', {}, ` · ${MARKS[m]}`) : null));
   }
-  return h('div', { class: 'stage' },
+  return h('div', { class: `stage${session ? ' in-session' : ''}` },
+    session ? sessionBanner() : null,
     now,
     h('div', { class: 'controls' },
       p.kind === 'line' ? h('span', { class: 'label' }, 'Record, read it, then Stop')
@@ -746,6 +777,7 @@ function stage(u) {
         Array.from({ length: beatsOf(p) }, () => h('span', { class: 'go' }))),
       h('div', { class: 'level', title: 'Microphone level' }, h('div')),
       st,
+      u && !session && !listShown() ? h('button', { title: 'Record every take still wanted, one after another', disabled: !!recording, onclick: startSession }, '▶ Session') : null,
       h('button', { class: 'rec', onclick: toggleRecording }, 'Record'),
     ));
 }
@@ -817,6 +849,7 @@ function record(p) {
   const bpm = settings.bpm[speed];
   const beat = 60 / bpm;
   const key = p.kind === 'tonal' ? settings.key[p.tonality] : null;
+  const style = isRhythm(p.id) ? settings.style : null;
 
   const recorder = new MediaRecorder(mic);
   const parts = [];
@@ -867,17 +900,18 @@ function record(p) {
     btn.textContent = 'Record';
     btn.classList.remove('live');
     light(-1);
-    if (!keep) { say('Stopped, nothing saved'); return; }
+    if (!keep) { say('Stopped, nothing saved'); afterTake('cancel'); return; }
     say('Saving…');
     try {
       // Anything before a quarter beat ahead of the downbeat is count-in.
       const take = await processTake(new Blob(parts, { type: recorder.mimeType }), downbeat - begun - beat / 4);
-      if (!take) { say('Too quiet, nothing saved. Check the microphone level.', true); return; }
+      if (!take) { say('Too quiet, nothing saved. Check the microphone level.', true); afterTake('quiet'); return; }
       const t = p.kind === 'cue' ? undefined : await measure(take.mp3, p, bpm);
-      await takeStore.put({ id: crypto.randomUUID(), pattern: p.id, as, speed, bpm, key, created: Date.now(), ...take, ...(t === undefined ? {} : { timing: t }) });
-      playBlob(take.mp3);
+      await takeStore.put({ id: crypto.randomUUID(), pattern: p.id, as, speed, bpm, key, ...(style ? { style } : {}), created: Date.now(), ...take, ...(t === undefined ? {} : { timing: t }) });
+      if (!session) playBlob(take.mp3);
       takes = await takeStore.all();
-      say(p.kind === 'cue' ? `Saved: take ${takesFor(p.id).length}` : `Saved: ${SPEEDS[speed]}${as === 'bum' ? ' bum' : ''} take ${takesFor(p.id, speed).length}${t !== undefined && offbeat(t, bpm) ? ', but it may be off the beat ⚠' : ''}`, t !== undefined && offbeat(t, bpm));
+      say(p.kind === 'cue' ? `Saved: take ${takesFor(p.id).length}` : `Saved: ${style ? `${styleName(style)}, ` : ''}${SPEEDS[speed]}${as === 'bum' ? ' bum' : ''} take ${takesFor(p.id, speed, style).length}${t !== undefined && offbeat(t, bpm) ? ', but it may be off the beat ⚠' : ''}`, t !== undefined && offbeat(t, bpm));
+      if (session) { afterTake('saved'); return; }
       if (done(p.id, speed) && current === p.id && asFor(p.id) === as) {
         const list = p.kind === 'cue' ? shown : shown.filter((q) => !unitNow().removed.includes(q.id));
         const i = list.findIndex((q) => q.id === p.id);
@@ -887,6 +921,7 @@ function record(p) {
       render();
     } catch (e) {
       say(`Couldn't save the take: ${e.message}`, true);
+      afterTake('error');
     }
   };
 
@@ -953,13 +988,14 @@ async function buildZip() {
     const p = itemById(take.pattern);
     if (!p) continue;
     const as = takeAs(take);
-    // cue/echo-1, rhythm/2-4/q-ee/medium-1, rhythm/2-4/q-ee/bum/medium-1, tonal/…/medium-C-1
+    // cue/echo-1, rhythm/2-4/q-ee/robot/medium-1, rhythm/2-4/q-ee/bum/normal/medium-1, tonal/…/medium-C-1
+    const style = as === 'cue' ? null : takeStyle(take);
     const tag = as === 'cue' ? take.pattern
-      : `${take.pattern}/${as === 'bum' ? 'bum/' : ''}${take.speed}${take.key != null ? `-${keyName(p.tonality, take.key).replace('#', 's')}` : ''}`;
+      : `${take.pattern}/${as === 'bum' ? 'bum/' : ''}${style ? `${style}/` : ''}${take.speed}${take.key != null ? `-${keyName(p.tonality, take.key).replace('#', 's')}` : ''}`;
     numbers.set(tag, (numbers.get(tag) || 0) + 1);
     const file = `voice/${voice}/${tag}-${numbers.get(tag)}.mp3`;
     files.push({ name: file, data: new Uint8Array(await take.mp3.arrayBuffer()) });
-    list.push({ pattern: take.pattern, as, speed: take.speed, bpm: take.bpm, key: take.key, file, id: take.id, created: take.created, seconds: Math.round(take.seconds * 100) / 100, ...(take.timing !== undefined ? { timing: take.timing } : {}) });
+    list.push({ pattern: take.pattern, as, ...(style ? { style } : {}), speed: take.speed, bpm: take.bpm, key: take.key, file, id: take.id, created: take.created, seconds: Math.round(take.seconds * 100) / 100, ...(take.timing !== undefined ? { timing: take.timing } : {}) });
   }
   const json = { voice, label: 'Mr. Washburn', saved: new Date().toISOString(), takes: list, units: units.map(unitForSite) };
   files.unshift({ name: `voice/${voice}/takes.json`, data: new TextEncoder().encode(JSON.stringify(json, null, 1)) });
@@ -991,6 +1027,7 @@ async function publish() {
         (list.cues[take.pattern.slice(4)] ||= []).push(entry);
       } else {
         if (as === 'bum') entry.as = 'bum';
+        if (takeStyle(take)) entry.style = takeStyle(take);
         if (take.key != null) entry.key = take.key;
         Object.assign(entry, forSite(take.timing, itemById(take.pattern), take.bpm));
         (list.patterns[take.pattern] ||= []).push(entry);
@@ -1065,7 +1102,7 @@ async function restoreZip(file) {
     let added = 0;
     for (const t of json.takes || []) {
       if (have.has(t.id) || !entries[t.file] || !itemById(t.pattern)) continue;
-      await takeStore.put({ id: t.id, pattern: t.pattern, as: t.as || 'syllables', speed: t.speed, bpm: t.bpm, key: t.key ?? null, created: t.created, seconds: t.seconds, ...(t.timing !== undefined ? { timing: t.timing } : {}), mp3: new Blob([entries[t.file]], { type: 'audio/mpeg' }) });
+      await takeStore.put({ id: t.id, pattern: t.pattern, as: t.as || 'syllables', ...(t.style ? { style: t.style } : {}), speed: t.speed, bpm: t.bpm, key: t.key ?? null, created: t.created, seconds: t.seconds, ...(t.timing !== undefined ? { timing: t.timing } : {}), mp3: new Blob([entries[t.file]], { type: 'audio/mpeg' }) });
       added++;
     }
     for (const { patterns, ...x } of json.units || []) {
@@ -1083,6 +1120,168 @@ async function restoreZip(file) {
   }
 }
 
+/* ---------- Voices for rhythm patterns ---------- */
+
+const rhythmTakes = () => takes.filter((t) => isRhythm(t.pattern));
+
+async function deleteRhythmTakes() {
+  for (const t of rhythmTakes()) await takeStore.delete(t.id);
+  takes = await takeStore.all();
+  say('Deleted. Publish to site to take them off the site too.');
+  render();
+}
+
+/* Which voice is shown and recorded, which are wanted, and adding your own. */
+function styleBar(kept) {
+  const doneIn = (st) => kept.filter((p) => Object.keys(SPEEDS).every((sp) => done(p.id, sp, st))).length;
+  const pick = (id) => { if (recording || session) return; settings.style = id; save(); render(); };
+  const toggle = (id) => {
+    settings.styleOn = settings.styleOn.includes(id) ? settings.styleOn.filter((x) => x !== id) : [...settings.styleOn, id];
+    save();
+    render();
+  };
+  const add = h('input', { class: 'style-new', placeholder: '+ Voice', onchange: (e) => {
+    const name = e.target.value.trim();
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
+    if (!id || settings.styles.some((x) => x.id === id)) { e.target.value = ''; return; }
+    settings.styles = [...settings.styles, { id, name }];
+    settings.styleOn = [...settings.styleOn, id];
+    settings.style = id;
+    save();
+    render();
+  } });
+  return h('div', { class: 'bar styles' },
+    h('span', { class: 'label' }, 'Voice'),
+    h('span', { class: 'seg' }, settings.styles.map((x) => h('button', {
+      class: `${x.id === settings.style ? 'on' : ''}${settings.styleOn.includes(x.id) ? '' : ' off'}`,
+      onclick: () => pick(x.id),
+    }, x.name, h('small', {}, ` ${doneIn(x.id)}/${kept.length}`)))),
+    add,
+    h('span', { class: 'grow' }),
+    h('label', { title: 'Wanted: a pattern is done when every wanted voice has its takes' },
+      h('input', { type: 'checkbox', checked: settings.styleOn.includes(settings.style), onchange: () => toggle(settings.style) }), 'Wanted'),
+    !settings.styleOn.includes(settings.style) && !takes.some((t) => takeStyle(t) === settings.style) && !STYLES.some((x) => x.id === settings.style)
+      ? h('button', { onclick: () => { settings.styles = settings.styles.filter((x) => x.id !== settings.style); settings.style = settings.styleOn[0] || 'normal'; save(); render(); } }, 'Remove voice')
+      : null,
+  );
+}
+
+/* ---------- Session: one take after another, hands free ---------- */
+// Goes through the patterns shown, voice by voice and speed by speed, recording each take
+// still wanted: says the voice and speed when they change, counts in, records, saves, and
+// moves on. Space pauses, Escape ends.
+
+let session = null; // { u, paused, said, fails, skip: Set }
+const sessionKey = (it) => `${it.p.id}|${it.speed}|${it.style}`;
+
+function sessionItems(u) {
+  const list = shown.filter((p) => !u.removed.includes(p.id));
+  const out = [];
+  for (const style of u.kind === 'rhythm' ? onStyles() : [null]) {
+    for (const speed of Object.keys(SPEEDS)) {
+      for (const p of list) {
+        const it = { p, speed, style };
+        const need = wantOf(p.id) - takesFor(p.id, speed, style ?? undefined).length;
+        if (need > 0 && !session?.skip.has(sessionKey(it))) out.push({ ...it, need });
+      }
+    }
+  }
+  return out;
+}
+
+const left = (u) => sessionItems(u).reduce((n, it) => n + it.need, 0);
+
+function startSession() {
+  const u = unitNow();
+  if (!u || recording || listShown()) return;
+  session = { u, paused: false, said: '', fails: 0, skip: new Set() };
+  showRemoved = false;
+  showOffbeat = false;
+  sessionStep();
+}
+
+function endSession(text) {
+  if (!session) return;
+  session = null;
+  speechSynthesis?.cancel();
+  if (recording) recording.cancel();
+  say(text);
+  render();
+}
+
+function pauseSession(paused) {
+  if (!session) return;
+  session.paused = paused;
+  if (paused) say('Paused: the take on now finishes, then it waits');
+  render();
+  if (!paused && !recording) sessionStep();
+}
+
+function speak(text) {
+  return new Promise((done) => {
+    if (!window.speechSynthesis) { setTimeout(done, 800); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1;
+    u.onend = () => setTimeout(done, 400);
+    u.onerror = () => done();
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+    setTimeout(done, 6000); // in case it never says it ended
+  });
+}
+
+async function sessionStep() {
+  if (!session || session.paused || recording) return;
+  const it = sessionItems(session.u)[0];
+  if (!it) { endSession('Session done: every take is in'); return; }
+  current = it.p.id;
+  settings.speed = it.speed;
+  if (it.style) settings.style = it.style;
+  save();
+  render();
+  const key = `${it.style}|${it.speed}`;
+  if (session.said !== key) {
+    session.said = key;
+    await speak(`${it.style ? `${styleName(it.style)} voice. ` : ''}${SPEEDS[it.speed]}.`);
+  } else {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!session || session.paused || recording) return;
+  await toggleRecording();
+  if (session && !recording) { session.paused = true; render(); }
+}
+
+function afterTake(result) {
+  if (!session) return;
+  if (result === 'cancel') { session.paused = true; render(); return; }
+  if (result === 'saved') session.fails = 0;
+  else if (++session.fails >= 3) { session.paused = true; say('Paused: three takes in a row didn\'t save. Check the microphone.', true); }
+  render();
+  setTimeout(sessionStep, 300);
+}
+
+function sessionSkip() {
+  if (!session) return;
+  const it = sessionItems(session.u)[0];
+  if (it) session.skip.add(sessionKey(it));
+  if (recording) recording.cancel();
+  session.paused = false;
+  setTimeout(sessionStep, 300);
+}
+
+/* The session's banner over the stage: the voice, big, so it reads from across the room. */
+function sessionBanner() {
+  const p = current && itemById(current);
+  return h('div', { class: 'session' },
+    h('div', { class: 'big' }, isRhythm(p?.id) ? styleName(settings.style) : SPEEDS[settings.speed]),
+    h('div', { class: 'sub' }, `${SPEEDS[settings.speed]} · ${settings.bpm[settings.speed]} bpm · ${left(session.u)} left`),
+    h('span', { class: 'grow' }),
+    h('button', { onclick: () => pauseSession(!session.paused) }, session.paused ? '▶ Go on' : '❚❚ Pause'),
+    h('button', { onclick: sessionSkip }, 'Skip'),
+    h('button', { class: 'danger', onclick: () => endSession('Session stopped') }, 'End'),
+  );
+}
+
 /* ---------- Keys ---------- */
 
 document.addEventListener('keydown', (e) => {
@@ -1090,6 +1289,11 @@ document.addEventListener('keydown', (e) => {
   if (slidesShown()) return; // tracks.js has its own keys
   const u = listShown() ? null : unitNow();
   if ((!u && !listShown()) || !current) return;
+  if (session) {
+    if (e.code === 'Space') { e.preventDefault(); pauseSession(!session.paused); }
+    if (e.key === 'Escape') endSession('Session stopped');
+    return;
+  }
   if (e.code === 'Space') {
     if (e.target.closest('.rec')) return; // the button's own click
     e.preventDefault();

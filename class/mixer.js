@@ -6,6 +6,16 @@
 
 let shared = null;
 
+/** What a layer is: 'inst' (an accompaniment: a recording's instruments are choices, one at a
+    time), 'voice', or 'other'. Layers from before kinds go by their name. */
+export function kindOf(l) {
+  if (l.kind === 'inst' || l.kind === 'voice' || l.kind === 'other') return l.kind;
+  const n = String(l.name || '');
+  if (/voice|vocal|sing/i.test(n)) return 'voice';
+  if (/instrument|piano|guitar|uke|ukulele|bass|drum|violin|cello|accomp|keys|band/i.test(n)) return 'inst';
+  return 'other';
+}
+
 /** The class app's one AudioContext, woken up. */
 export function audioContext() {
   if (!shared) shared = new (window.AudioContext || window.webkitAudioContext)();
