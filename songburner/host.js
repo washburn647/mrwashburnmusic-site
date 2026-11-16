@@ -16,7 +16,8 @@
  * for.
  *
  * Nothing leaves the device except the lyrics search, which asks lrclib.net
- * and lyrics.ovh directly, as the Apps Script version did.
+ * and lyrics.ovh directly, as the Apps Script version did, and only for a
+ * signed-in tester; and, for testers, cloud sync below.
  */
 (function () {
   'use strict';
@@ -63,10 +64,11 @@
     if (typeof v === 'boolean') return v;
     if (v instanceof Date) return v.getTime();
     var s = String(v);
-    if (NUMERIC.test(s)) return Number(s);
-    var u = s.toUpperCase();
-    if (u === 'TRUE') return true;
-    if (u === 'FALSE') return false;
+    /* Only where nothing is lost: "007", "1e3" and long digit strings stay
+       text, and so does a title like "True". */
+    if (NUMERIC.test(s) && String(Number(s)) === s) return Number(s);
+    if (s === 'TRUE') return true;
+    if (s === 'FALSE') return false;
     return s;
   }
 
@@ -204,6 +206,11 @@
     fetch: function (url) {
       var xhr = new XMLHttpRequest();
       var code = 0, text = '';
+      /* Signed-in testers only (13 and up): lyrics come back unfiltered. */
+      var acc = account();
+      if (!acc || acc.expired) {
+        return { getResponseCode: function () { return 0; }, getContentText: function () { return ''; } };
+      }
       try {
         xhr.open('GET', url, false);
         xhr.send(null);
@@ -318,25 +325,33 @@
   };
 
   /* Every call runs in order, one after another, the way the script lock made
-     them run on the server. */
+     them run on the server. So does everything else that reads the library
+     from storage or replaces it (sync, backups, restore, sign out): a call
+     that slipped in between a reload and the write after it was lost. */
   var queue = null;
 
-  function run(payloadJson) {
-    var step = (stale ? loadAll().then(function () { stale = false; }) : Promise.resolve())
-      .then(function () {
-        if (typeof window.SongBurnerEngine !== 'function') {
-          throw new Error('engine.js did not load');
-        }
-        var engine = window.SongBurnerEngine(services);
-        var out = engine.apiCall(payloadJson);
-        return saveDirty().then(function (wrote) {
-          if (wrote && channel) channel.postMessage({ type: 'saved' });
-          if (wrote) syncSoon();
-          return out;
-        });
-      });
+  function enqueue(fn) {
+    var step = queue.then(fn);
     queue = step.catch(function () {});
     return step;
+  }
+
+  function run(payloadJson) {
+    return enqueue(function () {
+      return (stale ? loadAll().then(function () { stale = false; }) : Promise.resolve())
+        .then(function () {
+          if (typeof window.SongBurnerEngine !== 'function') {
+            throw new Error('engine.js did not load');
+          }
+          var engine = window.SongBurnerEngine(services);
+          var out = engine.apiCall(payloadJson);
+          return saveDirty().then(function (wrote) {
+            if (wrote && channel) channel.postMessage({ type: 'saved' });
+            if (wrote) syncSoon();
+            return out;
+          });
+        });
+    });
   }
 
   function makeRunner(ok, fail) {
@@ -365,16 +380,17 @@
   }
 
   var ready = boot();
-  queue = ready;
+  queue = ready.catch(function () {});
 
   /* ---------------- backups ---------------- */
   function exportBackup() {
-    return queue.then(loadAll).then(function () {
-      var out = { kind: BACKUP_KIND, version: 1, exportedAt: new Date().toISOString(),
-                  tabs: {} };
-      order.forEach(function (n) { out.tabs[n] = tabs[n]; });
-      out.order = order.slice();
-      return out;
+    return enqueue(function () {
+      return loadAll().then(function () {
+        var out = { kind: BACKUP_KIND, version: 1, exportedAt: new Date().toISOString(),
+                    tabs: snapshot().tabs };
+        out.order = order.slice();
+        return out;
+      });
     });
   }
 
@@ -398,8 +414,7 @@
       if (!srcTabs[need[i]]) throw new Error('This file has no "' + need[i] + '" tab, so it is not a Song Burner library.');
     }
     var n = normaliseTabs(srcTabs);
-    return queue.then(function () { return replaceAll(n.tabs, n.order); })
-      .then(loadAll)
+    return enqueue(function () { return replaceAll(n.tabs, n.order).then(loadAll); })
       .then(function () {
         if (channel) channel.postMessage({ type: 'replaced' });
         var counts = {};
@@ -420,10 +435,12 @@
   }
 
   function summary() {
-    return queue.then(loadAll).then(function () {
-      var out = {};
-      order.forEach(function (t) { out[t] = Math.max(0, new Sheet(t).getLastRow() - 1); });
-      return out;
+    return enqueue(function () {
+      return loadAll().then(function () {
+        var out = {};
+        order.forEach(function (t) { out[t] = Math.max(0, new Sheet(t).getLastRow() - 1); });
+        return out;
+      });
     });
   }
 
@@ -645,14 +662,14 @@
       var merged = null, changedHere = false;
       /* Inside the queue, so no edit lands between reading this device and
          writing the merge back to it. */
-      var step = queue.then(loadAll).then(function () {
-        var local = snapshot();
-        merged = mergeLibraries(baseNow, local, remote.library);
-        changedHere = !sameLibrary(local, merged);
-        if (changedHere) return replaceAll(merged.tabs, merged.order).then(loadAll);
-      });
-      queue = step.catch(function () {});
-      return step.then(function () {
+      return enqueue(function () {
+        return loadAll().then(function () {
+          var local = snapshot();
+          merged = mergeLibraries(baseNow, local, remote.library);
+          changedHere = !sameLibrary(local, merged);
+          if (changedHere) return replaceAll(merged.tabs, merged.order).then(loadAll);
+        });
+      }).then(function () {
         var unchangedRemote = remote.library && sameLibrary(remote.library, merged);
         var send = unchangedRemote ? Promise.resolve({ version: remote.version, at: remote.at })
           : api('library', { method: 'PUT', body: JSON.stringify(merged),
@@ -776,7 +793,7 @@
       });
     };
     if (!wipe) return finish();
-    return queue.then(function () { return replaceAll({}, []); }).then(function () {
+    return enqueue(function () { return replaceAll({}, []).then(loadAll); }).then(function () {
       try {
         var kill = [];
         for (var i = 0; i < localStorage.length; i++) {
