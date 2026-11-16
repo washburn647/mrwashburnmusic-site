@@ -7,6 +7,13 @@
   var NBSP = String.fromCharCode(160);
 
   /* ---------- tiny helpers, all regex-free on purpose ---------- */
+  /** An http(s) address as typed, or '' for anything else. */
+  function webLink(v) {
+    var t = String(v === null || v === undefined ? '' : v).trim();
+    var low = t.toLowerCase();
+    return (low.indexOf('https://') === 0 || low.indexOf('http://') === 0) ? t : '';
+  }
+
   function esc(s) {
     return String(s === null || s === undefined ? '' : s)
       .split('&').join('&amp;').split('<').join('&lt;')
@@ -3483,10 +3490,13 @@
         '</div>' +
         progressStrip(idx);
       head.appendChild(top);
-      if (song.youtube || song.spotify) {
+      /* Only a web address becomes a link: a backup or a synced library can
+         carry anything in these two cells. */
+      var ytUrl = webLink(song.youtube), spUrl = webLink(song.spotify);
+      if (ytUrl || spUrl) {
         var links = '<div class="link-row">';
-        if (song.youtube) links += '<a class="link-chip" href="' + esc(song.youtube) + '" target="_blank" rel="noopener">&#9654; YouTube</a>';
-        if (song.spotify) links += '<a class="link-chip" href="' + esc(song.spotify) + '" target="_blank" rel="noopener">&#9834; Spotify</a>';
+        if (ytUrl) links += '<a class="link-chip" href="' + esc(ytUrl) + '" target="_blank" rel="noopener">&#9654; YouTube</a>';
+        if (spUrl) links += '<a class="link-chip" href="' + esc(spUrl) + '" target="_blank" rel="noopener">&#9834; Spotify</a>';
         links += '</div>';
         head.innerHTML += links;
       }
@@ -7604,6 +7614,8 @@
        own statistics. */
     if (!practice) {
       var attempt = {
+        // its id is fixed here, so sending it again can never write it twice
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         songId: song.id, date: Date.now(), accuracy: accuracy,
         totalWords: totalWords, correctWords: correctWords,
         mode: mode, seconds: secs, device: dev,
