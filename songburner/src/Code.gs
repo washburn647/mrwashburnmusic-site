@@ -14,7 +14,7 @@
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.06';
+var BUILD    = 'beta 1.07';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -3150,20 +3150,35 @@ function apiSaveAttempt(a) {
   var sLeft  = hadClock ? Math.max(0, Math.round(Number(a.secsLeft) || 0)) : '';
   var sLimit = hadClock ? Math.max(0, Math.round(Number(a.secsLimit) || 0)) : '';
 
-  appendRow(TAB_ATTEMPTS, ATTEMPT_COLS, {
-    id: a.id, songId: a.songId, date: a.date, accuracy: a.accuracy,
-    totalWords: a.totalWords, correctWords: a.correctWords,
-    detail: JSON.stringify(a.detail || {}),
-    difficulty: mode, mode: mode, seconds: secs, device: dev,
-    level: level, timed: timed, variant: String(a.variant || ''),
-    practice: a.practice ? '1' : '',
-    secsLeft: sLeft, secsLimit: sLimit
-  });
+  /* ONE ROW PER RUN, HOWEVER MANY TIMES IT IS SENT - beta 1.07. The page gives
+     the run its id before the first try, so "Send it again" after a write that
+     did land (or half landed) finds the row already there and adds nothing. */
+  var already = false;
+  var shA = sheetFor(TAB_ATTEMPTS, ATTEMPT_COLS);
+  var lastA = shA.getLastRow();
+  if (lastA >= 2) {
+    var idCol = shA.getRange(2, 1, lastA - 1, 1).getValues();
+    for (var ix = 0; ix < idCol.length; ix++) {
+      if (String(idCol[ix][0]) === String(a.id)) { already = true; break; }
+    }
+  }
 
-  /* The run's observations ride along with the row, inside the same lock. A
-     second round trip would be a second chance to half-succeed. */
-  if (a.heat && a.heat.length) {
-    try { applyHeatToSong(a.songId, mode, a.heat); } catch (e) {}
+  if (!already) {
+    appendRow(TAB_ATTEMPTS, ATTEMPT_COLS, {
+      id: a.id, songId: a.songId, date: a.date, accuracy: a.accuracy,
+      totalWords: a.totalWords, correctWords: a.correctWords,
+      detail: JSON.stringify(a.detail || {}),
+      difficulty: mode, mode: mode, seconds: secs, device: dev,
+      level: level, timed: timed, variant: String(a.variant || ''),
+      practice: a.practice ? '1' : '',
+      secsLeft: sLeft, secsLimit: sLimit
+    });
+
+    /* The run's observations ride along with the row, inside the same lock. A
+       second round trip would be a second chance to half-succeed. */
+    if (a.heat && a.heat.length) {
+      try { applyHeatToSong(a.songId, mode, a.heat); } catch (e) {}
+    }
   }
 
   var st = getSettings();
@@ -6500,6 +6515,13 @@ body {
   var NBSP = String.fromCharCode(160);
 
   /* ---------- tiny helpers, all regex-free on purpose ---------- */
+  /** An http(s) address as typed, or '' for anything else. */
+  function webLink(v) {
+    var t = String(v === null || v === undefined ? '' : v).trim();
+    var low = t.toLowerCase();
+    return (low.indexOf('https://') === 0 || low.indexOf('http://') === 0) ? t : '';
+  }
+
   function esc(s) {
     return String(s === null || s === undefined ? '' : s)
       .split('&').join('&amp;').split('<').join('&lt;')
@@ -9976,10 +9998,13 @@ body {
         '</div>' +
         progressStrip(idx);
       head.appendChild(top);
-      if (song.youtube || song.spotify) {
+      /* Only a web address becomes a link: a backup or a synced library can
+         carry anything in these two cells. */
+      var ytUrl = webLink(song.youtube), spUrl = webLink(song.spotify);
+      if (ytUrl || spUrl) {
         var links = '<div class="link-row">';
-        if (song.youtube) links += '<a class="link-chip" href="' + esc(song.youtube) + '" target="_blank" rel="noopener">&#9654; YouTube</a>';
-        if (song.spotify) links += '<a class="link-chip" href="' + esc(song.spotify) + '" target="_blank" rel="noopener">&#9834; Spotify</a>';
+        if (ytUrl) links += '<a class="link-chip" href="' + esc(ytUrl) + '" target="_blank" rel="noopener">&#9654; YouTube</a>';
+        if (spUrl) links += '<a class="link-chip" href="' + esc(spUrl) + '" target="_blank" rel="noopener">&#9834; Spotify</a>';
         links += '</div>';
         head.innerHTML += links;
       }
@@ -14097,6 +14122,8 @@ body {
        own statistics. */
     if (!practice) {
       var attempt = {
+        // its id is fixed here, so sending it again can never write it twice
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         songId: song.id, date: Date.now(), accuracy: accuracy,
         totalWords: totalWords, correctWords: correctWords,
         mode: mode, seconds: secs, device: dev,

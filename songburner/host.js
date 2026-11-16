@@ -200,28 +200,28 @@
     }
   };
 
-  /* Lyrics search. UrlFetchApp is synchronous and so is the code that calls
-     it, so this is too. It only runs when you press Search for lyrics. */
+  /* Lyrics search. The engine's UrlFetchApp is synchronous, and a synchronous
+     request froze the whole page until all four lookups were done (until beta 1.07).
+     So the engine never waits on the network here: a lookup is answered from
+     netCache, and one that is not there yet is noted in netMisses and answered
+     "nothing". fetchLyrics (below) fetches what was missed, without blocking,
+     and runs the search again until nothing new is asked for. */
+  var netCache = null, netMisses = null;
+  var NOTHING = { getResponseCode: function () { return 0; }, getContentText: function () { return ''; } };
   var UrlFetchApp = {
     fetch: function (url) {
-      var xhr = new XMLHttpRequest();
-      var code = 0, text = '';
       /* Signed-in testers only (13 and up): lyrics come back unfiltered. */
       var acc = account();
-      if (!acc || acc.expired) {
-        return { getResponseCode: function () { return 0; }, getContentText: function () { return ''; } };
+      if (!acc || acc.expired) return NOTHING;
+      if (netCache && netCache.hasOwnProperty(url)) {
+        var hit = netCache[url];
+        return {
+          getResponseCode: function () { return hit.code; },
+          getContentText: function () { return hit.text; }
+        };
       }
-      try {
-        xhr.open('GET', url, false);
-        xhr.send(null);
-        code = xhr.status; text = xhr.responseText;
-      } catch (e) {
-        code = 0;
-      }
-      return {
-        getResponseCode: function () { return code; },
-        getContentText: function () { return text; }
-      };
+      if (netMisses) netMisses.push(url);
+      return NOTHING;
     }
   };
 
@@ -288,12 +288,29 @@
     dirty = {}; orderDirty = false;
     return db().then(function (d) {
       return new Promise(function (resolve, reject) {
-        var tx = d.transaction(STORE, 'readwrite');
-        var st = tx.objectStore(STORE);
-        names.forEach(function (n) { if (snap[n]) st.put(snap[n], n); else st.delete(n); });
-        if (writeOrder) st.put(ord, ORDER_KEY);
-        tx.oncomplete = function () { resolve(true); };
-        tx.onerror = function () { reject(tx.error); };
+        /* Not written (storage full, or blocked): mark it all again, so the
+           next save that works takes this one with it. */
+        var settled = false;
+        var failed = function (err) {
+          if (settled) return;
+          settled = true;
+          names.forEach(function (n) { dirty[n] = true; });
+          if (writeOrder) orderDirty = true;
+          reject(err || new Error('Could not save on this device.'));
+        };
+        var tx;
+        try {
+          tx = d.transaction(STORE, 'readwrite');
+          var st = tx.objectStore(STORE);
+          tx.oncomplete = function () { if (!settled) { settled = true; resolve(true); } };
+          tx.onerror = function () { failed(tx.error); };
+          tx.onabort = function () { failed(tx.error); };
+          names.forEach(function (n) { if (snap[n]) st.put(snap[n], n); else st.delete(n); });
+          if (writeOrder) st.put(ord, ORDER_KEY);
+        } catch (e) {
+          try { if (tx) tx.abort(); } catch (e2) {}
+          failed(e);
+        }
       });
     });
   }
@@ -336,7 +353,46 @@
     return step;
   }
 
+  var NET_TIMEOUT = 8000;
+
+  function fetchText(url) {
+    var ctl = window.AbortController ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, NET_TIMEOUT) : null;
+    return fetch(url, { credentials: 'omit', cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+      .then(function (res) {
+        return res.text().then(function (text) { return { code: res.status, text: text }; });
+      })
+      .catch(function () { return { code: 0, text: '' }; })
+      .then(function (r) { if (timer) clearTimeout(timer); return r; });
+  }
+
+  /* Reads nothing from the library and writes nothing, so it stays out of the
+     queue: a slow lyrics site never holds up a save. One lookup at a time, in
+     the order the engine asks, as before. */
+  function fetchLyrics(payloadJson) {
+    var cache = {}, rounds = 0;
+    function pass() {
+      if (typeof window.SongBurnerEngine !== 'function') {
+        return Promise.reject(new Error('engine.js did not load'));
+      }
+      var out, miss;
+      netCache = cache; netMisses = [];
+      try {
+        out = window.SongBurnerEngine(services).apiCall(payloadJson);
+      } finally {
+        miss = netMisses; netCache = null; netMisses = null;
+      }
+      if (!miss.length || ++rounds > 8) return Promise.resolve(out);
+      var url = miss[0];
+      return fetchText(url).then(function (r) { cache[url] = r; return pass(); });
+    }
+    return pass();
+  }
+
   function run(payloadJson) {
+    try {
+      if (JSON.parse(payloadJson).action === 'fetchLyrics') return fetchLyrics(payloadJson);
+    } catch (e) {}
     return enqueue(function () {
       return (stale ? loadAll().then(function () { stale = false; }) : Promise.resolve())
         .then(function () {
@@ -487,6 +543,33 @@
   function getBase() { return kv('readonly', function (st) { return st.get('base'); }); }
   function putBase(b) { return kv('readwrite', function (st) { st.put(b, 'base'); }); }
   function dropBase() { return kv('readwrite', function (st) { st.delete('base'); }); }
+
+  /* WHOSE SONGS ARE ON THIS DEVICE - beta 1.07. The email of the last tester
+     this device synced as. A different tester signing in on a shared computer
+     gets their own cloud copy in place of what is here, instead of a merge that
+     would hand them the last student's songs and runs. */
+  var OWNER_KEY = 'sb-owner';
+  function owner() {
+    try { return localStorage.getItem(OWNER_KEY) || ''; } catch (e) { return ''; }
+  }
+  function setOwner(email) {
+    try {
+      if (email) localStorage.setItem(OWNER_KEY, email);
+      else localStorage.removeItem(OWNER_KEY);
+    } catch (e) {}
+  }
+
+  /* The page's own copies of songs and the index (localStorage, "sb1."). */
+  function clearPageCache() {
+    try {
+      var kill = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('sb1.') === 0) kill.push(k);
+      }
+      kill.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
+  }
 
   function account() {
     try { return JSON.parse(localStorage.getItem(ACCOUNT_KEY) || 'null'); } catch (e) { return null; }
@@ -659,14 +742,29 @@
          device reads as deleted. */
       baseNow = (b && acc && b.email === acc.email && remote.library &&
                  remote.version >= b.version) ? b : null;
+      var was = owner() || (b && b.email) || '';
+      var foreign = !!(was && acc && was !== acc.email);
       var merged = null, changedHere = false;
       /* Inside the queue, so no edit lands between reading this device and
          writing the merge back to it. */
       return enqueue(function () {
-        return loadAll().then(function () {
+        /* Someone else's songs: start from an empty library, which then takes
+           the cloud copy whole. The device belongs to this tester from here on,
+           so a retry after a conflict merges as usual. */
+        var clear = foreign
+          ? replaceAll({}, []).then(loadAll).then(function () {
+              window.SongBurnerEngine(services).setup();
+              return saveDirty();
+            }).then(function () {
+              clearPageCache();
+              setOwner(acc.email);
+              changedHere = true;
+            })
+          : Promise.resolve();
+        return clear.then(loadAll).then(function () {
           var local = snapshot();
           merged = mergeLibraries(baseNow, local, remote.library);
-          changedHere = !sameLibrary(local, merged);
+          if (!sameLibrary(local, merged)) changedHere = true;
           if (changedHere) return replaceAll(merged.tabs, merged.order).then(loadAll);
         });
       }).then(function () {
@@ -682,6 +780,7 @@
         return send.then(function (v) {
           return putBase({ email: acc.email, version: v.version, tabs: merged.tabs, order: merged.order })
             .then(function () {
+              setOwner(acc.email);
               acc.lastSync = Date.now();
               setAccount(acc);
               if (changedHere && channel) channel.postMessage({ type: 'replaced' });
@@ -702,35 +801,54 @@
      worker/index.js), and walks it forward night by night until the next one. A
      tester who has not turned it on is asked again an hour later at the soonest. */
   var DASH_OFF = 'sb-dash-off';
+  var DASH_ON = 'sb-dash-on';
   function pushDashboard() {
+    var on = false;
     try {
+      on = localStorage.getItem(DASH_ON) === '1';
       var off = Number(localStorage.getItem(DASH_OFF) || 0);
-      if (off && Date.now() - off < 3600e3) return;
+      if (!on && off && Date.now() - off < 3600e3) return;
     } catch (e) {}
-    var at = Date.now();
-    run(JSON.stringify({ action: 'init' })).then(function (out) {
-      var r = JSON.parse(out);
-      if (!r.ok) return null;
-      var d = r.data;
-      var songs = (d.songs || []).filter(function (s) {
-        return s.attempts && s.score !== null && s.score !== undefined;
-      }).map(function (s) {
-        return { id: s.id, title: s.title, artist: s.artist, score: s.score, hot: !!s.hot,
-                 hotDays: s.hotDays || 0, coldRate: s.coldRate || 0, daysSince: s.daysSince };
-      });
-      return api('dashboard', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ at: at, tz: new Date(at).getTimezoneOffset(), build: d.build,
-                               y: d.settings ? d.settings.decay : 0, songs: songs })
-      });
-    }).then(function (res) {
-      return res && res.ok ? res.json() : null;
-    }).then(function (j) {
+    function remember(isOn) {
       try {
-        if (j && j.on) localStorage.removeItem(DASH_OFF);
-        else if (j) localStorage.setItem(DASH_OFF, String(Date.now()));
+        if (isOn) { localStorage.setItem(DASH_ON, '1'); localStorage.removeItem(DASH_OFF); }
+        else { localStorage.removeItem(DASH_ON); localStorage.setItem(DASH_OFF, String(Date.now())); }
       } catch (e) {}
+    }
+    /* Not known to be on: ask first, sending nothing about the songs. Most
+       testers never turn the feed on, so most syncs stop here. */
+    var ask = on ? Promise.resolve(true) : api('dashboard', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-SB-Probe': '1' }, body: '{}'
+    }).then(function (res) {
+      return res.ok ? res.json() : null;
+    }).then(function (j) {
+      if (j) remember(!!j.on);
+      return !!(j && j.on);
+    });
+    ask.then(function (yes) {
+      if (!yes) return null;
+      var at = Date.now();
+      return run(JSON.stringify({ action: 'init' })).then(function (out) {
+        var r = JSON.parse(out);
+        if (!r.ok) return null;
+        var d = r.data;
+        var songs = (d.songs || []).filter(function (s) {
+          return s.attempts && s.score !== null && s.score !== undefined;
+        }).map(function (s) {
+          return { id: s.id, title: s.title, artist: s.artist, score: s.score, hot: !!s.hot,
+                   hotDays: s.hotDays || 0, coldRate: s.coldRate || 0, daysSince: s.daysSince };
+        });
+        return api('dashboard', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ at: at, tz: new Date(at).getTimezoneOffset(), build: d.build,
+                                 y: d.settings ? d.settings.decay : 0, songs: songs })
+        });
+      }).then(function (res) {
+        return res && res.ok ? res.json() : null;
+      }).then(function (j) {
+        if (j) remember(!!j.on);
+      });
     }).catch(function () {});
   }
 
@@ -785,6 +903,7 @@
   function signOut(wipe) {
     var finish = function () {
       setAccount(null);
+      try { localStorage.removeItem(DASH_ON); } catch (e) {}
       // ends the site's own session cookie, then the Access login behind it
       var end = fetch(API + 'signout', { method: 'POST', credentials: 'same-origin', redirect: 'manual' })
         .catch(function () {});
@@ -792,18 +911,20 @@
         location.href = '/cdn-cgi/access/logout';
       });
     };
-    if (!wipe) return finish();
-    return enqueue(function () { return replaceAll({}, []).then(loadAll); }).then(function () {
-      try {
-        var kill = [];
-        for (var i = 0; i < localStorage.length; i++) {
-          var k = localStorage.key(i);
-          if (k && k.indexOf('sb1.') === 0) kill.push(k);
-        }
-        kill.forEach(function (k) { localStorage.removeItem(k); });
-      } catch (e) {}
-      if (channel) channel.postMessage({ type: 'replaced' });
-      return finish();
+    /* Catch the cloud up first, so a run finished just before signing out is
+       not left only on a computer the tester may never use again. Not after
+       Delete my cloud copy (lastSync is 0 then), which would upload it again. */
+    clearTimeout(syncTimer); syncTimer = null;
+    var acc = account();
+    var first = (acc && !acc.expired && acc.lastSync) ? syncNow().catch(function () {}) : Promise.resolve();
+    return first.then(function () {
+      if (!wipe) return finish();
+      return enqueue(function () { return replaceAll({}, []).then(loadAll); }).then(function () {
+        clearPageCache();
+        setOwner('');
+        if (channel) channel.postMessage({ type: 'replaced' });
+        return finish();
+      });
     });
   }
 

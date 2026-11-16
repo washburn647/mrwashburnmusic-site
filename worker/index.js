@@ -798,7 +798,8 @@ export class Box extends DurableObject {
    GET    /api/songburner/dashboard turn the dashboard feed on    { feed } (the same link each time)
    POST   /api/songburner/dashboard a new feed link; the old stops { feed }
    DELETE /api/songburner/dashboard turn the feed off
-   PUT    /api/songburner/dashboard where the songs stand now     { on } (stored only while on)
+   PUT    /api/songburner/dashboard where the songs stand now     { on } (stored only while on;
+                                     with X-SB-Probe: 1, only says whether the feed is on)
    GET    /api/songburner/feed/:hash/:key   the feed itself, no sign-in: the key is the lock
 
    THE DASHBOARD FEED. Kyle's second-screen dashboard (a page on his PC, outside this site)
@@ -987,6 +988,8 @@ async function dashSetup(request, vault, hash, method) {
   }
   if (method === 'DELETE') { await vault.dashOff(); return reply({ ok: true }); }
   if (method === 'PUT') {
+    // The app asks first, so a tester who never turned the feed on sends no song titles at all.
+    if (request.headers.get('X-SB-Probe') === '1') return reply({ on: await vault.dashIsOn() });
     const text = await request.text();
     if (text.length > MAX_DASH) return reply({ error: 'too big' }, 413);
     let snap;
@@ -1160,7 +1163,10 @@ export class Vault extends DurableObject {
   }
 
   async clear() {
+    // A tester deleting their own copy must not undo a removal from the studio: keep 'cut'.
+    const cut = await this.ctx.storage.get('cut');
     await this.ctx.storage.deleteAll();
+    if (cut) await this.ctx.storage.put('cut', cut);
     return reply({ ok: true });
   }
 
@@ -1189,6 +1195,10 @@ export class Vault extends DurableObject {
       await this.ctx.storage.put('dashkey', key);
     }
     return key;
+  }
+
+  async dashIsOn() {
+    return !!(await this.ctx.storage.get('dashkey'));
   }
 
   async dashOff() {

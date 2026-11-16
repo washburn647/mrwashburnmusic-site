@@ -1,5 +1,5 @@
 /* GENERATED from src/Code.gs by tools/build_songburner.py. Do not edit.
-   The server half of Song Burner beta 1.06. host.js calls this once per request with
+   The server half of Song Burner beta 1.07. host.js calls this once per request with
    its stand-ins for the Apps Script services. */
 window.SongBurnerEngine = function (services) {
 var SpreadsheetApp = services.SpreadsheetApp;
@@ -25,7 +25,7 @@ var HtmlService = services.HtmlService;
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.06';
+var BUILD    = 'beta 1.07';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -3161,20 +3161,35 @@ function apiSaveAttempt(a) {
   var sLeft  = hadClock ? Math.max(0, Math.round(Number(a.secsLeft) || 0)) : '';
   var sLimit = hadClock ? Math.max(0, Math.round(Number(a.secsLimit) || 0)) : '';
 
-  appendRow(TAB_ATTEMPTS, ATTEMPT_COLS, {
-    id: a.id, songId: a.songId, date: a.date, accuracy: a.accuracy,
-    totalWords: a.totalWords, correctWords: a.correctWords,
-    detail: JSON.stringify(a.detail || {}),
-    difficulty: mode, mode: mode, seconds: secs, device: dev,
-    level: level, timed: timed, variant: String(a.variant || ''),
-    practice: a.practice ? '1' : '',
-    secsLeft: sLeft, secsLimit: sLimit
-  });
+  /* ONE ROW PER RUN, HOWEVER MANY TIMES IT IS SENT - beta 1.07. The page gives
+     the run its id before the first try, so "Send it again" after a write that
+     did land (or half landed) finds the row already there and adds nothing. */
+  var already = false;
+  var shA = sheetFor(TAB_ATTEMPTS, ATTEMPT_COLS);
+  var lastA = shA.getLastRow();
+  if (lastA >= 2) {
+    var idCol = shA.getRange(2, 1, lastA - 1, 1).getValues();
+    for (var ix = 0; ix < idCol.length; ix++) {
+      if (String(idCol[ix][0]) === String(a.id)) { already = true; break; }
+    }
+  }
 
-  /* The run's observations ride along with the row, inside the same lock. A
-     second round trip would be a second chance to half-succeed. */
-  if (a.heat && a.heat.length) {
-    try { applyHeatToSong(a.songId, mode, a.heat); } catch (e) {}
+  if (!already) {
+    appendRow(TAB_ATTEMPTS, ATTEMPT_COLS, {
+      id: a.id, songId: a.songId, date: a.date, accuracy: a.accuracy,
+      totalWords: a.totalWords, correctWords: a.correctWords,
+      detail: JSON.stringify(a.detail || {}),
+      difficulty: mode, mode: mode, seconds: secs, device: dev,
+      level: level, timed: timed, variant: String(a.variant || ''),
+      practice: a.practice ? '1' : '',
+      secsLeft: sLeft, secsLimit: sLimit
+    });
+
+    /* The run's observations ride along with the row, inside the same lock. A
+       second round trip would be a second chance to half-succeed. */
+    if (a.heat && a.heat.length) {
+      try { applyHeatToSong(a.songId, mode, a.heat); } catch (e) {}
+    }
   }
 
   var st = getSettings();

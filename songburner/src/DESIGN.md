@@ -3050,8 +3050,29 @@ shared computer; that clears the library and the song cache in localStorage.
 **Delete my cloud copy** deletes it and signs out, since staying signed in would
 upload this device again on the next change.
 
-**Privacy.** The Durable Object is named by a hash of the email, which is not
-stored. Nothing about a tester is kept beyond what a backup file holds.
+**Privacy.** Each tester's Durable Object is named by a hash of the email, and
+holds only what a backup file holds. The email itself is kept in one place: the
+roster (`songburner-roster`), with first and last seen and usage counts, for
+the studio's Testers tab. The dashboard feed, if a tester turns it on, keeps
+song titles, artists and scores, readable by anyone with its link.
+
+**Shared computers — beta 1.07.** The device remembers whose songs it holds
+(`sb-owner`, the email of its last successful sync). When a different tester
+signs in, their first sync empties the device and takes their cloud copy whole,
+rather than merging the last student's songs and runs into their account. A
+device that never synced has no owner, and its songs merge in as before (they
+are taken to be the tester's own, practised before signing in). Sign out syncs
+first, so a run finished just before is not left behind; a wipe also forgets
+the owner.
+
+**The dashboard asks first — beta 1.07.** After a sync the app asks the Worker
+whether the feed is on (`PUT /api/songburner/dashboard` with `X-SB-Probe: 1`),
+and sends song titles and scores only if it is. Before, every sync sent them and
+the Worker threw them away. A "no" is asked again an hour later at the soonest.
+
+**Removed stays removed.** Delete my cloud copy clears everything in the
+tester's Durable Object except the `cut` mark the studio's Remove sets, so a
+removed tester's old sessions cannot come back.
 
 **The site's own session cookie — beta 1.01.** Access only guards the Sign in
 landing page, `/songburner/account/`. The Worker answers that page as well, and
@@ -3370,6 +3391,25 @@ the YouTube and Spotify Find buttons return whatever those services hold,
 unfiltered, and the website is open to anyone. On the web they show only for a
 signed-in tester (13 and up), and host.js's `UrlFetchApp` refuses for anyone
 else. The Sheets version keeps them.
+
+**Lyrics search never freezes the page — beta 1.07.** The engine's lookups are
+synchronous, and on the web they were synchronous requests, so the whole app
+hung until all of them came back. Now host.js's `UrlFetchApp` never touches the
+network: it answers from a cache and notes what was missing, and `fetchLyrics`
+fetches that one address (8 seconds at most), then runs the search again, until
+nothing new is asked for. One lookup at a time, in the engine's order, so no
+service is asked when an earlier one already found the song. It runs outside
+the queue, since it reads and writes nothing in the library.
+
+**A failed save keeps its changes, and a resend never doubles a run — beta
+1.07.** If IndexedDB refuses a write (full, or blocked), host.js marks those
+tabs changed again, so the next save that works takes them along. The page
+gives each run its id before the first try, and `apiSaveAttempt` writes no row
+when that id is already there, so "Send it again" cannot log the same run twice.
+
+**Only web addresses become links.** The YouTube and Spotify cells turn into
+links on the song page only when they start with http:// or https://. A backup
+or a synced library can carry anything in those cells.
 
 ## Working on the code
 
