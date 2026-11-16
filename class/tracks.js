@@ -5,7 +5,8 @@
    { id, kind: 'audio', name, song, bpm, countIn, click, created, updated,
      layers: [{ id, name, media, seconds, nudge (ms), vol (0 to 1) }] }
    A slide plays one through a Recording widget (widgets.js, kind 'player', el.track). They are
-   Kyle's own: tagged classroom, never on the public site, and not in the sub view. */
+   Kyle's own: tagged classroom, never on the public site. The sub view gets the ones its decks
+   play, with the sub key (subApi in worker/index.js). */
 
 import * as store from './store.js';
 import { useTracks } from './widgets.js';

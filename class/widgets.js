@@ -1082,8 +1082,8 @@ export function editPlaces(places) {
 }
 
 // ---- recording (slide audio) ---------------------------------------------------
-// Where recordings come from (tracks.js): { get(id) -> track, blob(hash) -> Blob }.
-// Not set in the sub view, where a Recording widget is just its label.
+// Where recordings come from (tracks.js, or sub.js in the sub view): { get(id) -> track,
+// blob(hash) -> Blob, remember (false: keep the volume off the device) }.
 
 let tracks = null;
 export function useTracks(t) { tracks = t; }
@@ -1221,7 +1221,7 @@ function dockFor(mixer, track) {
   mixer.setVolume(Number(vol.value));
   vol.addEventListener('input', () => {
     mixer.setVolume(Number(vol.value));
-    try { localStorage.setItem(VOL_KEY, vol.value); } catch (e) { /* storage blocked */ }
+    if (tracks && tracks.remember !== false) try { localStorage.setItem(VOL_KEY, vol.value); } catch (e) { /* storage blocked */ }
   });
 
   let dragging = false;

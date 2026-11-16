@@ -122,7 +122,9 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   volume (remembered on the device, `class.playerVol`), and each layer on or off with its own
   level. `mixer.js` lines the layers up into one length so they loop together. It plays on
   across slides that carry the same recording, and stops on a slide without it. ✕ hides the
-  player, ■ on the box stops it. Not in the sub view (the box shows dimmed there).
+  player, ■ on the box stops it. The sub view plays them too: `/api/sub/open` sends the
+  recordings the sub decks' Recording widgets use (names and layers only), and their layers come
+  through `/api/sub/media/` with the sub key, like the pictures.
 - `library.js`: the picture library, pictures kept for the drawing box and think/speak, in
   groups (a game's pictures), each with a name. Kept up in the studio (`/studio/pictures/`,
   straight on the website through `/studio/api/class/`): paste a picture or its address (the
