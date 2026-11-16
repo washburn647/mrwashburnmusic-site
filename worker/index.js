@@ -313,7 +313,7 @@ async function subApi(request, env, [what, id, extra]) {
       try { t = JSON.parse(await o.text()); } catch (e) { continue; }
       if (!t || t.kind !== 'audio' || !Array.isArray(t.layers)) continue;
       const layers = t.layers.filter((l) => l && typeof l.media === 'string' && HASH.test(l.media))
-        .map((l) => ({ id: l.id, name: l.name, media: l.media, nudge: l.nudge || 0, vol: l.vol ?? 1 }));
+        .map((l) => ({ id: l.id, name: l.name, kind: l.kind, media: l.media, nudge: l.nudge || 0, vol: l.vol ?? 1 }));
       for (const l of layers) media.add(l.media);
       tracks.push({ id: t.id, name: t.name, layers });
     }
@@ -682,7 +682,7 @@ export class Live extends DurableObject {
     return reply({ ok: true });
   }
 
-  /* list: { label, patterns: { id: [{ take, speed, bpm, key?, as?, tempo?, lead? }] }, cues: { id: [{ take, speed, bpm }] }, units? }
+  /* list: { label, patterns: { id: [{ take, speed, bpm, key?, as?, style?, tempo?, lead? }] }, cues: { id: [{ take, speed, bpm }] }, units? }
      Every take it names must be uploaded already. */
   async putVoice(voice, text) {
     let list;
@@ -699,6 +699,8 @@ export class Live extends DurableObject {
           used.add(o.take);
           const entry = { file: `/api/live/voice/${voice}/${o.take}.mp3`, speed: String(o.speed || ''), bpm: Number(o.bpm) || 0 };
           if (o.as === 'bum') entry.as = 'bum';
+          // The voice a rhythm take is in (normal, robot...), from the recorder's list.
+          if (typeof o.style === 'string' && /^[a-z0-9-]{1,24}$/.test(o.style)) entry.style = o.style;
           if (typeof o.key === 'number') entry.key = o.key;
           // How the take really kept the beat (assets/sounds/timing.js).
           if (typeof o.tempo === 'number' && o.tempo > 20 && o.tempo < 300) entry.tempo = o.tempo;

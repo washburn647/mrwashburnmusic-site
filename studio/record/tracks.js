@@ -11,7 +11,7 @@
    (ms; later is more). Count-in clicks go before the take; Click keeps them going. */
 
 import { h, confirmButton } from '../dom.js';
-import { Mixer, decodeLayers } from '/class/mixer.js';
+import { Mixer, decodeLayers, kindOf } from '/class/mixer.js';
 
 const API = '/studio/api/class/';
 const RATE = 44100;              // the mp3s' sample rate
@@ -395,17 +395,22 @@ async function newTrack() {
   try {
     await change(id, (t) => {
       t.name = `Recording ${list.length + 1}`;
-      t.layers = [{ id: 'l1', name: 'Instrument', vol: 1 }, { id: 'l2', name: 'Voice', vol: 1 }];
+      t.layers = [{ id: 'l1', name: 'Piano', kind: 'inst', vol: 1 }, { id: 'l2', name: 'Voice', kind: 'voice', vol: 1 }];
     });
     sel = id;
   } catch { /* said */ }
   deps.render();
 }
 
-function addLayer(t, name) {
+function addLayer(t, kind) {
   const n = Math.max(0, ...t.layers.map((l) => Number(String(l.id).slice(1)) || 0)) + 1;
-  change(t.id, (now) => { now.layers.push({ id: `l${n}`, name, vol: 1 }); }).then(deps.render, () => {});
+  const same = t.layers.filter((l) => kindOf(l) === kind).length;
+  const name = `${KINDS[kind]}${same ? ` ${same + 1}` : ''}`;
+  change(t.id, (now) => { now.layers.push({ id: `l${n}`, name, kind, vol: 1 }); }).then(deps.render, () => {});
 }
+
+// Instruments are choices in the slide player (one at a time); voices and others turn on and off.
+const KINDS = { inst: 'Instrument', voice: 'Voice', other: 'Layer' };
 
 function edit(t, fn, after) {
   fn(t);
@@ -474,6 +479,8 @@ function trackEditor(t) {
         replay(t);
       } }),
       h('input', { class: 'lname', value: l.name, onchange: (e) => edit(t, (x) => { const y = x.layers.find((z) => z.id === l.id); if (y) y.name = e.target.value.trim() || y.name; }) }),
+      h('select', { class: 'lkind', onchange: (e) => edit(t, (x) => { const y = x.layers.find((z) => z.id === l.id); if (y) y.kind = e.target.value; }) },
+        Object.entries(KINDS).map(([k, label]) => h('option', { value: k, selected: kindOf(l) === k }, label))),
       h('span', { class: 'sp' }, l.media ? clock(l.seconds || 0) : '–'),
       h('input', { type: 'range', class: 'lvol', title: 'Level', min: 0, max: 1, step: 0.01, value: l.vol ?? 1, disabled: !l.media,
         oninput: (e) => {
@@ -488,9 +495,9 @@ function trackEditor(t) {
       confirmButton('×', 'Delete?', () => { stopPlay(); edit(t, (x) => { x.layers = x.layers.filter((y) => y.id !== l.id); }); }),
     ))),
     h('div', { class: 'row' },
-      h('button', { disabled: !!rec, onclick: () => addLayer(t, 'Voice') }, '+ Voice'),
-      h('button', { disabled: !!rec, onclick: () => addLayer(t, 'Instrument') }, '+ Instrument'),
-      h('button', { disabled: !!rec, onclick: () => addLayer(t, `Layer ${t.layers.length + 1}`) }, '+ Layer'),
+      h('button', { disabled: !!rec, onclick: () => addLayer(t, 'inst') }, '+ Instrument'),
+      h('button', { disabled: !!rec, onclick: () => addLayer(t, 'voice') }, '+ Voice'),
+      h('button', { disabled: !!rec, onclick: () => addLayer(t, 'other') }, '+ Layer'),
       h('span', { class: 'grow' }),
       confirmButton('Delete recording', 'Delete?', () => remove(t))),
     h('div', { class: 'stage' },

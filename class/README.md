@@ -120,7 +120,9 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   slide (the slide's song's recordings listed first). In Present, tapping it docks a player along
   the bottom with the slide still showing: play/pause, seek, loop (whole, or A to B), a big
   volume (remembered on the device, `class.playerVol`), and each layer on or off with its own
-  level. `mixer.js` lines the layers up into one length so they loop together. It plays on
+  level. A layer's `kind` is `inst`, `voice` or `other` (`kindOf` in `mixer.js`; older layers go
+  by name): instruments are choices, one at a time (the first plays to start), so a song can
+  have piano and guitar accompaniments to pick from. `mixer.js` lines the layers up into one length so they loop together. It plays on
   across slides that carry the same recording, and stops on a slide without it. ✕ hides the
   player, ■ on the box stops it. The sub view plays them too: `/api/sub/open` sends the
   recordings the sub decks' Recording widgets use (names and layers only), and their layers come
