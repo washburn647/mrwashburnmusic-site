@@ -1,6 +1,6 @@
 /* The site is static files. This Worker only answers /api/:
    - /api/class/ (and /studio/api/class/, for the studio's picture library): the Class app's
-     files kept on the website (decks, pictures, plans, picture library, timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
+     files kept on the website (decks, pictures, plans, picture library, slide recordings, timings) in a private R2 bucket. Cloudflare Access guards /api/class (Kyle's login),
      and every request is checked here too, so a missing Access rule never opens it up.
    - /api/s/ and /studio/api/s/: a locked box for each private lesson student (see Box).
    - /studio/api/lessons/: the studio's lesson pages (students, pieces, practice library), kept
