@@ -194,13 +194,19 @@ body[data-who="grownups"] {
   color: var(--panel-ink);
   --big: clamp(96px, 18vw, 230px);     /* the big note head's width */
 }
-.slides, .tint { position: absolute; inset: 0; }
-.slides { -webkit-mask-image: linear-gradient(to right, #000 38%, transparent 80%); mask-image: linear-gradient(to right, #000 38%, transparent 80%); }
+/* The photos fill a window between the text and the big note, and fade into the page at its edges. */
+.slides {
+  position: absolute;
+  top: 0; bottom: 0; left: 34%; right: 7%;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 36%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 36%, #000 80%, transparent 100%);
+}
+.tint { position: absolute; inset: 0; }
 .slide {
   position: absolute;
   inset: 0;
   opacity: 0;
-  filter: grayscale(1) contrast(1.1);
+  filter: grayscale(1) contrast(1.05) brightness(var(--lift, 1.5));
   transition: opacity 1.2s ease;
   display: grid;
   place-items: end start;
@@ -214,13 +220,12 @@ body[data-who="grownups"] {
 .slide.on { opacity: 1; }
 .slide.on img { animation: pan 12s ease-out both; }
 @keyframes pan { from { transform: scale(1.12); } to { transform: scale(1); } }
-/* placeholders until Kyle's photos go in: <img> filling each .slide */
 .slide img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.shot1 { background: repeating-linear-gradient(135deg, #8a8a8a 0 60px, #a6a6a6 60px 120px); }
-.shot2 { background: radial-gradient(circle at 30% 40%, #c4c4c4 0 18%, #8f8f8f 18.5% 36%, #b0b0b0 36.5% 54%, #7f7f7f 54.5%); }
-.shot3 { background: repeating-linear-gradient(45deg, #9a9a9a 0 34px, #bdbdbd 34px 68px); }
-.tint { background: var(--panel); mix-blend-mode: multiply; opacity: var(--tint, 0.94); }
-body[data-who="kids"] .stage { --tint: 1; }
+/* which part of each photo stays in view when it is cropped */
+.at-guitar { object-position: 50% 10%; }
+.at-marimba { object-position: 50% 0; }
+.tint { background: var(--panel); mix-blend-mode: multiply; }
+body[data-who="kids"] .stage { --lift: 1.05; }
 
 .waves { position: absolute; left: 0; right: 0; bottom: clamp(8px, 2vw, 26px); width: 100%; height: clamp(60px, 9vw, 120px); overflow: visible; }
 .waves path { fill: none; stroke: var(--panel-ink); stroke-width: 3; opacity: 0.5; vector-effect: non-scaling-stroke; }
@@ -307,9 +312,12 @@ body[data-who="kids"] .bignote { --big-c: #DC3B30; }
 @keyframes sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2.5deg); } }
 @keyframes boing { 0% { transform: scale(1); } 30% { transform: scale(1.12, 0.86); } 60% { transform: scale(0.94, 1.08); } 100% { transform: scale(1); } }
 @media (max-width: 640px) {
-  .hero { align-items: flex-start; min-height: 430px; }
+  .hero { align-items: flex-start; min-height: 500px; }
   .hero-text { max-width: 100%; }
-  .slides { -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 85%); mask-image: linear-gradient(to bottom, #000 40%, transparent 85%); }
+  .slides {
+    top: 30%; left: 0; right: 0;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 26%); mask-image: linear-gradient(to bottom, transparent 0, #000 26%);
+  }
 }
 
 /* ---------- The staff menu ---------- */
