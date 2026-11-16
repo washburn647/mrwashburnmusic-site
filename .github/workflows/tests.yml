@@ -1,0 +1,34 @@
+# Song Burner's tests, on every pull request and every push to main.
+# Run them yourself with: node --test tests/*.test.mjs  (needs Playwright and Chromium)
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: The generated Song Burner files match Code.gs
+        run: |
+          python tools/build_songburner.py
+          git diff --exit-code -- songburner
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Tests
+        run: node --test tests/*.test.mjs

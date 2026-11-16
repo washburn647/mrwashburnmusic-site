@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- What a signed-out visitor sees in place of Song Burner. The Worker serves it at the app's
+     own address (/songburner/, /songburner/backup/), so every link here is absolute. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1F2A24">
+<title>Song Burner</title>
+<link rel="stylesheet" href="/songburner/fonts.css">
+<link rel="stylesheet" href="/songburner/gate/gate.css">
+<link rel="icon" href="/songburner/icons/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/songburner/icons/icon-180.png">
+</head>
+<body>
+<main>
+  <img class="logo" src="/songburner/icons/icon-192.png" alt="" width="72" height="72">
+  <h1>Song Burner</h1>
+  <p class="pill">Closed beta</p>
+  <div id="checking" class="muted">Checking sign-in…</div>
+  <div id="out" hidden>
+    <a class="btn btn-gold" href="/songburner/account/">Sign in</a>
+    <button type="button" class="btn btn-outline" id="ask">Apply for beta</button>
+    <form id="apply" hidden>
+      <input type="email" id="mail" placeholder="Email" autocomplete="email" required>
+      <label class="age"><input type="checkbox" id="age"><span>I’m 13 or older</span></label>
+      <button type="submit" class="btn btn-gold" id="send" disabled>Send</button>
+    </form>
+    <p id="msg" class="muted" role="status"></p>
+  </div>
+  <a class="privacy" href="/songburner/privacy/">Privacy</a>
+</main>
+<script src="/songburner/gate/gate.js"></script>
+</body>
+</html>

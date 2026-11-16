@@ -29,13 +29,17 @@ A lyric memorization app, served at `/songburner/`. Read `songburner/README.md` 
   `Code.gs` edit run `python tools/build_songburner.py` and commit source and output together.
 - Bump `BUILD` near the top of `Code.gs` for every release. The footer shows it.
 - Why the app behaves as it does is in `songburner/src/DESIGN.md`. Keep it current.
+- **Signed-in testers only** (closed beta, 13+). The Worker serves the app's pages only with a
+  valid Song Burner session; everyone else gets `songburner/gate/` (Sign in, Apply for beta).
 - Data lives on each device (IndexedDB, via `host.js`), and moves between devices as a backup
-  file, or by cloud sync for closed-beta testers (13+ only): Cloudflare Access sign-in, one
+  file, or by cloud sync: Cloudflare Access sign-in, one
   private Durable Object per tester (`/api/songburner/`), merging in `host.js`. See the README's
   "Cloud sync" section. Don't add other servers or logins unless asked.
 - The old copy in Kyle's `Claude Files\songburner-app` folder is retired. This repo is the source.
-- Test in a browser before opening a PR: Playwright and Chromium are preinstalled in cloud
-  sessions. Serve the repo root with a static server and open `/songburner/`.
+- **Tests:** `node --test tests/*.test.mjs` (the Worker's sign-in check and Vault in Node, the app
+  in Chromium against `tests/mock-server.mjs`). They run on every pull request
+  (`.github/workflows/tests.yml`), with a check that the generated files match `Code.gs`. Add a
+  test for each bug you fix. Playwright and Chromium are preinstalled in cloud sessions.
 
 ## Class (`class/`)
 

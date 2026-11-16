@@ -2,10 +2,13 @@
    Network first, so a new build shows up the next time you open the app with
    a connection; the last copy that loaded is kept for when there is none.
    Songs and scores are not in here - they live in IndexedDB (see host.js). */
-/* v2: drops any API answers v1 saved. */
-var CACHE = 'songburner-shell-v2';
-var SHELL = ['./', 'index.html', 'host.js', 'engine.js', 'app.js', 'fonts.css',
-             'manifest.webmanifest', 'backup/', 'backup/backup.js',
+/* v2: drops any API answers v1 saved.
+   v3 (beta 1.08): the app's pages are for signed-in testers only (worker/index.js,
+   songBurnerGate), so they are not fetched at install; each is kept the first time it loads
+   signed in. A signed-out visitor gets the sign-in page with status 401, which is never kept. */
+var CACHE = 'songburner-shell-v3';
+var SHELL = ['host.js', 'engine.js', 'app.js', 'fonts.css',
+             'manifest.webmanifest', 'backup/backup.js',
              'fonts/bebas-neue-latin.woff2', 'fonts/inter-var-latin.woff2',
              'fonts/ibm-plex-mono-400-latin.woff2', 'fonts/ibm-plex-mono-500-latin.woff2',
              'fonts/ibm-plex-mono-600-latin.woff2', 'icons/icon-180.png',
@@ -55,7 +58,9 @@ self.addEventListener('fetch', function (e) {
   e.respondWith(new Promise(function (resolve, reject) {
     var done = false;
     function finish(res) { if (!done && res) { done = true; resolve(res); } }
-    var timer = setTimeout(function () {
+    /* A page waits for the network, which decides whether you are signed in. The saved
+       copy is only for when there is no network at all. */
+    var timer = req.mode === 'navigate' ? null : setTimeout(function () {
       slowUntil = Date.now() + 15000;
       cached().then(finish);
     }, Date.now() < slowUntil ? 0 : SLOW);

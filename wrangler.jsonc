@@ -18,7 +18,10 @@
     "directory": "./",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/api/*", "/studio/api/*", "/songburner/account/*"]
+    // Song Burner's pages go through the Worker so only signed-in testers get the app.
+    "run_worker_first": ["/api/*", "/studio/api/*", "/songburner/account/*",
+                         "/songburner/", "/songburner/index.html",
+                         "/songburner/backup/", "/songburner/backup/index.html"]
   },
   // The Class app's decks, pictures and plans. Private: no public access, only through the Worker.
   "r2_buckets": [

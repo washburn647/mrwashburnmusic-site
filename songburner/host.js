@@ -904,10 +904,15 @@
     var finish = function () {
       setAccount(null);
       try { localStorage.removeItem(DASH_ON); } catch (e) {}
+      // the offline copy of the app's pages goes too: they are for signed-in testers
+      var dropCache = window.caches ? caches.keys().then(function (ks) {
+        return Promise.all(ks.filter(function (k) { return k.indexOf('songburner-') === 0; })
+          .map(function (k) { return caches.delete(k); }));
+      }).catch(function () {}) : null;
       // ends the site's own session cookie, then the Access login behind it
       var end = fetch(API + 'signout', { method: 'POST', credentials: 'same-origin', redirect: 'manual' })
         .catch(function () {});
-      return Promise.all([dropBase(), end]).then(function () {
+      return Promise.all([dropBase(), end, dropCache]).then(function () {
         location.href = '/cdn-cgi/access/logout';
       });
     };
