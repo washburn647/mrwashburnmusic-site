@@ -1,7 +1,9 @@
 # Song Burner on mrwashburnmusic.com
 
-Served at `/songburner/`. Installable on phones (Share > Add to Home Screen, or
-the browser's Install button) and works offline once it has loaded once.
+Served at `/songburner/`, to signed-in beta testers only (since beta 1.08): anyone
+else gets the sign-in page, `gate/`, with Sign in and Apply for beta. Installable on
+phones (Share > Add to Home Screen, or the browser's Install button) and works
+offline once it has loaded once signed in.
 
 ## Where the code lives
 
@@ -39,8 +41,10 @@ the browser's Install button) and works offline once it has loaded once.
 
 Testers sign in with Cloudflare Access (a code emailed to them), and their
 library is kept in one private Durable Object each, named by a hash of their
-email. The app stays public and works offline; only the account part sits
-behind Access. The free Zero Trust plan allows 50 users, and Kyle's own studio
+email. Access guards only `songburner/account/`, where Sign in lands; the Worker
+then gives the browser a 30-day session cookie of the site's own, and checks it
+before serving the app's pages (`/songburner/`, `/songburner/backup/`) or
+answering `/api/songburner/`. The scripts, fonts and icons stay plain files. The free Zero Trust plan allows 50 users, and Kyle's own studio
 sign-in is one of them. Beta testers are 13 and up.
 
 Switching it on, once, in the Cloudflare dashboard (Zero Trust; menu names as of

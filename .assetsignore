@@ -7,3 +7,5 @@ wrangler.jsonc
 songburner/src
 CLAUDE.md
 worker
+tests
+.github

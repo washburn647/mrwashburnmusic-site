@@ -3407,6 +3407,36 @@ tabs changed again, so the next save that works takes them along. The page
 gives each run its id before the first try, and `apiSaveAttempt` writes no row
 when that id is already there, so "Send it again" cannot log the same run twice.
 
+**Signed-in testers only — beta 1.08.** The whole app is for the closed beta.
+The Worker answers `/songburner/` and `/songburner/backup/` itself
+(`songBurnerGate`, and `run_worker_first` in wrangler.jsonc): a valid
+`sb_session` whose tester the studio has not removed gets the page, with
+`Cache-Control: private, no-cache` so the browser comes back each time; anyone
+else gets `songburner/gate/` with status 401. The cookie now goes to two paths,
+`/api/songburner/` and `/songburner/`, and nowhere else on the site. A tester
+signed in before 1.08 has it only for the API: the sign-in page asks
+`/api/songburner/me`, which hands it to `/songburner/` for the rest of the
+session, and reloads once. Sign-in still lasts 30 days.
+
+`sw.js` (cache v3) no longer fetches the pages at install, keeps each page the
+first time it loads signed in, and never keeps a 401. A page waits for the
+network (no 2.5-second fallback for pages, only for scripts and fonts), so being
+signed out shows the sign-in page; the saved copy is only for no network at all.
+Signing out deletes the saved copies.
+
+The scripts, fonts and icons stay plain files: the code is public on GitHub, and
+nothing in them is anyone's data. The page, the songs and the scores are what
+sign-in protects.
+
+**Tests — beta 1.08.** `tests/` holds the checks that run on every pull request
+(`.github/workflows/tests.yml`): the Worker's sign-in check, session cookie,
+Vault, dashboard and beta requests in Node (`worker.test.mjs`, loading the
+Worker through `cf-loader.mjs`), and the app in Chromium against a stand-in for
+the website (`songburner.test.mjs`, `mock-server.mjs`): saves during sync,
+number titles, shared computers, failed saves, lyrics search, the dashboard
+probe, links and escaping. The workflow also rebuilds from `Code.gs` and fails
+if the generated files differ. Each fix from here on adds its test.
+
 **Only web addresses become links.** The YouTube and Spotify cells turn into
 links on the song page only when they start with http:// or https://. A backup
 or a synced library can carry anything in those cells.

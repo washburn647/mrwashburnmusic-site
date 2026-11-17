@@ -12,6 +12,8 @@
    - /api/songburner/: Song Burner's cloud copy, one private library per signed-in tester,
      behind its own Cloudflare Access application (see songBurnerApi and Vault).
    - /studio/api/songburner/: the studio's view of the Song Burner testers (see songBurnerStudio).
+   - /songburner/ and /songburner/backup/: the app's pages, served only to a signed-in tester;
+     everyone else gets the sign-in page (see songBurnerGate).
 
    wrangler.jsonc sets ACCESS_TEAM (the Zero Trust team domain) and ACCESS_AUD
    (the Access application's Audience tag). */
@@ -42,6 +44,13 @@ export default {
     if (live) return liveApi(request, env, !!live[1], live[2]);
     if (url.pathname === '/songburner/account/' || url.pathname === '/songburner/account/index.html') {
       return songBurnerSignIn(request, env);
+    }
+    if (SB_GATED.test(url.pathname)) {
+      try {
+        return await songBurnerGate(request, env);
+      } catch (err) {
+        return reply({ error: 'server error' }, 500);
+      }
     }
     if (url.pathname.startsWith('/studio/api/songburner/')) {
       if (!env.ACCESS_TEAM || !env.ACCESS_AUD || !env.VAULTS) return reply({ error: 'not set up' }, 503);
@@ -886,7 +895,8 @@ const MAX_LIBRARY = 24 * 1024 * 1024;
 /* SONG BURNER'S OWN SESSION COOKIE.
    Access guards /songburner/account/, the page Sign in lands on. When a request reaches it,
    Access has just checked who it is, so the Worker hands the browser a session cookie of its
-   own, signed here and sent only to /api/songburner/. The API reads that cookie.
+   own, signed here and sent to /api/songburner/ (the API) and to /songburner/ (the app's pages,
+   see songBurnerGate): the same value under two paths, so it goes nowhere else on the site.
    Why: every Access application on this domain shares one CF_Authorization cookie, so a
    browser also signed in to the studio could arrive at /api/songburner/ carrying the
    studio's token. Access answered with a redirect the app cannot follow, and the app looked
@@ -901,7 +911,7 @@ async function sbKey(env) {
 const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)))
   .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-async function sbMint(env, email) {
+export async function sbMint(env, email) {
   const body = JSON.stringify({ e: email, x: Math.floor(Date.now() / 1000) + SB_DAYS * 86400 });
   const payload = b64url(new TextEncoder().encode(body));
   const sig = await crypto.subtle.sign('HMAC', await sbKey(env), new TextEncoder().encode(payload));
@@ -917,13 +927,49 @@ async function sbSession(request, env) {
     if (!ok) return null;
     const body = part(m[1]);
     if (typeof body.e !== 'string' || !(body.x > Date.now() / 1000)) return null;
-    return { email: body.e, iat: body.x - SB_DAYS * 86400 };
+    return { email: body.e, iat: body.x - SB_DAYS * 86400, token: m[1] + '.' + m[2], exp: body.x };
   } catch (e) {
     return null;
   }
 }
-function sbCookie(value, maxAge) {
-  return `${SB_COOKIE}=${value}; Path=/api/songburner/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+const SB_PATHS = ['/api/songburner/', '/songburner/'];
+function sbCookie(value, maxAge, path = SB_PATHS[0]) {
+  return `${SB_COOKIE}=${value}; Path=${path}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+}
+/** Sets (or, with maxAge 0, clears) the session cookie on both of its paths. */
+function sbCookies(res, value, maxAge) {
+  for (const path of SB_PATHS) res.headers.append('Set-Cookie', sbCookie(value, maxAge, path));
+  return res;
+}
+
+/* THE APP IS FOR SIGNED-IN TESTERS ONLY (beta 1.08). The app's pages (/songburner/ and
+   /songburner/backup/) are served only with a valid session cookie whose tester has not been
+   removed in the studio. Everyone else gets the sign-in page, songburner/gate/, with status 401
+   so the app's offline copy (sw.js) never keeps it. The scripts, fonts and icons stay plain
+   files: the code is public on GitHub anyway, and nothing in them is anyone's data.
+   No-cache on the app's pages, so a browser always comes back here before reusing one. */
+const SB_GATED = /^\/songburner\/(index\.html)?$|^\/songburner\/backup\/(index\.html)?$/;
+
+export async function songBurnerGate(request, env) {
+  let ok = false;
+  if (env.SONGBURNER_AUD && env.VAULTS) {
+    const who = await sbSession(request, env);
+    if (who) {
+      const vault = env.VAULTS.get(env.VAULTS.idFromName('songburner:' + await sha256(who.email)));
+      ok = await vault.allowed(who.iat);
+    }
+  }
+  if (ok) {
+    const res = await env.ASSETS.fetch(request);
+    const out = new Response(res.body, res);
+    out.headers.set('Cache-Control', 'private, no-cache');
+    return out;
+  }
+  const page = await env.ASSETS.fetch(new Request(new URL('/songburner/gate/', request.url)));
+  const out = new Response(page.body, { status: 401, headers: page.headers });
+  out.headers.set('Cache-Control', 'no-store');
+  out.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return out;
 }
 
 /** The sign-in landing page. Behind Access, so a valid token here starts a session.
@@ -933,9 +979,9 @@ function sbCookie(value, maxAge) {
 async function songBurnerSignIn(request, env) {
   // a plain GET, so the asset never comes back as a 304 with no page to put the cookie on
   const page = await env.ASSETS.fetch(new Request(new URL('/songburner/account/', request.url)));
-  const done = async (code, cookie) => {
+  const done = async (code, token) => {
     const res = new Response(page.body, page);
-    if (cookie) res.headers.append('Set-Cookie', cookie);
+    if (token) sbCookies(res, token, SB_DAYS * 86400);
     res.headers.set('X-SB-Signin', code);
     res.headers.set('Cache-Control', 'no-store');
     return res;
@@ -947,16 +993,14 @@ async function songBurnerSignIn(request, env) {
   if (!who) return done('bad-token');
   const email = typeof who.email === 'string' ? who.email.trim().toLowerCase() : '';
   if (!email) return done('no-email');
-  return done('ok', sbCookie(await sbMint(env, email), SB_DAYS * 86400));
+  return done('ok', await sbMint(env, email));
 }
 
 async function songBurnerApi(request, env, path, ctx) {
   if (!env.SONGBURNER_AUD || !env.VAULTS) return reply({ error: 'not set up' }, 503);
   const method = request.method;
   if (path === 'signout' && method === 'POST') {
-    const out = reply({ ok: true });
-    out.headers.append('Set-Cookie', sbCookie('', 0));
-    return out;
+    return sbCookies(reply({ ok: true }), '', 0);
   }
   if (path === 'apply') return betaApply(request, env, ctx);
   // The session cookie, or an Access token while /api/songburner/ is still behind Access too.
@@ -978,7 +1022,14 @@ async function songBurnerApi(request, env, path, ctx) {
   const roster = sbRoster(env);
   if (path === 'me' && method === 'GET') {
     later(roster.seen(hash, email));
-    return reply({ email });
+    /* A tester signed in before the app's pages needed the cookie has it only under
+       /api/songburner/: give it to /songburner/ too, for what is left of the session. */
+    const res = reply({ email });
+    if (who.token) {
+      const left = Math.floor(who.exp - Date.now() / 1000);
+      if (left > 0) res.headers.append('Set-Cookie', sbCookie(who.token, left, SB_PATHS[1]));
+    }
+    return res;
   }
   if (path === 'dashboard') return dashSetup(request, vault, hash, method);
   if (path !== 'library') return reply({ error: 'not found' }, 404);

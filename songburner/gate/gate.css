@@ -1,0 +1,28 @@
+:root { --ink: #1F2A24; --paper: #EFEAE0; --card: #F7F4EC; --gold: #C79A3E; --gold-soft: #E0BE73;
+  --teal: #2F6E62; --text: #2A2620; --muted: #6C6656; --border: #D8D0BC; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { min-height: 100vh; display: grid; place-items: center; background: var(--paper); color: var(--text);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif; text-align: center;
+  padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); }
+main { width: 100%; max-width: 340px; display: grid; gap: 12px; justify-items: center; }
+.logo { border-radius: 16px; }
+h1 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 44px; letter-spacing: .04em;
+  color: var(--ink); margin: 0; line-height: 1; }
+.pill { margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; background: var(--gold-soft); color: var(--ink); border-radius: 999px; padding: 3px 10px; }
+.muted { color: var(--muted); font-size: 14px; margin: 0; min-height: 1em; }
+#out { width: 100%; display: grid; gap: 10px; margin-top: 8px; }
+#out[hidden], form[hidden] { display: none; }
+.btn { display: block; width: 100%; padding: 13px 16px; border-radius: 12px; font: inherit; font-weight: 600;
+  font-size: 16px; text-decoration: none; cursor: pointer; border: 1.5px solid var(--ink); touch-action: manipulation; }
+.btn-gold { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+.btn-outline { background: transparent; color: var(--ink); }
+.btn:disabled { opacity: .5; cursor: default; }
+form { display: grid; gap: 10px; text-align: left; }
+input[type=email] { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--card); font: inherit; font-size: 16px; color: var(--text); }
+.age { display: flex; align-items: center; gap: 8px; font-size: 15px; cursor: pointer; }
+.age input { width: 20px; height: 20px; margin: 0; }
+.privacy { color: var(--teal); font-weight: 600; font-size: 14px; margin-top: 8px; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
