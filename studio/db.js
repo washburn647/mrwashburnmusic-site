@@ -12,7 +12,8 @@ function db() {
       const req = indexedDB.open(DB_NAME, VERSION);
       req.onupgradeneeded = () => {
         const d = req.result;
-        // cues: { id, title, created, updated, rows: [{ id, dur, say, screen, notes }] }
+        // cues: { id, title, notes, created, updated, scenes: [{ id, name, branches: [{ id, slate, what, notes }] }] }
+        //   (older sheets have rows: [{ id, dur, say, screen, notes }]; studio/cues/cues.js upgrades them)
         if (!d.objectStoreNames.contains('cues')) d.createObjectStore('cues', { keyPath: 'id' });
         // students: { id, name, instrument, day, time, created, updated, goals: [{ id, text, status }],
         //   lessons: [{ id, date, note, private, stars, sticker, minutes,
