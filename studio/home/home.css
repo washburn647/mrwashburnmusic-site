@@ -1,0 +1,40 @@
+/* The homepage editor (radio.css gives it the status line, tabs and buttons). */
+.form { display: grid; gap: 12px; max-width: 640px; margin-bottom: 20px; }
+.form label { display: grid; gap: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8A968C; }
+.form input { font-size: 18px; text-transform: none; letter-spacing: 0; color: #2F4A3A; border: 0; border-radius: 10px; padding: 8px 10px; background: #fff; }
+.form input:focus { outline: 2px solid #2F4A3A; }
+h2 { font-weight: 600; font-size: 20px; margin: 24px 0 8px; }
+
+.notes td, .places td { vertical-align: middle; }
+.notes select, .places select { font: inherit; border: 0; background: transparent; padding: 6px; border-radius: 8px; color: inherit; }
+.notes select:focus { background: #F6F1E4; outline: none; }
+.notes .move { white-space: nowrap; width: 1%; }
+.notes .pitch, .notes .beats { width: 120px; }
+.dot { display: inline-block; width: 14px; height: 10px; border-radius: 50%; transform: rotate(-22deg); margin-right: 6px; vertical-align: middle; }
+.dot.soon { background: transparent !important; border: 2.5px solid currentColor; }
+.places .used { color: #8A968C; font-size: 14px; white-space: nowrap; }
+.places tr.bad td { background: #FBEDE8; }
+.hint { color: #8A968C; font-size: 14px; margin: -2px 0 10px; }
+
+.photos { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
+.photos li { display: grid; grid-template-columns: 140px 1fr auto; gap: 14px; align-items: center; background: #fff; border-radius: 14px; padding: 10px; }
+.photos li.off { opacity: .55; }
+.photos .thumb { width: 140px; height: 90px; border-radius: 8px; object-fit: cover; background: #EFE8D6; }
+.photos .ctl { display: grid; gap: 6px; font-size: 15px; }
+.photos input[type=range] { width: 100%; max-width: 280px; }
+.photos .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .photos li { grid-template-columns: 96px 1fr; }
+  .photos .thumb { width: 96px; height: 70px; }
+  .photos li > :last-child { grid-column: 1 / -1; text-align: right; }
+}
+@media (max-width: 700px) {
+  .notes tr { grid-template-columns: 70px 1fr 1fr; align-items: center; }
+  .notes td.move { grid-row: span 2; width: auto; }
+  .notes td[data-label="Place"] { grid-column: 2 / -1; }
+  .notes td.pitch, .notes td.beats { width: auto; }
+  .notes td.tools { grid-column: 1 / -1; }
+  .notes select { width: 100%; }
+  .notes td[data-label="Place"] select { width: calc(100% - 24px); }
+  .places tr { padding-left: 6px; }
+}

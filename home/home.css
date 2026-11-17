@@ -221,9 +221,7 @@ body[data-who="grownups"] {
 .slide.on img { animation: pan 12s ease-out both; }
 @keyframes pan { from { transform: scale(1.12); } to { transform: scale(1); } }
 .slide img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-/* which part of each photo stays in view when it is cropped */
-.at-guitar { object-position: 50% 10%; }
-.at-marimba { object-position: 50% 0; }
+/* which part of each photo stays in view when it is cropped: set per photo in home.json (y) */
 .tint { background: var(--panel); mix-blend-mode: multiply; }
 body[data-who="kids"] .stage { --lift: 1.05; }
 

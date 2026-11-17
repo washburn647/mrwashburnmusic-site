@@ -1,41 +1,26 @@
 /* The homepage: a kid or grown-up question, then that side's menu, drawn as notes on a staff.
    Nothing here is sent anywhere. The answer and the sound switch stay in this browser. */
 
-/* Each place on the site. href: open now. Without one it shows "Coming soon". */
-const PLACES = {
-  burner: { name: 'Song Burner', about: 'Memorize lyrics, one line at a time.', href: '/songburner/' },
-  radio: { name: 'Radio', about: 'Turn the dial and find a station.', href: '/radio/' },
-  maker: { name: 'Musician Maker', about: 'Rhythm and melody games, one after another.' },
-  videos: { name: 'Song Videos', about: 'Sing and move along with Mr. Washburn.' },
-  games: { name: 'Games', about: 'Quick games for ears, eyes and voices.' },
-  museum: { name: 'Instrument Museum', about: 'Play every instrument in the hall.' },
-  oldtime: { name: 'Old Time Corner', about: 'Old time tunes to play along with, one part at a time or all together.' },
-  family: { name: 'Parent & Child Corner', about: 'Music to make at home with babies and young kids.' },
-  fame: { name: 'Hall of Fame', about: 'Each year’s honored composers, people and more.' },
-  library: { name: 'Music Library', about: 'Recordings to listen to.' },
-  courses: { name: 'Instrument Courses', about: 'First steps on an instrument.' },
-  myLesson: { name: 'My Lesson', about: 'Sign in to your lesson page.', href: '/lesson/' },
-  lessons: { name: 'Private Lessons', about: 'Lessons with Mr. Washburn.', extra: { label: 'Student sign-in', href: '/lesson/' } },
-};
+/* What the page says and links to is in home.json, or what Kyle published from the studio
+   (/studio/home/, /api/live/home.json), which comes first. ?preview shows the studio's unpublished
+   draft, kept in this browser. Each note's n is its place on the staff: 0 is the bottom line,
+   1 the space above it, and so on; beats is how long it lasts when the tune plays. */
+let C = null;
+let PLACES = {};
+const SIDES = { kids: null, grownups: null };
 
-/* Each side's menu. n is the note's place on the staff: 0 is the bottom line, 1 the space
-   above it, and so on. beats is how long it lasts when the tune plays.
-   Kids: so mi la so mi. Grown-ups: the start of Ode to Joy. */
-const SIDES = {
-  kids: {
-    headline: 'Let’s make music!',
-    lede: '',
-    other: 'Grown-ups',
-    notes: [['maker', 5, 1], ['videos', 3, 1], ['games', 6, 0.5], ['museum', 5, 0.5], ['myLesson', 3, 1]],
-  },
-  grownups: {
-    headline: 'Music for every age.',
-    lede: 'Songs, games and lessons from Mr. Washburn.',
-    other: 'Kids',
-    notes: [['burner', 4, 1], ['radio', 4, 1], ['maker', 5, 1], ['videos', 6, 1], ['games', 6, 1], ['museum', 5, 1],
-      ['oldtime', 4, 1], ['family', 3, 1], ['fame', 2, 1], ['library', 2, 1], ['courses', 3, 1], ['lessons', 4, 1]],
-  },
-};
+async function content() {
+  if (new URLSearchParams(location.search).has('preview')) {
+    try { const d = JSON.parse(localStorage.getItem('studio-home-draft') || 'null'); if (d && d.places) return d; } catch { /* none */ }
+  }
+  for (const u of ['/api/live/home.json', 'home.json']) {
+    try {
+      const r = await fetch(u, { cache: 'no-cache' });
+      if (r.ok) return await r.json();
+    } catch { /* next */ }
+  }
+  return null;
+}
 
 /* A colour for each note name, from the bottom line (E) up. */
 const COLORS = ['#E0A800', '#5E9E2E', '#0E9384', '#6B4FA8', '#D2468C', '#DC3B30', '#EC7F1A'];
@@ -120,7 +105,7 @@ addEventListener('keydown', wake);
 let who = '';
 
 function show(side, { fresh = false } = {}) {
-  who = side in SIDES ? side : '';
+  who = (side === 'kids' || side === 'grownups') && SIDES[side] ? side : '';
   hideCard();
   stopTune();
   document.body.dataset.who = who;
@@ -130,11 +115,11 @@ function show(side, { fresh = false } = {}) {
   remember('mwm-home-who', who);
   if (location.hash !== `#${who}`) history.replaceState(null, '', `#${who}`);
   const s = SIDES[who];
-  $('headline').textContent = s.headline;
-  $('lede').textContent = s.lede;
+  $('headline').textContent = s.headline || '';
+  $('lede').textContent = s.lede || '';
   $('lede').hidden = !s.lede;
-  $('switch').textContent = s.other;
-  draw(s.notes);
+  $('switch').textContent = s.switch || (who === 'kids' ? 'Grown-ups' : 'Kids');
+  draw(s.notes.filter((x) => PLACES[x.place]));
   if (fresh) { site.classList.remove('arrive'); void site.offsetWidth; site.classList.add('arrive'); scrollTo(0, 0); }
 }
 
@@ -146,14 +131,14 @@ for (const door of gate.querySelectorAll('.door')) {
   });
 }
 $('switch').addEventListener('click', () => show(who === 'kids' ? 'grownups' : 'kids', { fresh: true }));
-addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h !== who) show(h in SIDES ? h : ''); });
+addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h !== who) show(h); });
 
 /* ---------- The staff ---------- */
 
 let cells = [];
 
 function draw(notes) {
-  cells = notes.map(([id, n, beats], i) => {
+  cells = notes.map(({ place: id, n, beats }, i) => {
     const place = PLACES[id];
     const open = !!place.href;
     const cell = el(open ? 'a' : 'button', { class: `cell notecell ${open ? 'open' : 'soon'} ${n >= 4 ? 'down' : 'up'}` });
@@ -257,7 +242,7 @@ function showCard(cell) {
     ...(p.about ? [el('p', {}, p.about)] : []),
     el('div', { class: 'card-row' },
       p.href ? el('a', { class: 'go', href: p.href }, 'Open') : el('span', { class: 'soon-chip' }, 'Coming soon'),
-      ...(p.extra ? [el('a', { class: 'go', href: p.extra.href }, p.extra.label)] : [])));
+      ...(p.extraHref && p.extraLabel ? [el('a', { class: 'go', href: p.extraHref }, p.extraLabel)] : [])));
   card.style.setProperty('--c', cell.style.getPropertyValue('--c'));
   card.hidden = false;
   const box = cell.getBoundingClientRect();
@@ -312,14 +297,14 @@ playBtn.addEventListener('click', () => {
 
 /* ---------- Photos, behind the top of the page ---------- */
 
-const slides = [...document.querySelectorAll('.slide')];
-const dots = slides.map((_, i) => el('button', { type: 'button', 'aria-label': `Photo ${i + 1}`, onclick: () => { showSlide(i); runSlides(); } }));
-$('dots').append(...dots);
+let slides = [];
+let dots = [];
 let slide = 0;
 let slideTimer = 0;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 
 function showSlide(i) {
+  if (!slides.length) return;
   slide = (i + slides.length) % slides.length;
   slides.forEach((s, k) => s.classList.toggle('on', k === slide));
   dots.forEach((d, k) => d.classList.toggle('on', k === slide));
@@ -328,8 +313,18 @@ function runSlides() {
   clearInterval(slideTimer);
   if (!still.matches) slideTimer = setInterval(() => { if (!document.hidden && !site.hidden) showSlide(slide + 1); }, 5000);
 }
-showSlide(0);
-runSlides();
+function photos(list) {
+  slides = list.map((p) => {
+    const img = el('img', { src: `photos/${p.file}`, alt: '' });
+    img.style.objectPosition = `50% ${Number(p.y) || 0}%`;
+    return el('div', { class: 'slide' }, img);
+  });
+  $('slides').replaceChildren(...slides);
+  dots = slides.length > 1 ? slides.map((_, i) => el('button', { type: 'button', 'aria-label': `Photo ${i + 1}`, onclick: () => { showSlide(i); runSlides(); } })) : [];
+  $('dots').replaceChildren(...dots);
+  showSlide(0);
+  runSlides();
+}
 
 /* The big note plays too. */
 const bigNote = $('bignote');
@@ -343,5 +338,17 @@ bigNote.addEventListener('click', () => {
 
 /* ---------- Start ---------- */
 
+C = await content();
+if (C) {
+  PLACES = Object.fromEntries((C.places || []).map((p) => [p.id, p]));
+  SIDES.kids = C.kids;
+  SIDES.grownups = C.grownups;
+  if (C.question) $('gate-q').textContent = C.question;
+  if (C.kidButton) gate.querySelector('.door-kid .door-name').textContent = C.kidButton;
+  if (C.grownButton) gate.querySelector('.door-grown .door-name').textContent = C.grownButton;
+  $('sign').textContent = C.sign || '';
+  $('sign').hidden = !C.sign;
+  photos(C.photos || []);
+}
 const asked = location.hash.slice(1);
-show(asked in SIDES ? asked : asked === 'choose' ? '' : recall('mwm-home-who') || '');
+show(asked === 'kids' || asked === 'grownups' ? asked : asked === 'choose' ? '' : recall('mwm-home-who') || '');
