@@ -267,3 +267,25 @@ test('text from a library shows as text, and only web addresses become links', a
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('both Scramble games set words or lines missing as a percentage range', async () => {
+  const { ctx, page, errors } = await open();
+  const games = async () => (await call(page, 'init', {})).data.settings.games;
+  let g = await games();
+  for (const id of ['wordScramble', 'lineScramble']) {
+    for (const lv of ['easy', 'medium', 'hard']) {
+      assert.ok(Array.isArray(g[id][lv].missPct), `${id} ${lv} has a missPct range`);
+      assert.equal(g[id][lv].missN, undefined, `${id} ${lv} has no count left`);
+    }
+  }
+  assert.deepEqual(g.wordScramble.hard.missPct, [40, 50]);
+  // A range sets, comes back ordered, and nothing past 99% is taken
+  let r = await call(page, 'setSettings', { settings: { games: { wordScramble: { hard: { missPct: [50, 40] } },
+    lineScramble: { easy: { missPct: [30, 120] } } } } });
+  assert.equal(r.ok, true);
+  g = await games();
+  assert.deepEqual(g.wordScramble.hard.missPct, [40, 50]);
+  assert.deepEqual(g.lineScramble.easy.missPct, [10, 20], 'an out-of-range value falls back');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

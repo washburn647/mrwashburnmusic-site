@@ -6496,7 +6496,7 @@
 
     var steps = [];
     for (var s = 0; s < secs.length; s++) {
-      steps.push(scrambleStep(secs[s], d.missN, pickCount(d.extraN), pools, d.trayN, d.mix));
+      steps.push(scrambleStep(secs[s], d.missPct, pickCount(d.extraN), pools, d.trayN, d.mix));
     }
     runStepGame(song, idx, mode, level, steps, ['You put', 'The song']);
   }
@@ -6538,9 +6538,11 @@
       }
       rows.push(row);
     }
-    /* A COUNT PER VERSE as of beta 1.0, not a share: "three words gone" is
-       the thing you can picture. Never the whole verse and never none of it. */
-    var take = pickCount(miss);
+    /* A SHARE OF EACH VERSE - beta 1.09, drawn fresh per verse from the
+       level's range. It was a count from beta 1.0, but three words is a lot of
+       a short verse and nothing of a long one. Never the whole verse and never
+       none of it. */
+    var take = Math.round(flat.length * pctOf(miss) / 100);
     if (take > flat.length - 1) take = flat.length - 1;
     if (take < 1) take = 1;
     var picks = shuffled(flat).slice(0, take);
@@ -6825,15 +6827,15 @@
 
     /* Which lines come out, over the whole song. Addressed by section and line
        so the board can be rebuilt from the song rather than from a flat list. */
-    /* A COUNT OVER THE WHOLE SONG as of beta 1.0, drawn from the level's
-       range, and spread wherever chance puts it - so some verses come through
-       whole and you have to look at each one to find out. */
+    /* A SHARE OF THE WHOLE SONG'S LINES - beta 1.09 (a count from beta 1.0),
+       drawn from the level's range, and spread wherever chance puts it - so
+       some verses come through whole and you have to look at each one. */
     var gaps = {}, slots = [], totalLines = 0, every = [];
     for (i = 0; i < secs.length; i++) {
       totalLines += secs[i].lines.length;
       for (j = 0; j < secs[i].lines.length; j++) every.push(i + ':' + j);
     }
-    var nMiss = Math.min(pickCount(d.missN), Math.max(1, totalLines - 1));
+    var nMiss = shareOf(totalLines, pctOf(d.missPct));
     var lift = shuffled(every).slice(0, nMiss);
     for (j = 0; j < lift.length; j++) gaps[lift[j]] = true;
     // a run with nothing at all to do is not a run
@@ -11009,9 +11011,9 @@
 
       box.appendChild(kvRow(wd.label, rangeBoxes(gameId, lv, wd.key, d[wd.key], wd.min, wd.max, wd.label),
         wd.pct ? '%' : ''));
-      if (d.missN !== undefined) {
+      if (d.missPct !== undefined) {
         var missLabel = u.one === 'word' ? 'Words missing per verse' : 'Lines missing';
-        box.appendChild(kvRow(missLabel, rangeBoxes(gameId, lv, 'missN', d.missN, 1, 40, missLabel)));
+        box.appendChild(kvRow(missLabel, rangeBoxes(gameId, lv, 'missPct', d.missPct, 1, 99, missLabel), '%'));
       }
       if (d.editPct !== undefined) {
         var swapLabel = 'Words swapped in an altered ' + u.one;

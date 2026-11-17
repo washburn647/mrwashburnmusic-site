@@ -1,5 +1,5 @@
 /* GENERATED from src/Code.gs by tools/build_songburner.py. Do not edit.
-   The server half of Song Burner beta 1.08. host.js calls this once per request with
+   The server half of Song Burner beta 1.09. host.js calls this once per request with
    its stand-ins for the Apps Script services. */
 window.SongBurnerEngine = function (services) {
 var SpreadsheetApp = services.SpreadsheetApp;
@@ -25,7 +25,7 @@ var HtmlService = services.HtmlService;
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.08';
+var BUILD    = 'beta 1.09';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -1466,8 +1466,9 @@ var GAME_LEVELS = ['easy', 'medium', 'hard'];
  *                            or from the other songs
  *   editPct  how much of an altered piece is swapped, as a range. HIGH is
  *            EASY: a verse a third wrong reads as wrong on sight
- *   missN    Scramble: how many go missing - words per verse, or lines over the
- *            whole song
+ *   missPct  Scramble: what share goes missing, as a range - of the words in
+ *            each verse, or of the lines over the whole song. Drawn fresh per
+ *            verse, so no two verses lose the same share
  *   extraN   Scramble Words: extra words in the bank that belong nowhere
  *   trayN    Scramble: how many chips are ON THE TRAY at once. The deck is
  *            unchanged - every missing word or line is still in it, plus the
@@ -1509,9 +1510,9 @@ var GAME_SPEC = {
   lineOrder:    { unit: 'line',    kinds: LINE_KINDS,
                   dials: ['wrongN', 'mix', 'editPct', 'choiceCount', 'floor', 'secsPer'] },
   wordScramble: { unit: 'word',    kinds: WORD_KINDS,
-                  dials: ['missN', 'extraN', 'mix', 'trayN', 'floor', 'secsPer'] },
+                  dials: ['missPct', 'extraN', 'mix', 'trayN', 'floor', 'secsPer'] },
   lineScramble: { unit: 'line',    kinds: ['altered', 'other', 'alteredOther'],
-                  dials: ['missN', 'wrongN', 'mix', 'editPct', 'trayN', 'floor', 'secsPer'] },
+                  dials: ['missPct', 'wrongN', 'mix', 'editPct', 'trayN', 'floor', 'secsPer'] },
   wordImpostor: { unit: 'word',    kinds: WORD_KINDS,
                   dials: ['fakePct', 'mix', 'fakesPer', 'floor', 'secsPer'] },
   lineImpostor: { unit: 'line',    kinds: LINE_KINDS,
@@ -1644,7 +1645,7 @@ function defaultGameSettings() {
        of the verse confirmed for you at any one moment. See makeTray. */
     wordScramble: lv3(function (i) {
       var c = base(i, [1.6, 1.3, 1]);
-      c.missN = [[2, 3], [3, 5], [5, 8]][i];
+      c.missPct = [[10, 20], [25, 35], [40, 50]][i];
       c.extraN = [[0, 2], [2, 4], [6, 8]][i];
       c.mix = { own: 50, otherW: 50 };
       c.trayN = [8, 12, 16][i];
@@ -1652,7 +1653,7 @@ function defaultGameSettings() {
     }),
     lineScramble: lv3(function (i) {
       var c = base(i, [9, 7, 5]);
-      c.missN = [[2, 4], [4, 7], [7, 10]][i];
+      c.missPct = [[10, 20], [25, 35], [40, 50]][i];
       c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice();
       c.mix = { altered: 50, other: 50, alteredOther: 0 };
       c.trayN = [8, 12, 16][i];
@@ -2169,7 +2170,9 @@ function applyStored(s, stored) {
         if (mine.editPct !== undefined) mine.editPct = range(theirs.editPct, 5, 100, mine.editPct);
         if (mine.fakePct !== undefined) mine.fakePct = range(theirs.fakePct, 5, 100, mine.fakePct);
         if (mine.wrongN  !== undefined) mine.wrongN  = range(theirs.wrongN, 0, 8, mine.wrongN);
-        if (mine.missN   !== undefined) mine.missN   = range(theirs.missN, 1, 40, mine.missN);
+        /* missPct replaced the missN count in beta 1.09. An old count is not
+           a share, so it is not read and the level takes the default. */
+        if (mine.missPct !== undefined) mine.missPct = range(theirs.missPct, 1, 99, mine.missPct);
         if (mine.extraN  !== undefined) mine.extraN  = range(theirs.extraN, 0, 12, mine.extraN);
         if (mine.mix     !== undefined) mine.mix     = mixOf(theirs.mix, GAME_SPEC[g].kinds, mine.mix);
         if (mine.fakesPer !== undefined) mine.fakesPer = num(theirs.fakesPer, 1, 8, mine.fakesPer, true);

@@ -183,7 +183,7 @@ function gameDial(m, key) {
     wrongN: [`Wrong ${u.many}`, 0, 8, 1],
     fakePct: [`Wrong ${u.many}`, 5, 100, 1, '%'],
     extraN: ['Extra words', 0, 12, 1],
-    missN: [m.id === 'wordScramble' ? 'Words missing per verse' : 'Lines missing', 1, 40, 1],
+    missPct: [m.id === 'wordScramble' ? 'Words missing per verse' : 'Lines missing', 1, 99, 1, '%'],
     editPct: [`Words swapped in an altered ${u.one}`, 5, 100, 1, '%'],
     fakesPer: ['Choices behind each', 1, 8, 1],
     choiceCount: ['Choices per question', 2, 8, 1],
