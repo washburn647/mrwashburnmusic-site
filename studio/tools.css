@@ -29,9 +29,6 @@ td { background: #fff; vertical-align: top; padding: 6px; }
 td:first-child { border-radius: 12px 0 0 12px; }
 td:last-child { border-radius: 0 12px 12px 0; }
 .num { width: 28px; text-align: center; color: #8A968C; padding-top: 12px; }
-.at { width: 52px; color: #8A968C; font-variant-numeric: tabular-nums; padding-top: 12px; }
-.dur { width: 64px; }
-.dur input { width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
 td input, td textarea { box-sizing: border-box; width: 100%; border: 0; background: transparent; padding: 6px; border-radius: 8px; resize: none; overflow: hidden; line-height: 1.35; }
 td input:focus, td textarea:focus { background: #F6F1E4; outline: none; }
 .tools { width: 1%; white-space: nowrap; }

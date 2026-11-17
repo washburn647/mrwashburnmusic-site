@@ -1,0 +1,39 @@
+.song-notes { box-sizing: border-box; width: 100%; border: 0; border-radius: 12px; background: #fff; padding: 10px 12px; margin-bottom: 20px; resize: none; overflow: hidden; line-height: 1.35; }
+.song-notes:focus { outline: 2px solid #2F4A3A; }
+
+.scenes { display: grid; gap: 14px; margin-bottom: 20px; }
+.scene { background: #fff; border-radius: 16px; padding: 10px 12px 12px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.scene-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.scene-head .num { width: 24px; text-align: center; color: #8A968C; }
+.scene-name { flex: 1; min-width: 0; font-size: 20px; font-weight: 600; border: 0; background: transparent; padding: 4px 6px; border-radius: 8px; }
+
+.branch { display: grid; grid-template-columns: 170px 1fr 1.4fr auto; gap: 6px; align-items: start; padding: 4px 0 4px 32px; border-top: 1px solid #EFE8D6; }
+.branch input, .branch textarea { box-sizing: border-box; width: 100%; border: 0; background: transparent; padding: 6px; border-radius: 8px; resize: none; overflow: hidden; line-height: 1.35; }
+.branch .slate { font-weight: 600; letter-spacing: .02em; background: #F6F1E4; }
+.branch .slate.twice { box-shadow: inset 0 0 0 2px #A33B2B; }
+.branch .notes { color: #5B6B5F; }
+.scene input:focus, .scene textarea:focus { background: #F6F1E4; outline: 2px solid #2F4A3A; }
+.scene .tools { width: auto; white-space: nowrap; flex: none; }
+
+.add-branch { margin: 6px 0 0 32px; padding: 4px 10px; font-size: 15px; background: transparent; box-shadow: none; color: #5B6B5F; }
+.add-branch:hover, .add-branch:focus-visible { background: #EFE8D6; box-shadow: none; }
+
+@media (max-width: 700px) {
+  .branch { grid-template-columns: 1fr auto; grid-template-areas: "slate tools" "what what" "notes notes"; padding-left: 0; }
+  .branch .slate { grid-area: slate; }
+  .branch .what { grid-area: what; }
+  .branch .notes { grid-area: notes; }
+  .branch .tools { grid-area: tools; }
+  .scene-head .num { display: none; }
+  .add-branch { margin-left: 0; }
+}
+
+@media print {
+  .song-notes:placeholder-shown { display: none; }
+  .branch textarea:placeholder-shown { visibility: hidden; }
+  .scene { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+  .scene .tools { display: none; }
+  .branch { grid-template-columns: 200px 1fr 1.4fr; }
+  .branch .slate { font-size: 20px; background: transparent; }
+  .branch .slate:placeholder-shown::placeholder { color: #2F4A3A; }
+}
