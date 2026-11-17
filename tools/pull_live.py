@@ -2,8 +2,9 @@
 
   python tools/pull_live.py [https://mrwashburnmusic.com]
 
-Groove Lab's, the game workshop's, the voice recorder's and the radio editor's "Publish to
-site" put grooves, game options, voice takes, units and radio stations
+Groove Lab's, the game workshop's, the voice recorder's, the radio editor's and the homepage
+editor's "Publish to site" put grooves, game options, voice takes, units, radio stations and
+the homepage
 on the live site (/api/live/, see worker/index.js), and the site plays those ahead of the
 repo's files. This brings the repo up to date with them, so a later change starts from what
 is live and the repo stays a full copy:
@@ -12,6 +13,7 @@ is live and the repo stays a full copy:
   - each voice's takes → assets/sounds/voice/<voice>/<take id>.mp3, listed in index.json
   - units → assets/patterns/units.json
   - radio stations → radio/stations.json
+  - the homepage → home/home.json
 Anything not published is left as it is.
 """
 
@@ -65,6 +67,15 @@ def main():
         print('radio: radio/stations.json')
     else:
         print('radio: none published')
+
+    home = get(base, '/api/live/home.json')
+    if home:
+        with open(os.path.join(ROOT, 'home', 'home.json'), 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(json.loads(home), f, indent=1, ensure_ascii=False)
+            f.write('\n')
+        print('home: home/home.json')
+    else:
+        print('home: none published')
 
     units = get(base, '/api/live/units.json')
     if units:

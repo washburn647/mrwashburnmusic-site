@@ -1,0 +1,187 @@
+{
+ "question": "Who’s making music today?",
+ "kidButton": "I’m a kid",
+ "grownButton": "I’m a grown-up",
+ "sign": "More coming soon!",
+ "places": [
+  {
+   "id": "burner",
+   "name": "Song Burner",
+   "about": "Memorize lyrics, one line at a time.",
+   "href": "/songburner/"
+  },
+  {
+   "id": "radio",
+   "name": "Radio",
+   "about": "Turn the dial and find a station.",
+   "href": "/radio/"
+  },
+  {
+   "id": "maker",
+   "name": "Musician Maker",
+   "about": "Rhythm and melody games, one after another."
+  },
+  {
+   "id": "videos",
+   "name": "Song Videos",
+   "about": "Sing and move along with Mr. Washburn."
+  },
+  {
+   "id": "games",
+   "name": "Games",
+   "about": "Quick games for ears, eyes and voices."
+  },
+  {
+   "id": "museum",
+   "name": "Instrument Museum",
+   "about": "Play every instrument in the hall."
+  },
+  {
+   "id": "oldtime",
+   "name": "Old Time Corner",
+   "about": "Old time tunes to play along with, one part at a time or all together."
+  },
+  {
+   "id": "family",
+   "name": "Parent & Child Corner",
+   "about": "Music to make at home with babies and young kids."
+  },
+  {
+   "id": "fame",
+   "name": "Hall of Fame",
+   "about": "Each year’s honored composers, people and more."
+  },
+  {
+   "id": "library",
+   "name": "Music Library",
+   "about": "Recordings to listen to."
+  },
+  {
+   "id": "courses",
+   "name": "Instrument Courses",
+   "about": "First steps on an instrument."
+  },
+  {
+   "id": "mylesson",
+   "name": "My Lesson",
+   "about": "Sign in to your lesson page.",
+   "href": "/lesson/"
+  },
+  {
+   "id": "lessons",
+   "name": "Private Lessons",
+   "about": "Lessons with Mr. Washburn.",
+   "extraHref": "/lesson/",
+   "extraLabel": "Student sign-in"
+  }
+ ],
+ "kids": {
+  "headline": "Let’s make music!",
+  "lede": "",
+  "switch": "Grown-ups",
+  "notes": [
+   {
+    "place": "maker",
+    "n": 5,
+    "beats": 1
+   },
+   {
+    "place": "videos",
+    "n": 3,
+    "beats": 1
+   },
+   {
+    "place": "games",
+    "n": 6,
+    "beats": 0.5
+   },
+   {
+    "place": "museum",
+    "n": 5,
+    "beats": 0.5
+   },
+   {
+    "place": "mylesson",
+    "n": 3,
+    "beats": 1
+   }
+  ]
+ },
+ "grownups": {
+  "headline": "Music for all ages.",
+  "lede": "Songs, games and lessons from Mr. Washburn.",
+  "switch": "Kids",
+  "notes": [
+   {
+    "place": "burner",
+    "n": 4,
+    "beats": 1
+   },
+   {
+    "place": "radio",
+    "n": 4,
+    "beats": 1
+   },
+   {
+    "place": "maker",
+    "n": 5,
+    "beats": 1
+   },
+   {
+    "place": "videos",
+    "n": 6,
+    "beats": 1
+   },
+   {
+    "place": "games",
+    "n": 6,
+    "beats": 1
+   },
+   {
+    "place": "museum",
+    "n": 5,
+    "beats": 1
+   },
+   {
+    "place": "oldtime",
+    "n": 4,
+    "beats": 1
+   },
+   {
+    "place": "family",
+    "n": 3,
+    "beats": 1
+   },
+   {
+    "place": "fame",
+    "n": 2,
+    "beats": 1
+   },
+   {
+    "place": "library",
+    "n": 2,
+    "beats": 1
+   },
+   {
+    "place": "courses",
+    "n": 3,
+    "beats": 1
+   },
+   {
+    "place": "lessons",
+    "n": 4,
+    "beats": 1
+   }
+  ]
+ },
+ "photos": [
+  {
+   "file": "guitar.jpg",
+   "y": 10
+  },
+  {
+   "file": "marimba.jpg",
+   "y": 0
+  }
+ ]
+}

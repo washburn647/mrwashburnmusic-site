@@ -507,12 +507,14 @@ async function boxApi(request, env, [, studio, id, results]) {
    GET  /api/live/radio.json                the radio's station library and Kyle's picks; any
                                             origin may read it (Kyle's dashboard does)
                                             (radio/stations.json's shape)
+   GET  /api/live/home.json                 the homepage's words, menu and photos (home/home.json's shape)
    GET  /api/live/voice/:voice.json         a voice's takes (index.json "voices" entry's shape)
    GET  /api/live/voice/:voice/:take.mp3    one take
    PUT  /studio/api/live/grooves            publish the grooves                       (Kyle)
    PUT  /studio/api/live/games              publish the game options                  (Kyle)
    PUT  /studio/api/live/songburner         publish Song Burner's default settings    (Kyle)
    PUT  /studio/api/live/radio              publish the radio's stations              (Kyle)
+   PUT  /studio/api/live/home               publish the homepage                      (Kyle)
    GET  /studio/api/live/voice/:voice       ids of the takes already uploaded         (Kyle)
    PUT  /studio/api/live/voice/:voice/:take.mp3   upload a take                       (Kyle)
    PUT  /studio/api/live/voice/:voice       publish the take list and units; takes it
@@ -541,6 +543,7 @@ async function liveApi(request, env, studio, path) {
     if (path === 'units.json') return live.text('units');
     if (path === 'games.json') return live.text('games');
     if (path === 'songburner.json') return live.text('songburner');
+    if (path === 'home.json') return live.text('home');
     if (path === 'radio.json') {
       // Kyle's desktop dashboard reads the station list too, so any page may fetch it (it's public).
       const r = await live.text('radio');
@@ -588,6 +591,15 @@ async function liveApi(request, env, studio, path) {
     const clean = radioLibrary(data);
     if (typeof clean === 'string') return reply({ error: clean }, 400);
     return live.putText('radio', JSON.stringify(clean));
+  }
+  if (path === 'home' && method === 'PUT') {
+    const text = await request.text();
+    if (text.length > 128 * 1024) return reply({ error: 'too big' }, 413);
+    let data;
+    try { data = JSON.parse(text); } catch { return reply({ error: 'not JSON' }, 400); }
+    const clean = homeContent(data);
+    if (typeof clean === 'string') return reply({ error: clean }, 400);
+    return live.putText('home', JSON.stringify(clean));
   }
   if ((m = /^voice\/([^/]+)$/.exec(path)) && VOICE.test(m[1])) {
     if (method === 'GET') return live.takeIds(m[1]);
@@ -641,8 +653,68 @@ function radioLibrary(data) {
   return { genres, picks, stations };
 }
 
+// The homepage is public and kids use it, so only the fields it reads are kept, and every link
+// stays on this site's public pages. Returns the cleaned content, or what is wrong with it.
+const PLACE = /^[a-z0-9-]{1,30}$/;
+const PHOTO = /^[a-z0-9-]{1,40}\.(jpg|png|webp)$/;
+const PRIVATE = /^\/(studio|class|sub|api|songburner\/account)(\/|$)/;
+function homeContent(data) {
+  if (!data || typeof data !== 'object') return 'not content';
+  const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  const link = (v) => {
+    const s = str(v, 200);
+    if (!s) return '';
+    if (!s.startsWith('/') || s.startsWith('//') || /[\s\\]/.test(s) || PRIVATE.test(s)) return null;
+    return s;
+  };
+  if (!Array.isArray(data.places) || data.places.length > 60) return 'no places';
+  const places = [];
+  const ids = new Set();
+  for (const p of data.places) {
+    if (!p || typeof p !== 'object' || !PLACE.test(p.id) || ids.has(p.id)) return 'bad place id';
+    const name = str(p.name, 40);
+    if (!name) return `no name: ${p.id}`;
+    const o = { id: p.id, name, about: str(p.about, 200) };
+    for (const k of ['href', 'extraHref']) {
+      const l = link(p[k]);
+      if (l === null) return `link must be a public page on this site: ${name}`;
+      if (l) o[k] = l;
+    }
+    const label = str(p.extraLabel, 30);
+    if (label && o.extraHref) o.extraLabel = label;
+    ids.add(p.id);
+    places.push(o);
+  }
+  const side = (s, name) => {
+    if (!s || typeof s !== 'object' || !Array.isArray(s.notes)) return `no ${name} side`;
+    if (s.notes.length > 30) return `too many notes: ${name}`;
+    const notes = [];
+    for (const x of s.notes) {
+      if (!x || !ids.has(x.place)) return `a note has no place: ${name}`;
+      const n = Math.round(Number(x.n));
+      if (!(n >= -3 && n <= 10)) return `note too high or low: ${name}`;
+      const beats = [0.5, 1, 1.5, 2].includes(Number(x.beats)) ? Number(x.beats) : 1;
+      notes.push({ place: x.place, n, beats });
+    }
+    return { headline: str(s.headline, 80), lede: str(s.lede, 200), switch: str(s.switch, 20), notes };
+  };
+  const kids = side(data.kids, 'kids');
+  if (typeof kids === 'string') return kids;
+  const grownups = side(data.grownups, 'grown-ups');
+  if (typeof grownups === 'string') return grownups;
+  const photos = [];
+  for (const p of (Array.isArray(data.photos) ? data.photos : []).slice(0, 8)) {
+    if (!p || !PHOTO.test(p.file)) return 'bad photo';
+    photos.push({ file: p.file, y: Math.max(0, Math.min(100, Math.round(Number(p.y) || 0))) });
+  }
+  return {
+    question: str(data.question, 80), kidButton: str(data.kidButton, 30), grownButton: str(data.grownButton, 30),
+    sign: str(data.sign, 40), places, kids, grownups, photos
+  };
+}
+
 export class Live extends DurableObject {
-  // text:<name> → { chunks, at }, text:<name>:<i> → a piece of it (names: grooves, games, units, songburner, radio, voice:<voice>)
+  // text:<name> → { chunks, at }, text:<name>:<i> → a piece of it (names: grooves, games, units, songburner, radio, home, voice:<voice>)
   // takes:<voice> → [take ids], take:<voice>:<id> → the mp3's bytes
   async text(name) {
     const meta = await this.ctx.storage.get(`text:${name}`);

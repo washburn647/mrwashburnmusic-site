@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Mr. Washburn Music</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#2F4A3A">
+  <link rel="stylesheet" href="home.css">
+  <script type="module" src="home.js"></script>
+</head>
+<body>
+  <!-- The treble clef is Bravura's (SIL Open Font License), as drawn by VexFlow. -->
+  <svg width="0" height="0" class="defs" aria-hidden="true"><defs>
+    <symbol id="clef" viewBox="0 60 40 80"><path fill="currentColor" d="M20.191 93.208C20.135 92.731,20.191 92.703,20.444 92.45C24.824 88.378,28.138 83.24,28.138 77.034C28.138 73.524,27.155 70.042,25.498 67.627C24.881 66.729,23.842 65.606,23.392 65.606C22.831 65.606,21.567 66.644,20.781 67.543C17.776 70.856,16.794 75.911,16.794 80.123C16.794 82.454,17.102 85.093,17.383 86.75C17.468 87.227,17.496 87.311,17.018 87.733C11.178 92.534,5 98.319,5 106.49C5 113.51,9.802 120.193,19.714 120.193C20.641 120.193,21.708 120.109,22.522 119.94C22.943 119.856,23.027 119.828,23.112 120.305C23.589 123.029,24.207 126.539,24.207 128.449C24.207 134.43,20.163 135.16,17.776 135.16C15.586 135.16,14.547 134.514,14.547 133.98C14.547 133.7,14.912 133.587,15.839 133.278C17.102 132.913,18.535 131.846,18.535 129.488C18.535 127.269,17.131 125.36,14.66 125.36C11.964 125.36,10.335 127.522,10.335 130.021C10.335 132.632,11.908 136.62,18.029 136.62C20.725 136.62,25.976 135.384,25.976 128.533C25.976 126.202,25.246 122.383,24.824 119.856C24.74 119.379,24.768 119.435,25.33 119.182C29.43 117.554,32.125 114.128,32.125 109.551C32.125 104.384,28.334 99.807,22.382 99.807C21.343 99.807,21.343 99.807,21.202 99.077M24.01 71.867C25.33 71.867,26.425 72.962,26.425 75.181C26.425 79.674,22.578 83.324,19.405 86.104C19.124 86.357,18.956 86.3,18.872 85.767C18.703 84.728,18.619 83.352,18.619 82.06C18.619 75.742,21.539 71.867,24.01 71.867M19.602 99.414C19.714 100.172,19.714 100.144,18.984 100.369C15.446 101.576,13.115 104.777,13.115 108.231C13.115 111.853,15.025 114.437,17.776 115.391C18.113 115.504,18.591 115.616,18.872 115.616C19.18 115.616,19.349 115.419,19.349 115.167C19.349 114.886,19.04 114.774,18.759 114.661C17.046 113.931,15.839 112.19,15.839 110.337C15.839 108.006,17.411 106.293,19.882 105.591C20.528 105.423,20.612 105.479,20.697 105.928L22.718 117.975C22.803 118.424,22.747 118.424,22.157 118.536C21.511 118.649,20.697 118.733,19.882 118.733C12.806 118.733,8.229 114.802,8.229 109.186C8.229 106.799,8.65 103.598,11.992 99.807C14.435 97.111,16.288 95.595,18.17 94.079C18.591 93.742,18.675 93.798,18.759 94.219M22.382 105.844C22.297 105.339,22.353 105.226,22.831 105.283C26.116 105.563,28.812 108.315,28.812 111.853C28.812 114.409,27.267 116.458,25.021 117.61C24.544 117.834,24.459 117.834,24.375 117.357"/></symbol>
+  </defs></svg>
+
+  <section class="gate" id="gate" aria-labelledby="gate-q">
+    <span class="float" aria-hidden="true">♪</span><span class="float" aria-hidden="true">♫</span><span class="float" aria-hidden="true">♩</span><span class="float" aria-hidden="true">♬</span><span class="float" aria-hidden="true">♪</span><span class="float" aria-hidden="true">♫</span>
+    <img class="gate-logo" src="/assets/logo/option-f-notes-badge-icon.svg" alt="" width="150" height="150">
+    <p class="gate-name">Mr. Washburn Music</p>
+    <h1 id="gate-q">Who’s making music today?</h1>
+    <div class="doors">
+      <button class="door door-kid" type="button" data-who="kids">
+        <span class="door-art" aria-hidden="true"><i class="n n1"></i><i class="n n2"></i><i class="beam"></i></span>
+        <span class="door-name">I’m a kid</span>
+      </button>
+      <button class="door door-grown" type="button" data-who="grownups">
+        <span class="door-art" aria-hidden="true"><i class="n n3"></i></span>
+        <span class="door-name">I’m a grown-up</span>
+      </button>
+    </div>
+  </section>
+
+  <div class="site" id="site" hidden>
+    <div class="stage">
+      <div class="slides" id="slides" aria-hidden="true">
+        <div class="tint"></div>
+      </div>
+      <svg class="waves" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 30 C200 -10 400 70 600 30 S1000 -10 1200 30"/>
+        <path d="M0 45 C200 5 400 85 600 45 S1000 5 1200 45"/>
+        <path d="M0 60 C200 20 400 100 600 60 S1000 20 1200 60"/>
+        <path d="M0 75 C200 35 400 115 600 75 S1000 35 1200 75"/>
+        <path d="M0 90 C200 50 400 130 600 90 S1000 50 1200 90"/>
+      </svg>
+      <header class="top wrap">
+        <a class="brand" href="/home/" aria-label="Mr. Washburn Music"><img src="/assets/logo/option-f-notes-badge-icon.svg" alt="" width="44" height="44"><span>Mr. Washburn Music</span></a>
+        <div class="top-right">
+          <button class="pill" id="sound" type="button" aria-pressed="true">Sound on</button>
+          <button class="pill pill-switch" id="switch" type="button"></button>
+        </div>
+      </header>
+      <section class="hero wrap">
+        <div class="hero-text">
+          <h1 id="headline"></h1>
+          <p id="lede"></p>
+          <div class="dots" id="dots"></div>
+        </div>
+        <button class="bignote" id="bignote" type="button" aria-label="Play a note"><i class="bigstem"></i><i class="bighead"><i class="face"></i></i></button>
+      </section>
+    </div>
+
+    <main class="wrap">
+      <section class="menu">
+        <div class="menu-head">
+          <button class="play" id="play" type="button" aria-label="Play the tune"><i></i></button>
+          <div class="sign" id="sign"></div>
+        </div>
+        <nav class="staff" id="staff" aria-label="Places to go"></nav>
+      </section>
+    </main>
+
+    <footer class="wrap">© 2026 Mr. Washburn Music</footer>
+  </div>
+
+  <div class="card" id="card" hidden></div>
+</body>
+</html>
