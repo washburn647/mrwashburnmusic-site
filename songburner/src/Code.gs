@@ -14,7 +14,7 @@
  *   5. Open the /exec URL, hit "Import from Doc" on first run.
  */
 
-var BUILD    = 'beta 1.08';
+var BUILD    = 'beta 1.09';
 var APP_NAME = 'Song Burner';
 
 /* NOTHING IN HERE IDENTIFIES A PARTICULAR PERSON ANY MORE - 1.60.
@@ -1455,8 +1455,9 @@ var GAME_LEVELS = ['easy', 'medium', 'hard'];
  *                            or from the other songs
  *   editPct  how much of an altered piece is swapped, as a range. HIGH is
  *            EASY: a verse a third wrong reads as wrong on sight
- *   missN    Scramble: how many go missing - words per verse, or lines over the
- *            whole song
+ *   missPct  Scramble: what share goes missing, as a range - of the words in
+ *            each verse, or of the lines over the whole song. Drawn fresh per
+ *            verse, so no two verses lose the same share
  *   extraN   Scramble Words: extra words in the bank that belong nowhere
  *   trayN    Scramble: how many chips are ON THE TRAY at once. The deck is
  *            unchanged - every missing word or line is still in it, plus the
@@ -1498,9 +1499,9 @@ var GAME_SPEC = {
   lineOrder:    { unit: 'line',    kinds: LINE_KINDS,
                   dials: ['wrongN', 'mix', 'editPct', 'choiceCount', 'floor', 'secsPer'] },
   wordScramble: { unit: 'word',    kinds: WORD_KINDS,
-                  dials: ['missN', 'extraN', 'mix', 'trayN', 'floor', 'secsPer'] },
+                  dials: ['missPct', 'extraN', 'mix', 'trayN', 'floor', 'secsPer'] },
   lineScramble: { unit: 'line',    kinds: ['altered', 'other', 'alteredOther'],
-                  dials: ['missN', 'wrongN', 'mix', 'editPct', 'trayN', 'floor', 'secsPer'] },
+                  dials: ['missPct', 'wrongN', 'mix', 'editPct', 'trayN', 'floor', 'secsPer'] },
   wordImpostor: { unit: 'word',    kinds: WORD_KINDS,
                   dials: ['fakePct', 'mix', 'fakesPer', 'floor', 'secsPer'] },
   lineImpostor: { unit: 'line',    kinds: LINE_KINDS,
@@ -1633,7 +1634,7 @@ function defaultGameSettings() {
        of the verse confirmed for you at any one moment. See makeTray. */
     wordScramble: lv3(function (i) {
       var c = base(i, [1.6, 1.3, 1]);
-      c.missN = [[2, 3], [3, 5], [5, 8]][i];
+      c.missPct = [[10, 20], [25, 35], [40, 50]][i];
       c.extraN = [[0, 2], [2, 4], [6, 8]][i];
       c.mix = { own: 50, otherW: 50 };
       c.trayN = [8, 12, 16][i];
@@ -1641,7 +1642,7 @@ function defaultGameSettings() {
     }),
     lineScramble: lv3(function (i) {
       var c = base(i, [9, 7, 5]);
-      c.missN = [[2, 4], [4, 7], [7, 10]][i];
+      c.missPct = [[10, 20], [25, 35], [40, 50]][i];
       c.wrongN = WRONG[i].slice(); c.editPct = EDIT[i].slice();
       c.mix = { altered: 50, other: 50, alteredOther: 0 };
       c.trayN = [8, 12, 16][i];
@@ -2158,7 +2159,9 @@ function applyStored(s, stored) {
         if (mine.editPct !== undefined) mine.editPct = range(theirs.editPct, 5, 100, mine.editPct);
         if (mine.fakePct !== undefined) mine.fakePct = range(theirs.fakePct, 5, 100, mine.fakePct);
         if (mine.wrongN  !== undefined) mine.wrongN  = range(theirs.wrongN, 0, 8, mine.wrongN);
-        if (mine.missN   !== undefined) mine.missN   = range(theirs.missN, 1, 40, mine.missN);
+        /* missPct replaced the missN count in beta 1.09. An old count is not
+           a share, so it is not read and the level takes the default. */
+        if (mine.missPct !== undefined) mine.missPct = range(theirs.missPct, 1, 99, mine.missPct);
         if (mine.extraN  !== undefined) mine.extraN  = range(theirs.extraN, 0, 12, mine.extraN);
         if (mine.mix     !== undefined) mine.mix     = mixOf(theirs.mix, GAME_SPEC[g].kinds, mine.mix);
         if (mine.fakesPer !== undefined) mine.fakesPer = num(theirs.fakesPer, 1, 8, mine.fakesPer, true);
@@ -13004,7 +13007,7 @@ body {
 
     var steps = [];
     for (var s = 0; s < secs.length; s++) {
-      steps.push(scrambleStep(secs[s], d.missN, pickCount(d.extraN), pools, d.trayN, d.mix));
+      steps.push(scrambleStep(secs[s], d.missPct, pickCount(d.extraN), pools, d.trayN, d.mix));
     }
     runStepGame(song, idx, mode, level, steps, ['You put', 'The song']);
   }
@@ -13046,9 +13049,11 @@ body {
       }
       rows.push(row);
     }
-    /* A COUNT PER VERSE as of beta 1.0, not a share: "three words gone" is
-       the thing you can picture. Never the whole verse and never none of it. */
-    var take = pickCount(miss);
+    /* A SHARE OF EACH VERSE - beta 1.09, drawn fresh per verse from the
+       level's range. It was a count from beta 1.0, but three words is a lot of
+       a short verse and nothing of a long one. Never the whole verse and never
+       none of it. */
+    var take = Math.round(flat.length * pctOf(miss) / 100);
     if (take > flat.length - 1) take = flat.length - 1;
     if (take < 1) take = 1;
     var picks = shuffled(flat).slice(0, take);
@@ -13333,15 +13338,15 @@ body {
 
     /* Which lines come out, over the whole song. Addressed by section and line
        so the board can be rebuilt from the song rather than from a flat list. */
-    /* A COUNT OVER THE WHOLE SONG as of beta 1.0, drawn from the level's
-       range, and spread wherever chance puts it - so some verses come through
-       whole and you have to look at each one to find out. */
+    /* A SHARE OF THE WHOLE SONG'S LINES - beta 1.09 (a count from beta 1.0),
+       drawn from the level's range, and spread wherever chance puts it - so
+       some verses come through whole and you have to look at each one. */
     var gaps = {}, slots = [], totalLines = 0, every = [];
     for (i = 0; i < secs.length; i++) {
       totalLines += secs[i].lines.length;
       for (j = 0; j < secs[i].lines.length; j++) every.push(i + ':' + j);
     }
-    var nMiss = Math.min(pickCount(d.missN), Math.max(1, totalLines - 1));
+    var nMiss = shareOf(totalLines, pctOf(d.missPct));
     var lift = shuffled(every).slice(0, nMiss);
     for (j = 0; j < lift.length; j++) gaps[lift[j]] = true;
     // a run with nothing at all to do is not a run
@@ -17517,9 +17522,9 @@ body {
 
       box.appendChild(kvRow(wd.label, rangeBoxes(gameId, lv, wd.key, d[wd.key], wd.min, wd.max, wd.label),
         wd.pct ? '%' : ''));
-      if (d.missN !== undefined) {
+      if (d.missPct !== undefined) {
         var missLabel = u.one === 'word' ? 'Words missing per verse' : 'Lines missing';
-        box.appendChild(kvRow(missLabel, rangeBoxes(gameId, lv, 'missN', d.missN, 1, 40, missLabel)));
+        box.appendChild(kvRow(missLabel, rangeBoxes(gameId, lv, 'missPct', d.missPct, 1, 99, missLabel), '%'));
       }
       if (d.editPct !== undefined) {
         var swapLabel = 'Words swapped in an altered ' + u.one;

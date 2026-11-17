@@ -3210,6 +3210,13 @@ were decoys. Now each level stores:
 - **`missN`** — Scramble: **a count** now, not a share. Words missing per verse
   in Scramble Words (never the whole verse, never none), lines missing over the
   whole song in Scramble Lines.
+- **`missPct`** — **beta 1.09** turned `missN` back into **a share**, as a
+  range: Scramble Words takes 40–50% (say) of the words in **each verse**, drawn
+  fresh per verse; Scramble Lines takes that share of the lines over the whole
+  song. A count was the wrong unit: three words is most of a short verse and
+  nothing of a long one. Defaults on both: Easy 10–20%, Medium 25–35%, Hard
+  40–50%. Never the whole verse, never none. An old `missN` in a stored blob or
+  the site's defaults is not read; the level takes the new default.
 
 On screen each level is a **ring**: one segment per kind, to scale, with the
 count in the middle. Tap a ring to tune that level. Mix sliders rebalance:
