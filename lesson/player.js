@@ -13,6 +13,7 @@
 import { loadOSMD, parseXML, letterName, solfege } from './score.js';
 import { keyboard } from './keyboard.js';
 import * as snd from './sound.js';
+import { activeClock } from './active.js';
 
 const BOOMWHACKER = ['#E5243B', '#F47B20', '#F5C400', '#7DC242', '#11A38B', '#7F4FA3', '#E0569B', '#2F4A3A'];
 const PIANO = /piano|keyboard|organ|harpsichord|celest|clavi/i;
@@ -583,11 +584,11 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     return tAtSec(tl, secAt(tl, a.t0) + (n - a.ctx) * sp());
   }
 
-  let playedFrom = 0;   // when this run of playing began (for practice time)
+  const clock = activeClock();   // practice time of this run of playing
   async function play(countIn = st.countIn) {
     if (playing || !tl.steps.length) return;
     playing = true;
-    playedFrom = Date.now();
+    clock.start();
     // Give the piano a moment to arrive the first time.
     if (!piano) await Promise.race([pianoP, new Promise((r) => setTimeout(r, 2500))]);
     if (!playing) return;
@@ -617,6 +618,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
   }
 
   function schedule() {
+    if (!clock.tick()) { pause(); return; }
     const horizon = snd.now() + LOOK;
     for (;;) {
       const a = anchors[anchors.length - 1];
@@ -677,7 +679,8 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     if (!playing) return;
     pos = anchors.length ? Math.min(posNow(), tl.end) : pos;
     playing = false;
-    if (onPlaying) onPlaying((Date.now() - playedFrom) / 1000);
+    const secs = clock.stop();
+    if (onPlaying) onPlaying(secs);
     clearInterval(timer);
     cancelAnimationFrame(raf);
     voices.forEach((v) => v.stop());
@@ -876,6 +879,11 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     if (ev.key === 'Escape') close();
   }
   document.addEventListener('keydown', onKey);
+  const touch = () => clock.touch();
+  root.addEventListener('pointerdown', touch);
+  document.addEventListener('keydown', touch);
+  const onHide = () => { if (document.hidden) pause(); };
+  document.addEventListener('visibilitychange', onHide);
 
   let lastW = 0;
   let resizeTimer = null;
@@ -894,6 +902,8 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     pause();
     ro.disconnect();
     document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', touch);
+    document.removeEventListener('visibilitychange', onHide);
     Object.values(buses).forEach((b) => b && b.disconnect());
     root.remove();
     document.body.classList.remove('playing-piece');
