@@ -148,6 +148,7 @@ export function openPractice(host, deck, { title = '', history = {}, onEnd, onCl
   }
 
   function score(id, ok, ms, cardEl) {
+    ms = Math.min(ms, 60000);   // a card left up while the device slept counts a minute
     s.n++;
     s.ms += ms;
     const it = (s.items[id] ||= [0, 0, 0]);

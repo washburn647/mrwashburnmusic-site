@@ -32,6 +32,12 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 const newItem = () => ({ id: newId(), title: '', detail: '', link: '', piece: null, setup: {}, deck: null });
 const newLesson = (items = [newItem()]) => ({ id: newId(), date: today(), items, note: '', private: '', stars: 0, minutes: '' });
 const copyItem = (it) => ({ ...newItem(), ...structuredClone(it), id: newId() });
+/* A new lesson starts from the last one's practice list, less what is in the student's library
+   (their page shows that anyway), so the library doesn't pile up in every lesson. */
+const carryOver = (last) => {
+  const items = last ? last.items.filter((it) => !it.shelf).map(copyItem) : [];
+  return items.length ? items : undefined;
+};
 
 /* Older records (before pieces and decks) get the new fields. */
 function upgrade(s) {
@@ -578,9 +584,7 @@ async function showStudent(id, lessonId) {
       chips,
       h('span', { class: 'grow' }),
       h('button', { onclick: async () => {
-        // A new lesson starts from the last one's practice list.
-        const last = student.lessons[student.lessons.length - 1];
-        const fresh = newLesson(last.items.map(copyItem));
+        const fresh = newLesson(carryOver(student.lessons[student.lessons.length - 1]));
         student.lessons.push(fresh);
         save();
         await flush();
@@ -705,6 +709,8 @@ async function showResults(s) {
     if (!weeks.has(d)) weeks.set(d, { d, days: new Set(), secs: 0, pieces: new Map(), decks: new Map() });
     return weeks.get(d);
   };
+  // Pages before November 2026 counted time while a device slept on a piece: cap each one.
+  const MAX_SECS = 30 * 60;
   for (const r of list) {
     const w = week(r.d || '');
     const day = r.t ? new Date(r.t).toDateString() : r.at;
@@ -713,17 +719,18 @@ async function showResults(s) {
       const p = w.pieces.get(r.a) || { opens: 0, plays: 0, secs: 0, modes: {} };
       p.opens++;
       p.plays += r.plays || 0;
-      p.secs += r.secs || 0;
+      const secs = Math.min(r.secs || 0, MAX_SECS);
+      p.secs += secs;
       p.modes[r.mode] = (p.modes[r.mode] || 0) + 1;
       w.pieces.set(r.a, p);
-      w.secs += r.secs || 0;
+      w.secs += secs;
     } else if (r.y !== 'v') {
       const c = w.decks.get(r.a) || { sessions: 0, n: 0, ok: 0 };
       c.sessions++;
       c.n += r.n || 0;
       c.ok += r.ok || 0;
       w.decks.set(r.a, c);
-      w.secs += (r.ms || 0) / 1000;
+      w.secs += Math.min((r.ms || 0) / 1000, MAX_SECS);
       const name = r.a || KINDS[r.k] || '';
       const d = decks.get(name) || { name, k: r.k, cards: {} };
       for (const [card, [tries, right]] of Object.entries(r.items || {})) {
@@ -902,9 +909,7 @@ async function showCalendar(month) {
             await save();
             let lesson = l;
             if (!lesson) {
-              // A new lesson page for that day starts from the latest one's practice list.
-              const last = currentLesson(s);
-              lesson = newLesson(last ? last.items.map(copyItem) : undefined);
+              lesson = newLesson(carryOver(currentLesson(s)));
               lesson.date = iso;
               s.lessons.push(lesson);
               s.updated = Date.now();
