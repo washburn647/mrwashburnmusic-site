@@ -614,6 +614,10 @@ async function showStudent(id, lessonId) {
     h('div', { class: 'bar actions' },
       copy,
       h('button', { onclick: async () => { await flush(); window.open(`${LOCAL_PAGE}#${await linkPart(student, lesson)}`, '_blank', 'noopener'); } }, 'Open page'),
+      h('button', { disabled: API == null || !student.pubSecret, onclick: () => {
+        try { localStorage.setItem('lesson:peek', student.pubSecret); } catch { return; }
+        window.open(LOCAL_PAGE, '_blank', 'noopener');
+      } }, 'Student view'),
       h('span', { class: 'grow' }),
       student.lessons.length > 1 && confirmButton('Delete lesson', 'Delete for good?', async () => {
         const i = student.lessons.indexOf(lesson);

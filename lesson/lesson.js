@@ -76,10 +76,16 @@ window.addEventListener('popstate', () => {
 
 const CODE = 'lesson:code';
 const savedCode = () => { try { return localStorage.getItem(CODE) || ''; } catch { return ''; } };
+/* Kyle's Student view in the studio: a student's pages as they see them, once, in this tab only.
+   Nothing is remembered as signed in and nothing goes back to his practice report. */
+const PEEK = 'lesson:peek';
+let peek = '';
+try { peek = localStorage.getItem(PEEK) || ''; localStorage.removeItem(PEEK); } catch { /* nothing kept */ }
 const logo = () => el('header', {}, el('img', { src: LOGO, alt: 'Mr. Washburn Music' }));
 
 async function show() {
   const hash = decodeURIComponent(location.hash.slice(1));
+  if (!hash && peek) { showLocked(peek, true); return; }
   const code = !hash && savedCode();
   if (code && code.includes('/')) { showLocked(code); return; }
   let page = null;
@@ -107,7 +113,7 @@ function showEntry(problem = '') {
   name.focus();
 }
 
-async function showLocked(code) {
+async function showLocked(code, peeking = false) {
   stop();
   main.replaceChildren(logo(), el('p', { class: 'loading' }, '🎵'));
   let pages;
@@ -118,18 +124,21 @@ async function showLocked(code) {
     return;
   }
   if (!pages || !pages.l?.length) { showEntry(savedCode() !== code ? '✗' : ''); return; }
-  try { localStorage.setItem(CODE, code); } catch { /* private window */ }
-  sendPending(code);
+  if (!peeking) {
+    try { localStorage.setItem(CODE, code); } catch { /* private window */ }
+    sendPending(code);
+  }
+  const report = peeking ? () => {} : (result) => queueResult(code, result);
   const lessons = pages.l.map((l) => cleanPage({ ...l, v: 2, n: pages.n, i: pages.i, p: pages.p }));
   const upcoming = Array.isArray(pages.u) ? pages.u.filter((d) => typeof d === 'string' && /^\d{4}-\d\d-\d\d$/.test(d)).sort() : null;
   // The songs and material Kyle picked for them to keep, from every lesson.
   const shelf = pages.b?.length ? cleanPage({ v: 2, n: pages.n, i: pages.i, t: pages.b, p: pages.p }) : null;
-  const forget = () => { try { localStorage.removeItem(CODE); } catch { /* nothing kept */ } showEntry(); };
+  const forget = peeking ? null : () => { try { localStorage.removeItem(CODE); } catch { /* nothing kept */ } showEntry(); };
   const openShelf = async () => {
     render(shelf, {
       key: await keyFor(`${code}/library`), qr: LESSON_PAGE, shelf: true, lessons, index: -1, open, openShelf, forget,
-      onCards: (it, r) => queueResult(code, { y: 'c', t: Date.now(), d: 'library', a: it.a, ...r }),
-      onPiece: (it, r) => queueResult(code, { y: 'p', t: Date.now(), d: 'library', a: it.a, ...r }),
+      onCards: (it, r) => report({ y: 'c', t: Date.now(), d: 'library', a: it.a, ...r }),
+      onPiece: (it, r) => report({ y: 'p', t: Date.now(), d: 'library', a: it.a, ...r }),
     });
     scrollTo(0, 0);
   };
@@ -138,9 +147,9 @@ async function showLocked(code) {
       key: await keyFor(`${code}/${lessons[index].d}`),
       qr: LESSON_PAGE,
       lessons, index, open, openShelf: shelf && openShelf, upcoming,
-      onCards: (it, r) => queueResult(code, { y: 'c', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
-      onPiece: (it, r) => queueResult(code, { y: 'p', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
-      onVisit: () => visited(code, lessons[index].d),
+      onCards: (it, r) => report({ y: 'c', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
+      onPiece: (it, r) => report({ y: 'p', t: Date.now(), d: lessons[index].d, a: it.a, ...r }),
+      onVisit: peeking ? null : () => visited(code, lessons[index].d),
       forget,
     });
     scrollTo(0, 0);
