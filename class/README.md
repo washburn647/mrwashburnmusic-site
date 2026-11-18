@@ -68,7 +68,11 @@ copyright rules) is in the project's "Classroom slides app plan" doc.
   and the background on its title slide. Other hand edits to a built deck are replaced.
   Presenting a built class with every slide shown, through to the end screen, saves a run
   when Present closes (a `timings` row with `kind: 'run'`: each song's time and the total; time
-  in a deck a slide links to counts for that slide). Nothing else is timed, so a quick look in
+  in a deck a slide links to counts for that slide). The total is class time, first song to last:
+  not the title or exit slide (`classMs` in `store.js`, so older runs show it too); slides between
+  songs show as Other. A gap of 10 minutes with no tick (the device asleep) isn't counted, going
+  back to the title slide from the exit slide starts the next run, and a run under a minute isn't
+  kept. Nothing else is timed, so a quick look in
   Present leaves no times. The class's page lists them under Times. Runs carry `v: 2`; older
   timings were cleared and are dropped on every device (`purgeTimings`, `TIMING_V` in `store.js`).
 - Present keeps the screen awake (Screen Wake Lock) while it is open.

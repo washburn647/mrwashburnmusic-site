@@ -14,9 +14,11 @@
    songs' times and the total) when Present closes; the deck page lists them. */
 
 import { renderSlide } from './render.js';
-import { logTiming, TIMING_V } from './store.js';
+import { logTiming, TIMING_V, classMs } from './store.js';
 import { forGrade, taggedFor, GRADES } from './marks.js';
 import { spinnerOverlay } from './widgets.js';
+
+const ASLEEP = 10 * 60e3;                  // no tick for this long: the device slept, and that time isn't counted
 
 const SPINNER_URL = /spinthewheel\.app|wheelofnames\.com|pickerwheel\.com|classtools\.net\/random-name/i;
 
@@ -84,8 +86,19 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   // Time spent in a deck a slide links to counts for that slide.
   const runMs = new Map();                  // slide index of the class deck -> ms
   const isClass = !!(record.deck.built && !noTimings);
+  let lastRun = null;                       // a run saved before Present closes (see show)
+
+  // Ticks run every 250 ms on screen and at least once a minute behind another app. A longer
+  // gap means the device was asleep (or Present sat suspended): skip it, as if the clock stopped.
+  let lastTick = performance.now();
+  function catchUp() {
+    const now = performance.now();
+    if (now - lastTick > ASLEEP && since != null) since = Math.min(now, since + (now - lastTick));
+    lastTick = now;
+  }
 
   function pause() {
+    catchUp();
     if (since == null) return;
     const ms = performance.now() - since;
     since = null;
@@ -102,6 +115,7 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
   }
 
   function paintTimers() {
+    catchUp();
     const t = clock(elapsed());
     for (const v of frame.querySelectorAll('.timer-val')) if (v.textContent !== t) v.textContent = t;
   }
@@ -128,7 +142,14 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
 
   function show(i) {
     pause();
+    const was = index;
     index = i === MENU && curMenu() ? MENU : clamp(i);
+    // Back to the title slide from the exit slide (the next group, same deck): save the class
+    // just finished, and time the next one on its own.
+    if (isClass && deckId === record.id && was !== index && index === shownIdx()[0] && was === shownIdx().slice(-1)[0]) {
+      lastRun = classRun() || lastRun;
+      runMs.clear();
+    }
     resume();
     const slide = index === MENU ? curMenu() : deck.slides[index];
     const stage = renderSlide(slide, deck, { media, onLink: follow, timer: () => clock(elapsed()), live: true });
@@ -258,10 +279,16 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
     e.preventDefault();
   }
 
+  /** The class deck's slides this sitting shows, in order. */
+  function shownIdx() {
+    const slides = record.deck.slides;
+    return slides.map((sl, i) => i).filter((i) => !skip(slides[i]));
+  }
+
   /** Every slide of the class shown, the last one included: save the run. */
   function classRun() {
     const slides = record.deck.slides;
-    const shown = slides.map((sl, i) => i).filter((i) => !skip(slides[i]));
+    const shown = shownIdx();
     if (!isClass || !shown.length || !shown.every((i) => runMs.has(i))) return null;
     const songs = [];
     for (const i of shown) {
@@ -273,14 +300,16 @@ export function present(record, startAt, media, onClose, findGoogle, opts = {}) 
       else songs.push({ song: name, category: p.category, ms: runMs.get(i) });
     }
     for (const x of songs) x.ms = Math.round(x.ms);
-    const ms = Math.round(shown.reduce((a, i) => a + runMs.get(i), 0));
-    return logTiming({ kind: 'run', v: TIMING_V, deck: record.id, deckName: record.name, built: record.deck.built,
-                at: Date.now(), ms, songs, slides: slides.map((sl, i) => Math.round(runMs.get(i) || 0)) }).catch(() => null);
+    const row = { kind: 'run', v: TIMING_V, deck: record.id, deckName: record.name, built: record.deck.built,
+                  at: Date.now(), songs, slides: slides.map((sl, i) => (shown.includes(i) ? Math.round(runMs.get(i)) : 0)) };
+    row.ms = classMs(row);
+    if (row.ms < 60e3) return null;           // clicked through, not taught
+    return logTiming(row).catch(() => null);
   }
 
   function close() {
     pause();
-    const saved = classRun();
+    const saved = classRun() || lastRun;
     clearInterval(ticker);
     document.removeEventListener('visibilitychange', onVisibility);
     document.removeEventListener('keydown', onKey);

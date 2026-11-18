@@ -133,6 +133,15 @@ export function libraryMedia(rec) {
 export const TIMING_V = 2;
 const current = (row) => row && row.kind === 'run' && row.v >= TIMING_V;
 
+/** A run's class time: from the first song to the last, so not the title slide (up while the
+    class comes in, or before) or the exit slide (up until Present closes). A run's `slides`
+    holds each slide's time, title first and exit last. */
+export function classMs(row) {
+  const s = row.slides;
+  if (!Array.isArray(s) || s.length < 3) return row.ms;
+  return s.slice(1, -1).reduce((a, b) => a + (b || 0), 0);
+}
+
 /** Record a whole-class run. */
 export function logTiming(row) {
   return tx('timings', 'readwrite', (s) => wrap(s.add(row))).then((r) => { changed('timings'); return r; });
