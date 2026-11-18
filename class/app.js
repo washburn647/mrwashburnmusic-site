@@ -259,17 +259,21 @@ async function classTimes(rec) {
   if (!runs.length) return '';
   const songs = [...new Set(runs.flatMap((r) => r.songs.map((x) => x.song)))];
   const date = (at) => new Date(at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  // Time between songs (slides that aren't a song's) gets its own column, so a row adds up.
+  const other = (r) => store.classMs(r) - r.songs.reduce((a, x) => a + x.ms, 0);
+  const others = runs.some((r) => other(r) >= 1000);
   return el('div', { class: 'runs' },
     el('h3', {}, 'Times'),
     el('table', {},
-      el('tr', {}, el('th', {}, ''), ...songs.map((n) => el('th', {}, n)), el('th', {}, 'Total')),
+      el('tr', {}, el('th', {}, ''), ...songs.map((n) => el('th', {}, n)), others ? el('th', {}, 'Other') : '', el('th', {}, 'Total')),
       runs.map((r) => el('tr', {},
         el('td', {}, date(r.at)),
         ...songs.map((n) => {
           const hit = r.songs.find((x) => x.song === n);
           return el('td', {}, hit ? clock(hit.ms) : '');
         }),
-        el('td', {}, clock(r.ms))))));
+        others ? el('td', {}, clock(Math.max(0, other(r)))) : '',
+        el('td', {}, clock(store.classMs(r)))))));
 }
 
 function clock(ms) {
