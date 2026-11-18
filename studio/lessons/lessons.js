@@ -31,6 +31,15 @@ const INSTRUMENTS = ['Piano', 'Guitar'];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const newItem = () => ({ id: newId(), title: '', detail: '', link: '', piece: null, setup: {}, deck: null });
 const newLesson = (items = [newItem()]) => ({ id: newId(), date: today(), items, note: '', private: '', stars: 0, minutes: '' });
+/* A piece's own sections and fingerings (set up from the Library) fill in for a lesson item
+   that has none of its own. */
+const withPiece = (u, p) => {
+  const own = cleanSetup(p?.setup);
+  const out = { ...u };
+  if (!out.sec && own.sec) out.sec = own.sec;
+  if (!out.f && own.f) { out.f = own.f; if (own.fo) out.fo = own.fo; }
+  return out;
+};
 const copyItem = (it) => ({ ...newItem(), ...structuredClone(it), id: newId() });
 /* A new lesson starts from the last one's practice list, less what is in the student's library
    (their page shows that anyway), so the library doesn't pile up in every lesson. */
@@ -134,7 +143,7 @@ async function restoreBackup(file) {
   for (const p of Array.isArray(data.pieces) ? data.pieces : []) {
     if (!p || typeof p.id !== 'string' || typeof p.xml !== 'string' || await pieces.get(p.id)) continue;
     try { pieceInfo(p.xml); } catch { continue; }
-    await pieces.put({ id: p.id, name: str(p.name), title: str(p.title), xml: p.xml, parts: Array.isArray(p.parts) ? p.parts.map(str) : [], measures: Number(p.measures) || 0, created: Number(p.created) || Date.now() });
+    await pieces.put({ id: p.id, name: str(p.name), title: str(p.title), xml: p.xml, parts: Array.isArray(p.parts) ? p.parts.map(str) : [], measures: Number(p.measures) || 0, created: Number(p.created) || Date.now(), setup: cleanSetup(p.setup) });
   }
   for (const e of Array.isArray(data.library) ? data.library : []) {
     if (!e || typeof e.id !== 'string' || !e.item || await library.get(e.id)) continue;
@@ -271,7 +280,10 @@ async function showLibrary() {
       h('div', { class: 'libitem' },
         h('input', { class: 'item-title', value: pieceName(p), 'aria-label': 'Piece name', onchange: (ev) => { p.title = ev.target.value; pieces.put(p); } }),
         h('small', {}, [pieceSmall(p), `${Math.round(p.xml.length / 1024)} KB`].filter(Boolean).join(' · ')),
-        h('button', { class: 'icon', title: 'Play', onclick: () => openPlayer(document.body, { xml: p.xml, title: pieceName(p) }) }, '▶'),
+        h('button', { class: 'icon', title: 'Play', onclick: () => {
+          const keep = (next) => { p.setup = cleanSetup(next); pieces.put(p); };
+          openPlayer(document.body, { xml: p.xml, title: pieceName(p), setup: cleanSetup(p.setup), onSave: keep, onClose: keep });
+        } }, '▶'),
         used.has(p.id) ? null : confirmButton('×', 'Remove?', async () => { await pieces.delete(p.id); showLibrary(); })))));
   }
   app.replaceChildren(
@@ -327,7 +339,7 @@ async function pageFor(s, lesson) {
       }
       if (index[it.piece] >= 0) {
         out.p = index[it.piece];
-        const u = cleanSetup(it.setup);
+        const u = withPiece(cleanSetup(it.setup), await pieces.get(it.piece));
         if (Object.keys(u).length) out.u = u;
       }
     }
@@ -386,7 +398,7 @@ async function showStudent(id, lessonId) {
         if (!chosen) return;
         pieceMap[chosen.id] = chosen;
         item.piece = chosen.id;
-        item.setup = { v: playsKeys() ? 15 : 3, sp: [50, 100] };
+        item.setup = { ...withPiece({}, chosen), v: playsKeys() ? 15 : 3, sp: [50, 100] };
         if (!item.title.trim()) item.title = pieceName(chosen);
         save();
         renderItems();
@@ -408,9 +420,10 @@ async function showStudent(id, lessonId) {
     u.sp ??= [50, 100];
     delete u.iso;
     const changed = () => { save(); };
+    const keep = (next) => { item.setup = { ...next, v: u.v, sp: u.sp }; save(); renderItems(); };
     const player = (mode) => openPlayer(document.body, {
-      xml: p.xml, title: item.title || pieceName(p), setup: cleanSetup(u), mode,
-      ...(mode === 'teach' ? { onSave: (next) => { item.setup = { ...next, v: u.v, sp: u.sp }; save(); renderItems(); } } : {}),
+      xml: p.xml, title: item.title || pieceName(p), setup: withPiece(cleanSetup(u), p), mode,
+      ...(mode === 'teach' ? { onSave: keep, onClose: keep } : {}),
     });
     const num = (value, set, props) => h('input', { type: 'number', class: 'num', value: value ?? '', ...props, onchange: (e) => { set(e.target.value === '' ? null : Math.round(+e.target.value)); changed(); } });
     const [lo, hi] = u.sp;
