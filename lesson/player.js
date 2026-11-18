@@ -101,6 +101,8 @@ function tAtSec(tl, sec) {
 
 /* ---------- The player ---------- */
 
+const TICKS = 960;   // section pickups and cuts are kept in 960ths of a whole note
+
 /* Bar numbers as printed -> measure index. */
 function indexOfBar(osmd, bar) {
   const i = osmd.Sheet.SourceMeasures.findIndex((sm) => sm.MeasureNumber === bar);
@@ -129,8 +131,11 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     click: !!setup.x, countIn: setup.ci === 1, zoom: 0, fingers: { ...(setup.f || {}) }, fo: { ...(setup.fo || {}) },
     muted: new Set(setup.m || []), hidden: new Set(setup.h || []),
     loop: null, picking: null, section: -1,
+    lead: 0, trim: 0,   // the loop starts this much before its first bar (a pickup) and ends this much before its last bar ends (whole notes)
   };
-  const sections = (Array.isArray(setup.sec) ? setup.sec : []).filter((x) => Array.isArray(x) && x.length === 3).map((x) => [...x]);
+  // Sections: [name, first bar, last bar, pickup, cut from the end] (the last two in TICKS of a whole note).
+  const sections = (Array.isArray(setup.sec) ? setup.sec : []).filter((x) => Array.isArray(x) && (x.length === 3 || x.length === 5))
+    .map(([n, a, b, l = 0, t = 0]) => [n, a, b, l, t]);
   const pianoP = snd.instrument('piano', { lo: 21, hi: 108 });
   let piano = null;
   pianoP.then((p) => { piano = p; });
@@ -173,7 +178,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
         const used = new Set(sections.map((x) => x[0]));
         let n = 0;
         while (used.has(String.fromCharCode(65 + (n % 26)))) n++;
-        sections.push([String.fromCharCode(65 + (n % 26)), Math.min(...nums), Math.max(...nums)]);
+        sections.push([String.fromCharCode(65 + (n % 26)), Math.min(...nums), Math.max(...nums), Math.round(st.lead * TICKS), Math.round(st.trim * TICKS)]);
         st.section = sections.length - 1;
         drawLayer();
         fillMore();
@@ -346,9 +351,24 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     const boxes = measureBoxes();
     const sel = st.picking != null ? [st.picking, st.picking] : st.loop;
     if (sel) {
-      for (let i = Math.min(...sel); i <= Math.max(...sel); i++) {
+      const [i0, i1] = [Math.min(...sel), Math.max(...sel)];
+      const lead = st.picking != null ? 0 : st.lead;
+      const trim = st.picking != null ? 0 : st.trim;
+      const marks = [];
+      const paint = (b, x1, x2) => {
+        const box = el('div', { class: `loopbox${st.picking != null ? ' picking' : ''}`, style: `left:${x1}px;top:${b.y - 6}px;width:${Math.max(4, x2 - x1)}px;height:${b.h + 12}px` });
+        layer.append(box);
+        marks.push({ b, x1, x2 });
+      };
+      if (lead > 0 && boxes[i0 - 1]) { const b = boxes[i0 - 1]; paint(b, xAtSrc(boxes, i0 - 1, smEnd(i0 - 1) - lead), b.x + b.w); }
+      for (let i = i0; i <= i1; i++) {
         const b = boxes[i];
-        if (b) layer.append(el('div', { class: `loopbox${st.picking != null ? ' picking' : ''}`, style: `left:${b.x}px;top:${b.y - 6}px;width:${b.w}px;height:${b.h + 12}px` }));
+        if (b) paint(b, b.x, i === i1 && trim > 0 ? xAtSrc(boxes, i, smEnd(i) - trim) : b.x + b.w);
+      }
+      if (teach && st.picking == null && marks.length) {
+        const first = marks[0];
+        const last = marks[marks.length - 1];
+        layer.append(handle('start', first.x1, first.b), handle('end', last.x2, last.b));
       }
     }
     if (st.names === 3) drawFingers(boxes);
@@ -358,12 +378,92 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     if (addSec) addSec.hidden = !(st.loop && st.section < 0);
   }
 
-  /* Each section's name over its first bar. */
+  /* Each section's name over where it starts (its pickup, when it has one). */
   function drawSectionMarks(boxes) {
-    for (const [name, a] of sections) {
-      const b = boxes[indexOfBar(osmd, a)];
-      if (b && name) layer.append(el('div', { class: 'secmark', style: `left:${b.x}px;top:${b.y - 30}px`, textContent: name }));
+    for (const [name, a, , l] of sections) {
+      const i = indexOfBar(osmd, a);
+      if (i == null || !name) continue;
+      const before = l > 0 && boxes[i - 1];
+      const b = before || boxes[i];
+      if (b) layer.append(el('div', { class: 'secmark', style: `left:${before ? xAtSrc(boxes, i - 1, smEnd(i - 1) - l / TICKS) : b.x}px;top:${b.y - 30}px`, textContent: name }));
     }
+  }
+
+  /* ---------- the loop's ends, dragged to a note (studio) ---------- */
+
+  const smStart = (i) => osmd.Sheet.SourceMeasures[i].AbsoluteTimestamp.RealValue;
+  const smEnd = (i) => smStart(i) + osmd.Sheet.SourceMeasures[i].Duration.RealValue;
+  const barOf = (i) => osmd.Sheet.SourceMeasures[i].MeasureNumber;
+
+  /* Where a moment of bar i sits across the page: at its note, else the bar's end. */
+  function xAtSrc(boxes, i, src) {
+    const b = boxes[i];
+    if (!b) return 0;
+    if (src >= smEnd(i) - 1e-6) return b.x + b.w;
+    if (src <= smStart(i) + 1e-6) return b.x;
+    const u = unit();
+    const o = origin();
+    let x = b.x + b.w;
+    let d = Infinity;
+    for (const gm of b.gms) {
+      if (!gm) continue;
+      for (const se of gm.staffEntries) {
+        const e = Math.abs(smStart(i) + se.sourceStaffEntry.Timestamp.RealValue - src);
+        if (e < d - 1e-9) { d = e; x = o.x + se.PositionAndShape.AbsolutePosition.x * u - 0.6 * u; }
+      }
+    }
+    return x;
+  }
+
+  let dragEnded = 0;
+  function handle(which, x, b) {
+    const hd = el('div', { class: `loophandle ${which}`, style: `left:${x}px;top:${b.y - 10}px;height:${b.h + 20}px`, 'aria-hidden': 'true' });
+    hd.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hd.setPointerCapture(e.pointerId);
+      hd.classList.add('dragging');
+      const sr = stage.getBoundingClientRect();
+      const move = (m) => { hd.style.left = `${m.clientX - sr.left}px`; hd.style.top = `${m.clientY - sr.top - (b.h + 20) / 2}px`; };
+      const up = (m) => {
+        hd.removeEventListener('pointermove', move);
+        hd.removeEventListener('pointerup', up);
+        hd.removeEventListener('pointercancel', up);
+        dragEnded = performance.now();
+        const h = m.type === 'pointerup' ? hit(m, true) : null;
+        if (h) moveLoopEnd(which, h);
+        drawLayer();
+      };
+      hd.addEventListener('pointermove', move);
+      hd.addEventListener('pointerup', up);
+      hd.addEventListener('pointercancel', up);
+    });
+    return hd;
+  }
+
+  /* A start on a note partway through a bar is a pickup into the next bar; an end on a
+     note stops just before it. */
+  function moveLoopEnd(which, h) {
+    let [i0, i1] = [Math.min(...st.loop), Math.max(...st.loop)];
+    let { lead, trim } = st;
+    const count = osmd.Sheet.SourceMeasures.length;
+    if (which === 'start') {
+      if (h.src <= smStart(h.m) + 1e-6 || h.m + 1 >= count) { i0 = h.m; lead = 0; }
+      else if (h.src >= smEnd(h.m) - 1e-6) { i0 = h.m + 1; lead = 0; }
+      else { i0 = h.m + 1; lead = smEnd(h.m) - h.src; }
+    } else if (h.src >= smEnd(h.m) - 1e-6) { i1 = h.m; trim = 0; }
+    else if (h.src <= smStart(h.m) + 1e-6) { i1 = Math.max(0, h.m - 1); trim = 0; }
+    else { i1 = h.m; trim = smEnd(h.m) - h.src; }
+    if (smStart(i0) - lead >= smEnd(i1) - trim - 1e-6) return;
+    st.loop = [i0, i1];
+    st.lead = lead;
+    st.trim = trim;
+    if (st.section >= 0) {
+      const x = sections[st.section];
+      sections[st.section] = [x[0], barOf(i0), barOf(i1), Math.round(lead * TICKS), Math.round(trim * TICKS)];
+      fillMore();
+    }
+    restartIfPlaying(() => seekT(loopRange()[0]));
   }
 
   /* Fingerings Kyle types (they aren't in most files): above the top staff of a part,
@@ -479,12 +579,18 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
 
   function pickSection(i) {
     st.section = i;
+    st.lead = 0;
+    st.trim = 0;
     if (i < 0) st.loop = null;
     else {
-      const [, a, b] = sections[i];
+      const [, a, b, l, t] = sections[i];
       const ia = indexOfBar(osmd, a);
       const ib = indexOfBar(osmd, b);
       st.loop = ia == null || ib == null ? null : [ia, ib];
+      if (st.loop) {
+        st.lead = ia > 0 ? Math.min(l / TICKS, smEnd(ia - 1) - smStart(ia - 1)) : 0;
+        st.trim = Math.min(t / TICKS, smEnd(ib) - smStart(ib));
+      }
     }
     drawLayer();
     restartIfPlaying(() => seekT(loopRange()?.[0] ?? 0));
@@ -570,7 +676,8 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     const first = tl.measures.find((ms) => ms.m === a);
     if (!first) return null;
     const lastM = tl.measures.find((ms) => ms.m === b && ms.t >= first.t) || tl.measures[tl.measures.length - 1];
-    return [first.t, lastM.t + lastM.len];
+    const from = Math.max(0, first.t - st.lead);
+    return [from, Math.max(from + 1e-3, lastM.t + lastM.len - st.trim)];
   };
 
   const sp = () => st.speed / 100;
@@ -708,7 +815,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
 
   /* ---------- tapping the music ---------- */
 
-  function hit(ev) {
+  function hit(ev, ends = false) {
     const sr = stage.getBoundingClientRect();
     const x = ev.clientX - sr.left;
     const y = ev.clientY - sr.top;
@@ -736,14 +843,23 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
         if (d < dBest) { dBest = d; src = gm.parentSourceMeasure.AbsoluteTimestamp.RealValue + se.sourceStaffEntry.Timestamp.RealValue; }
       }
     }
+    // Dragging a loop's end: the barlines count too.
+    if (ends) {
+      const b = boxes[best];
+      if (Math.abs(b.x - x) < dBest) { dBest = Math.abs(b.x - x); src = smStart(best); }
+      if (Math.abs(b.x + b.w - x) < dBest) src = smEnd(best);
+    }
     return { m: best, src };
   }
 
   stage.addEventListener('click', (ev) => {
+    if (performance.now() - dragEnded < 400) return;
     const h = hit(ev);
     if (!h) return;
     if (st.picking != null) {
       st.loop = [st.picking, h.m].sort((a, b) => a - b);
+      st.lead = 0;
+      st.trim = 0;
       st.picking = null;
       st.section = -1;
       drawLayer();
@@ -816,7 +932,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
         while (n < 26 && used.has(String.fromCharCode(65 + n))) n++;
         const from = sections.length ? Math.min(last, Math.max(...sections.map((x) => x[2])) + 1) : first;
         const range = st.loop ? st.loop.map((i) => osmd.Sheet.SourceMeasures[i].MeasureNumber) : [from, last];
-        sections.push([String.fromCharCode(65 + (n % 26)), Math.min(...range), Math.max(...range)]);
+        sections.push([String.fromCharCode(65 + (n % 26)), Math.min(...range), Math.max(...range), st.loop ? Math.round(st.lead * TICKS) : 0, st.loop ? Math.round(st.trim * TICKS) : 0]);
         drawLayer(); fillMore();
         more.querySelector('.secs .prow:last-child input')?.focus();
       } }, '＋')),
@@ -868,7 +984,7 @@ export async function openPlayer(host, { xml, title = '', setup = {}, mode = 'te
     const fo = Object.entries(st.fo).filter(([k]) => st.fingers[k]);
     if (fo.length) out.fo = Object.fromEntries(fo);
     const sec = sections.filter((x) => x[0].trim());
-    if (sec.length) out.sec = sec.map(([n, a, b]) => [n.trim(), a, b]);
+    if (sec.length) out.sec = sec.map(([n, a, b, l, t]) => (l || t ? [n.trim(), a, b, l, t] : [n.trim(), a, b]));
     return out;
   }
 

@@ -43,8 +43,10 @@ export function cleanSetup(u) {
   }
   if (Array.isArray(u.sp) && u.sp.length === 2 && u.sp.every((n) => int(n, 20, 200) !== undefined)) out.sp = [Math.min(...u.sp), Math.max(...u.sp)];
   if (Array.isArray(u.sec)) {
-    out.sec = u.sec.filter((x) => Array.isArray(x) && x.length === 3 && int(x[1], -1, 9999) !== undefined && int(x[2], -1, 9999) !== undefined)
-      .slice(0, 20).map(([name, a, b]) => [str(name, 30), Math.min(a, b), Math.max(a, b)]);
+    // [name, first bar, last bar] or [..., pickup, cut from the end] (960ths of a whole note).
+    out.sec = u.sec.filter((x) => Array.isArray(x) && (x.length === 3 || (x.length === 5 && int(x[3], 0, 3840) !== undefined && int(x[4], 0, 3840) !== undefined))
+      && int(x[1], -1, 9999) !== undefined && int(x[2], -1, 9999) !== undefined)
+      .slice(0, 20).map(([name, a, b, l, t]) => (l || t ? [str(name, 30), Math.min(a, b), Math.max(a, b), Number(l), Number(t)] : [str(name, 30), Math.min(a, b), Math.max(a, b)]));
   }
   for (const k of Object.keys(out)) if (out[k] === undefined || (Array.isArray(out[k]) && !out[k].length)) delete out[k];
   return out;

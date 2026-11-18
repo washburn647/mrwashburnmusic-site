@@ -15,6 +15,10 @@ body.playing-piece { overflow: hidden; }
 .player-layer { position: absolute; inset: 0; pointer-events: none; }
 .loopbox { position: absolute; background: rgba(224,164,88,.18); border-top: 3px solid #E0A458; border-bottom: 3px solid #E0A458; box-sizing: border-box; }
 .loopbox.picking { background: rgba(224,164,88,.32); }
+.loophandle { position: absolute; width: 18px; margin-left: -9px; pointer-events: auto; touch-action: none; cursor: ew-resize; }
+.loophandle::after { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 4px; border-radius: 2px; background: #E0A458; }
+.loophandle.dragging { cursor: grabbing; }
+.loophandle.dragging::after { background: #C27A2C; }
 .nname { position: absolute; transform: translateX(-50%); white-space: pre; line-height: 1.05; text-align: center; font-weight: 600; color: #2F4A3A; background: rgba(246,241,228,.9); border-radius: 6px; padding: 0 3px; }
 .ball { position: absolute; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #E5243B; box-shadow: 0 2px 0 rgba(0,0,0,.15); transition: left .12s ease-out, top .2s ease-out; }
 .ball.hop { animation: hop .28s ease-out; }
