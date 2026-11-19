@@ -289,3 +289,23 @@ test('both Scramble games set words or lines missing as a percentage range', asy
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('a first open with a slow engine file still starts (iPhone home screen)', async () => {
+  mock.reset();
+  const ctx = await browser.newContext();
+  await ctx.route('**/songburner/engine.js*', async (route) => {
+    const res = await route.fetch();
+    await new Promise((r) => setTimeout(r, 1500));
+    await route.fulfill({ response: res });
+  });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(mock.base + '/songburner/');
+  await page.waitForFunction(() => window.google && google.script && google.script.run, null, { timeout: 10000 });
+  assert.equal(await page.evaluate(() => document.body.innerText.indexOf('could not') >= 0), false);
+  assert.equal((await addSong(page, 'After a slow start')).ok, true);
+  assert.deepEqual(await titles(page), ['After a slow start']);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

@@ -3435,6 +3435,15 @@ The scripts, fonts and icons stay plain files: the code is public on GitHub, and
 nothing in them is anyone's data. The page, the songs and the scores are what
 sign-in protects.
 
+**The engine can arrive after the library — beta 1.10.** `host.js` starts
+reading IndexedDB the moment it runs, before `engine.js` has downloaded. With an
+empty library (a first open, or an iPhone home-screen app, which gets storage of
+its own) the read could finish first, and `setup()` was called on an engine that
+was not there yet: "window.SongBurnerEngine is not a function". `boot()` now
+waits for the page's scripts (`engineReady`) before calling it, and if
+`engine.js` never arrives the page says it did not finish loading rather than
+blaming storage.
+
 **Tests — beta 1.08.** `tests/` holds the checks that run on every pull request
 (`.github/workflows/tests.yml`): the Worker's sign-in check, session cookie,
 Vault, dashboard and beta requests in Node (`worker.test.mjs`, loading the
