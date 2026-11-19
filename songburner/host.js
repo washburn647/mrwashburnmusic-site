@@ -373,7 +373,7 @@
     var cache = {}, rounds = 0;
     function pass() {
       if (typeof window.SongBurnerEngine !== 'function') {
-        return Promise.reject(new Error('engine.js did not load'));
+        return Promise.reject(new Error(ENGINE_MISSING));
       }
       var out, miss;
       netCache = cache; netMisses = [];
@@ -397,7 +397,7 @@
       return (stale ? loadAll().then(function () { stale = false; }) : Promise.resolve())
         .then(function () {
           if (typeof window.SongBurnerEngine !== 'function') {
-            throw new Error('engine.js did not load');
+            throw new Error(ENGINE_MISSING);
           }
           var engine = window.SongBurnerEngine(services);
           var out = engine.apiCall(payloadJson);
@@ -425,12 +425,29 @@
      The page polls for google.script.run before its first call, so holding
      it back until the library is loaded is all the waiting it needs. A first
      visit gets the same setup() the Sheets install runs once by hand. */
+  /* host.js runs before engine.js has arrived, and an empty library (a first
+     open, or an iPhone home-screen app, which gets storage of its own) can be
+     read before it has: wait for the page's scripts before calling it. */
+  var ENGINE_MISSING = 'engine.js did not load';
+  function engineReady() {
+    if (typeof window.SongBurnerEngine === 'function') return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      function check() {
+        if (typeof window.SongBurnerEngine === 'function') resolve();
+        else reject(new Error(ENGINE_MISSING));
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', check);
+      else check();
+    });
+  }
+
   function boot() {
     return loadAll().then(function () {
       if (!order.length) {
-        var engine = window.SongBurnerEngine(services);
-        engine.setup();
-        return saveDirty();
+        return engineReady().then(function () {
+          window.SongBurnerEngine(services).setup();
+          return saveDirty();
+        });
       }
     });
   }
@@ -1009,9 +1026,11 @@
     window.google.script = window.google.script || {};
     window.google.script.run = makeRunner(null, null);
   }, function (err) {
-    var msg = 'Song Burner could not open its storage on this device. ' +
-              'Private browsing, or blocked site data, will do this. (' +
-              (err && err.message ? err.message : err) + ')';
+    var msg = err && err.message === ENGINE_MISSING
+      ? 'Song Burner did not finish loading. Check the connection and open it again.'
+      : 'Song Burner could not open its storage on this device. ' +
+        'Private browsing, or blocked site data, will do this. (' +
+        (err && err.message ? err.message : err) + ')';
     if (window.console) console.error(err);
     document.addEventListener('DOMContentLoaded', function () {
       var p = document.createElement('p');
