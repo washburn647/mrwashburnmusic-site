@@ -3435,6 +3435,15 @@ The scripts, fonts and icons stay plain files: the code is public on GitHub, and
 nothing in them is anyone's data. The page, the songs and the scores are what
 sign-in protects.
 
+**The apostrophe is a wildcard from either side — beta 1.11.** The song
+writing *til'* and you typing *till* was marked wrong: the end-apostrophe rules
+(1.64) put back only the letters a word's ending implies, and for *til'* that is
+*d*. *til* now has its own entry (*till*, *until*). And an apostrophe **you**
+type loosens a word the same way one in the song does, so the song saying
+*coming* and you typing *comin'* is right. *comin* with no apostrophe is still
+wrong: the apostrophe is what says a letter was dropped. `tests/grading.test.mjs`
+runs the grader's word matching straight from the built `app.js`.
+
 **The engine can arrive after the library — beta 1.10.** `host.js` starts
 reading IndexedDB the moment it runs, before `engine.js` has downloaded. With an
 empty library (a first open, or an iPhone home-screen app, which gets storage of

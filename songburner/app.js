@@ -293,10 +293,10 @@
    * couldnxt is wrong; splitWord keeps those apostrophes inside the core and
    * only the two ends are ever read here.
    *
-   * It only ever loosens a word the song itself wrote with a letter dropped, so
-   * nothing else in the library gets easier. It is deliberately one-way: the
-   * song says ol', you may sing old. If the song says old, ol is still wrong,
-   * because there the full word is what is written.
+   * It only ever loosens a word written with a letter dropped, so nothing else
+   * in the library gets easier. Since beta 1.11 it works from either side: the
+   * song says ol', you may type old; the song says old, you may type ol'. The
+   * apostrophe is what marks the elision, so ol with none is still wrong.
    */
   var ELIDE_TAIL_WORDS = {
     o: ['f', 'n'], th: ['e'], tha: ['t'], yo: ['u'], fo: ['r'], wit: ['h'],
@@ -320,14 +320,27 @@
   function elideHead(a) {
     return ELIDE_HEAD_WORDS[a] || [];
   }
+  /* WORDS THE RULES ABOVE DO NOT REACH - beta 1.11. til' and 'til are
+     written for till as often as for until, and till's second l is not a
+     letter any rule puts back. */
+  var ELIDE_ALSO = { til: ['till', 'until'] };
+  /* EITHER SIDE'S APOSTROPHE IS THE WILDCARD - beta 1.11. It used to be only
+     the song's, so the song saying coming and you typing comin' was wrong. An
+     apostrophe you typed now loosens the word the same way one in the song
+     does. Typed without one, comin for coming is still wrong. */
   function wordsMatch(actual, typed) {
     var a = normWord(actual), b = normWord(typed);
     if (a === b) return true;
     if (!a || !b) return false;
+    return elidedAs(actual, a, b) || elidedAs(typed, b, a);
+  }
+  /** Does `raw`, written with an apostrophe outside it, stand for `b`? */
+  function elidedAs(actual, a, b) {
     var raw = bareWord(actual);
     var openA = isApos(raw.charAt(0));
     var closeA = raw.length > 1 && isApos(raw.charAt(raw.length - 1));
     if (!openA && !closeA) return false;
+    if (ELIDE_ALSO[a] && ELIDE_ALSO[a].indexOf(b) !== -1) return true;
     var heads = [''].concat(openA ? elideHead(a) : []);
     var tails = [''].concat(closeA ? elideTail(a) : []);
     for (var h = 0; h < heads.length; h++) {
