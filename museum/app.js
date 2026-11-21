@@ -4,6 +4,7 @@ import { ROOMS, EXHIBITS, byId } from './data.js';
 import { art } from './art.js';
 import * as notes from './notes.js';
 import { context } from './audio.js';
+import * as coach from './coach.js';
 
 const $ = (id) => document.getElementById(id);
 const hall = $('hall');
@@ -29,7 +30,8 @@ function buildHall() {
   }
 }
 
-/* What an instrument module gets: the readout, a place for its switches. */
+/* What an instrument module gets: the readout, a place for its switches, and the coach (Listen
+   and Try this), which hears what is played and borrows the instrument to play tunes. */
 function kitFor(ex) {
   let shown = null;
   let pending = 0;
@@ -43,9 +45,13 @@ function kitFor(ex) {
   nn.textContent = '';
   staffEl.innerHTML = '';
   return {
-    /* Show a sounding note (MIDI, may be fractional while sliding). null clears. */
-    note(midi) {
+    perf: null,
+    /* Show a sounding note (MIDI, may be fractional while sliding). null clears. how: 'fresh'
+       for a new attack (a key struck, a string plucked: the same note again counts), 'show' to
+       show it without its being played (a timpani being tuned). */
+    note(midi, how) {
       const m = midi == null ? null : Math.round(midi + written);
+      if (midi != null && how !== 'show' && (how === 'fresh' || m !== shown)) coach.heard({ midi: Math.round(midi) });
       if (m === shown) return;
       shown = m;
       if (m == null) { readout.classList.add('idle'); return; }
@@ -57,6 +63,11 @@ function kitFor(ex) {
       notes.staff(m, clef, flats).then((html) => { if (ticket === pending) staffEl.innerHTML = html; });
     },
     name: (midi) => notes.full(Math.round(midi + written), flats),
+    /* A drum or part struck (its code in lessons.js: k, s, h...), or a chord strummed. */
+    hit(part, how = {}) { coach.heard({ part, ...how }); },
+    chord(name) { coach.heard({ chord: name }); },
+    /* How the instrument plays a tune by itself (see coach.js). */
+    performer(p) { this.perf = p; },
     /* Show a word instead of a note (a chord name). */
     text(t) {
       shown = null;
@@ -114,6 +125,7 @@ let token = 0;
 async function show() {
   const id = location.hash.slice(1);
   const ex = byId[id];
+  coach.unmount();
   unmount?.();
   unmount = null;
   stage.innerHTML = '';
@@ -144,6 +156,7 @@ async function show() {
   const kit = kitFor(ex);
   unmount = await mod.mount(stage, ex, kit);
   if (mine !== token) { unmount?.(); unmount = null; return; }
+  coach.mount(ex, kit);
   stage.classList.remove('loading');
 }
 

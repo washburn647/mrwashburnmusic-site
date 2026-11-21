@@ -159,8 +159,9 @@ export async function mount(stage, ex, kit) {
   };
   const lockBox = () => ({ u: G.pad / 2, v: G.cy + G.th / 2 + 58, r: 22 });
 
-  function blowing() { return !!breath || locked || spaceBlow; }
-  const high = () => (breath ? breath.high : locked ? lockHigh : shiftHigh);
+  let autoBlow = null;           // { high }, while the instrument plays a tune itself
+  function blowing() { return !!breath || locked || spaceBlow || !!autoBlow; }
+  const high = () => (breath ? breath.high : locked ? lockHigh : autoBlow ? autoBlow.high : shiftHigh);
 
   function keysNow() {
     const out = new Set();
@@ -177,9 +178,10 @@ export async function mount(stage, ex, kit) {
     }
     const w = writtenNote(kind, keysNow(), high());
     const midi = Math.max(range[0], Math.min(range[1], w - written));
-    if (!sounding || attack) { voice.start(midi, 0.8); sounding = true; }
+    const fresh = !sounding || attack;
+    if (fresh) { voice.start(midi, autoBlow?.level ?? 0.8); sounding = true; }
     else voice.pitch(midi);
-    kit.note(midi);
+    kit.note(midi, fresh ? 'fresh' : undefined);
     s.redraw();
   }
 
@@ -415,6 +417,39 @@ export async function mount(stage, ex, kit) {
   }
   addEventListener('keydown', keydown);
   addEventListener('keyup', keyup);
+
+  // Listen: the fingers go down for each note, and the breath plays it (tongued, or slurred).
+  const fingering = new Map();   // written note -> { keys, high }
+  // The usual fingerings first, then the same with the octave (or register) key or faster air.
+  const extra = kind === 'clarinet' ? 'Rg' : kind === 'flute' ? null : 'Oct';
+  for (const hi of [false, true]) {
+    for (const [keys] of FINGERINGS[kind]) {
+      const k = new Set(keys);
+      if (hi && extra) k.add(extra);
+      const w = writtenNote(kind, k, hi && !extra);
+      if (!fingering.has(w)) fingering.set(w, { keys: k, high: hi && !extra });
+    }
+  }
+  let autoNote = 0;
+  const lift = () => { for (const [k] of keyset) release(k, 'auto'); };
+  kit.performer({
+    can: (e) => e.midi != null && fingering.has(Math.round(e.midi + written)),
+    down(e) {
+      const f = fingering.get(Math.round(e.midi + written));
+      lift();
+      for (const k of f.keys) press(k, 'auto');
+      autoBlow = { high: f.high, level: 0.45 + (e.vel ?? 0.7) * 0.45 };
+      update(!e.glide);
+      return ++autoNote;
+    },
+    up(n) {
+      if (n !== autoNote) return;
+      autoBlow = null;
+      lift();
+      update();
+    },
+    finish() { autoBlow = null; lift(); update(); },
+  });
 
   if (ex.opts.vibrato) {
     kit.toggle({

@@ -92,6 +92,7 @@ export async function mount(stage, ex, kit) {
   const fingers = new Map();      // pointer id -> { string, fret }
   const sticky = new Map();       // string -> fret (mouse)
   const ring = Array.from({ length: N }, () => ({ voice: null, at: 0, amp: 0, fret: 0 }));
+  const auto = new Map();         // string -> fret, while the instrument plays a tune itself
 
   // ---- geometry, in instrument space ----
   let G = null;
@@ -113,6 +114,7 @@ export async function mount(stage, ex, kit) {
 
   function fretted(i) {
     if (mode === 'chords') return CHORDS[chord][1][i];
+    if (auto.has(i)) return auto.get(i);
     if (short && i === short.string) {
       // Below its first fret there is no string there to press.
       let f = sticky.get(i) || 0;
@@ -134,7 +136,8 @@ export async function mount(stage, ex, kit) {
     r.at = performance.now();
     r.amp = Math.min(1, vol + 0.2);
     r.fret = f;
-    if (mode === 'notes') kit.note(midi);
+    if (mode === 'notes') kit.note(midi, 'fresh');
+    else heardChord();
     s.animate(1800);
   }
 
@@ -148,7 +151,7 @@ export async function mount(stage, ex, kit) {
     r.fret = f;
     r.at = performance.now();
     r.amp = Math.max(r.amp * 0.6, 0.35);
-    kit.note(noteOf(i, f));
+    kit.note(noteOf(i, f), 'fresh');
     s.animate(1500);
   }
 
@@ -428,25 +431,84 @@ export async function mount(stage, ex, kit) {
   }
   placePads();
 
-  if (CHORDS) kit.choice({
+  // A strum is heard as one chord, however many strings it crosses.
+  let lastChord = { name: '', at: 0 };
+  function heardChord() {
+    const name = CHORDS[chord][0];
+    const now = performance.now();
+    if (name !== lastChord.name || now - lastChord.at > 260) kit.chord(name);
+    lastChord = { name, at: now };
+  }
+
+  function setMode(v) {
+    mode = v;
+    pads.hidden = v !== 'chords';
+    fingers.clear();
+    if (v === 'chords') pick(chord);
+    else kit.text('');
+    modeSwitch?.querySelectorAll('button').forEach((b, k) => b.setAttribute('aria-checked', String((k === 1) === (v === 'chords'))));
+    s.redraw();
+  }
+  const modeSwitch = CHORDS ? kit.choice({
     label: 'Play',
     value: 'notes',
     options: [{ value: 'notes', label: 'Notes' }, { value: 'chords', label: 'Chords' }],
-    onChange(v) {
-      mode = v;
-      pads.hidden = v !== 'chords';
-      fingers.clear();
-      if (v === 'chords') pick(chord);
-      else kit.text('');
-      s.redraw();
-    },
-  });
+    onChange: setMode,
+  }) : null;
 
-  function strumAll(up = false) {
+  function strumAll(up = false, vol = 0.72) {
     const order = [...Array(N).keys()];
     if (up) order.reverse();
-    order.forEach((i, k) => setTimeout(() => pluck(i, 0.72), k * 14));
+    return order.map((i, k) => setTimeout(() => pluck(i, vol), k * 14));
   }
+
+  // Listen: a finger goes down at the lowest fret that has the note (open strings first), and
+  // the string is picked; chords are strummed from the chord pads.
+  const placeFor = (m) => {
+    let best = null;
+    for (let i = 0; i < N; i++) {
+      // The banjo's short string is only played open.
+      const f = short && i === short.string ? (m === tuning[i] ? 0 : -1) : m - tuning[i];
+      if (f < 0 || f > FRETS || Math.abs(f - Math.round(f)) > 0.01) continue;
+      if (!best || f < best.f) best = { i, f: Math.round(f) };
+    }
+    return best;
+  };
+  const latest = new Map();
+  let autoNote = 0;
+  let strumming = [];
+  kit.performer({
+    can: (e) => (e.chord ? !!CHORDS?.some(([n]) => n === e.chord) : e.midi != null && !!placeFor(e.midi)),
+    prepare(evs) {
+      const chords = evs.some((e) => e.chord);
+      if (chords !== (mode === 'chords')) setMode(chords ? 'chords' : 'notes');
+    },
+    down(e) {
+      if (e.chord) {
+        const k = CHORDS.findIndex(([n]) => n === e.chord);
+        if (k !== chord || mode !== 'chords') { if (mode !== 'chords') setMode('chords'); pick(k); }
+        strumming = strumAll(e.up, 0.45 + (e.vel ?? 0.7) * 0.4);
+        return null;
+      }
+      const p = placeFor(e.midi);
+      auto.set(p.i, p.f);
+      const n = ++autoNote;
+      latest.set(p.i, n);
+      pluck(p.i, 0.4 + (e.vel ?? 0.7) * 0.45);
+      s.redraw();
+      return { ...p, n, voice: ring[p.i].voice };
+    },
+    up(h) {
+      if (!h || latest.get(h.i) !== h.n) return;
+      auto.delete(h.i);
+      // Lifting a finger stops the string; an open string rings on.
+      const r = ring[h.i];
+      if (h.f > 0 && r.voice === h.voice) { r.voice.stop(0.12); r.voice = null; }
+      s.redraw();
+    },
+    // (a strum stopped halfway doesn't finish: it would be heard as the visitor's)
+    finish() { strumming.forEach(clearTimeout); strumming = []; auto.clear(); s.redraw(); },
+  });
 
   function keydown(e) {
     if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;

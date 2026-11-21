@@ -27,6 +27,7 @@ export async function mount(stage, ex, kit) {
   const state = open.map(() => ({ level: 0, target: 0, on: false, pluck: 0, at: 0, pv: null }));
   let lastString = 0;
   let spaceBow = false;
+  const autoBow = new Map();     // string -> level, while the instrument plays a tune itself
 
   let G = null;
   function geom(s) {
@@ -79,7 +80,7 @@ export async function mount(stage, ex, kit) {
     state[i].pluck = 1;
     state[i].at = performance.now();
     state[i].pv = m;
-    kit.note(m);
+    kit.note(m, 'fresh');
     s.animate(1200);
   }
 
@@ -102,7 +103,7 @@ export async function mount(stage, ex, kit) {
         if (i >= 0 && i < N && Math.abs(p.v - sv(i)) < G.gap * 0.35) { pluck(i); p.data.hit = i; }
         return;
       }
-      bows.set(p.id, { dist: 0, strings: new Set(stringsUnder(p.v)), u: p.u, v: p.v });
+      bows.set(p.id, { dist: 0, strings: new Set(stringsUnder(p.v)), u: p.u, v: p.v, dir: 0, run: 0 });
       run();
     },
     move(p) {
@@ -128,6 +129,14 @@ export async function mount(stage, ex, kit) {
       }
       const b = bows.get(p.id);
       if (!b) return;
+      // Turning the bow round starts a new stroke: a new note, so a repeated note counts.
+      const dir = Math.sign(p.u - b.u);
+      if (dir && dir !== b.dir) {
+        if (b.dir && b.run > G.gap * 0.6) for (const i of b.strings) if (state[i].on) kit.note(pitchOf(i), 'fresh');
+        b.dir = dir;
+        b.run = 0;
+      }
+      b.run += Math.abs(p.u - b.u);
       b.dist += Math.hypot(p.u - b.u, p.v - b.v);
       b.u = p.u;
       b.v = p.v;
@@ -157,15 +166,16 @@ export async function mount(stage, ex, kit) {
       for (const i of b.strings) state[i].target = Math.max(state[i].target, lvl);
     }
     if (spaceBow) state[keyString()].target = Math.max(state[keyString()].target, 0.7);
-    let busy = bows.size > 0 || spaceBow;
+    for (const [i, lvl] of autoBow) state[i].target = Math.max(state[i].target, lvl);
+    let busy = bows.size > 0 || spaceBow || autoBow.size > 0;
     state.forEach((st, i) => {
-      // Bow speed changes smoothly; a stopped bow fades quickly.
-      const k = st.target > st.level ? 0.35 : 0.18;
+      // Bow speed changes smoothly; a stopped bow fades quickly (a player crossing strings, more so).
+      const k = st.target > st.level ? (st.quick ? 0.6 : 0.35) : (st.quick ? 0.45 : 0.18);
       st.level += (st.target - st.level) * k;
       if (st.level > 0.035 && !st.on) {
         st.on = true;
         voices[i].start(pitchOf(i), st.level * 0.9);
-        kit.note(pitchOf(i));
+        kit.note(pitchOf(i), 'fresh');
       } else if (st.on && st.level <= 0.02) {
         st.on = false;
         voices[i].stop();
@@ -277,11 +287,17 @@ export async function mount(stage, ex, kit) {
     // the bow
     if (mode === 'arco') {
       const b = [...bows.values()][0];
-      const x = b ? b.u : G.fbEnd + (G.bridge - G.fbEnd) * 0.36;
-      const yc = b ? b.v : (G.top + G.bottom) / 2;
+      const ab = [...autoBow.keys()].at(-1);
+      let x = b ? b.u : G.fbEnd + (G.bridge - G.fbEnd) * 0.36;
+      let yc = b ? b.v : (G.top + G.bottom) / 2;
+      if (!b && ab != null) {
+        // playing by itself: the bow rides on its string, back and forth
+        x = G.fbEnd + (G.bridge - G.fbEnd) * (0.36 + 0.1 * Math.sin(now / 260));
+        yc = sv(ab);
+      }
       const len = G.bottom - G.top + G.gap * 1.3;
       g.save();
-      g.globalAlpha = b ? 1 : 0.45;
+      g.globalAlpha = b || ab != null ? 1 : 0.45;
       g.translate(x, yc);
       g.rotate(-0.06);
       // stick
@@ -310,6 +326,47 @@ export async function mount(stage, ex, kit) {
       onChange: (on) => voices.forEach((v) => v.vibrato(on)),
     });
   }
+
+  // Listen: a finger goes down where the note is, on the highest string that has it (so open
+  // strings ring where they can, as in first position), and the bow plays it, or it is plucked.
+  const stringFor = (m) => {
+    for (let i = N - 1; i >= 0; i--) if (m >= open[i] - 0.01) return m - open[i] <= span + 0.01 ? i : -1;
+    return -1;
+  };
+  let autoNote = 0;
+  const latest = new Map();   // string -> the last note played on it
+  kit.performer({
+    can: (e) => e.midi != null && stringFor(e.midi) >= 0,
+    down(e) {
+      const i = stringFor(e.midi);
+      const semis = e.midi - open[i];
+      const id = `auto${i}`;
+      if (semis > 0.01) fingers.set(id, { string: i, u: uOf(semis) });
+      else fingers.delete(id);
+      lastString = i;
+      const n = ++autoNote;
+      latest.set(i, n);
+      if (mode === 'pizz' || e.pizz) { pluck(i, 0.4 + (e.vel ?? 0.7) * 0.5); return { i, n }; }
+      state[i].quick = true;
+      autoBow.set(i, 0.35 + (e.vel ?? 0.7) * 0.5);
+      // a string already sounding gets a new bow stroke
+      if (state[i].on) { voices[i].pitch(pitchOf(i)); kit.note(pitchOf(i), 'fresh'); }
+      run();
+      return { i, n };
+    },
+    up(h) {
+      if (latest.get(h.i) !== h.n) return;   // a newer note has the string now
+      autoBow.delete(h.i);
+      fingers.delete(`auto${h.i}`);
+      s.redraw();
+    },
+    finish() {
+      autoBow.clear();
+      for (const id of [...fingers.keys()]) if (String(id).startsWith('auto')) fingers.delete(id);
+      state.forEach((st) => { st.quick = false; });
+      s.redraw();
+    },
+  });
 
   kit.choice({
     label: 'Bow or pluck',

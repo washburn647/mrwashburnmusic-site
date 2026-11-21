@@ -45,6 +45,17 @@ export async function mount(stage, ex, kit) {
     sounds[p.sound].play({ vol: 0.45 + 0.5 * vel, rate: (p.rate || 1) * (0.99 + Math.random() * 0.02) });
     Object.assign(p, { at: performance.now(), power: vel, x, y });
     s.animate(700);
+    kit.hit(code(i));
+  }
+  // Each part's letter in lessons.js: x for a single instrument, h and l for a high and low pair.
+  const code = (i) => (parts.length === 1 ? 'x' : 'hl'[i]);
+
+  function scrape(i, long = false, vol = 0.7) {
+    const part = parts[i];
+    sounds[part.sound].play({ vol, rate: long ? 0.8 : 1.2 });
+    Object.assign(part, { at: performance.now(), power: 0.8, x: long ? -0.6 : 0.4, y: 0 });
+    s.animate(400);
+    kit.hit(code(i), { scrape: true });
   }
 
   function partAt(u, v) {
@@ -97,6 +108,7 @@ export async function mount(stage, ex, kit) {
           sounds[part.sound].play({ vol: 0.5 + Math.min(0.4, speed * 0.3), rate: 0.85 + Math.min(0.5, speed * 0.4) });
           Object.assign(part, { at: performance.now(), power: 0.8, x: (p.u - cells[i].cx) / cells[i].r, y: 0 });
           s.animate(400);
+          kit.hit(code(i), { scrape: true });
         }
       }
     },
@@ -128,13 +140,27 @@ export async function mount(stage, ex, kit) {
     if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
     const i = parts.findIndex((p) => p.key === e.key.toLowerCase());
     if (i < 0) return;
-    if (HOW[parts[i].shape] === 'scrape') {
-      sounds[parts[i].sound].play({ vol: 0.7 });
-      Object.assign(parts[i], { at: performance.now(), power: 0.8 });
-      s.animate(400);
-    } else strike(i, 0.3);
+    if (HOW[parts[i].shape] === 'scrape') scrape(i, e.shiftKey);
+    else strike(i, 0.3);
   }
   addEventListener('keydown', keydown);
+
+  // Listen: each part played by itself; the güiro scraped short (x) or long (z).
+  kit.performer({
+    levels: parts.length === 2 ? ['l', 'h'] : ['x'],
+    ladder: parts.length === 2 ? ['h', 'l'] : ['x', 'x'],
+    names: Object.fromEntries(parts.map((p, i) => [code(i), p.name || ex.name])),
+    can: (e) => e.part != null && (parts.some((_, i) => code(i) === e.part) || (e.part === 'z' && parts.length === 1)),
+    down(e) {
+      const i = e.part === 'z' ? 0 : parts.findIndex((_, k) => code(k) === e.part);
+      const v = e.vel ?? 0.72;
+      if (HOW[parts[i].shape] === 'scrape') scrape(i, e.part === 'z' || e.dur > 0.45, 0.45 + v * 0.4);
+      else strike(i, 0.3, 0, 0, Math.max(0.25, Math.min(1, v)));
+      return null;
+    },
+    up() {},
+    finish() {},
+  });
   return () => {
     removeEventListener('keydown', keydown);
     s.destroy();
@@ -336,7 +362,7 @@ async function tines(stage, ex, kit) {
     const t = order[i];
     inst.play(t.midi, { vol: 0.75 });
     t.at = performance.now();
-    kit.note(t.midi);
+    kit.note(t.midi, 'fresh');
     s.animate(1500);
   }
 
@@ -389,6 +415,14 @@ async function tines(stage, ex, kit) {
     g.fillStyle = '#5A3A1E';
     g.fillRect(G.left - 10, G.bar + 8, G.gap * n + 20, 10);
   }
+
+  // Listen: the thumbs pluck each note's tine.
+  kit.performer({
+    can: (e) => e.midi != null && order.some((t) => t.midi === e.midi),
+    down(e) { pluck(order.findIndex((t) => t.midi === e.midi)); return null; },
+    up() {},
+    finish() {},
+  });
 
   return () => s.destroy();
 }

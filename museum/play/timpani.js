@@ -64,7 +64,7 @@ export async function mount(stage, ex, kit) {
     dr.at = performance.now();
     dr.hx = hx;
     dr.hy = hy;
-    kit.note(dr.pitch);
+    kit.note(dr.pitch, 'fresh');
     s.animate(1500);
   }
 
@@ -73,7 +73,8 @@ export async function mount(stage, ex, kit) {
     if (dr.roll) return;
     dr.roll = rolls.sustain({ attack: 0.25, release: 0.9 });
     dr.roll.start(dr.pitch, 0.8);
-    kit.note(dr.pitch);
+    kit.note(dr.pitch, 'show');
+    kit.hit(i, { roll: true });
     s.animate(60000);
   }
   function stopRoll(i) {
@@ -90,7 +91,7 @@ export async function mount(stage, ex, kit) {
     dr.pitch = Math.max(dr.lo, Math.min(dr.hi, m));
     for (const v of dr.voices) v.bend(dr.pitch, 0.05);
     dr.roll?.pitch(dr.pitch, 0.05);
-    kit.note(dr.pitch);
+    kit.note(dr.pitch, 'show');
     s.redraw();
   }
 
@@ -214,6 +215,44 @@ export async function mount(stage, ex, kit) {
       }
     });
   }
+
+  // Listen: before a tune the timpanist tunes the drums to its notes; a note no drum is tuned
+  // to is reached by re-tuning the drum that has rung longest, after stopping it.
+  const covers = (i, m) => m >= drums[i].lo && m <= drums[i].hi;
+  let lastDrum = 0;
+  function retune(i, m) {
+    drums[i].voices.forEach((v) => v.stop(0.05));
+    drums[i].voices = [];
+    setPitch(i, m);
+  }
+  kit.performer({
+    can: (e) => e.part === 'roll' || (e.midi != null && drums.some((_, i) => covers(i, Math.round(e.midi)))),
+    prepare(evs) {
+      const count = new Map();
+      for (const e of evs) if (e.midi != null) count.set(Math.round(e.midi), (count.get(Math.round(e.midi)) || 0) + 1);
+      const used = new Set();
+      for (const m of [...count.keys()].sort((a, b) => count.get(b) - count.get(a))) {
+        const free = drums.map((_, i) => i).filter((i) => !used.has(i) && covers(i, m));
+        // the drum whose range it sits most comfortably in
+        free.sort((a, b) => Math.abs(m - (drums[a].lo + drums[a].hi) / 2) - Math.abs(m - (drums[b].lo + drums[b].hi) / 2));
+        if (free.length) { used.add(free[0]); retune(free[0], m); }
+      }
+    },
+    down(e) {
+      if (e.part === 'roll') { strike(lastDrum, 0.62); startRoll(lastDrum); return { roll: lastDrum }; }
+      const m = Math.round(e.midi);
+      let i = drums.findIndex((d) => Math.round(d.pitch) === m);
+      if (i < 0) {
+        i = drums.map((_, k) => k).filter((k) => covers(k, m)).sort((a, b) => drums[a].at - drums[b].at)[0];
+        retune(i, m);
+      }
+      lastDrum = i;
+      strike(i, 0.62, 0.15, -0.1);
+      return null;
+    },
+    up(h) { if (h?.roll != null) stopRoll(h.roll); },
+    finish() { drums.forEach((_, i) => stopRoll(i)); },
+  });
 
   const keyHolds = new Map();
   function keydown(e) {

@@ -99,7 +99,7 @@ export async function mount(stage, ex, kit) {
     down.set(midi, entry);
     lit.set(midi, performance.now());
     last = midi;
-    kit.note(midi);
+    kit.note(midi, 'fresh');
     s.animate(look.bars ? 700 : 120);
   }
 
@@ -314,6 +314,29 @@ export async function mount(stage, ex, kit) {
       if (fine()) { const l = letterFor(w); if (l) label(g, s, l, pad + i * kw + kw / 2, rowF.y + rowF.h - 14, { size: 12, color: 'rgba(0,0,0,.45)' }); }
     }
   }
+
+  // Listen: the keys go down by themselves, scrolled into view first.
+  let auto = 0;
+  kit.performer({
+    can: (e) => e.midi != null && e.midi >= o.lo && e.midi <= o.hi,
+    prepare(evs) {
+      const ms = evs.filter((e) => e.midi != null).map((e) => e.midi);
+      if (!ms.length) return;
+      const at = (m) => Math.max(0, whites.findIndex((w) => w >= m));
+      const mid = (at(Math.min(...ms)) + at(Math.max(...ms))) / 2;
+      first = Math.max(0, Math.min(whites.length - count, Math.round(mid - count / 2 + 0.5)));
+      s.redraw();
+    },
+    down(e) {
+      const id = `auto${++auto}`;
+      strike(e.midi, e.vel ?? 0.7, id);
+      return { midi: e.midi, id };
+    },
+    up(h) { lift(h.midi, h.id); },
+    finish() {
+      for (const [m, d] of down) for (const by of [...d.by]) if (String(by).startsWith('auto')) lift(m, by);
+    },
+  });
 
   let pedalTool = null;
   if (o.look === 'piano') {

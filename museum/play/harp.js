@@ -52,7 +52,7 @@ export async function mount(stage, ex, kit) {
     st.voice = inst.play(m, { vol });
     st.at = performance.now();
     st.amp = 1;
-    kit.note(m);
+    kit.note(m, 'fresh');
     s.animate(2400);
   }
 
@@ -202,6 +202,32 @@ export async function mount(stage, ex, kit) {
       const set = { C: [0, 0, 0, 0, 0, 0, 0], Eb: [0, 0, -1, 0, 0, -1, -1], pent: [0, 0, 0, -1, 0, 0, 1] }[v];
       set.forEach((to, letter) => setPedal(letter, to));
     },
+  });
+
+  // Listen: before a tune the harpist sets the pedals for its key (F♯ is the F pedal down, B♭
+  // the B pedal up...), then plucks each note's string.
+  const SPELL = { 1: [[0, 1], [1, -1]], 3: [[2, -1], [1, 1]], 6: [[3, 1], [4, -1]], 8: [[5, -1], [4, 1]], 10: [[6, -1], [5, 1]] };
+  const stringOf = (m) => strings.findIndex((_, i) => noteOf(i) === m);
+  kit.performer({
+    can: (e) => e.midi != null && stringOf(e.midi) >= 0,
+    prepare(evs) {
+      const pcs = new Set(evs.filter((e) => e.midi != null).map((e) => ((e.midi % 12) + 12) % 12));
+      const want = [0, 0, 0, 0, 0, 0, 0];
+      const naturals = new Set([...pcs].filter((pc) => NATURAL.includes(pc)).map((pc) => NATURAL.indexOf(pc)));
+      for (const pc of pcs) {
+        // A sharp or flat goes on a letter the tune doesn't need as a natural.
+        const pick = SPELL[pc]?.find(([letter]) => !naturals.has(letter) && !want[letter]);
+        if (pick) want[pick[0]] = pick[1];
+      }
+      want.forEach((to, letter) => setPedal(letter, to));
+    },
+    down(e) {
+      const i = stringOf(e.midi);
+      pluck(i, 0.4 + (e.vel ?? 0.7) * 0.45);
+      return null;
+    },
+    up() {},
+    finish() {},
   });
 
   function keydown(e) {

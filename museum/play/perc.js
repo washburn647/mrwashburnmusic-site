@@ -47,6 +47,7 @@ export async function mount(stage, ex, kit) {
     if (ringing.length > 4) ringing.shift().stop(0.3);
     last = { at: performance.now(), x, y, power: vol };
     s.animate(kind === 'gong' ? 8000 : kind === 'cymbals' || kind === 'triangle' ? 3000 : 900);
+    kit.hit('x');
   }
 
   function hush(release = 0.08) {
@@ -60,6 +61,7 @@ export async function mount(stage, ex, kit) {
     if (!spec.roll || roll) return;
     roll = sounds[spec.roll].play({ vol: 0.8, loop: true });
     s.animate(60000);
+    kit.hit('x', { roll: true });
   }
   function stopRoll() {
     if (!roll) return;
@@ -80,8 +82,8 @@ export async function mount(stage, ex, kit) {
     const h = holds.get(id);
     if (!h) return;
     if (spec.roll) startRoll();
-    else if (spec.choke) hush(0.06);
-    else if (spec.damp) hush(0.15);
+    else if (spec.choke) { hush(0.06); kit.hit('x', { choke: true }); }
+    else if (spec.damp) { hush(0.15); kit.hit('x', { choke: true }); }
   }
 
   const s = surface(box, {
@@ -94,7 +96,7 @@ export async function mount(stage, ex, kit) {
       const d = Math.hypot(dx, dy);
       if (kind !== 'cymbals' && kind !== 'triangle' && d > 1.15) return;
       // A second hand on a ringing bass drum or gong stops it at once.
-      if (spec.damp && holds.size) { hush(0.12); return; }
+      if (spec.damp && holds.size) { hush(0.12); kit.hit('x', { choke: true }); return; }
       strike(Math.min(1, d), dx, dy);
       const timer = setTimeout(() => hold(p.id), spec.wait || (spec.roll ? 220 : 320));
       holds.set(p.id, { timer });
@@ -318,8 +320,9 @@ export async function mount(stage, ex, kit) {
     if (ring > 0.02) s.animate(200);
   }
 
+  let pick = null;
   if (kind === 'cymbals') {
-    kit.choice({
+    pick = kit.choice({
       label: 'Cymbal',
       value: 'crash',
       options: [{ value: 'crash', label: 'Crash' }, { value: 'sus', label: 'Suspended' }],
@@ -331,6 +334,34 @@ export async function mount(stage, ex, kit) {
       },
     });
   }
+
+  // Listen: struck (x), rolled (roll), stopped (choke) or, the tambourine, shaken (shake).
+  kit.performer({
+    names: { x: ex.name },
+    can: (e) => ['x', 'roll', 'choke', 'shake'].includes(e.part),
+    // Crash cymbals choke; a roll needs the suspended cymbal.
+    prepare(evs) {
+      const want = evs.some((e) => e.part === 'roll') ? 1 : evs.some((e) => e.part === 'choke') ? 0 : -1;
+      const b = pick?.querySelectorAll('button')[want];
+      if (b && b.getAttribute('aria-checked') !== 'true') b.click();
+    },
+    down(e) {
+      const d = Math.max(0, Math.min(1, (1 - (e.vel ?? 0.72)) / 0.75));
+      if (e.part === 'choke') { hush(0.06); kit.hit('x', { choke: true }); return null; }
+      if (e.part === 'shake' && base.shake) {
+        sounds[base.shake].play({ vol: 0.75 });
+        last = { at: performance.now(), x: 0, y: 0, power: 0.6 };
+        s.animate(600);
+        kit.hit('x', { shake: true });
+        return null;
+      }
+      strike(d);
+      if (e.part === 'roll' && spec.roll) { startRoll(); return 'roll'; }
+      return null;
+    },
+    up(h) { if (h === 'roll') stopRoll(); },
+    finish() { stopRoll(); },
+  });
 
   let keyTimer = null;
   function keydown(e) {
