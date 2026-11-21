@@ -39,7 +39,10 @@ export async function mount(stage, ex, kit) {
     if (kind === 'bassdrum') { vol = 0.75 + (1 - d) * 0.25; filter = 600 + (1 - d) * 3000; }
     if (kind === 'gong') { vol = 0.6 + (1 - d) * 0.35; filter = 1500 + (1 - d) * 8000; }
     if (kind === 'triangle') vol = 0.8;
-    const v = sounds[spec.sound].play({ vol, filter });
+    // How hard (nearer the middle is harder): each strength has its own recordings, and a
+    // different one plays each time, as no two real strokes sound quite alike.
+    const vel = Math.max(0.05, Math.min(1, 1 - d * 0.75));
+    const v = sounds[spec.sound].play({ vol, vel, filter });
     ringing.push(v);
     if (ringing.length > 4) ringing.shift().stop(0.3);
     last = { at: performance.now(), x, y, power: vol };

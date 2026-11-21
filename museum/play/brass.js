@@ -19,7 +19,7 @@ export async function mount(stage, ex, kit) {
   const lo = Math.floor(pitchOf(parts[0]) - drop - 1);
   const hi = Math.ceil(pitchOf(parts[parts.length - 1]) + 1);
   const inst = await pitched(o.sound, lo, hi);
-  const voice = inst.sustain({ attack: 0.035, release: 0.1, glide: 0.018 });
+  const voice = inst.sustain({ attack: 0.035, release: 0.1, glide: 0.018, vibrato: o.vibrato });
 
   const box = document.createElement('div');
   box.className = 'zone brass';
@@ -354,6 +354,15 @@ export async function mount(stage, ex, kit) {
   }
   addEventListener('keydown', keydown);
   addEventListener('keyup', keyup);
+
+  if (o.vibrato) {
+    kit.toggle({
+      label: 'Vibrato',
+      on: true,
+      icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12c2-5 4-5 5 0s3 5 5 0 3-5 5 0 3 5 5 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+      onChange: (on) => voice.vibrato(on),
+    });
+  }
 
   return () => {
     removeEventListener('keydown', keydown);

@@ -78,10 +78,12 @@ export async function mount(stage, ex, kit) {
   }
 
   function strike(midi, depth = 0.7, from) {
-    const vol = 0.42 + 0.5 * Math.max(0, Math.min(1, depth));
+    const vel = Math.max(0, Math.min(1, depth));
+    const vol = 0.42 + 0.5 * vel;
     const d = down.get(midi);
     if (d && !look.bars) d.voice.stop(0.03);
-    const voice = inst.play(midi, { vol });
+    // vel also picks the piano's samples recorded at that strength: soft notes sound soft.
+    const voice = inst.play(midi, { vol, vel });
     const entry = { voice, by: new Set([from]) };
     if (d && look.bars) d.voice.stop?.(0.4);
     down.set(midi, entry);

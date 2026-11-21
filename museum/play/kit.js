@@ -43,12 +43,21 @@ export async function mount(stage, ex) {
     return { x, y, r: p[7] * size };
   };
 
-  function strike(id, at = { x: 0, y: 0, d: 0 }) {
+  function strike(id, touch = null) {
+    const at = touch || { x: 0, y: 0, d: 0 };
     const part = PARTS.find((p) => p[0] === id);
     const kind = part[1];
     let name = part[2];
     let vol = 0.85;
     if (kind === 'drum' || kind === 'snare') vol = 0.95 - at.d * 0.35;
+    // How hard: a drum is hit hardest in the middle, a cymbal toward its edge. A computer key
+    // plays a solid hit. Each strength has its own recordings, a different one every time.
+    let vel = 0.8;
+    if (touch) {
+      if (kind === 'drum' || kind === 'snare' || kind === 'kick') vel = 1 - at.d * 0.6;
+      else if (kind === 'cymbal') vel = 0.45 + at.d * 0.55;
+      else if (kind === 'hats') vel = 1 - at.d * 0.5;
+    }
     if (kind === 'snare' && at.d > 0.86) name = 'kit-cross-stick';
     if (id === 'ride' && at.d < 0.3) name = 'kit-ride-bell';
     if (kind === 'hats') {
@@ -59,7 +68,7 @@ export async function mount(stage, ex) {
       ringing.get('hihat')?.stop(0.03);
       ringing.delete('hihat');
     }
-    const v = sounds[name].play({ vol, rate: RATE[id] || 1 });
+    const v = sounds[name].play({ vol, vel, rate: RATE[id] || 1 });
     if (kind === 'cymbal' || (kind === 'hats' && open)) {
       ringing.set(kind === 'hats' ? 'hihat' : id, v);
     }

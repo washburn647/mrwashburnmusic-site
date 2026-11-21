@@ -72,7 +72,9 @@ function kitFor(ex) {
       const b = document.createElement('button');
       b.className = 'tool';
       b.setAttribute('aria-pressed', String(on));
-      b.innerHTML = icon ? `${icon}<span>${label}</span>` : `<span>${label}</span>`;
+      // On a narrow screen a switch with an icon shows just the icon (museum.css, span.word).
+      b.innerHTML = icon ? `${icon}<span class="word">${label}</span>` : `<span>${label}</span>`;
+      if (icon) b.setAttribute('aria-label', label);
       b.addEventListener('click', () => {
         on = !on;
         b.setAttribute('aria-pressed', String(on));

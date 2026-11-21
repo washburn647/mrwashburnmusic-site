@@ -1,6 +1,10 @@
 /* The museum's rooms and exhibits. Each exhibit names the module that plays it and that
    module's settings; the facts are the placard. Pitches are MIDI numbers (60 = middle C).
-   For a transposing instrument, `written` is how far the written note sits above the sound. */
+   For a transposing instrument, `written` is how far the written note sits above the sound.
+   `vibrato` (bowed, wind and brass) adds vibrato to samples recorded without it: how many cents
+   either way, and how much the level moves with it (Sustain in audio.js). The violin, viola and
+   double bass samples have vibrato already, and the clarinet, French horn and tuba usually play
+   without it. */
 
 export const ROOMS = [
   { id: 'keyboard', name: 'Keyboards', hue: '#C9824A' },
@@ -48,7 +52,7 @@ export const EXHIBITS = [
   },
   {
     id: 'cello', name: 'Cello', room: 'strings', play: 'bowed',
-    opts: { arco: 'cellos', pizz: 'cello-pizz', strings: [36, 43, 50, 57], tapes: [2, 3, 4, 5], span: 12 },
+    opts: { arco: 'cello', pizz: 'cello-pizz-solo', strings: [36, 43, 50, 57], tapes: [2, 3, 4, 5], span: 12, vibrato: { cents: 22 } },
     clef: 'bass',
     facts: [
       'Played sitting down, resting on a metal endpin on the floor.',
@@ -83,7 +87,7 @@ export const EXHIBITS = [
   },
   {
     id: 'flute', name: 'Flute', room: 'woodwinds', play: 'wind',
-    opts: { sound: 'flute', kind: 'flute' },
+    opts: { sound: 'flute', kind: 'flute', vibrato: { cents: 16, amp: 0.08 } },
     clef: 'treble',
     facts: [
       'No reed: you blow across a hole, like blowing across a bottle.',
@@ -106,7 +110,7 @@ export const EXHIBITS = [
   },
   {
     id: 'oboe', name: 'Oboe', room: 'woodwinds', play: 'wind',
-    opts: { sound: 'oboe', kind: 'oboe' },
+    opts: { sound: 'oboe', kind: 'oboe', vibrato: { cents: 14, amp: 0.04 } },
     clef: 'treble',
     facts: [
       'Two thin reeds tied together vibrate against each other.',
@@ -117,7 +121,7 @@ export const EXHIBITS = [
   },
   {
     id: 'saxophone', name: 'Saxophone', room: 'woodwinds', play: 'wind',
-    opts: { sound: 'tenor-sax', kind: 'sax' },
+    opts: { sound: 'tenor-sax', kind: 'sax', vibrato: { cents: 18, rate: 5.2, amp: 0.03 } },
     clef: 'treble', written: 14, flats: true,
     facts: [
       'Adolphe Sax invented it in the 1840s.',
@@ -129,7 +133,7 @@ export const EXHIBITS = [
   },
   {
     id: 'trumpet', name: 'Trumpet', room: 'brass', play: 'brass',
-    opts: { sound: 'trumpet', fundamental: 46, partials: [2, 3, 4, 5, 6, 8], valves: [2, 1, 3], look: 'trumpet' },
+    opts: { sound: 'trumpet', fundamental: 46, partials: [2, 3, 4, 5, 6, 8], valves: [2, 1, 3], look: 'trumpet', vibrato: { cents: 10, amp: 0.03 } },
     clef: 'treble', written: 2, flats: true,
     facts: [
       'The sound starts with your lips buzzing in the mouthpiece.',
@@ -153,7 +157,7 @@ export const EXHIBITS = [
   },
   {
     id: 'trombone', name: 'Trombone', room: 'brass', play: 'brass',
-    opts: { sound: 'trombone', fundamental: 34, partials: [2, 3, 4, 5, 6, 8], slide: true, look: 'trombone' },
+    opts: { sound: 'trombone', fundamental: 34, partials: [2, 3, 4, 5, 6, 8], slide: true, look: 'trombone', vibrato: { cents: 9, rate: 5, amp: 0.03 } },
     clef: 'bass', flats: true,
     facts: [
       'A slide instead of valves: seven positions, each a half step lower than the last.',

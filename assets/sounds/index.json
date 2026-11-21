@@ -126,7 +126,388 @@
      "file": "piano/108.mp3"
     }
    ],
-   "credit": "salamander"
+   "credit": "salamander",
+   "layers": [
+    {
+     "vel": 0.3,
+     "zones": [
+      {
+       "midi": 21,
+       "file": "piano/v3/21.mp3"
+      },
+      {
+       "midi": 24,
+       "file": "piano/v3/24.mp3"
+      },
+      {
+       "midi": 27,
+       "file": "piano/v3/27.mp3"
+      },
+      {
+       "midi": 30,
+       "file": "piano/v3/30.mp3"
+      },
+      {
+       "midi": 33,
+       "file": "piano/v3/33.mp3"
+      },
+      {
+       "midi": 36,
+       "file": "piano/v3/36.mp3"
+      },
+      {
+       "midi": 39,
+       "file": "piano/v3/39.mp3"
+      },
+      {
+       "midi": 42,
+       "file": "piano/v3/42.mp3"
+      },
+      {
+       "midi": 45,
+       "file": "piano/v3/45.mp3"
+      },
+      {
+       "midi": 48,
+       "file": "piano/v3/48.mp3"
+      },
+      {
+       "midi": 51,
+       "file": "piano/v3/51.mp3"
+      },
+      {
+       "midi": 54,
+       "file": "piano/v3/54.mp3"
+      },
+      {
+       "midi": 57,
+       "file": "piano/v3/57.mp3"
+      },
+      {
+       "midi": 60,
+       "file": "piano/v3/60.mp3"
+      },
+      {
+       "midi": 63,
+       "file": "piano/v3/63.mp3"
+      },
+      {
+       "midi": 66,
+       "file": "piano/v3/66.mp3"
+      },
+      {
+       "midi": 69,
+       "file": "piano/v3/69.mp3"
+      },
+      {
+       "midi": 72,
+       "file": "piano/v3/72.mp3"
+      },
+      {
+       "midi": 75,
+       "file": "piano/v3/75.mp3"
+      },
+      {
+       "midi": 78,
+       "file": "piano/v3/78.mp3"
+      },
+      {
+       "midi": 81,
+       "file": "piano/v3/81.mp3"
+      },
+      {
+       "midi": 84,
+       "file": "piano/v3/84.mp3"
+      },
+      {
+       "midi": 87,
+       "file": "piano/v3/87.mp3"
+      },
+      {
+       "midi": 90,
+       "file": "piano/v3/90.mp3"
+      },
+      {
+       "midi": 93,
+       "file": "piano/v3/93.mp3"
+      },
+      {
+       "midi": 96,
+       "file": "piano/v3/96.mp3"
+      },
+      {
+       "midi": 99,
+       "file": "piano/v3/99.mp3"
+      },
+      {
+       "midi": 102,
+       "file": "piano/v3/102.mp3"
+      },
+      {
+       "midi": 105,
+       "file": "piano/v3/105.mp3"
+      },
+      {
+       "midi": 108,
+       "file": "piano/v3/108.mp3"
+      }
+     ]
+    },
+    {
+     "vel": 0.6,
+     "zones": [
+      {
+       "midi": 21,
+       "file": "piano/v7/21.mp3"
+      },
+      {
+       "midi": 24,
+       "file": "piano/v7/24.mp3"
+      },
+      {
+       "midi": 27,
+       "file": "piano/v7/27.mp3"
+      },
+      {
+       "midi": 30,
+       "file": "piano/v7/30.mp3"
+      },
+      {
+       "midi": 33,
+       "file": "piano/v7/33.mp3"
+      },
+      {
+       "midi": 36,
+       "file": "piano/v7/36.mp3"
+      },
+      {
+       "midi": 39,
+       "file": "piano/v7/39.mp3"
+      },
+      {
+       "midi": 42,
+       "file": "piano/v7/42.mp3"
+      },
+      {
+       "midi": 45,
+       "file": "piano/v7/45.mp3"
+      },
+      {
+       "midi": 48,
+       "file": "piano/v7/48.mp3"
+      },
+      {
+       "midi": 51,
+       "file": "piano/v7/51.mp3"
+      },
+      {
+       "midi": 54,
+       "file": "piano/v7/54.mp3"
+      },
+      {
+       "midi": 57,
+       "file": "piano/v7/57.mp3"
+      },
+      {
+       "midi": 60,
+       "file": "piano/v7/60.mp3"
+      },
+      {
+       "midi": 63,
+       "file": "piano/v7/63.mp3"
+      },
+      {
+       "midi": 66,
+       "file": "piano/v7/66.mp3"
+      },
+      {
+       "midi": 69,
+       "file": "piano/v7/69.mp3"
+      },
+      {
+       "midi": 72,
+       "file": "piano/v7/72.mp3"
+      },
+      {
+       "midi": 75,
+       "file": "piano/v7/75.mp3"
+      },
+      {
+       "midi": 78,
+       "file": "piano/v7/78.mp3"
+      },
+      {
+       "midi": 81,
+       "file": "piano/v7/81.mp3"
+      },
+      {
+       "midi": 84,
+       "file": "piano/v7/84.mp3"
+      },
+      {
+       "midi": 87,
+       "file": "piano/v7/87.mp3"
+      },
+      {
+       "midi": 90,
+       "file": "piano/v7/90.mp3"
+      },
+      {
+       "midi": 93,
+       "file": "piano/v7/93.mp3"
+      },
+      {
+       "midi": 96,
+       "file": "piano/v7/96.mp3"
+      },
+      {
+       "midi": 99,
+       "file": "piano/v7/99.mp3"
+      },
+      {
+       "midi": 102,
+       "file": "piano/v7/102.mp3"
+      },
+      {
+       "midi": 105,
+       "file": "piano/v7/105.mp3"
+      },
+      {
+       "midi": 108,
+       "file": "piano/v7/108.mp3"
+      }
+     ]
+    },
+    {
+     "vel": 0.82,
+     "main": true
+    },
+    {
+     "vel": 1,
+     "zones": [
+      {
+       "midi": 21,
+       "file": "piano/v14/21.mp3"
+      },
+      {
+       "midi": 24,
+       "file": "piano/v14/24.mp3"
+      },
+      {
+       "midi": 27,
+       "file": "piano/v14/27.mp3"
+      },
+      {
+       "midi": 30,
+       "file": "piano/v14/30.mp3"
+      },
+      {
+       "midi": 33,
+       "file": "piano/v14/33.mp3"
+      },
+      {
+       "midi": 36,
+       "file": "piano/v14/36.mp3"
+      },
+      {
+       "midi": 39,
+       "file": "piano/v14/39.mp3"
+      },
+      {
+       "midi": 42,
+       "file": "piano/v14/42.mp3"
+      },
+      {
+       "midi": 45,
+       "file": "piano/v14/45.mp3"
+      },
+      {
+       "midi": 48,
+       "file": "piano/v14/48.mp3"
+      },
+      {
+       "midi": 51,
+       "file": "piano/v14/51.mp3"
+      },
+      {
+       "midi": 54,
+       "file": "piano/v14/54.mp3"
+      },
+      {
+       "midi": 57,
+       "file": "piano/v14/57.mp3"
+      },
+      {
+       "midi": 60,
+       "file": "piano/v14/60.mp3"
+      },
+      {
+       "midi": 63,
+       "file": "piano/v14/63.mp3"
+      },
+      {
+       "midi": 66,
+       "file": "piano/v14/66.mp3"
+      },
+      {
+       "midi": 69,
+       "file": "piano/v14/69.mp3"
+      },
+      {
+       "midi": 72,
+       "file": "piano/v14/72.mp3"
+      },
+      {
+       "midi": 75,
+       "file": "piano/v14/75.mp3"
+      },
+      {
+       "midi": 78,
+       "file": "piano/v14/78.mp3"
+      },
+      {
+       "midi": 81,
+       "file": "piano/v14/81.mp3"
+      },
+      {
+       "midi": 84,
+       "file": "piano/v14/84.mp3"
+      },
+      {
+       "midi": 87,
+       "file": "piano/v14/87.mp3"
+      },
+      {
+       "midi": 90,
+       "file": "piano/v14/90.mp3"
+      },
+      {
+       "midi": 93,
+       "file": "piano/v14/93.mp3"
+      },
+      {
+       "midi": 96,
+       "file": "piano/v14/96.mp3"
+      },
+      {
+       "midi": 99,
+       "file": "piano/v14/99.mp3"
+      },
+      {
+       "midi": 102,
+       "file": "piano/v14/102.mp3"
+      },
+      {
+       "midi": 105,
+       "file": "piano/v14/105.mp3"
+      },
+      {
+       "midi": 108,
+       "file": "piano/v14/108.mp3"
+      }
+     ]
+    }
+   ]
   },
   "violins": {
    "label": "Violins",
@@ -1294,7 +1675,23 @@
    "label": "Triangle",
    "kind": "hit",
    "file": "hits/triangle.mp3",
-   "credit": "vsco"
+   "credit": "vsco",
+   "layers": [
+    {
+     "vel": 0.6,
+     "files": [
+      "hits/triangle/triangle3-hit_v1_rr1_sum.mp3",
+      "hits/triangle/triangle3-hit_v1_rr2_sum.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/triangle.mp3",
+      "hits/triangle/triangle3-hit_v2_rr2_sum.mp3"
+     ]
+    }
+   ]
   },
   "finger-cymbals": {
    "label": "Finger cymbals",
@@ -1306,7 +1703,23 @@
    "label": "Tambourine",
    "kind": "hit",
    "file": "hits/tambourine.mp3",
-   "credit": "vsco"
+   "credit": "vsco",
+   "layers": [
+    {
+     "vel": 0.6,
+     "files": [
+      "hits/tambourine/tamb1-hit_v1_rr1_sum.mp3",
+      "hits/tambourine/tamb1-hit_v1_rr2_sum.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/tambourine.mp3",
+      "hits/tambourine/tamb1-hit_v2_rr2_sum.mp3"
+     ]
+    }
+   ]
   },
   "sleigh-bells": {
    "label": "Sleigh bells",
@@ -1336,13 +1749,73 @@
    "label": "Snare drum",
    "kind": "hit",
    "file": "hits/snare.mp3",
-   "credit": "vsco"
+   "credit": "vsco",
+   "layers": [
+    {
+     "vel": 0.25,
+     "files": [
+      "hits/snare/snare2-hitsn_v1_rr1_sum.mp3",
+      "hits/snare/snare2-hitsn_v1_rr2_sum.mp3"
+     ]
+    },
+    {
+     "vel": 0.45,
+     "files": [
+      "hits/snare/snare2-hitsn_v3_rr1_sum.mp3",
+      "hits/snare/snare2-hitsn_v3_rr2_sum.mp3"
+     ]
+    },
+    {
+     "vel": 0.7,
+     "files": [
+      "hits/snare.mp3",
+      "hits/snare/snare2-hitsn_v5_rr2_sum.mp3"
+     ]
+    },
+    {
+     "vel": 0.88,
+     "files": [
+      "hits/snare/snare2-hitsn_v7_rr1_sum.mp3",
+      "hits/snare/snare2-hitsn_v7_rr2_sum.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/snare/snare2-hitsn_v9_rr1_sum.mp3",
+      "hits/snare/snare2-hitsn_v9_rr2_sum.mp3"
+     ]
+    }
+   ]
   },
   "bass-drum": {
    "label": "Bass drum",
    "kind": "hit",
    "file": "hits/bass-drum.mp3",
-   "credit": "vsco"
+   "credit": "vsco",
+   "layers": [
+    {
+     "vel": 0.4,
+     "files": [
+      "hits/bass-drum/bdrumnewhit_v2_rr1_sum.mp3",
+      "hits/bass-drum/bdrumnewhit_v2_rr2_sum.mp3"
+     ]
+    },
+    {
+     "vel": 0.8,
+     "files": [
+      "hits/bass-drum.mp3",
+      "hits/bass-drum/bdrumnewhit_v4_rr2_sum.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/bass-drum/bdrumnewhit_v7_rr1_sum.mp3",
+      "hits/bass-drum/bdrumnewhit_v7_rr2_sum.mp3"
+     ]
+    }
+   ]
   },
   "conga": {
    "label": "Conga",
@@ -1366,98 +1839,387 @@
    "label": "Crash cymbal",
    "kind": "hit",
    "file": "hits/cymbal.mp3",
-   "credit": "vsco"
+   "credit": "vsco",
+   "layers": [
+    {
+     "vel": 0.3,
+     "files": [
+      "hits/cymbal/cymbal-crash1_pp_rr1.mp3",
+      "hits/cymbal/cymbal-crash1_pp_rr2.mp3"
+     ]
+    },
+    {
+     "vel": 0.55,
+     "files": [
+      "hits/cymbal/cymbal-crash1_mp_rr1.mp3",
+      "hits/cymbal/cymbal-crash1_mp_rr2.mp3"
+     ]
+    },
+    {
+     "vel": 0.82,
+     "files": [
+      "hits/cymbal.mp3",
+      "hits/cymbal/cymbal-crash1_mf_rr2.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/cymbal/cymbal-crash1_ff_rr1.mp3",
+      "hits/cymbal/cymbal-crash1_ff_rr2.mp3"
+     ]
+    }
+   ]
   },
   "kit-kick": {
    "label": "Kick",
    "kind": "hit",
    "file": "hits/kit-kick.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.45,
+     "files": [
+      "hits/kit-kick/kick_oh_p_1.mp3",
+      "hits/kit-kick/kick_oh_p_2.mp3",
+      "hits/kit-kick/kick_oh_p_3.mp3",
+      "hits/kit-kick/kick_oh_p_4.mp3"
+     ]
+    },
+    {
+     "vel": 0.82,
+     "files": [
+      "hits/kit-kick.mp3",
+      "hits/kit-kick/kick_oh_f_2.mp3",
+      "hits/kit-kick/kick_oh_f_3.mp3",
+      "hits/kit-kick/kick_oh_f_4.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-kick/kick_oh_ff_1.mp3",
+      "hits/kit-kick/kick_oh_ff_2.mp3",
+      "hits/kit-kick/kick_oh_ff_3.mp3",
+      "hits/kit-kick/kick_oh_ff_4.mp3"
+     ]
+    }
+   ]
   },
   "kit-snare": {
    "label": "Snare",
    "kind": "hit",
    "file": "hits/kit-snare.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.55,
+     "files": [
+      "hits/kit-snare/snare_oh_mp_1.mp3",
+      "hits/kit-snare/snare_oh_mp_2.mp3",
+      "hits/kit-snare/snare_oh_mp_3.mp3",
+      "hits/kit-snare/snare_oh_mp_4.mp3"
+     ]
+    },
+    {
+     "vel": 0.85,
+     "files": [
+      "hits/kit-snare.mp3",
+      "hits/kit-snare/snare_oh_f_2.mp3",
+      "hits/kit-snare/snare_oh_f_3.mp3",
+      "hits/kit-snare/snare_oh_f_4.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-snare/snare_oh_ff_1.mp3",
+      "hits/kit-snare/snare_oh_ff_2.mp3",
+      "hits/kit-snare/snare_oh_ff_3.mp3",
+      "hits/kit-snare/snare_oh_ff_4.mp3"
+     ]
+    }
+   ]
   },
   "kit-snare-ghost": {
    "label": "Snare ghost note",
    "kind": "hit",
    "file": "hits/kit-snare-ghost.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-snare-ghost.mp3",
+      "hits/kit-snare-ghost/snare_oh_ghost_2.mp3",
+      "hits/kit-snare-ghost/snare_oh_ghost_3.mp3",
+      "hits/kit-snare-ghost/snare_oh_ghost_4.mp3"
+     ]
+    }
+   ]
   },
   "kit-cross-stick": {
    "label": "Cross-stick",
    "kind": "hit",
    "file": "hits/kit-cross-stick.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-cross-stick.mp3",
+      "hits/kit-cross-stick/snarestick_oh_f_2.mp3",
+      "hits/kit-cross-stick/snarestick_oh_f_3.mp3",
+      "hits/kit-cross-stick/snarestick_oh_f_4.mp3"
+     ]
+    }
+   ]
   },
   "kit-hihat-closed": {
    "label": "Hi-hat closed",
    "kind": "hit",
    "file": "hits/kit-hihat-closed.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.6,
+     "files": [
+      "hits/kit-hihat-closed/hihatclosed_oh_p_1.mp3",
+      "hits/kit-hihat-closed/hihatclosed_oh_p_2.mp3",
+      "hits/kit-hihat-closed/hihatclosed_oh_p_3.mp3",
+      "hits/kit-hihat-closed/hihatclosed_oh_p_4.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-hihat-closed.mp3",
+      "hits/kit-hihat-closed/hihatclosed_oh_f_2.mp3",
+      "hits/kit-hihat-closed/hihatclosed_oh_f_3.mp3",
+      "hits/kit-hihat-closed/hihatclosed_oh_f_4.mp3"
+     ]
+    }
+   ]
   },
   "kit-hihat-open": {
    "label": "Hi-hat open",
    "kind": "hit",
    "file": "hits/kit-hihat-open.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.45,
+     "files": [
+      "hits/kit-hihat-open/hihatopen_oh_p_1.mp3",
+      "hits/kit-hihat-open/hihatopen_oh_p_2.mp3",
+      "hits/kit-hihat-open/hihatopen_oh_p_3.mp3"
+     ]
+    },
+    {
+     "vel": 0.8,
+     "files": [
+      "hits/kit-hihat-open.mp3",
+      "hits/kit-hihat-open/hihatopen_oh_f_2.mp3",
+      "hits/kit-hihat-open/hihatopen_oh_f_3.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-hihat-open/hihatopen_oh_ff_1.mp3",
+      "hits/kit-hihat-open/hihatopen_oh_ff_2.mp3",
+      "hits/kit-hihat-open/hihatopen_oh_ff_3.mp3"
+     ]
+    }
+   ]
   },
   "kit-hihat-pedal": {
    "label": "Hi-hat pedal",
    "kind": "hit",
    "file": "hits/kit-hihat-pedal.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-hihat-pedal.mp3",
+      "hits/kit-hihat-pedal/hihatfoot_oh_mp_2.mp3",
+      "hits/kit-hihat-pedal/hihatfoot_oh_mp_3.mp3",
+      "hits/kit-hihat-pedal/hihatfoot_oh_mp_4.mp3"
+     ]
+    }
+   ]
   },
   "kit-tom-high": {
    "label": "High tom",
    "kind": "hit",
    "file": "hits/kit-tom-high.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.45,
+     "files": [
+      "hits/kit-tom-high/hitom_oh_p_1.mp3",
+      "hits/kit-tom-high/hitom_oh_p_2.mp3",
+      "hits/kit-tom-high/hitom_oh_p_3.mp3",
+      "hits/kit-tom-high/hitom_oh_p_4.mp3"
+     ]
+    },
+    {
+     "vel": 0.82,
+     "files": [
+      "hits/kit-tom-high.mp3",
+      "hits/kit-tom-high/hitom_oh_f_2.mp3",
+      "hits/kit-tom-high/hitom_oh_f_3.mp3",
+      "hits/kit-tom-high/hitom_oh_f_4.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-tom-high/hitom_oh_ff_1.mp3",
+      "hits/kit-tom-high/hitom_oh_ff_2.mp3",
+      "hits/kit-tom-high/hitom_oh_ff_3.mp3",
+      "hits/kit-tom-high/hitom_oh_ff_4.mp3"
+     ]
+    }
+   ]
   },
   "kit-tom-low": {
    "label": "Low tom",
    "kind": "hit",
    "file": "hits/kit-tom-low.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.4,
+     "files": [
+      "hits/kit-tom-low/lotom_oh_pp_1.mp3",
+      "hits/kit-tom-low/lotom_oh_pp_2.mp3",
+      "hits/kit-tom-low/lotom_oh_pp_3.mp3"
+     ]
+    },
+    {
+     "vel": 0.8,
+     "files": [
+      "hits/kit-tom-low.mp3",
+      "hits/kit-tom-low/lotom_oh_mp_2.mp3",
+      "hits/kit-tom-low/lotom_oh_mp_3.mp3",
+      "hits/kit-tom-low/lotom_oh_mp_4.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-tom-low/lotom_oh_ff_1.mp3",
+      "hits/kit-tom-low/lotom_oh_ff_2.mp3",
+      "hits/kit-tom-low/lotom_oh_ff_3.mp3",
+      "hits/kit-tom-low/lotom_oh_ff_4.mp3"
+     ]
+    }
+   ]
   },
   "kit-ride": {
    "label": "Ride",
    "kind": "hit",
    "file": "hits/kit-ride.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.82,
+     "files": [
+      "hits/kit-ride.mp3",
+      "hits/kit-ride/ride1_oh_mp_2.mp3",
+      "hits/kit-ride/ride1_oh_mp_3.mp3",
+      "hits/kit-ride/ride1_oh_mp_4.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-ride/ride1_oh_ff_1.mp3",
+      "hits/kit-ride/ride1_oh_ff_2.mp3",
+      "hits/kit-ride/ride1_oh_ff_3.mp3"
+     ]
+    }
+   ]
   },
   "kit-ride-bell": {
    "label": "Ride bell",
    "kind": "hit",
    "file": "hits/kit-ride-bell.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-ride-bell.mp3",
+      "hits/kit-ride-bell/ride1bell_oh_f_2.mp3",
+      "hits/kit-ride-bell/ride1bell_oh_f_3.mp3"
+     ]
+    }
+   ]
   },
   "kit-crash": {
    "label": "Crash",
    "kind": "hit",
    "file": "hits/kit-crash.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.6,
+     "files": [
+      "hits/kit-crash/crash1_oh_p_1.mp3",
+      "hits/kit-crash/crash1_oh_p_2.mp3",
+      "hits/kit-crash/crash1_oh_p_3.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-crash.mp3",
+      "hits/kit-crash/crash1_oh_ff_2.mp3",
+      "hits/kit-crash/crash1_oh_ff_3.mp3"
+     ]
+    }
+   ]
   },
   "kit-splash": {
    "label": "Splash",
    "kind": "hit",
    "file": "hits/kit-splash.mp3",
    "credit": "salamander-drums",
-   "group": "kit"
+   "group": "kit",
+   "layers": [
+    {
+     "vel": 0.6,
+     "files": [
+      "hits/kit-splash/splash1_oh_p_1.mp3",
+      "hits/kit-splash/splash1_oh_p_2.mp3",
+      "hits/kit-splash/splash1_oh_p_3.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/kit-splash.mp3",
+      "hits/kit-splash/splash1_oh_f_2.mp3",
+      "hits/kit-splash/splash1_oh_f_3.mp3"
+     ]
+    }
+   ]
   },
   "guitar": {
    "label": "Nylon guitar",
@@ -3006,13 +3768,69 @@
    "label": "Gong",
    "kind": "hit",
    "file": "hits/gong.mp3",
-   "credit": "vsco"
+   "credit": "vsco",
+   "layers": [
+    {
+     "vel": 0.35,
+     "files": [
+      "hits/gong/gonghit_p.mp3"
+     ]
+    },
+    {
+     "vel": 0.65,
+     "files": [
+      "hits/gong/gonghit_mf.mp3"
+     ]
+    },
+    {
+     "vel": 0.88,
+     "files": [
+      "hits/gong.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/gong/gonghit_fff.mp3"
+     ]
+    }
+   ]
   },
   "sus-cymbal": {
    "label": "Suspended cymbal",
    "kind": "hit",
    "file": "hits/sus-cymbal.mp3",
-   "credit": "vsco"
+   "credit": "vsco",
+   "layers": [
+    {
+     "vel": 0.3,
+     "files": [
+      "hits/sus-cymbal/suscymb1-hit_pp_rr1.mp3",
+      "hits/sus-cymbal/suscymb1-hit_pp_rr2.mp3"
+     ]
+    },
+    {
+     "vel": 0.6,
+     "files": [
+      "hits/sus-cymbal/suscymb1-hit_mp_rr1.mp3",
+      "hits/sus-cymbal/suscymb1-hit_mp_rr2.mp3"
+     ]
+    },
+    {
+     "vel": 0.85,
+     "files": [
+      "hits/sus-cymbal.mp3",
+      "hits/sus-cymbal/suscymb1-hit_f_rr2.mp3"
+     ]
+    },
+    {
+     "vel": 1,
+     "files": [
+      "hits/sus-cymbal/suscymb1-hit_fff_rr1.mp3",
+      "hits/sus-cymbal/suscymb1-hit_fff_rr2.mp3"
+     ]
+    }
+   ]
   },
   "sus-cymbal-roll": {
    "label": "Suspended cymbal roll",
@@ -3043,6 +3861,168 @@
    "kind": "hit",
    "file": "hits/tambourine-shake.mp3",
    "credit": "vsco"
+  },
+  "cello": {
+   "label": "Cello",
+   "kind": "pitched",
+   "release": 0.3,
+   "zones": [
+    {
+     "midi": 36,
+     "file": "cello/36.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 39,
+     "file": "cello/39.mp3",
+     "tune": -1
+    },
+    {
+     "midi": 42,
+     "file": "cello/42.mp3",
+     "tune": -5
+    },
+    {
+     "midi": 45,
+     "file": "cello/45.mp3"
+    },
+    {
+     "midi": 48,
+     "file": "cello/48.mp3",
+     "tune": -7
+    },
+    {
+     "midi": 51,
+     "file": "cello/51.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 54,
+     "file": "cello/54.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 57,
+     "file": "cello/57.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 60,
+     "file": "cello/60.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 63,
+     "file": "cello/63.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 66,
+     "file": "cello/66.mp3"
+    },
+    {
+     "midi": 69,
+     "file": "cello/69.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 72,
+     "file": "cello/72.mp3"
+    },
+    {
+     "midi": 75,
+     "file": "cello/75.mp3",
+     "tune": 3
+    },
+    {
+     "midi": 78,
+     "file": "cello/78.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 81,
+     "file": "cello/81.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 84,
+     "file": "cello/84.mp3",
+     "tune": 6
+    }
+   ],
+   "credit": "karoryfer-cello"
+  },
+  "cello-pizz-solo": {
+   "label": "Cello pizzicato (solo)",
+   "kind": "pitched",
+   "release": 0.15,
+   "zones": [
+    {
+     "midi": 36,
+     "file": "cello-pizz-solo/36.mp3",
+     "tune": 16
+    },
+    {
+     "midi": 39,
+     "file": "cello-pizz-solo/39.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 42,
+     "file": "cello-pizz-solo/42.mp3",
+     "tune": -16
+    },
+    {
+     "midi": 45,
+     "file": "cello-pizz-solo/45.mp3",
+     "tune": -10
+    },
+    {
+     "midi": 48,
+     "file": "cello-pizz-solo/48.mp3",
+     "tune": -19
+    },
+    {
+     "midi": 51,
+     "file": "cello-pizz-solo/51.mp3",
+     "tune": -19
+    },
+    {
+     "midi": 54,
+     "file": "cello-pizz-solo/54.mp3",
+     "tune": 1
+    },
+    {
+     "midi": 57,
+     "file": "cello-pizz-solo/57.mp3",
+     "tune": -3
+    },
+    {
+     "midi": 60,
+     "file": "cello-pizz-solo/60.mp3",
+     "tune": 2
+    },
+    {
+     "midi": 63,
+     "file": "cello-pizz-solo/63.mp3",
+     "tune": 9
+    },
+    {
+     "midi": 66,
+     "file": "cello-pizz-solo/66.mp3"
+    },
+    {
+     "midi": 69,
+     "file": "cello-pizz-solo/69.mp3",
+     "tune": -2
+    },
+    {
+     "midi": 72,
+     "file": "cello-pizz-solo/72.mp3",
+     "tune": -1
+    }
+   ],
+   "credit": "karoryfer-cello"
   }
  },
  "voices": {},
@@ -3054,6 +4034,7 @@
   "freepats": "FreePats project (freepats.zenvoid.org) sound banks, CC0",
   "freepats-sax": "Tenor Saxophone by Roberto (FreePats project), from VSCO 2 samples, CC0",
   "flamestudios-bass": "Ibanez Electric Bass Guitar by FlameStudios (Gary Campion), GNU GPL v3",
-  "flamestudios-banjo": "Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3"
+  "flamestudios-banjo": "Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3",
+  "karoryfer-cello": "Karoryfer x bigcat cello by Karoryfer Samples and bigcat instruments, played by Kamila Borowiak, CC0"
  }
 }
