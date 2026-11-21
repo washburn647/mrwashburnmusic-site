@@ -1,8 +1,10 @@
-/* Keyboards and mallet bars: piano, glockenspiel, xylophone, marimba.
+/* Keyboards and mallet bars: piano, organ, glockenspiel, xylophone, marimba.
    A map of the whole range sits on top; drag it to move along the keyboard.
    Slide a finger across the keys for a glissando. Nearer the front of a key (or the middle of
    a bar) plays louder. On a computer, the letter keys play (A is C, W is C♯, ...), Z and X move
-   down and up an octave, and Space holds the piano's pedal. */
+   down and up an octave, and Space holds the piano's pedal. An organ's note lasts as long as
+   the key is held, at the same loudness however it is pressed, since air through a pipe, not
+   a hammer, makes the sound. */
 
 import { surface, rr, label, fine } from '../surface.js';
 import { pitched } from '../audio.js';
@@ -13,6 +15,7 @@ const KEYS = 'awsedftgyhujkolp;\'';
 
 const LOOKS = {
   piano: { white: '#FBF8F1', whiteEdge: '#CFC6B4', black: '#1D1A18', bg: '#141210', felt: '#7A1F23' },
+  organ: { white: '#F4ECD8', whiteEdge: '#C9BC9C', black: '#2A1A12', bg: '#3A2416', felt: '#1F3329', held: true },
   glock: { white: '#E3E8EC', black: '#C9D1D7', bg: '#2C3237', rail: '#5B4636', bars: true, metal: true },
   xylo: { white: '#BE7442', black: '#A65F33', bg: '#3A2A20', rail: '#2A1D15', bars: true },
   marimba: { white: '#8F4B2A', black: '#7C3F22', bg: '#2B211B', rail: '#1E1712', bars: true, tubes: true },
@@ -82,8 +85,15 @@ export async function mount(stage, ex, kit) {
     const vol = 0.42 + 0.5 * vel;
     const d = down.get(midi);
     if (d && !look.bars) d.voice.stop(0.03);
-    // vel also picks the piano's samples recorded at that strength: soft notes sound soft.
-    const voice = inst.play(midi, { vol, vel });
+    let voice;
+    if (look.held) {
+      // A held note: the steady part of the sample loops for as long as the key is down.
+      voice = inst.sustain({ attack: 0.02, release: 0.08 });
+      voice.start(midi, 0.55);
+    } else {
+      // vel also picks the piano's samples recorded at that strength: soft notes sound soft.
+      voice = inst.play(midi, { vol, vel });
+    }
     const entry = { voice, by: new Set([from]) };
     if (d && look.bars) d.voice.stop?.(0.4);
     down.set(midi, entry);

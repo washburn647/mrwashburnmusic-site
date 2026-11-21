@@ -203,6 +203,132 @@ const ART = {
     <circle cx="60" cy="64" r="42" fill="url(#cym)" stroke="#9A6E1E" stroke-width="2"/>
     <circle cx="60" cy="64" r="34" fill="none" stroke="#9A6E1E" stroke-width="1" opacity=".6"/>
     <circle cx="60" cy="64" r="12" fill="#C99A3E" stroke="#9A6E1E"/>`,
+  organ: () => `
+    <rect x="14" y="12" width="92" height="58" rx="4" fill="${WOOD_D}"/>
+    ${[22, 32, 42, 52, 62, 72, 82, 92].map((x, i) => `<rect x="${x}" y="${20 + Math.abs(i - 3.5) * 4}" width="6" height="${44 - Math.abs(i - 3.5) * 4}" rx="2" fill="url(#silver)" stroke="${SILVER_D}" stroke-width=".8"/>`).join('')}
+    <rect x="10" y="70" width="100" height="10" rx="2" fill="${WOOD}"/>
+    ${keysRow(14, 80, 92, 12, 14)}
+    <rect x="10" y="92" width="100" height="20" rx="3" fill="${WOOD}"/>
+    <g fill="#E9E2D0">${[24, 36, 48, 60].map((x) => `<rect x="${x}" y="72" width="3" height="6" rx="1"/>`).join('')}</g>`,
+  'electric-guitar': () => `
+    <g transform="rotate(-35 60 60)">
+      <path d="M60 58 C50 56 40 58 40 68 C40 74 46 76 44 82 C40 90 38 100 46 106 C54 112 66 112 74 106 C82 100 80 90 76 82 C74 76 80 74 80 68 C80 58 70 56 60 58Z" fill="#C8333A" stroke="#7E1A1F" stroke-width="2"/>
+      <path d="M54 70 C50 74 50 92 56 98 L68 98 C72 92 72 76 66 70Z" fill="#F3EEE4"/>
+      <rect x="53" y="76" width="14" height="4" rx="1.5" fill="#141414"/><rect x="53" y="86" width="14" height="4" rx="1.5" fill="#141414"/>
+      <rect x="55.5" y="6" width="9" height="68" rx="2" fill="#E3C79A"/>
+      <path d="M54 6 L52 -6 L66 -6 L66 6Z" fill="#E3C79A" stroke="${WOOD_D}" stroke-width="1"/>
+      <g stroke="${SILVER_D}" stroke-width=".8">${[14, 22, 29, 36, 42, 48, 53].map((y) => `<path d="M55.5 ${y}h9"/>`).join('')}</g>
+      <rect x="51" y="96" width="18" height="3" rx="1.5" fill="${SILVER_D}"/>
+      <g stroke="#ECEFF1" stroke-width=".6">${[56.5, 58, 59.4, 60.6, 62, 63.5].map((x) => `<path d="M${x} -4V98"/>`).join('')}</g>
+    </g>`,
+  'electric-bass': () => `
+    <g transform="rotate(-35 60 60)">
+      <path d="M60 62 C50 60 40 62 40 72 C40 78 46 80 44 86 C40 94 40 104 48 108 C56 113 66 113 74 108 C82 104 80 94 76 86 C74 80 80 78 80 72 C80 62 70 60 60 62Z" fill="#2E5A8C" stroke="#173252" stroke-width="2"/>
+      <path d="M53 74 C50 80 50 96 56 100 L68 100 C71 94 70 80 66 74Z" fill="#1A1A1A"/>
+      <rect x="53" y="82" width="14" height="5" rx="1.5" fill="#3A3A3A"/>
+      <rect x="56" y="-4" width="8" height="80" rx="2" fill="#4A2E1B"/>
+      <g fill="${SILVER}">${[-4, 2, 8, 14].map((y, i) => `<circle cx="${i % 2 ? 68 : 52}" cy="${y}" r="2.6"/>`).join('')}</g>
+      <g stroke="${SILVER_D}" stroke-width=".8">${[10, 20, 29, 37, 44, 51, 57].map((y) => `<path d="M56 ${y}h8"/>`).join('')}</g>
+      <g stroke="#ECEFF1" stroke-width="1">${[57.5, 59.3, 61, 62.7].map((x) => `<path d="M${x} -6V100"/>`).join('')}</g>
+    </g>`,
+  banjo: () => `
+    <g transform="rotate(-35 60 60)">
+      <rect x="56" y="-6" width="8" height="70" rx="2" fill="#4A2E1B"/>
+      <rect x="54" y="-12" width="12" height="9" rx="3" fill="${WOOD_D}"/>
+      <circle cx="60" cy="84" r="27" fill="${SILVER_D}"/>
+      ${Array.from({ length: 16 }, (_, i) => { const a = (i / 16) * Math.PI * 2; return `<circle cx="${60 + Math.cos(a) * 25.5}" cy="${84 + Math.sin(a) * 25.5}" r="1.3" fill="#F4F7F9"/>`; }).join('')}
+      <circle cx="60" cy="84" r="23" fill="url(#head)"/>
+      <rect x="52" y="92" width="16" height="3" rx="1" fill="${WOOD_L}"/>
+      <g stroke="${SILVER_D}" stroke-width=".8">${[6, 14, 21, 28, 34, 40, 45].map((y) => `<path d="M56 ${y}h8"/>`).join('')}</g>
+      <circle cx="65" cy="22" r="1.6" fill="#F1E9D6"/>
+      <g stroke="#ECEFF1" stroke-width=".55">${[57.5, 59, 60.5, 62].map((x) => `<path d="M${x} -6V106"/>`).join('')}<path d="M63.5 22V106"/></g>
+    </g>`,
+  ukulele: () => `
+    <g transform="rotate(-35 60 60) translate(60 64) scale(.82) translate(-60 -64)">
+      <path d="M60 50 C49 50 44 55 45 63 C46 68 50 70 50 73 C42 75 37 82 38 92 C40 104 50 110 60 110 C70 110 80 104 82 92 C83 82 78 75 70 73 C70 70 74 68 75 63 C76 55 71 50 60 50Z" fill="#CF9455" stroke="${WOOD_D}" stroke-width="2"/>
+      <circle cx="60" cy="76" r="8" fill="${EBONY}"/>
+      <rect x="55.5" y="14" width="9" height="58" rx="2" fill="#4A2E1B"/>
+      <rect x="53.5" y="2" width="13" height="13" rx="3" fill="${WOOD_D}"/>
+      <g stroke="${SILVER}" stroke-width=".8">${[22, 30, 37, 44, 50, 55].map((y) => `<path d="M55.5 ${y}h9"/>`).join('')}</g>
+      <rect x="51" y="94" width="18" height="4" rx="1.5" fill="${EBONY}"/>
+      <g stroke="#F3EBD9" stroke-width=".7">${[57, 59, 61, 63].map((x) => `<path d="M${x} 6V96"/>`).join('')}</g>
+    </g>`,
+  harp: () => `
+    <path d="M24 112 L24 18 C40 10 60 20 74 28 C88 36 98 34 104 30" fill="none" stroke="${WOOD_L}" stroke-width="6" stroke-linecap="round"/>
+    <path d="M28 108 L100 40" stroke="${WOOD}" stroke-width="9" stroke-linecap="round"/>
+    <g stroke-width="1">${Array.from({ length: 13 }, (_, i) => { const x = 32 + i * 5.6; const top = 19 + Math.sin((i / 12) * Math.PI) * 8 + i * 0.6; const bot = 104 - i * 5.3; return `<path d="M${x} ${top}V${bot}" stroke="${i % 7 === 0 ? '#D2443B' : i % 7 === 3 ? '#2B2F4A' : '#EEE4CE'}"/>`; }).join('')}</g>
+    <rect x="18" y="108" width="20" height="8" rx="2" fill="${WOOD_D}"/>`,
+  bassoon: () => `
+    <g transform="rotate(10 60 60)">
+      <path d="M44 22 C40 14 32 10 26 12" fill="none" stroke="${SILVER}" stroke-width="2.4"/>
+      <path d="M24 10 l-4 -3" stroke="#C79A64" stroke-width="3" stroke-linecap="round"/>
+      <rect x="44" y="14" width="10" height="92" rx="3" fill="#7A3519"/>
+      <rect x="56" y="4" width="13" height="104" rx="3" fill="#8E4220"/>
+      <path d="M44 104 h25 v8 a4 4 0 0 1 -4 4 h-17 a4 4 0 0 1 -4 -4z" fill="#5E2412"/>
+      <rect x="55" y="2" width="15" height="5" rx="2" fill="${SILVER}"/>
+      <rect x="43" y="60" width="27" height="3" fill="${SILVER}"/>
+      ${[30, 38, 46, 70, 78, 86].map((y) => `<circle cx="${y < 60 ? 49 : 62.5}" cy="${y}" r="2.4" fill="#2A1008" stroke="${SILVER}" stroke-width="1"/>`).join('')}
+    </g>`,
+  'sleigh-bells': () => `
+    <path d="M16 70 C30 40 90 40 104 70" fill="none" stroke="#5A2E16" stroke-width="9" stroke-linecap="round"/>
+    <rect x="48" y="78" width="24" height="34" rx="6" fill="${WOOD_D}"/>
+    ${[22, 34, 47, 60, 73, 86, 98].map((x, i) => { const y = 66 - Math.sin(((x - 16) / 88) * Math.PI) * 22; return `<circle cx="${x}" cy="${y}" r="7" fill="url(#cym)" stroke="#9A6E1E"/><path d="M${x - 4} ${y + 2}h8" stroke="#3A2408" stroke-width="1.4"/>`; }).join('')}`,
+  congas: () => `
+    <path d="M22 30 C18 60 20 90 28 112 H54 C62 90 64 60 60 30Z" fill="#9A4E22" stroke="#5E2C10" stroke-width="2"/>
+    <ellipse cx="41" cy="30" rx="19" ry="5" fill="url(#head)" stroke="${SILVER_D}" stroke-width="2"/>
+    <path d="M58 40 C54 68 56 94 64 114 H94 C102 94 104 68 100 40Z" fill="#B8622E" stroke="#5E2C10" stroke-width="2"/>
+    <ellipse cx="79" cy="40" rx="21" ry="5.5" fill="url(#head)" stroke="${SILVER_D}" stroke-width="2"/>
+    <path d="M23 50 H59 M60 62 H101" stroke="${SILVER_D}" stroke-width="1.5" opacity=".7"/>`,
+  bongos: () => `
+    <path d="M14 56 L20 92 H48 L54 56Z" fill="#8E4A22" stroke="#5E2C10" stroke-width="2"/>
+    <ellipse cx="34" cy="56" rx="20" ry="6" fill="url(#head)" stroke="${SILVER_D}" stroke-width="2.4"/>
+    <rect x="52" y="66" width="14" height="10" rx="2" fill="${WOOD_D}"/>
+    <path d="M62 50 L70 94 H106 L112 50Z" fill="#9A5226" stroke="#5E2C10" stroke-width="2"/>
+    <ellipse cx="87" cy="50" rx="25" ry="7" fill="url(#head)" stroke="${SILVER_D}" stroke-width="2.4"/>`,
+  agogo: () => `
+    <path d="M30 20 L22 84 H50 L42 20Z" fill="url(#silver)" stroke="${SILVER_D}" stroke-width="1.5"/>
+    <ellipse cx="36" cy="84" rx="14" ry="4" fill="${SILVER_D}"/>
+    <path d="M78 30 L68 98 H104 L94 30Z" fill="url(#silver)" stroke="${SILVER_D}" stroke-width="1.5"/>
+    <ellipse cx="86" cy="98" rx="18" ry="5" fill="${SILVER_D}"/>
+    <path d="M36 20 C36 4 86 6 86 30" fill="none" stroke="${SILVER_D}" stroke-width="4"/>
+    <path d="M58 6 V112" stroke="${SILVER_D}" stroke-width="4" stroke-linecap="round"/>`,
+  cowbell: () => `
+    <path d="M44 20 H76 L92 96 H28Z" fill="#555553" stroke="#2A2A2A" stroke-width="2"/>
+    <path d="M44 20 H60 L56 96 H28Z" fill="#6E6E6A"/>
+    <ellipse cx="60" cy="96" rx="32" ry="6" fill="#1C1C1C"/>
+    <rect x="54" y="10" width="12" height="12" rx="2" fill="#8A8A86"/>
+    <path d="M100 40 L74 76" stroke="${WOOD_L}" stroke-width="4" stroke-linecap="round"/>`,
+  claves: () => `
+    <g stroke-linecap="round">
+      <path d="M18 80 L102 66" stroke="#5A2E12" stroke-width="12"/><path d="M18 80 L102 66" stroke="#A35E2A" stroke-width="8"/>
+      <path d="M30 26 L92 62" stroke="#5A2E12" stroke-width="12"/><path d="M30 26 L92 62" stroke="#B86E35" stroke-width="8"/>
+    </g>
+    <path d="M58 52 l-6 -6 M64 48 l2 -8 M70 54 l8 -4" stroke="${INK}" stroke-width="2" stroke-linecap="round" opacity=".5"/>`,
+  guiro: () => `
+    <ellipse cx="58" cy="66" rx="46" ry="20" fill="#C08A46" stroke="#6E4418" stroke-width="2"/>
+    <g stroke="#6E4418" stroke-width="1.6">${Array.from({ length: 15 }, (_, i) => { const x = 24 + i * 5; const h = Math.sqrt(Math.max(0, 1 - ((x - 58) / 46) ** 2)) * 16; return `<path d="M${x} ${66 - h}V${66 + h}"/>`; }).join('')}</g>
+    <path d="M88 52 L112 20" stroke="${WOOD_L}" stroke-width="4" stroke-linecap="round"/>`,
+  shaker: () => `
+    <ellipse cx="46" cy="64" rx="20" ry="28" fill="#E0A02E" stroke="#9A6410" stroke-width="2"/>
+    <ellipse cx="40" cy="54" rx="6" ry="9" fill="#FFE08A" opacity=".7"/>
+    <ellipse cx="82" cy="58" rx="14" ry="20" fill="#D24A3A" stroke="#8A2418" stroke-width="2"/>
+    <path d="M14 40 l-6 -4 M12 64 h-8 M108 46 l6 -4 M110 66 h7" stroke="${INK}" stroke-width="2" stroke-linecap="round" opacity=".5"/>`,
+  cabasa: () => `
+    <rect x="54" y="78" width="12" height="38" rx="4" fill="${WOOD_D}"/>
+    <ellipse cx="60" cy="50" rx="34" ry="30" fill="#8E5A2E"/>
+    ${Array.from({ length: 7 }, (_, r) => Array.from({ length: 11 }, (_, k) => { const x = 30 + k * 6; const y = 30 + r * 6.5; return ((x - 60) / 33) ** 2 + ((y - 50) / 29) ** 2 < 0.9 ? `<circle cx="${x}" cy="${y}" r="2.4" fill="${(r + k) % 2 ? SILVER : '#F4F7F9'}" stroke="${SILVER_D}" stroke-width=".4"/>` : ''; }).join('')).join('')}`,
+  'log-drum': () => `
+    <path d="M10 56 L22 96 H98 L110 56Z" fill="#6E3A18"/>
+    <rect x="10" y="44" width="100" height="14" rx="3" fill="#A3622E"/>
+    <path d="M20 51 H58 M66 51 H100" stroke="#2A1408" stroke-width="3"/>
+    <path d="M58 51 v-4 v8 M20 51 v-4 v8 M66 51 v-4 v8 M100 51 v-4 v8" stroke="#2A1408" stroke-width="2"/>
+    <g stroke="${WOOD_L}" stroke-width="3" stroke-linecap="round"><path d="M30 14L40 40"/><path d="M90 12L78 40"/></g>
+    <circle cx="29" cy="12" r="5" fill="#3B2418"/><circle cx="91" cy="10" r="5" fill="#3B2418"/>`,
+  kalimba: () => `
+    <rect x="14" y="20" width="92" height="84" rx="12" fill="${WOOD}" stroke="${WOOD_D}" stroke-width="2"/>
+    <circle cx="60" cy="88" r="7" fill="#2A1708"/>
+    ${[22, 30, 38, 46, 54, 62, 70, 78, 86, 94].map((x, i) => { const rank = Math.abs(x - 58) / 8; const top = 26 + rank * 6; return `<rect x="${x - 2.5}" y="${top}" width="5" height="${64 - top}" rx="2.5" fill="url(#silver)" stroke="${SILVER_D}" stroke-width=".6"/>`; }).join('')}
+    <rect x="18" y="62" width="84" height="5" rx="1" fill="${SILVER_D}"/>`,
   glockenspiel: () => bars(['#E6EBEE', '#D2D9DE'], false),
   xylophone: () => bars(['#B5683A', '#A55B30'], false),
   marimba: () => bars(['#8E4A2A', '#7F4024'], true),

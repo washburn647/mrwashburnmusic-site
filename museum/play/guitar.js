@@ -1,12 +1,17 @@
-/* Guitar: the neck on the left, where fingers press the frets; the body on the right, where
-   you strum or pick. Chords mode puts chord shapes on the left instead: pick one and strum.
+/* Guitar and its relatives (electric guitar, electric bass, banjo, ukulele): the neck on the
+   left, where fingers press the frets; the body on the right, where you strum or pick. Chords
+   mode puts chord shapes on the left instead: pick one and strum.
+   opts: sound, strings (open notes, from the string nearest the player's face), frets,
+   chords (a set below, or none), look (classical, electric, bass, banjo, ukulele) and short
+   (a string that starts partway up the neck, like the banjo's fifth: { string, from }).
    On a computer, click a fret to put a finger there (click again to lift it), drag across the
    strings to strum, Space strums down (Shift+Space up), and 1 to 0 pick chords. */
 
 import { surface, rr, label } from '../surface.js';
 import { pitched } from '../audio.js';
 
-const CHORDS = [
+const CHORD_SETS = {};
+CHORD_SETS.guitar = [
   ['C', [-1, 3, 2, 0, 1, 0]],
   ['G', [3, 2, 0, 0, 0, 3]],
   ['D', [-1, -1, 0, 2, 3, 2]],
@@ -20,17 +25,63 @@ const CHORDS = [
   ['D7', [-1, -1, 0, 2, 1, 2]],
   ['E7', [0, 2, 0, 1, 0, 0]],
 ];
+// Ukulele, strings G C E A (the G is tuned high, above the C).
+CHORD_SETS.ukulele = [
+  ['C', [0, 0, 0, 3]],
+  ['G', [0, 2, 3, 2]],
+  ['F', [2, 0, 1, 0]],
+  ['Am', [2, 0, 0, 0]],
+  ['D', [2, 2, 2, 0]],
+  ['A', [2, 1, 0, 0]],
+  ['Em', [0, 4, 3, 2]],
+  ['Dm', [2, 2, 1, 0]],
+  ['G7', [0, 2, 1, 2]],
+  ['C7', [0, 0, 0, 1]],
+  ['D7', [2, 2, 2, 3]],
+  ['E7', [1, 2, 0, 2]],
+];
+// Five-string banjo in open G (g D G B D): the short fifth string always rings open.
+CHORD_SETS.banjo = [
+  ['G', [0, 0, 0, 0, 0]],
+  ['C', [0, 2, 0, 1, 2]],
+  ['D', [0, 0, 2, 3, 4]],
+  ['Em', [0, 2, 0, 0, 2]],
+  ['Am', [0, 2, 2, 1, 2]],
+  ['F', [0, 3, 2, 1, 3]],
+  ['A', [0, 2, 2, 2, 2]],
+  ['E', [0, 2, 1, 0, 2]],
+  ['G7', [0, 0, 0, 0, 3]],
+  ['D7', [0, 0, 2, 1, 0]],
+];
 const CHORD_KEYS = '1234567890-=';
 
 const FRETBOARD = '#3B2418';
-const BODY = '#D8A266';
+
+/* How each one looks: the body's wood or paint, and what sits on it. */
+const LOOKS = {
+  classical: { body: ['#C98E50', '#D8A266'], grain: 'rgba(120,70,30,.10)', top: 'hole', board: FRETBOARD },
+  ukulele: { body: ['#B8743C', '#CF9455'], grain: 'rgba(100,55,20,.12)', top: 'hole', board: '#2E1C12' },
+  electric: { body: ['#8E1F24', '#C8333A'], grain: null, top: 'pickups', pickups: 3, board: '#E3C79A', guard: '#F3EEE4' },
+  bass: { body: ['#1F3E63', '#2E5A8C'], grain: null, top: 'pickups', pickups: 2, board: '#2A1A10', guard: '#1A1A1A' },
+  banjo: { body: ['#7A4A24', '#8E5A2E'], grain: 'rgba(60,30,10,.12)', top: 'drum', board: '#22160E' },
+};
 
 export async function mount(stage, ex, kit) {
   const o = ex.opts;
   const tuning = o.strings;
   const N = tuning.length;
   const FRETS = o.frets;
-  const inst = await pitched(o.sound, tuning[0], tuning[N - 1] + FRETS);
+  const look = LOOKS[o.look || 'classical'];
+  const CHORDS = CHORD_SETS[o.chords] || null;
+  const short = o.short || null;   // { string, from }: starts at that fret, open there
+  const inst = await pitched(o.sound, Math.min(...tuning), Math.max(...tuning) + FRETS);
+  // Thicker strings for lower notes; the low ones are wound with wire.
+  const lowest = Math.min(...tuning);
+  const highest = Math.max(...tuning);
+  const widthOf = (i) => (o.look === 'bass' ? 2.2 : 1.2) + ((highest - tuning[i]) / Math.max(1, highest - lowest)) * (o.look === 'bass' ? 2.4 : 2.2);
+  const wound = (i) => o.look === 'bass' || tuning[i] <= 52;
+  /* The note of string i stopped at fret f (the short string is open below its first fret). */
+  const noteOf = (i, f) => (short && i === short.string ? tuning[i] + Math.max(0, f - short.from) : tuning[i] + f);
 
   const box = document.createElement('div');
   box.className = 'zone guitar';
@@ -62,6 +113,12 @@ export async function mount(stage, ex, kit) {
 
   function fretted(i) {
     if (mode === 'chords') return CHORDS[chord][1][i];
+    if (short && i === short.string) {
+      // Below its first fret there is no string there to press.
+      let f = sticky.get(i) || 0;
+      for (const p of fingers.values()) if (p.string === i) f = Math.max(f, p.fret);
+      return f > short.from ? f : 0;
+    }
     let f = sticky.get(i) || 0;
     for (const p of fingers.values()) if (p.string === i) f = Math.max(f, p.fret);
     return f;
@@ -72,7 +129,7 @@ export async function mount(stage, ex, kit) {
     if (f < 0) return;
     const r = ring[i];
     r.voice?.stop(0.05);
-    const midi = tuning[i] + f;
+    const midi = noteOf(i, f);
     r.voice = inst.play(midi, { vol });
     r.at = performance.now();
     r.amp = Math.min(1, vol + 0.2);
@@ -87,11 +144,11 @@ export async function mount(stage, ex, kit) {
     const f = fretted(i);
     if (f === r.fret || !r.voice || performance.now() - r.at > 2500 || f < 0) return;
     r.voice.stop(0.03);
-    r.voice = inst.play(tuning[i] + f, { vol: 0.42 });
+    r.voice = inst.play(noteOf(i, f), { vol: 0.42 });
     r.fret = f;
     r.at = performance.now();
     r.amp = Math.max(r.amp * 0.6, 0.35);
-    kit.note(tuning[i] + f);
+    kit.note(noteOf(i, f));
     s.animate(1500);
   }
 
@@ -162,40 +219,17 @@ export async function mount(stage, ex, kit) {
   function draw(g, s, t) {
     geom(s);
     const now = performance.now();
-    // body
-    const bodyGrad = g.createLinearGradient(G.neckEnd, 0, s.W, 0);
-    bodyGrad.addColorStop(0, '#C98E50');
-    bodyGrad.addColorStop(1, BODY);
-    g.fillStyle = bodyGrad;
-    g.fillRect(G.neckEnd - 2, 0, s.W - G.neckEnd + 2, s.H);
-    // wood grain
-    g.strokeStyle = 'rgba(120,70,30,.10)';
-    g.lineWidth = 1;
-    for (let y = 6; y < s.H; y += 9) { g.beginPath(); g.moveTo(G.neckEnd, y); g.bezierCurveTo(G.neckEnd + 80, y + 3, s.W - 80, y - 3, s.W, y + 1); g.stroke(); }
-    // sound hole and rosette
-    const hr = Math.min(s.H * 0.36, (G.bridge - G.neckEnd) * 0.34);
-    g.fillStyle = '#5A3A1E';
-    g.beginPath(); g.arc(G.hole, s.H / 2, hr + 12, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#E9C893'; g.lineWidth = 3;
-    g.beginPath(); g.arc(G.hole, s.H / 2, hr + 7, 0, Math.PI * 2); g.stroke();
-    g.fillStyle = '#1B120C';
-    g.beginPath(); g.arc(G.hole, s.H / 2, hr, 0, Math.PI * 2); g.fill();
-    // bridge
-    g.fillStyle = '#2C1B10';
-    rr(g, G.bridge - 8, G.top - G.gap * 0.6, 22, G.bottom - G.top + G.gap * 1.2, 6);
-    g.fill();
-    g.fillStyle = '#EFE6D2';
-    g.fillRect(G.bridge - 2, G.top - G.gap * 0.4, 4, G.bottom - G.top + G.gap * 0.8);
+    drawBody(g, s);
 
     // neck
     g.fillStyle = '#1A110B';
     g.fillRect(0, 0, G.neckEnd, s.H);
     const fb = g.createLinearGradient(0, G.top - G.gap * 0.7, 0, G.bottom + G.gap * 0.7);
     fb.addColorStop(0, '#2C1A11'); fb.addColorStop(0.5, FRETBOARD); fb.addColorStop(1, '#2C1A11');
-    g.fillStyle = fb;
+    g.fillStyle = look.board === FRETBOARD ? fb : look.board;
     g.fillRect(G.nut, G.top - G.gap * 0.7, G.neckEnd - G.nut, G.bottom - G.top + G.gap * 1.4);
     // inlays
-    g.fillStyle = 'rgba(240,232,214,.75)';
+    g.fillStyle = look.board === '#E3C79A' ? 'rgba(30,20,12,.8)' : 'rgba(240,232,214,.75)';
     for (const n of [3, 5, 7, 9, 12, 15]) {
       if (n > FRETS) continue;
       const x = (G.fretAt(n - 1) + G.fretAt(n)) / 2;
@@ -222,13 +256,21 @@ export async function mount(stage, ex, kit) {
       const r = ring[i];
       const age = (now - r.at) / 1000;
       const amp = r.voice ? r.amp * Math.exp(-age * 2.2) : 0;
-      const w = 1.2 + (N - 1 - i) * 0.45;
+      const w = widthOf(i);
       const f = fretted(i);
-      const from = f > 0 ? G.fretAt(f - 1) + (G.fretAt(f) - G.fretAt(f - 1)) * 0.5 : G.nut;
-      const wound = i < 3;
-      g.strokeStyle = wound ? '#D9B98A' : '#ECE7DD';
+      const isShort = short && i === short.string;
+      const start = isShort ? G.fretAt(short.from) : G.nut;
+      const from = f > 0 && !(isShort && f <= short.from) ? G.fretAt(f - 1) + (G.fretAt(f) - G.fretAt(f - 1)) * 0.5 : start;
+      g.strokeStyle = wound(i) ? (o.look === 'electric' || o.look === 'bass' ? '#C9CED2' : '#D9B98A') : '#ECE7DD';
       g.lineWidth = w;
-      g.beginPath(); g.moveTo(G.nut - 6, y); g.lineTo(from, y); g.stroke();
+      g.beginPath(); g.moveTo(isShort ? start : G.nut - 6, y); g.lineTo(from, y); g.stroke();
+      if (isShort) {
+        // the fifth string's own tuning peg, partway up the neck
+        g.save();
+        g.fillStyle = '#F1E9D6';
+        g.beginPath(); g.arc(start - 4, y, Math.min(7, G.gap * 0.22), 0, 7); g.fill();
+        g.restore();
+      }
       // the part that vibrates
       if (amp > 0.01) {
         const k = 18 + i * 3;
@@ -282,18 +324,87 @@ export async function mount(stage, ex, kit) {
     }
   }
 
+  function drawBody(g, s) {
+    const grad = g.createLinearGradient(G.neckEnd, 0, s.W, 0);
+    grad.addColorStop(0, look.body[0]);
+    grad.addColorStop(1, look.body[1]);
+    g.fillStyle = grad;
+    g.fillRect(G.neckEnd - 2, 0, s.W - G.neckEnd + 2, s.H);
+    if (look.grain) {
+      g.strokeStyle = look.grain;
+      g.lineWidth = 1;
+      for (let y = 6; y < s.H; y += 9) { g.beginPath(); g.moveTo(G.neckEnd, y); g.bezierCurveTo(G.neckEnd + 80, y + 3, s.W - 80, y - 3, s.W, y + 1); g.stroke(); }
+    }
+    const cy = (G.top + G.bottom) / 2;
+    const span = G.bottom - G.top + G.gap * 1.2;
+    if (look.top === 'hole') {
+      // sound hole and rosette
+      const hr = Math.min(s.H * 0.36, (G.bridge - G.neckEnd) * 0.34);
+      g.fillStyle = '#5A3A1E';
+      g.beginPath(); g.arc(G.hole, cy, hr + 12, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#E9C893'; g.lineWidth = 3;
+      g.beginPath(); g.arc(G.hole, cy, hr + 7, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#1B120C';
+      g.beginPath(); g.arc(G.hole, cy, hr, 0, Math.PI * 2); g.fill();
+    } else if (look.top === 'pickups') {
+      // a pickguard, and the pickups: magnets under each string that turn its shaking into electricity
+      g.fillStyle = look.guard;
+      rr(g, G.neckEnd + 6, G.top - G.gap * 0.9, (G.bridge - G.neckEnd) * 0.82, span + G.gap * 0.6, 22);
+      g.fill();
+      const n = look.pickups;
+      for (let k = 0; k < n; k++) {
+        const x = G.neckEnd + (G.bridge - G.neckEnd) * (0.18 + k * (0.55 / Math.max(1, n - 1)));
+        g.fillStyle = '#141414';
+        rr(g, x - 12, G.top - G.gap * 0.5, 24, span - G.gap * 0.2, 7);
+        g.fill();
+        g.fillStyle = '#9AA3A9';
+        for (let i = 0; i < N; i++) { g.beginPath(); g.arc(x, G.top + i * G.gap, 3, 0, 7); g.fill(); }
+      }
+      // volume and tone knobs
+      for (let k = 0; k < 2; k++) {
+        g.fillStyle = '#E8E2D4';
+        g.beginPath(); g.arc(G.bridge - 30 - k * 34, G.bottom + G.gap * 0.55, 10, 0, 7); g.fill();
+      }
+    } else if (look.top === 'drum') {
+      // a banjo's body is a drum: a round frame with a head stretched over it
+      const r = Math.max(span * 0.7, (G.bridge - G.neckEnd) * 0.55);
+      const cx = G.neckEnd + r * 0.95;
+      g.save();
+      g.beginPath(); g.rect(G.neckEnd - 2, 0, s.W - G.neckEnd + 2, s.H); g.clip();
+      g.fillStyle = '#B8BEC3';
+      g.beginPath(); g.arc(cx, cy, r + 10, 0, 7); g.fill();
+      for (let k = 0; k < 24; k++) {
+        const t = (k / 24) * Math.PI * 2;
+        g.fillStyle = '#E8ECEF';
+        g.beginPath(); g.arc(cx + Math.cos(t) * (r + 5), cy + Math.sin(t) * (r + 5), 3.2, 0, 7); g.fill();
+      }
+      const h = g.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+      h.addColorStop(0, '#FFFDF4');
+      h.addColorStop(1, '#E6DCC4');
+      g.fillStyle = h;
+      g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+      g.restore();
+    }
+    // bridge
+    g.fillStyle = look.top === 'drum' ? '#C9A46A' : '#2C1B10';
+    rr(g, G.bridge - 8, G.top - G.gap * 0.6, 22, G.bottom - G.top + G.gap * 1.2, 6);
+    g.fill();
+    g.fillStyle = look.top === 'pickups' ? '#B7C0C6' : '#EFE6D2';
+    g.fillRect(G.bridge - 2, G.top - G.gap * 0.4, 4, G.bottom - G.top + G.gap * 0.8);
+  }
+
   // ---- chord pads ----
   const pads = document.createElement('div');
   pads.className = 'chords';
   pads.setAttribute('role', 'radiogroup');
   pads.setAttribute('aria-label', 'Chords');
   pads.hidden = true;
-  CHORDS.forEach(([name, shape], k) => {
+  (CHORDS || []).forEach(([name, shape], k) => {
     const b = document.createElement('button');
     b.setAttribute('role', 'radio');
     b.setAttribute('aria-checked', String(k === chord));
     b.setAttribute('aria-label', `${name} chord`);
-    b.innerHTML = `${diagram(shape)}<span class="cn">${name.replace('m', '<small>m</small>')}</span><span class="keycap">${CHORD_KEYS[k]}</span>`;
+    b.innerHTML = `${diagram(shape, tuning, short)}<span class="cn">${name.replace('m', '<small>m</small>')}</span><span class="keycap">${CHORD_KEYS[k]}</span>`;
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); pick(k); });
     b.addEventListener('click', () => pick(k));
     pads.append(b);
@@ -317,7 +428,7 @@ export async function mount(stage, ex, kit) {
   }
   placePads();
 
-  kit.choice({
+  if (CHORDS) kit.choice({
     label: 'Play',
     value: 'notes',
     options: [{ value: 'notes', label: 'Notes' }, { value: 'chords', label: 'Chords' }],
@@ -341,7 +452,7 @@ export async function mount(stage, ex, kit) {
     if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === ' ') { e.preventDefault(); strumAll(e.shiftKey); return; }
     const k = CHORD_KEYS.indexOf(e.key);
-    if (k >= 0 && mode === 'chords') pick(k);
+    if (k >= 0 && k < (CHORDS || []).length && mode === 'chords') pick(k);
   }
   addEventListener('keydown', keydown);
 
@@ -353,17 +464,22 @@ export async function mount(stage, ex, kit) {
 }
 
 /* A small chord chart: strings up and down, frets across, like the neck beside it. */
-function diagram(shape) {
+function diagram(shape, tuning, short) {
   const W = 64;
   const H = 46;
   const x0 = 10;
   const fw = (W - x0 - 2) / 4;
-  const y = (i) => 5 + i * ((H - 10) / 5);
+  const y = (i) => 5 + i * ((H - 10) / (shape.length - 1));
   let out = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
   out += `<rect x="${x0 - 3}" y="3" width="3" height="${H - 6}" fill="currentColor"/>`;
   for (let f = 1; f <= 4; f++) out += `<path d="M${x0 + f * fw} 4V${H - 4}" stroke="currentColor" stroke-width="1" opacity=".45"/>`;
   shape.forEach((f, i) => {
-    out += `<path d="M${x0} ${y(i)}H${W - 2}" stroke="currentColor" stroke-width="${i < 3 ? 1.3 : 0.9}" opacity=".7"/>`;
+    // The short fifth string of a banjo doesn't reach the first frets: it isn't drawn there.
+    if (short && i === short.string) {
+      out += `<circle cx="${x0 - 6}" cy="${y(i)}" r="1.8" fill="currentColor" opacity=".7"/>`;
+      return;
+    }
+    out += `<path d="M${x0} ${y(i)}H${W - 2}" stroke="currentColor" stroke-width="${tuning[i] <= 52 ? 1.3 : 0.9}" opacity=".7"/>`;
     if (f > 0) out += `<circle cx="${x0 + (f - 0.5) * fw}" cy="${y(i)}" r="3.6" fill="currentColor"/>`;
     if (f < 0) out += `<path d="M1.5 ${y(i) - 2.5}l5 5m0-5l-5 5" stroke="currentColor" stroke-width="1.3"/>`;
   });
