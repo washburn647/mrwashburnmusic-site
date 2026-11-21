@@ -12,6 +12,7 @@ export const ROOMS = [
   { id: 'woodwinds', name: 'Woodwinds', hue: '#5E7D4F' },
   { id: 'brass', name: 'Brass', hue: '#C99A2E' },
   { id: 'percussion', name: 'Percussion', hue: '#4F6E8A' },
+  { id: 'world', name: 'Around the world', hue: '#9A5A7A' },
 ];
 
 export const EXHIBITS = [
@@ -26,6 +27,18 @@ export const EXHIBITS = [
       'Bartolomeo Cristofori built the first one in Italy around 1700.',
     ],
     range: [21, 108],
+  },
+  {
+    id: 'organ', name: 'Organ', room: 'keyboard', play: 'keys',
+    opts: { sound: 'organ', lo: 36, hi: 96, look: 'organ', start: 48 },
+    clef: 'grand',
+    facts: [
+      'Air blown through pipes makes its sound, so a note lasts as long as you hold the key.',
+      'Pressing harder doesn’t make it louder: the player pulls stops to add more pipes.',
+      'Big church organs have thousands of pipes, and a keyboard for the feet.',
+      'This is an electric organ with drawbars, like the ones in gospel, rock and jazz.',
+    ],
+    range: [36, 96],
   },
   {
     id: 'violin', name: 'Violin', room: 'strings', play: 'bowed',
@@ -86,6 +99,67 @@ export const EXHIBITS = [
     range: [40, 83],
   },
   {
+    id: 'electric-guitar', name: 'Electric guitar', room: 'strings', play: 'guitar',
+    opts: { sound: 'electric-guitar', strings: [40, 45, 50, 55, 59, 64], frets: 12, chords: 'guitar', look: 'electric' },
+    clef: 'treble', written: 12,
+    facts: [
+      'A solid body with no sound hole: on its own it is very quiet.',
+      'Magnets called pickups turn the shaking strings into electricity, and an amplifier makes it loud.',
+      'It has steel strings, tuned like any guitar: E, A, D, G, B and E.',
+      'It has been at the heart of rock, blues and pop since the 1950s.',
+    ],
+    range: [40, 83],
+  },
+  {
+    id: 'electric-bass', name: 'Electric bass', room: 'strings', play: 'guitar',
+    opts: { sound: 'electric-bass', strings: [28, 33, 38, 43], frets: 12, look: 'bass' },
+    clef: 'bass', written: 12,
+    facts: [
+      'Four thick strings, tuned E, A, D and G, like the double bass.',
+      'It usually plays one note at a time: the lowest part of the band.',
+      'Bass players lock in with the drummer to make the groove.',
+      'Its music is written an octave higher than it sounds.',
+    ],
+    range: [28, 55],
+  },
+  {
+    id: 'banjo', name: 'Banjo', room: 'strings', play: 'guitar',
+    opts: { sound: 'banjo', strings: [67, 50, 55, 59, 62], frets: 12, chords: 'banjo', look: 'banjo', short: { string: 0, from: 5 } },
+    clef: 'treble', written: 12,
+    facts: [
+      'Its body is a drum: a skin (or plastic) head stretched over a round frame.',
+      'It came to America with enslaved West Africans, from instruments like the akonting.',
+      'The fifth string is short: it starts at the fifth fret and always rings a high G.',
+      'Bluegrass and old-time players pick it fast with metal finger picks.',
+    ],
+    range: [50, 79],
+  },
+  {
+    id: 'ukulele', name: 'Ukulele', room: 'strings', play: 'guitar',
+    opts: { sound: 'ukulele', strings: [67, 60, 64, 69], frets: 12, chords: 'ukulele', look: 'ukulele' },
+    clef: 'treble',
+    facts: [
+      'Four nylon strings, tuned G, C, E and A.',
+      'The G string is tuned high, so the strings don’t go low to high in order.',
+      'Immigrants from Madeira, in Portugal, brought it to Hawaii in 1879. Its name may mean “jumping flea.”',
+      'Easy chords make it a great first instrument.',
+    ],
+    range: [60, 81],
+  },
+  {
+    id: 'harp', name: 'Harp', room: 'strings', play: 'harp',
+    opts: { sound: 'harp', low: 36, strings: 33 },
+    clef: 'grand',
+    facts: [
+      'A concert harp has 47 strings and stands taller than most grown-ups.',
+      'The red strings are Cs and the dark ones Fs, so the player can find their place.',
+      'Seven pedals, one for each letter, make every string of that letter flat, natural or sharp.',
+      'Sweeping a hand across the strings is called a glissando.',
+      'Try Penta: the pedals tune every string to the pentatonic scale, so any glissando sounds good.',
+    ],
+    range: [36, 91],
+  },
+  {
     id: 'flute', name: 'Flute', room: 'woodwinds', play: 'wind',
     opts: { sound: 'flute', kind: 'flute', vibrato: { cents: 16, amp: 0.08 } },
     clef: 'treble',
@@ -130,6 +204,18 @@ export const EXHIBITS = [
       'You hear it in jazz, marching bands, pop and rock.',
     ],
     range: [44, 76],
+  },
+  {
+    id: 'bassoon', name: 'Bassoon', room: 'woodwinds', play: 'wind',
+    opts: { sound: 'bassoon', kind: 'bassoon', vibrato: { cents: 12, amp: 0.03 } },
+    clef: 'bass',
+    facts: [
+      'The lowest of the usual woodwinds, with a double reed like the oboe’s.',
+      'Its wooden tube is about 8 feet (2.5 meters) long, folded in half.',
+      'The reed sits on a curved metal tube called the bocal.',
+      'Bassoonists use both thumbs on many keys at the back.',
+    ],
+    range: [34, 75],
   },
   {
     id: 'trumpet', name: 'Trumpet', room: 'brass', play: 'brass',
@@ -245,6 +331,15 @@ export const EXHIBITS = [
     ],
   },
   {
+    id: 'sleigh-bells', name: 'Sleigh bells', room: 'percussion', play: 'hand',
+    opts: { parts: [{ sound: 'sleigh-bells', shape: 'sleigh', size: 1.1 }] },
+    facts: [
+      'Small metal bells, each with a loose ball inside, on a strap or handle.',
+      'Shake them for a jingle, or tap the handle for one crisp ring.',
+      'They were hung on horses’ harnesses so people could hear a sleigh coming.',
+    ],
+  },
+  {
     id: 'glockenspiel', name: 'Glockenspiel', room: 'percussion', play: 'keys',
     opts: { sound: 'glockenspiel', lo: 79, hi: 108, look: 'glock', start: 79 },
     clef: 'treble', written: -24,
@@ -276,6 +371,100 @@ export const EXHIBITS = [
       'It is the national instrument of Guatemala.',
     ],
     range: [45, 96],
+  },
+  {
+    id: 'congas', name: 'Congas', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'conga', shape: 'drum', rate: 1.08, name: 'Conga' }, { sound: 'conga', shape: 'drum', rate: 0.86, size: 1.12, name: 'Tumba' }] },
+    facts: [
+      'Tall wooden drums from Cuba, played with the hands.',
+      'Their roots are in drums brought from Africa, especially the Congo.',
+      'A player often plays two or three at once, each tuned to its own note.',
+      'Slapping the edge, or letting the palm ring the middle, gives different sounds.',
+    ],
+  },
+  {
+    id: 'bongos', name: 'Bongos', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'bongo-high', shape: 'bongo', size: 0.85, name: 'Macho' }, { sound: 'bongo-low', shape: 'bongo', size: 1, name: 'Hembra' }] },
+    facts: [
+      'A pair of small drums joined together, from Cuba.',
+      'The small one is the macho, the bigger one the hembra.',
+      'They are held between the knees and played with the fingers.',
+    ],
+  },
+  {
+    id: 'agogo', name: 'Agogô', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'agogo', shape: 'agogo', rate: 1, name: 'High' }, { sound: 'agogo', shape: 'agogo', rate: 0.79, name: 'Low' }] },
+    facts: [
+      'Two bells joined by a handle, from the Yoruba people of West Africa.',
+      'In Brazil it leads the rhythm of samba bands.',
+      'One bell is smaller and higher: rhythms move back and forth between them.',
+    ],
+  },
+  {
+    id: 'cowbell', name: 'Cowbell', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'cowbell', shape: 'bell' }] },
+    facts: [
+      'Once hung on cows so farmers could find them; now it keeps the beat in salsa and rock.',
+      'It has no clapper inside: it is struck with a stick.',
+      'Hitting near the open end sounds bright; near the top, dull.',
+    ],
+  },
+  {
+    id: 'claves', name: 'Claves', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'claves', shape: 'claves' }] },
+    facts: [
+      'Two sticks of hard wood, clicked together.',
+      'One rests on a cupped hand, which makes a hollow space for the sound.',
+      'They play the clave, the rhythm that holds Cuban music together.',
+    ],
+  },
+  {
+    id: 'guiro', name: 'Güiro', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'guiro', shape: 'guiro', size: 0.9 }] },
+    facts: [
+      'A hollow gourd with ridges cut across it, from the Caribbean.',
+      'Scraping a stick along the ridges makes its rasp. Try it fast and slow.',
+      'Holes underneath are where the player holds it.',
+    ],
+  },
+  {
+    id: 'shaker', name: 'Shaker', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'shaker', shape: 'shaker' }] },
+    facts: [
+      'A shell filled with seeds, beads or sand.',
+      'People everywhere have made them from gourds, shells, baskets and eggs.',
+      'Shaking it back and forth keeps a steady beat.',
+    ],
+  },
+  {
+    id: 'cabasa', name: 'Cabasa', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'cabasa', shape: 'cabasa' }] },
+    facts: [
+      'Loops of steel beads wrapped around a ridged cylinder on a handle.',
+      'Turning it against the palm rubs the beads over the ridges.',
+      'It is based on the shekere, a gourd covered with a net of beads from West Africa.',
+    ],
+  },
+  {
+    id: 'log-drum', name: 'Log drum', room: 'world', play: 'hand',
+    opts: { parts: [{ sound: 'log-drum-high', shape: 'slit', name: 'High' }, { sound: 'log-drum-low', shape: 'slit', name: 'Low' }] },
+    facts: [
+      'A hollow wooden box with tongues cut into its top. It is also called a slit drum.',
+      'A longer tongue sounds lower, a shorter one higher.',
+      'Huge ones in Africa, Southeast Asia and the Pacific could send messages far away.',
+    ],
+  },
+  {
+    id: 'kalimba', name: 'Kalimba', room: 'world', play: 'hand',
+    opts: { sound: 'kalimba', tines: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81] },
+    clef: 'treble',
+    facts: [
+      'Metal tines on a wooden board, plucked with the thumbs.',
+      'It grew from African instruments like the mbira of Zimbabwe, played for centuries.',
+      'The longest tine is in the middle; the notes of the scale step out to each side.',
+      'A shorter tine vibrates faster, so it plays higher.',
+    ],
+    range: [60, 81],
   },
 ];
 
