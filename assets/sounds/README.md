@@ -18,9 +18,15 @@ const stop = piano.note(60, t, 0.5, { vol: 0.25, dest });   // same call as soun
 `t` is on the audio clock. `samples.list()` gives `index.json`: every instrument and its notes. Each sound starts at its measured onset, so rhythms line up to about 1 ms.
 `samples.raw(name, { lo, hi })` gives the decoded samples themselves, for a player that changes
 a note while it sounds (the instrument museum's bows, slides and timpani pedals, `museum/audio.js`).
+Some sounds also have `layers` in `index.json`: the same instrument recorded softer and harder
+(the piano: four levels), and for drums and cymbals several takes of each level, so a fast
+repeat doesn't play one recording again and again. `samples.load(file)` decodes one of those
+files; the museum (`museum/audio.js`) picks a level by how hard a note is played and a different
+take each time. Every other page plays the main `file`/`zones`, as before. `tools/build_sounds.py
+--layers` builds them (see its usage).
 The try-out page is `/studio/sounds/`.
 
-- Pitched: piano, violin (solo), violins, violas, cellos, bass, pizzicato, violin-pizz,
+- Pitched: piano, violin (solo), violins, violas, cello (solo), cellos, bass, cello-pizz-solo, pizzicato, violin-pizz,
   viola-pizz, cello-pizz, bass-pizz, harp, flute, oboe, tenor-sax,
   clarinet, bassoon, trumpet, horn, trombone, tuba, glockenspiel, xylophone, marimba, guitar
   (nylon), banjo, electric-bass (banjo and electric bass are GNU GPL: see `CREDITS.txt`),

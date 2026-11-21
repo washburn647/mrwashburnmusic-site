@@ -1,0 +1,114 @@
+/* The Instrument Museum (museum/), in Chromium: every exhibit opens, and the sound engine
+   (museum/audio.js) picks samples by strength, varies drum takes and grows vibrato. */
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { startMock } from './mock-server.mjs';
+import { EXHIBITS } from '../museum/data.js';
+
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright');
+
+let browser, mock, page;
+const errors = [];
+before(async () => {
+  mock = await startMock();
+  browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+  page = await browser.newPage();
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto(mock.base + '/museum/');
+});
+after(async () => {
+  await browser.close();
+  await mock.close();
+});
+
+test('every exhibit opens and is ready to play', async () => {
+  for (const ex of EXHIBITS) {
+    await page.evaluate((id) => { location.hash = id; }, ex.id);
+    await page.waitForFunction(() => !document.getElementById('stage').classList.contains('loading')
+      && document.querySelector('#stage canvas'), null, { timeout: 15000 });
+  }
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
+
+test('the violin and cello exhibits play solo instruments, not sections', async () => {
+  const byId = Object.fromEntries(EXHIBITS.map((e) => [e.id, e]));
+  assert.equal(byId.violin.opts.arco, 'violin');
+  assert.equal(byId.cello.opts.arco, 'cello');
+  assert.equal(byId.cello.opts.pizz, 'cello-pizz-solo');
+});
+
+test('a soft piano note plays the softly recorded sample', async () => {
+  const r = await page.evaluate(async () => {
+    const audio = await import('/museum/audio.js');
+    const piano = await audio.pitched('piano', 21, 108);
+    // The other levels load in the background.
+    for (let i = 0; i < 200 && piano.layers.some((l) => !l.main && l.zones.length < 30); i++) await new Promise((ok) => setTimeout(ok, 50));
+    const main = piano.zone(60);
+    return {
+      levels: piano.layers.map((l) => l.zones.length),
+      soft: piano.zone(60, 0.1) !== main && piano.zone(60, 0.1).buffer !== main.buffer,
+      usual: piano.zone(60, 0.75) === main,
+      none: piano.zone(60) === main,
+      loud: piano.zone(60, 1) !== main,
+      midi: piano.zone(61, 0.1).midi,
+    };
+  });
+  assert.deepEqual(r.levels, [30, 30, 30, 30]);
+  assert.ok(r.soft && r.usual && r.none && r.loud);
+  assert.equal(r.midi, 60);
+});
+
+test('a drum never plays the same take twice running, and plays softer takes softly', async () => {
+  const r = await page.evaluate(async () => {
+    const audio = await import('/museum/audio.js');
+    const snare = await audio.hit('kit-snare');
+    for (let i = 0; i < 200 && snare.layers.some((l) => l.takes.length < 4); i++) await new Promise((ok) => setTimeout(ok, 50));
+    const picks = Array.from({ length: 20 }, () => snare.take(0.9));
+    const repeats = picks.filter((p, i) => i && p === picks[i - 1]).length;
+    const loud = new Set(snare.layers[2].takes);
+    const soft = new Set(snare.layers[0].takes);
+    return {
+      repeats,
+      kinds: new Set(picks).size,
+      allLoud: picks.every((p) => loud.has(p)),
+      soft: Array.from({ length: 5 }, () => snare.take(0.2)).every((p) => soft.has(p)),
+      plain: snare.take(null) === snare.s,
+    };
+  });
+  assert.equal(r.repeats, 0);
+  assert.ok(r.kinds >= 3);
+  assert.ok(r.allLoud && r.soft && r.plain);
+});
+
+test('a held cello note grows vibrato once it settles, and a new note starts it again', async () => {
+  const r = await page.evaluate(async () => {
+    const audio = await import('/museum/audio.js');
+    const ac = audio.context();
+    await ac.resume();
+    const cello = await audio.pitched('cello', 36, 81);
+    const v = cello.sustain({ vibrato: { cents: 22 } });
+    const wait = (s) => new Promise((ok) => setTimeout(ok, s * 1000));
+    v.start(48, 0.5);
+    await wait(0.05);
+    const early = v.depth.gain.value;
+    await wait(1.0);
+    const grown = v.depth.gain.value;
+    v.pitch(50);
+    await wait(0.12);
+    const after = v.depth.gain.value;
+    v.vibrato(false);
+    await wait(1.0);
+    const off = v.depth.gain.value;
+    v.stop(0.05);
+    return { early, grown, after, off, running: ac.state };
+  });
+  assert.equal(r.running, 'running');
+  assert.ok(r.early < 2, `no vibrato at the start (${r.early})`);
+  assert.ok(r.grown > 20, `vibrato grown (${r.grown})`);
+  assert.ok(r.after < 5, `stopped by a new note (${r.after})`);
+  assert.ok(r.off < 0.5, `turned off (${r.off})`);
+});
