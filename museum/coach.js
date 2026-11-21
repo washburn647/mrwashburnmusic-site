@@ -371,6 +371,8 @@ export function mount(ex, kit) {
   const ok = !!(LESSONS[ex.id] && kit.perf);
   $('listen').hidden = !ok;
   $('try').hidden = !ok;
+  // (the screen may have changed size since: its change event can come a frame later)
+  listenLabel();
 }
 
 export function unmount() {
@@ -386,9 +388,9 @@ export const state = () => ({ cur, show, task });
 
 // On a phone there is one button for both.
 const narrow = matchMedia('(max-width: 480px)');
-const label = () => $('listen').setAttribute('aria-label', narrow.matches ? 'Listen and try this' : 'Listen');
-narrow.addEventListener('change', label);
-label();
+const listenLabel = () => $('listen').setAttribute('aria-label', narrow.matches ? 'Listen and try this' : 'Listen');
+narrow.addEventListener('change', listenLabel);
+listenLabel();
 $('listen').addEventListener('click', () => cur && menu(narrow.matches ? 'both' : 'listen'));
 $('try').addEventListener('click', () => cur && menu('try'));
 document.addEventListener('pointerdown', (e) => {
