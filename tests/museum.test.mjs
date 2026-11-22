@@ -153,3 +153,39 @@ test('the bassoon plays its scale from the six finger holes and the thumb keys',
   for (const key of 'fdsjklnv ') await k.up(key);
   await page.evaluate(() => { location.hash = ''; });
 });
+
+/* The keys are drawn to a piano's proportions, black keys leaning as they do, and you can play
+   the strings inside the piano and the organ's pipes: touching any of them plays the note drawn
+   there. */
+test('keys, bars, strings and pipes play the note drawn where they are touched', async () => {
+  const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const full = (m) => `${NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
+  async function touch(m, where) {
+    const at = await page.evaluate(([m, where]) => {
+      const c = document.querySelector('#stage canvas');
+      const p = c.museumAt(m, where);
+      const r = c.getBoundingClientRect();
+      return p && { x: r.left + p.u, y: r.top + p.v };
+    }, [m, where]);
+    assert.ok(at, `${full(m)} ${where || ''} is showing`);
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    const n = await readout();
+    await page.mouse.up();
+    return n;
+  }
+  await open('piano');
+  for (let m = 48; m < 72; m++) assert.equal(await touch(m), full(m));
+  for (const m of [50, 61, 66, 70]) assert.equal(await touch(m, 'inside'), full(m), 'its strings');
+  await open('organ');
+  for (const m of [49, 54, 58, 60]) assert.equal(await touch(m), full(m));
+  assert.equal(await touch(55, 'inside'), full(55), 'its pipe');
+  // (the readout shows the written note: a glockenspiel's music is written two octaves down)
+  for (const [id, lo] of [['glockenspiel', 79], ['xylophone', 72], ['marimba', 55]]) {
+    await open(id);
+    const written = EXHIBITS.find((e) => e.id === id).written || 0;
+    for (let m = lo; m < lo + 12; m++) assert.equal(await touch(m), full(m + written), id);
+  }
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
