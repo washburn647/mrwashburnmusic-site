@@ -64,7 +64,11 @@ function kitFor(ex) {
     },
     name: (midi) => notes.full(Math.round(midi + written), flats),
     /* A drum or part struck (its code in lessons.js: k, s, h...), or a chord strummed. */
-    hit(part, how = {}) { coach.heard({ part, ...how }); },
+    hit(part, how = {}) {
+      // (for tests: how many strokes so far, and the last part struck)
+      stage.museumHeard = { n: (stage.museumHeard?.n || 0) + 1, part };
+      coach.heard({ part, ...how });
+    },
     chord(name) { coach.heard({ chord: name }); },
     /* How the instrument plays a tune by itself (see coach.js). */
     performer(p) { this.perf = p; },

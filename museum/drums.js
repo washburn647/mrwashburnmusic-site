@@ -614,7 +614,7 @@ export function stick(g, x0, y0, x1, y1, w, { alpha = 1, color = '#D8AE74', tip 
 /* ---------- floors ---------- */
 
 /* A stage floor of planks running away from you, seen from above. */
-export function planks(g, W, H, cam, { kind = 'oak', width = 5, tone = -0.35, seed = 1 } = {}) {
+export function planks(g, W, H, cam, { kind = 'oak', width = 5, tone = -0.35, seed = 1, run = 1, top = 0 } = {}) {
   const k = cam.k;
   const pw = width * k;
   const r = rand(seed);
@@ -622,26 +622,58 @@ export function planks(g, W, H, cam, { kind = 'oak', width = 5, tone = -0.35, se
   g.save();
   for (let x = x0, i = 0; x < W; x += pw, i++) {
     g.fillStyle = wood(g, kind, { x, y: 0, angle: 90, scale: Math.max(0.35, k / 12), seed: i * 7 + seed });
-    g.fillRect(x, 0, pw + 0.5, H);
+    g.fillRect(x, top, pw + 0.5, H - top);
     // each plank a little different
     const v = r() - 0.5;
     g.fillStyle = v > 0 ? `rgba(255,236,200,${v * 0.16})` : `rgba(0,0,0,${-v * 0.3})`;
-    g.fillRect(x, 0, pw, H);
+    g.fillRect(x, top, pw, H - top);
     // butt joints
-    let y = -r() * 300;
+    let y = top - r() * 300 * run;
     while (y < H) {
-      y += (60 + r() * 50) * k * 0.6;
+      y += (60 + r() * 50) * k * 0.6 * run;
+      if (y < top) continue;
       g.fillStyle = 'rgba(0,0,0,.45)';
-      g.fillRect(x, y, pw, Math.max(1, k * 0.12));
+      g.fillRect(x, y, pw, Math.max(1, k * 0.12 * Math.min(1, run * 2)));
     }
     // the gap between planks
     g.fillStyle = 'rgba(0,0,0,.5)';
-    g.fillRect(x, 0, Math.max(1, k * 0.12), H);
+    g.fillRect(x, top, Math.max(1, k * 0.12), H - top);
   }
   // stage lighting: darker away from the middle
   g.fillStyle = `rgba(0,0,0,${-tone})`;
-  g.fillRect(0, 0, W, H);
+  g.fillRect(0, top, W, H - top);
   g.restore();
+}
+
+/* The back of a stage seen from the front: a velvet curtain hanging in folds down to the
+   floor at screen height y, and the floor's planks in front of it. */
+export function backdrop(g, W, H, y, cam, { color = '#5A1218', kind = 'walnut', fold = 0 } = {}) {
+  const f = fold || Math.max(30, Math.min(W, H) / 9);
+  const base = color;
+  for (let x = -f; x < W + f; x += f) {
+    const gr = g.createLinearGradient(x, 0, x + f, 0);
+    gr.addColorStop(0, tint(base, -0.55));
+    gr.addColorStop(0.3, tint(base, 0.12));
+    gr.addColorStop(0.45, tint(base, 0.22));
+    gr.addColorStop(0.7, tint(base, -0.2));
+    gr.addColorStop(1, tint(base, -0.55));
+    g.fillStyle = gr;
+    g.fillRect(x, 0, f + 0.5, y);
+  }
+  // the folds catch less light toward the top
+  const v = g.createLinearGradient(0, 0, 0, y);
+  v.addColorStop(0, 'rgba(0,0,0,.6)');
+  v.addColorStop(0.6, 'rgba(0,0,0,.15)');
+  v.addColorStop(1, 'rgba(0,0,0,.35)');
+  g.fillStyle = v;
+  g.fillRect(0, 0, W, y);
+  planks(g, W, H, cam, { kind, width: 6, tone: -0.3, seed: 3, run: Math.max(0.08, cam.s), top: y });
+  // where the curtain meets the floor, a soft shadow
+  const sh = g.createLinearGradient(0, y, 0, y + Math.max(8, cam.k * 3));
+  sh.addColorStop(0, 'rgba(0,0,0,.55)');
+  sh.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = sh;
+  g.fillRect(0, y, W, Math.max(8, cam.k * 3));
 }
 
 /* A soft spotlight and the dark around it. */

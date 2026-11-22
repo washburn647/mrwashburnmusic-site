@@ -248,3 +248,87 @@ test('brass play what is drawn, valve 1 nearest the mouthpiece, big valves on a 
   await page.evaluate(() => { location.hash = ''; });
   assert.deepEqual(errors, []);
 });
+
+/* The drums are drawn as you see them from where you play (the drum set from the drummer's
+   seat), and touching a drum, a cymbal or a pedal plays the one drawn there: its middle, and
+   near its edge. A tap beside an orchestral percussion instrument strikes nothing. */
+test('drums and cymbals play the one drawn where they are touched', async () => {
+  const where = (args, dx = 0) => page.evaluate(([args, dx]) => {
+    const c = document.querySelector('#stage canvas');
+    const p = c.museumAt(...args);
+    const r = c.getBoundingClientRect();
+    return p && { x: r.left + p.u + (p.rx || 0) * dx, y: r.top + p.v };
+  }, [args, dx]);
+  const heard = () => page.evaluate(() => ({ n: 0, ...document.getElementById('stage').museumHeard }));
+  async function tap(p, what) {
+    assert.ok(p, `${what} is showing`);
+    const before = (await heard()).n;
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    const after = await heard();
+    return after.n > before ? after.part : null;
+  }
+  await open('drums');
+  for (const [id, code] of [['snare', 's'], ['tom1', 't'], ['tom2', 'm'], ['floor', 'f'], ['hihat', 'h'],
+    ['crash', 'c'], ['splash', 'w'], ['pedal', 'p'], ['kickpedal', 'k']]) {
+    assert.equal(await tap(await where([id]), id), code, id);
+  }
+  assert.equal(await tap(await where(['ride'], 0.7), 'ride'), 'r', 'the ride');
+  assert.equal(await tap(await where(['ride']), 'ride bell'), 'b', 'its bell');
+  assert.equal(await tap(await where(['snare'], 0.6), 'snare'), 's', 'the snare off its middle');
+
+  for (const id of ['snare', 'bassdrum', 'cymbals', 'triangle', 'tambourine', 'gong']) {
+    await open(id);
+    const modes = id === 'cymbals' ? ['Crash', 'Suspended'] : [null];
+    for (const mode of modes) {
+      if (mode) await page.getByRole('radio', { name: mode }).click();
+      const name = `${id}${mode ? ` (${mode})` : ''}`;
+      assert.equal(await tap(await where(['middle']), name), 'x', `${name}: its middle`);
+      assert.equal(await tap(await where(['edge']), name), 'x', `${name}: near its edge`);
+      const off = await where(['off']);
+      if (off) assert.equal(await tap(off, name), null, `${name}: beside it`);
+    }
+  }
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
+
+/* Each timpani's gauge runs from its lowest note to its highest, and so does its pedal, heel
+   to toe; struck, it plays the note it is tuned to. */
+test('a timpani tunes across its range by gauge or pedal, and plays the note shown', async () => {
+  const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const full = (m) => `${NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
+  const where = (...args) => page.evaluate((args) => {
+    const c = document.querySelector('#stage canvas');
+    const p = c.museumAt(...args);
+    const r = c.getBoundingClientRect();
+    return p && { x: r.left + p.u, y: r.top + p.v };
+  }, args);
+  const pitch = (i) => page.evaluate((i) => document.querySelector('#stage canvas').museumPitch(i), i);
+  async function press(p, what) {
+    assert.ok(p, `${what} is showing`);
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    await page.mouse.up();
+  }
+  await open('timpani');
+  const RANGES = [[38, 45], [41, 48], [46, 53], [50, 57]];
+  for (let i = 0; i < 4; i++) {
+    const [lo, hi] = RANGES[i];
+    await press(await where('gauge', i, 0), `drum ${i + 1}'s gauge`);
+    assert.equal(Math.round(await pitch(i)), lo, `drum ${i + 1}: the gauge's low end`);
+    await press(await where('gauge', i, 1), `drum ${i + 1}'s gauge`);
+    assert.equal(Math.round(await pitch(i)), hi, `drum ${i + 1}: the gauge's high end`);
+    await press(await where('pedal', i, 0.02), `drum ${i + 1}'s pedal`);
+    assert.ok(await pitch(i) < lo + 0.5, `drum ${i + 1}: the pedal's heel`);
+    await press(await where('pedal', i, 0.98), `drum ${i + 1}'s pedal`);
+    assert.ok(await pitch(i) > hi - 0.5, `drum ${i + 1}: the pedal's toe`);
+    await press(await where('gauge', i, 0.5), `drum ${i + 1}'s gauge`);
+    const m = Math.round(await pitch(i));
+    await press(await where('head', i), `drum ${i + 1}'s head`);
+    assert.equal(await readout(), full(m), `drum ${i + 1} plays the note it is tuned to`);
+  }
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
