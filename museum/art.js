@@ -1741,6 +1741,56 @@ const ART = {
   bassoon,
 };
 
+/* Where each drawing is painted in its 120 units, less its floor shadow, and how big that is for
+   real: [left, top, right, bottom, centimetres across its longer side]. The floor plan and the
+   galleries stand a drawing on its bottom edge and size it from the centimetres, so a double
+   bass towers over a violin. The museum's tests measure the paint and check this table. */
+export const BOX = {
+  piano: [7, 6, 113, 112, 150],
+  organ: [12, 3, 108, 110, 250],
+  violin: [15, 4, 108, 114, 60],
+  viola: [14, 5, 104, 114, 66],
+  cello: [30, -2, 89, 118, 125],
+  bass: [33, -2, 78, 116, 185],
+  guitar: [8, 15, 100, 115, 72],
+  'electric-guitar': [11, 16, 97, 114, 74],
+  'electric-bass': [10, 15, 99, 115, 86],
+  banjo: [15, 17, 98, 109, 71],
+  ukulele: [15, 19, 96, 109, 40],
+  harp: [32, 4, 93, 114, 185],
+  flute: [6, 8, 114, 112, 48],
+  clarinet: [13, 10, 112, 115, 48],
+  oboe: [6, 11, 117, 112, 49],
+  saxophone: [27, 4, 100, 113, 80],
+  bassoon: [38, 7, 90, 118, 134],
+  trumpet: [3, 33, 117, 80, 50],
+  horn: [2, 20, 118, 95, 60],
+  trombone: [3, 23, 119, 90, 120],
+  tuba: [7, 8, 117, 104, 102],
+  drums: [2, 23, 117, 111, 160],
+  timpani: [17, 17, 104, 110, 95],
+  snare: [25, 19, 100, 112, 75],
+  bassdrum: [23, 14, 99, 110, 120],
+  cymbals: [10, 24, 108, 96, 90],
+  triangle: [25, 4, 114, 95, 30],
+  tambourine: [14, 32, 106, 90, 26],
+  gong: [4, 14, 117, 112, 130],
+  'sleigh-bells': [6, 17, 110, 102, 40],
+  glockenspiel: [6, 20, 115, 92, 75],
+  xylophone: [14, 9, 107, 114, 95],
+  marimba: [7, 9, 113, 114, 101],
+  congas: [24, 11, 100, 110, 76],
+  bongos: [15, 35, 109, 91, 36],
+  agogo: [5, 16, 117, 101, 42],
+  cowbell: [8, 31, 110, 92, 34],
+  claves: [11, 18, 111, 102, 22],
+  guiro: [3, 23, 110, 96, 40],
+  shaker: [12, 30, 110, 90, 14],
+  cabasa: [15, 12, 114, 97, 22],
+  'log-drum': [8, 22, 112, 95, 60],
+  kalimba: [10, 19, 111, 101, 18],
+};
+
 let n = 0;
 export function art(id, label = '') {
   if (!ART[id]) return '';

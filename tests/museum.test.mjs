@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { startMock } from './mock-server.mjs';
 import { EXHIBITS } from '../museum/data.js';
+import { BOX } from '../museum/art.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -403,7 +404,7 @@ test('world instruments play the part drawn where they are touched', async () =>
   assert.deepEqual(errors, []);
 });
 
-test('every exhibit has its own drawing in the hall, painted inside its case', async () => {
+test('every exhibit has its own drawing, painted where art.js says it is', async () => {
   await page.evaluate(() => { location.hash = ''; });
   const res = await page.evaluate(async () => {
     const { art } = await import('/museum/art.js');
@@ -434,22 +435,28 @@ test('every exhibit has its own drawing in the hall, painted inside its case', a
       g.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
       const a = g.getImageData(0, 0, 320, 320).data;
-      let [x0, y0, x1, y1] = [320, 320, -1, -1];
-      for (let y = 0; y < 320; y++) {
-        for (let x = 0; x < 320; x++) {
-          if (a[(y * 320 + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      // all its paint, and its solid paint (no faint edges, glints or motion lines)
+      const boxes = [40, 60].map((alpha) => {
+        let [x0, y0, x1, y1] = [320, 320, -1, -1];
+        for (let y = 0; y < 320; y++) {
+          for (let x = 0; x < 320; x++) {
+            if (a[(y * 320 + x) * 4 + 3] > alpha) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+          }
         }
-      }
-      out.push({ id: ex.id, bad, box: [x0, y0, x1 + 1, y1 + 1].map((v) => v / 2 - 20) });
+        return [x0, y0, x1 + 1, y1 + 1].map((v) => v / 2 - 20);
+      });
+      out.push({ id: ex.id, bad, box: boxes[0], solid: boxes[1] });
     }
     return out;
   });
   assert.equal(res.length, EXHIBITS.length);
-  for (const { id, bad, box } of res) {
+  for (const { id, bad, box, solid } of res) {
     assert.deepEqual(bad, [], id);
     const [x0, y0, x1, y1] = box;
     // inside the case's frame (its 120 units and a little of the margin round them), and filling it
     assert.ok(x0 >= -4 && y0 >= -4 && x1 <= 124 && y1 <= 124, `${id} is painted out to ${box.join(', ')}`);
     assert.ok(Math.max(x1 - x0, y1 - y0) >= 80, `${id} is painted small: ${box.join(', ')}`);
+    // and where art.js says it is painted, which the rooms use to stand it on its plinth at its size
+    assert.ok(BOX[id].slice(0, 4).every((v, k) => Math.abs(v - solid[k]) <= 1.5), `${id}: BOX says ${BOX[id].slice(0, 4).join(', ')}, painted ${solid.join(', ')}`);
   }
 });

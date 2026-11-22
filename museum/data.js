@@ -4,20 +4,28 @@
    `vibrato` (bowed, wind and brass) adds vibrato to samples recorded without it: how many cents
    either way, and how much the level moves with it (Sustain in audio.js). The violin, viola and
    double bass samples have vibrato already, and the clarinet, French horn and tuba usually play
-   without it. */
+   without it. `size` is how big the real instrument is, for its plaque in the gallery:
+   [centimetres, which way]. A room's `intro` is the text on the wall as you walk in. */
 
 export const ROOMS = [
-  { id: 'keyboard', name: 'Keyboards', hue: '#C9824A' },
-  { id: 'strings', name: 'Strings', hue: '#B5653A' },
-  { id: 'woodwinds', name: 'Woodwinds', hue: '#5E7D4F' },
-  { id: 'brass', name: 'Brass', hue: '#C99A2E' },
-  { id: 'percussion', name: 'Percussion', hue: '#4F6E8A' },
-  { id: 'world', name: 'Around the world', hue: '#9A5A7A' },
+  { id: 'keyboard', name: 'Keyboards', hue: '#C9824A',
+    intro: 'Press a key, and the instrument does the rest: in a piano a hammer strikes a string, and in an organ air rushes through a pipe.' },
+  { id: 'strings', name: 'Strings', hue: '#B5653A',
+    intro: 'A string sings when it is bowed, plucked or strummed. The longer and thicker the string, the lower the note: hear the violin, then the double bass.' },
+  { id: 'woodwinds', name: 'Woodwinds', hue: '#5E7D4F',
+    intro: 'Blow, and the air in the tube shakes. Cover holes with your fingers to make the tube longer and the note lower. All but the flute have a reed.' },
+  { id: 'brass', name: 'Brass', hue: '#C99A2E',
+    intro: 'Buzz your lips into a cup-shaped mouthpiece. Valves or a slide make the tube longer for low notes, and tighter lips make high ones.' },
+  { id: 'percussion', name: 'Percussion', hue: '#4F6E8A',
+    intro: 'Hit it, shake it or scrape it. Some percussion plays tunes, like the timpani and xylophone, and some keeps the beat, like the snare drum and cymbals.' },
+  { id: 'world', name: 'Around the world', hue: '#9A5A7A',
+    intro: 'Drums, bells and shakers from Africa, Cuba and Brazil, and the kalimba, a thumb piano. Each plays a little part, and the parts lock into one groove.' },
 ];
 
 export const EXHIBITS = [
   {
     id: 'piano', name: 'Piano', room: 'keyboard', play: 'keys',
+    size: [180, 'long'],
     opts: { sound: 'piano', lo: 21, hi: 108, look: 'piano', start: 48 },
     clef: 'grand',
     facts: [
@@ -30,6 +38,7 @@ export const EXHIBITS = [
   },
   {
     id: 'organ', name: 'Organ', room: 'keyboard', play: 'keys',
+    size: [250, 'tall'],
     opts: { sound: 'organ', lo: 36, hi: 96, look: 'organ', start: 48 },
     clef: 'grand',
     facts: [
@@ -42,6 +51,7 @@ export const EXHIBITS = [
   },
   {
     id: 'violin', name: 'Violin', room: 'strings', play: 'bowed',
+    size: [60, 'long'],
     opts: { arco: 'violin', pizz: 'violin-pizz', strings: [55, 62, 69, 76], tapes: [2, 4, 5, 7], span: 12 },
     clef: 'treble',
     facts: [
@@ -54,6 +64,7 @@ export const EXHIBITS = [
   },
   {
     id: 'viola', name: 'Viola', room: 'strings', play: 'bowed',
+    size: [66, 'long'],
     opts: { arco: 'violas', pizz: 'viola-pizz', strings: [48, 55, 62, 69], tapes: [2, 4, 5, 7], span: 12 },
     clef: 'alto',
     facts: [
@@ -65,6 +76,7 @@ export const EXHIBITS = [
   },
   {
     id: 'cello', name: 'Cello', room: 'strings', play: 'bowed',
+    size: [124, 'tall'],
     opts: { arco: 'cello', pizz: 'cello-pizz-solo', strings: [36, 43, 50, 57], tapes: [2, 3, 4, 5], span: 12, vibrato: { cents: 22 } },
     clef: 'bass',
     facts: [
@@ -76,6 +88,7 @@ export const EXHIBITS = [
   },
   {
     id: 'bass', name: 'Double bass', room: 'strings', play: 'bowed',
+    size: [185, 'tall'],
     opts: { arco: 'bass', pizz: 'bass-pizz', strings: [28, 33, 38, 43], tapes: [2, 3, 4, 5], span: 12 },
     clef: 'bass', written: 12,
     facts: [
@@ -88,6 +101,7 @@ export const EXHIBITS = [
   },
   {
     id: 'guitar', name: 'Guitar', room: 'strings', play: 'guitar',
+    size: [100, 'long'],
     opts: { sound: 'guitar', strings: [40, 45, 50, 55, 59, 64], frets: 12 },
     clef: 'treble', written: 12,
     facts: [
@@ -100,6 +114,7 @@ export const EXHIBITS = [
   },
   {
     id: 'electric-guitar', name: 'Electric guitar', room: 'strings', play: 'guitar',
+    size: [98, 'long'],
     opts: { sound: 'electric-guitar', strings: [40, 45, 50, 55, 59, 64], frets: 12, chords: 'guitar', look: 'electric' },
     clef: 'treble', written: 12,
     facts: [
@@ -112,6 +127,7 @@ export const EXHIBITS = [
   },
   {
     id: 'electric-bass', name: 'Electric bass', room: 'strings', play: 'guitar',
+    size: [115, 'long'],
     opts: { sound: 'electric-bass', strings: [28, 33, 38, 43], frets: 12, look: 'bass' },
     clef: 'bass', written: 12,
     facts: [
@@ -124,6 +140,7 @@ export const EXHIBITS = [
   },
   {
     id: 'banjo', name: 'Banjo', room: 'strings', play: 'guitar',
+    size: [95, 'long'],
     opts: { sound: 'banjo', strings: [67, 50, 55, 59, 62], frets: 12, chords: 'banjo', look: 'banjo', short: { string: 0, from: 5 } },
     clef: 'treble', written: 12,
     facts: [
@@ -136,6 +153,7 @@ export const EXHIBITS = [
   },
   {
     id: 'ukulele', name: 'Ukulele', room: 'strings', play: 'guitar',
+    size: [53, 'long'],
     opts: { sound: 'ukulele', strings: [67, 60, 64, 69], frets: 12, chords: 'ukulele', look: 'ukulele' },
     clef: 'treble',
     facts: [
@@ -148,6 +166,7 @@ export const EXHIBITS = [
   },
   {
     id: 'harp', name: 'Harp', room: 'strings', play: 'harp',
+    size: [185, 'tall'],
     opts: { sound: 'harp', low: 36, strings: 33 },
     clef: 'grand',
     facts: [
@@ -161,6 +180,7 @@ export const EXHIBITS = [
   },
   {
     id: 'flute', name: 'Flute', room: 'woodwinds', play: 'wind',
+    size: [67, 'long'],
     opts: { sound: 'flute', kind: 'flute', vibrato: { cents: 16, amp: 0.08 } },
     clef: 'treble',
     facts: [
@@ -173,6 +193,7 @@ export const EXHIBITS = [
   },
   {
     id: 'clarinet', name: 'Clarinet', room: 'woodwinds', play: 'wind',
+    size: [66, 'long'],
     opts: { sound: 'clarinet', kind: 'clarinet' },
     clef: 'treble', written: 2, flats: true,
     facts: [
@@ -184,6 +205,7 @@ export const EXHIBITS = [
   },
   {
     id: 'oboe', name: 'Oboe', room: 'woodwinds', play: 'wind',
+    size: [65, 'long'],
     opts: { sound: 'oboe', kind: 'oboe', vibrato: { cents: 14, amp: 0.04 } },
     clef: 'treble',
     facts: [
@@ -195,6 +217,7 @@ export const EXHIBITS = [
   },
   {
     id: 'saxophone', name: 'Saxophone', room: 'woodwinds', play: 'wind',
+    size: [85, 'tall'],
     opts: { sound: 'tenor-sax', kind: 'sax', vibrato: { cents: 18, rate: 5.2, amp: 0.03 } },
     clef: 'treble', written: 14, flats: true,
     facts: [
@@ -207,6 +230,7 @@ export const EXHIBITS = [
   },
   {
     id: 'bassoon', name: 'Bassoon', room: 'woodwinds', play: 'wind',
+    size: [134, 'tall'],
     opts: { sound: 'bassoon', kind: 'bassoon', vibrato: { cents: 12, amp: 0.03 } },
     clef: 'bass',
     facts: [
@@ -219,6 +243,7 @@ export const EXHIBITS = [
   },
   {
     id: 'trumpet', name: 'Trumpet', room: 'brass', play: 'brass',
+    size: [48, 'long'],
     opts: { sound: 'trumpet', fundamental: 46, partials: [2, 3, 4, 5, 6, 8], valves: [2, 1, 3], look: 'trumpet', vibrato: { cents: 10, amp: 0.03 } },
     clef: 'treble', written: 2, flats: true,
     facts: [
@@ -231,6 +256,7 @@ export const EXHIBITS = [
   },
   {
     id: 'horn', name: 'French horn', room: 'brass', play: 'brass',
+    size: [60, 'long'],
     opts: { sound: 'horn', fundamental: 29, partials: [2, 3, 4, 5, 6, 8, 9, 10, 12], valves: [2, 1, 3], look: 'horn' },
     clef: 'treble', written: 7, flats: true,
     facts: [
@@ -243,6 +269,7 @@ export const EXHIBITS = [
   },
   {
     id: 'trombone', name: 'Trombone', room: 'brass', play: 'brass',
+    size: [115, 'long'],
     opts: { sound: 'trombone', fundamental: 34, partials: [2, 3, 4, 5, 6, 8], slide: true, look: 'trombone', vibrato: { cents: 9, rate: 5, amp: 0.03 } },
     clef: 'bass', flats: true,
     facts: [
@@ -254,6 +281,7 @@ export const EXHIBITS = [
   },
   {
     id: 'tuba', name: 'Tuba', room: 'brass', play: 'brass',
+    size: [90, 'tall'],
     opts: { sound: 'tuba', fundamental: 22, partials: [2, 3, 4, 5, 6, 8], valves: [2, 1, 3, 5], look: 'tuba' },
     clef: 'bass', flats: true,
     facts: [
@@ -265,6 +293,7 @@ export const EXHIBITS = [
   },
   {
     id: 'drums', name: 'Drum set', room: 'percussion', play: 'kit',
+    size: [150, 'wide'],
     facts: [
       'One drummer plays it with both hands and both feet.',
       'The bass drum and the hi-hat are played with foot pedals.',
@@ -273,6 +302,7 @@ export const EXHIBITS = [
   },
   {
     id: 'timpani', name: 'Timpani', room: 'percussion', play: 'timpani',
+    size: [90, 'tall'],
     clef: 'bass', flats: false,
     facts: [
       'Also called kettledrums: big copper bowls with a drumhead stretched on top.',
@@ -283,6 +313,7 @@ export const EXHIBITS = [
   },
   {
     id: 'snare', name: 'Snare drum', room: 'percussion', play: 'perc', opts: { kind: 'snare' },
+    size: [36, 'across'],
     facts: [
       'Metal wires called snares, stretched under the bottom head, make its buzz.',
       'A roll is many quick strokes that blend into one long sound.',
@@ -291,6 +322,7 @@ export const EXHIBITS = [
   },
   {
     id: 'bassdrum', name: 'Bass drum', room: 'percussion', play: 'perc', opts: { kind: 'bassdrum' },
+    size: [90, 'across'],
     facts: [
       'The biggest drum in the orchestra. You can feel its boom.',
       'It is played with a big, soft beater.',
@@ -299,6 +331,7 @@ export const EXHIBITS = [
   },
   {
     id: 'cymbals', name: 'Cymbals', room: 'percussion', play: 'perc', opts: { kind: 'cymbals' },
+    size: [46, 'across'],
     facts: [
       'Crash cymbals are a pair, swung together.',
       'Pressing them against your chest stops the sound. That is a choke.',
@@ -308,6 +341,7 @@ export const EXHIBITS = [
   },
   {
     id: 'triangle', name: 'Triangle', room: 'percussion', play: 'perc', opts: { kind: 'triangle' },
+    size: [20, 'tall'],
     facts: [
       'A steel bar bent into a triangle, open at one corner.',
       'It hangs from a string, because holding it would stop the ring.',
@@ -316,6 +350,7 @@ export const EXHIBITS = [
   },
   {
     id: 'tambourine', name: 'Tambourine', room: 'percussion', play: 'perc', opts: { kind: 'tambourine' },
+    size: [25, 'across'],
     facts: [
       'A small frame drum with metal jingles set into the rim.',
       'You can tap it, shake it, or rub your thumb around the edge.',
@@ -324,6 +359,7 @@ export const EXHIBITS = [
   },
   {
     id: 'gong', name: 'Gong', room: 'percussion', play: 'perc', opts: { kind: 'gong' },
+    size: [80, 'across'],
     facts: [
       'A big bronze disc, first made in East and Southeast Asia.',
       'Its sound swells after you strike it, then fades very slowly.',
@@ -332,6 +368,7 @@ export const EXHIBITS = [
   },
   {
     id: 'sleigh-bells', name: 'Sleigh bells', room: 'percussion', play: 'hand',
+    size: [30, 'long'],
     opts: { parts: [{ sound: 'sleigh-bells', shape: 'sleigh', size: 1.1 }] },
     facts: [
       'Small metal bells, each with a loose ball inside, on a strap or handle.',
@@ -341,6 +378,7 @@ export const EXHIBITS = [
   },
   {
     id: 'glockenspiel', name: 'Glockenspiel', room: 'percussion', play: 'keys',
+    size: [70, 'long'],
     opts: { sound: 'glockenspiel', lo: 79, hi: 108, look: 'glock', start: 79 },
     clef: 'treble', written: -24,
     facts: [
@@ -352,6 +390,7 @@ export const EXHIBITS = [
   },
   {
     id: 'xylophone', name: 'Xylophone', room: 'percussion', play: 'keys',
+    size: [120, 'long'],
     opts: { sound: 'xylophone', lo: 65, hi: 108, look: 'xylo', start: 72 },
     clef: 'treble', written: -12,
     facts: [
@@ -363,6 +402,7 @@ export const EXHIBITS = [
   },
   {
     id: 'marimba', name: 'Marimba', room: 'percussion', play: 'keys',
+    size: [240, 'long'],
     opts: { sound: 'marimba', lo: 45, hi: 96, look: 'marimba', start: 55 },
     clef: 'treble',
     facts: [
@@ -374,6 +414,7 @@ export const EXHIBITS = [
   },
   {
     id: 'congas', name: 'Congas', room: 'world', play: 'hand',
+    size: [76, 'tall'],
     opts: { parts: [{ sound: 'conga', shape: 'drum', rate: 1.08, name: 'Conga' }, { sound: 'conga', shape: 'drum', rate: 0.86, size: 1.12, name: 'Tumba' }] },
     facts: [
       'Tall wooden drums from Cuba, played with the hands.',
@@ -384,6 +425,7 @@ export const EXHIBITS = [
   },
   {
     id: 'bongos', name: 'Bongos', room: 'world', play: 'hand',
+    size: [20, 'across'],
     opts: { parts: [{ sound: 'bongo-high', shape: 'bongo', size: 0.85, name: 'Macho' }, { sound: 'bongo-low', shape: 'bongo', size: 1, name: 'Hembra' }] },
     facts: [
       'A pair of small drums joined together, from Cuba.',
@@ -393,6 +435,7 @@ export const EXHIBITS = [
   },
   {
     id: 'agogo', name: 'Agogô', room: 'world', play: 'hand',
+    size: [35, 'long'],
     opts: { parts: [{ sound: 'agogo', shape: 'agogo', rate: 1, name: 'High' }, { sound: 'agogo', shape: 'agogo', rate: 0.79, name: 'Low' }] },
     facts: [
       'Two bells joined by a handle, from the Yoruba people of West Africa.',
@@ -402,6 +445,7 @@ export const EXHIBITS = [
   },
   {
     id: 'cowbell', name: 'Cowbell', room: 'world', play: 'hand',
+    size: [17, 'long'],
     opts: { parts: [{ sound: 'cowbell', shape: 'bell' }] },
     facts: [
       'Once hung on cows so farmers could find them; now it keeps the beat in salsa and rock.',
@@ -411,6 +455,7 @@ export const EXHIBITS = [
   },
   {
     id: 'claves', name: 'Claves', room: 'world', play: 'hand',
+    size: [20, 'long'],
     opts: { parts: [{ sound: 'claves', shape: 'claves' }] },
     facts: [
       'Two sticks of hard wood, clicked together.',
@@ -420,6 +465,7 @@ export const EXHIBITS = [
   },
   {
     id: 'guiro', name: 'Güiro', room: 'world', play: 'hand',
+    size: [35, 'long'],
     opts: { parts: [{ sound: 'guiro', shape: 'guiro', size: 0.9 }] },
     facts: [
       'A hollow gourd with ridges cut across it, from the Caribbean.',
@@ -429,6 +475,7 @@ export const EXHIBITS = [
   },
   {
     id: 'shaker', name: 'Shaker', room: 'world', play: 'hand',
+    size: [6, 'long'],
     opts: { parts: [{ sound: 'shaker', shape: 'shaker' }] },
     facts: [
       'A shell filled with seeds, beads or sand.',
@@ -438,6 +485,7 @@ export const EXHIBITS = [
   },
   {
     id: 'cabasa', name: 'Cabasa', room: 'world', play: 'hand',
+    size: [20, 'long'],
     opts: { parts: [{ sound: 'cabasa', shape: 'cabasa' }] },
     facts: [
       'Loops of steel beads wrapped around a ridged cylinder on a handle.',
@@ -447,6 +495,7 @@ export const EXHIBITS = [
   },
   {
     id: 'log-drum', name: 'Log drum', room: 'world', play: 'hand',
+    size: [60, 'long'],
     opts: { parts: [{ sound: 'log-drum-high', shape: 'slit', name: 'High' }, { sound: 'log-drum-low', shape: 'slit', name: 'Low' }] },
     facts: [
       'A hollow wooden box with tongues cut into its top. It is also called a slit drum.',
@@ -456,6 +505,7 @@ export const EXHIBITS = [
   },
   {
     id: 'kalimba', name: 'Kalimba', room: 'world', play: 'hand',
+    size: [17, 'wide'],
     opts: { sound: 'kalimba', tines: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81] },
     clef: 'treble',
     facts: [
