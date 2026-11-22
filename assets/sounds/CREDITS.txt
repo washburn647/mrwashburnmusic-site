@@ -52,3 +52,16 @@ Solo violin, violin and viola pizzicato, double bass pizzicato, timpani, gong, s
   and the rolls (violin/, violin-pizz/, viola-pizz/, bass-pizz/, timpani/, timpani-roll/,
   hits/gong.mp3, hits/sus-cymbal*.mp3, hits/*-roll.mp3, hits/tambourine-shake.mp3): VSCO 2:
   Community Edition, as above (CC0).
+
+Solo cello (cello/, cello-pizz-solo/): Karoryfer x bigcat cello by Karoryfer Samples and bigcat
+  instruments, played by Kamila Borowiak. Licence: CC0 1.0 (public domain).
+  Source: https://github.com/sfzinstruments/karoryfer-bigcat.cello. The mezzo-forte down-bow
+  sustains and the first pizzicato take of each note, trimmed, retuned where measured off and
+  converted to mono.
+
+Extra dynamic levels and alternate takes, for the instrument museum (piano/v3/, piano/v7/,
+  piano/v14/, hits/<name>/): the softer and harder velocity layers of the Salamander Grand Piano
+  (as above, CC BY 3.0; from the npm packages @audio-samples/piano-mp3-velocity3, 7 and 14), more
+  hits and round robins of the Salamander Drumkit (as above, CC BY-SA 3.0, shared under the same
+  licence), and of VSCO 2: Community Edition's snare drum, bass drum, crash and suspended
+  cymbals, tambourine, triangle and gong (CC0). Trimmed and converted to mono.

@@ -47,7 +47,8 @@ function decoded(file) {
     .then((data) => new Promise((ok, fail) => context().decodeAudioData(data, ok, fail)));
 }
 
-function load(file) {
+/* One file from index.json, decoded: { buffer, start }. Loads once, however often asked. */
+export function load(file) {
   if (!buffers.has(file)) buffers.set(file, decoded(file).then((buffer) => ({ buffer, start: onset(buffer) })));
   return buffers.get(file);
 }

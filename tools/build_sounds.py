@@ -1,12 +1,13 @@
 """Build the shared instrument samples in assets/sounds/ from the source libraries.
 
-  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--ebass SF2] [--freepats DIR] [--sax DIR] [--only NAME,NAME]
+  python tools/build_sounds.py VSCO_DIR PIANO_DIR [DRUMS_DIR] [--guitar DIR] [--banjo DIR] [--ebass SF2] [--freepats DIR] [--sax DIR] [--cello DIR] [--piano-layers V=DIR,...] [--layers] [--only NAME,NAME]
 
 VSCO_DIR   a clone of https://github.com/sgossner/VSCO-2-CE (CC0)
 PIANO_DIR  the audio/ folder of the npm package @audio-samples/piano-mp3-velocity10
            (Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0)
 DRUMS_DIR  salamanderDrumkit.tar.bz2 unpacked, from https://archive.org/details/SalamanderDrumkit
-           (Salamander Drumkit by Alexander Holm, CC BY-SA 3.0): the drum kit, kit-*
+           (Salamander Drumkit by Alexander Holm, CC BY-SA 3.0): the drum kit, kit-*. Its OH/
+           folder is what's used; a flat folder of those files (wav or flac) works too
            (--only kit-kick,… builds just those; the other folders aren't opened then)
 --guitar   the samples/ folder of FreePats' Spanish Classical Guitar (SFZ+FLAC), from
            https://freepats.zenvoid.org/Guitar/acoustic-guitar.html (CC0)
@@ -22,6 +23,14 @@ DRUMS_DIR  salamanderDrumkit.tar.bz2 unpacked, from https://archive.org/details/
            Ukulele (SFZ+FLAC) and Kalimba (SFZ)
 --sax      FreePats' Tenor Saxophone (SFZ+FLAC), unpacked, from
            https://freepats.zenvoid.org/Reed/saxophone.html (CC0)
+--cello    a clone of https://github.com/sfzinstruments/karoryfer-bigcat.cello (Karoryfer x
+           bigcat cello, CC0): the solo cello, bowed and plucked
+--piano-layers  the softer and harder piano layers, as VELOCITY=DIR pairs separated by commas,
+           each DIR the audio/ folder of @audio-samples/piano-mp3-velocityVELOCITY
+           (e.g. 3=p3/audio,7=p7/audio,14=p14/audio)
+--layers   also build the extra dynamic levels and alternate hits of LAYERED and HIT_LAYERS
+           (the museum plays them; every other page keeps using the main file)
+--layers-only  build only those, leaving every main file as it is
 
 Needs ffmpeg and numpy. Every sample is checked with a pitch detector: the file name's
 octave is corrected when the source counts octaves differently, and the measured tuning
@@ -82,6 +91,9 @@ PITCHED = {
     'viola-pizz': ('Viola pizzicato', 'vsco', 'Strings/Viola Section/pizz/*rr1.wav', ['v2', 'v1'], 1.5, 0.15, True),
     'bass-pizz': ('Double bass pizzicato', 'vsco', 'Strings/Solo Contrabass/Pizz/*rr1.wav', ['v3', 'v1'], 2, 0.15, True),
     'tenor-sax': ('Tenor saxophone', 'sax', 'samples/*.flac', ['v2', 'v3'], 4, 0.15, True),
+    # A solo cello (the cellos above are a section). Played without vibrato: the museum adds it.
+    'cello': ('Cello', 'cello', 'Samples/sus/*_mf_d.wav', [''], 4, 0.3, True),
+    'cello-pizz-solo': ('Cello pizzicato (solo)', 'cello', 'Samples/pizzcato/*_1.wav', [''], 2, 0.15, True),
 }
 
 # Timpani: the five VSCO drums, each tuned where the player found it. Their pitch is the
@@ -104,6 +116,9 @@ NOTE_FROM = {
     # Notes taken out of the bass soundfont by sf2_notes(), named by their MIDI note.
     'ebass': lambda base: int(base.split('.')[0]),
     # Kalimba: tines named by scale step (the FreePats SFZ gives their notes).
+    # Karoryfer cello: A2_mf_d.wav, Eb1_1.wav (flats as b).
+    'cello': lambda base: (lambda m: m and 12 * (int(m.group(3)) + 1) + NAMES[m.group(1)] + {'b': -1, '#': 1, '': 0}[m.group(2)])(
+        re.match(r'([A-G])(b|#|)(\d)_', base)),
     'kalimba': lambda base: {'F3': 53, '1': 60, '2': 63, '3': 64, '4': 67, '5': 68, '6': 72, '7': 73}.get(base.split('_')[0]),
 }
 
@@ -154,9 +169,50 @@ KIT = {
     'kit-splash': ('Splash', 'OH/splash1_OH_F_1.wav', 2),
 }
 
+# The museum's extra dynamic levels (--layers). Softest first; vel is the top of the touch
+# strength, 0 to 1, that each level plays up to. 'main' is the instrument's usual samples above,
+# which every other page plays. A level only changes the sound's colour and some of its loudness:
+# the build keeps half the recorded difference in loudness (in dB), and the player sets the rest.
+LAYERED = {
+    # Salamander's velocity layers (1 to 16): pianissimo, mezzo piano, the usual 10, fortissimo.
+    'piano': [(0.3, 3), (0.6, 7), (0.82, 'main'), (1, 14)],
+}
+
+# Hits with several dynamic levels and alternate takes (round robins), so fast repeats don't
+# sound like the same recording again and again: name -> [(vel, [file, ...]), ...]. Files are in
+# VSCO_DIR, or DRUMS_DIR for kit-*; the main file (HITS, KIT) is listed where it belongs.
+def _takes(pattern, n):
+    return [pattern.format(i) for i in range(1, n + 1)]
+
+
+HIT_LAYERS = {
+    'kit-kick': [(0.45, _takes('OH/kick_OH_P_{}.wav', 4)), (0.82, _takes('OH/kick_OH_F_{}.wav', 4)), (1, _takes('OH/kick_OH_FF_{}.wav', 4))],
+    'kit-snare': [(0.55, _takes('OH/snare_OH_MP_{}.wav', 4)), (0.85, _takes('OH/snare_OH_F_{}.wav', 4)), (1, _takes('OH/snare_OH_FF_{}.wav', 4))],
+    'kit-snare-ghost': [(1, _takes('OH/snare_OH_Ghost_{}.wav', 4))],
+    'kit-cross-stick': [(1, _takes('OH/snareStick_OH_F_{}.wav', 4))],
+    'kit-hihat-closed': [(0.6, _takes('OH/hihatClosed_OH_P_{}.wav', 4)), (1, _takes('OH/hihatClosed_OH_F_{}.wav', 4))],
+    'kit-hihat-open': [(0.45, _takes('OH/hihatOpen_OH_P_{}.wav', 3)), (0.8, _takes('OH/hihatOpen_OH_F_{}.wav', 3)), (1, _takes('OH/hihatOpen_OH_FF_{}.wav', 3))],
+    'kit-hihat-pedal': [(1, _takes('OH/hihatFoot_OH_MP_{}.wav', 4))],
+    'kit-tom-high': [(0.45, _takes('OH/hiTom_OH_P_{}.wav', 4)), (0.82, _takes('OH/hiTom_OH_F_{}.wav', 4)), (1, _takes('OH/hiTom_OH_FF_{}.wav', 4))],
+    'kit-tom-low': [(0.4, _takes('OH/loTom_OH_PP_{}.wav', 3)), (0.8, _takes('OH/loTom_OH_MP_{}.wav', 4)), (1, _takes('OH/loTom_OH_FF_{}.wav', 4))],
+    'kit-ride': [(0.82, _takes('OH/ride1_OH_MP_{}.wav', 4)), (1, _takes('OH/ride1_OH_FF_{}.wav', 3))],
+    'kit-ride-bell': [(1, _takes('OH/ride1Bell_OH_F_{}.wav', 3))],
+    'kit-crash': [(0.6, _takes('OH/crash1_OH_P_{}.wav', 3)), (1, _takes('OH/crash1_OH_FF_{}.wav', 3))],
+    'kit-splash': [(0.6, _takes('OH/splash1_OH_P_{}.wav', 3)), (1, _takes('OH/splash1_OH_F_{}.wav', 3))],
+    'snare': [(v, [f'Percussion/Snare2-HitSN_v{n}_rr{r}_Sum.wav' for r in (1, 2)]) for v, n in ((0.25, 1), (0.45, 3), (0.7, 5), (0.88, 7), (1, 9))],
+    'bass-drum': [(v, [f'Percussion/BDrumNewhit_v{n}_rr{r}_Sum.wav' for r in (1, 2)]) for v, n in ((0.4, 2), (0.8, 4), (1, 7))],
+    'cymbal': [(v, [f'Percussion/cymbal-crash1_{n}_rr{r}.wav' for r in (1, 2)]) for v, n in ((0.3, 'pp'), (0.55, 'mp'), (0.82, 'mf'), (1, 'ff'))],
+    'sus-cymbal': [(v, [f'Percussion/susCymb1-hit_{n}_rr{r}.wav' for r in (1, 2)]) for v, n in ((0.3, 'pp'), (0.6, 'mp'), (0.85, 'f'), (1, 'fff'))],
+    'tambourine': [(v, [f'Percussion/Tamb1-Hit_v{n}_rr{r}_Sum.wav' for r in (1, 2)]) for v, n in ((0.6, 1), (1, 2))],
+    'triangle': [(v, [f'Percussion/Triangle3-Hit_v{n}_rr{r}_Sum.wav' for r in (1, 2)]) for v, n in ((0.6, 1), (1, 2))],
+    'gong': [(v, [f'Percussion/gongHit_{n}.wav']) for v, n in ((0.35, 'p'), (0.65, 'mf'), (0.88, 'f'), (1, 'fff'))],
+}
+
 CREDITS = {
     'piano': 'salamander',
     'tenor-sax': 'freepats-sax',
+    'cello': 'karoryfer-cello',
+    'cello-pizz-solo': 'karoryfer-cello',
     'guitar': 'freepats-guitar',
     'banjo': 'flamestudios-banjo',
     'electric-bass': 'flamestudios-bass',
@@ -355,9 +411,23 @@ def build_timpani(name, spec, src):
     return {'label': label, 'kind': 'pitched', 'release': 0.4, 'zones': entries, 'credit': 'vsco'}
 
 
+def source_file(root, path):
+    """A file in a source folder. The drum kit's OH/x.wav is also found as x.wav or x.flac in a
+    flat folder (some copies of the Salamander Drumkit come that way)."""
+    full = os.path.join(root, path)
+    if os.path.exists(full):
+        return full
+    stem = os.path.splitext(os.path.basename(path))[0]
+    for ext in ('.wav', '.flac'):
+        for cand in (os.path.join(root, stem + ext), os.path.join(root, os.path.dirname(path), stem + ext)):
+            if os.path.exists(cand):
+                return cand
+    raise FileNotFoundError(full)
+
+
 def build_hit(name, spec, src, source='vsco'):
     label, path, seconds = spec
-    x = trim(decode(os.path.join(src[source], path)), seconds)
+    x = trim(decode(source_file(src[source], path)), seconds)
     rel = f'hits/{name}.mp3'
     encode(x * 0.89 / np.max(np.abs(x)), os.path.join(OUT, rel))
     entry = {'label': label, 'kind': 'hit', 'file': rel, 'credit': {'vsco': 'vsco', 'drums': 'salamander-drums'}[source]}
@@ -366,10 +436,90 @@ def build_hit(name, spec, src, source='vsco'):
     return entry
 
 
+def loudness(x):
+    """RMS of the first part of a sound, where its loudness is heard."""
+    return float(np.sqrt(np.mean(x[:int(0.3 * SR)] ** 2))) or 1e-9
+
+
+def scaled(x, gain):
+    """x times gain, turned down if that would clip."""
+    peak = np.max(np.abs(x)) * gain
+    return x * (gain if peak < 0.99 else 0.99 / np.max(np.abs(x)))
+
+
+def build_hit_layers(name, inst, src):
+    """The extra levels and takes of a hit, matched in loudness to its main file."""
+    source = 'drums' if name.startswith('kit-') else 'vsco'
+    spec = (KIT if source == 'drums' else HITS)[name]
+    _, main_path, seconds = spec
+    main = trim(decode(source_file(src[source], main_path)), seconds)
+    main_gain = 0.89 / np.max(np.abs(main))
+    main_stem = os.path.splitext(os.path.basename(main_path))[0]
+    layers = []
+    count = 0
+    for vel, paths in HIT_LAYERS[name]:
+        files = []
+        for path in paths:
+            stem = os.path.splitext(os.path.basename(path))[0]
+            if stem == main_stem:
+                files.append(inst['file'])
+                continue
+            x = trim(decode(source_file(src[source], path)), seconds)
+            # Keep half the recorded difference in loudness from the main file.
+            gain = main_gain * (loudness(main) / loudness(x)) ** 0.5
+            rel = f'hits/{name}/{stem.lower()}.mp3'
+            encode(scaled(x, gain), os.path.join(OUT, rel))
+            files.append(rel)
+            count += 1
+        layers.append({'vel': vel, 'files': files})
+    print(f'{name}: {len(layers)} levels, {count} extra takes')
+    return layers
+
+
+def build_pitched_layers(name, inst, src, extra):
+    """Extra velocity layers of a pitched instrument (the piano): the same notes as its main
+    zones, each matched in loudness to the main sample of that note."""
+    label, source, pattern, _, seconds, _, _ = PITCHED[name]
+    by_note = lambda folder: {label_midi(os.path.basename(f)): f for f in glob.glob(os.path.join(folder, pattern))}
+    main_files = by_note(src[source])
+    roots = {z['midi'] for z in inst['zones']}
+    # The main build's octave shift: the one that names the most main zones.
+    labels = [m for m in main_files if m is not None]
+    shift = max((-24, -12, 0, 12, 24), key=lambda k: sum(m + k in roots for m in labels))
+    length = lambda root: seconds if seconds else max(2, min(7, 7 - (root - 21) * 0.06))
+    mains = {m + shift: trim(decode(f), length(m + shift)) for m, f in main_files.items() if m is not None and m + shift in roots}
+    top = max(np.max(np.abs(x)) for x in mains.values())
+    layers = []
+    for vel, which in LAYERED[name]:
+        if which == 'main':
+            layers.append({'vel': vel, 'main': True})
+            continue
+        files = by_note(extra[str(which)])
+        zones = []
+        for m, f in sorted((m, f) for m, f in files.items() if m is not None):
+            root = m + shift
+            if root not in mains:
+                continue
+            x = trim(decode(f), length(root))
+            gain = (0.89 / top) * (loudness(mains[root]) / loudness(x)) ** 0.5
+            rel = f'{name}/v{which}/{root}.mp3'
+            encode(scaled(x, gain), os.path.join(OUT, rel))
+            zones.append({'midi': root, 'file': rel})
+        print(f'{name}: layer v{which}, {len(zones)} notes')
+        layers.append({'vel': vel, 'zones': zones})
+    return layers
+
+
 def main():
     argv = sys.argv[1:]
     opts = {}
-    for flag in ('--only', '--guitar', '--banjo', '--ebass', '--freepats', '--sax'):
+    layers_only = '--layers-only' in argv
+    if layers_only:
+        argv.remove('--layers-only')
+    with_layers = layers_only or '--layers' in argv
+    if '--layers' in argv:
+        argv.remove('--layers')
+    for flag in ('--only', '--guitar', '--banjo', '--ebass', '--freepats', '--sax', '--cello', '--piano-layers'):
         if flag in argv:
             i = argv.index(flag)
             opts[flag] = argv[i + 1]
@@ -378,28 +528,36 @@ def main():
     only = set(opts['--only'].split(',')) if '--only' in opts else None
     src = {'vsco': args[0], 'piano': args[1], 'drums': args[2] if len(args) > 2 else None,
            'guitar': opts.get('--guitar'), 'banjo': opts.get('--banjo'), 'ebass': None,
-           'freepats': opts.get('--freepats'), 'sax': opts.get('--sax')}
+           'freepats': opts.get('--freepats'), 'sax': opts.get('--sax'), 'cello': opts.get('--cello')}
+    piano_layers = dict(kv.split('=', 1) for kv in opts['--piano-layers'].split(',')) if opts.get('--piano-layers') else {}
     if opts.get('--ebass'):
         import tempfile
         src['ebass'] = sf2_notes(opts['--ebass'], tempfile.mkdtemp())
     index_path = os.path.join(OUT, 'index.json')
     index = json.load(open(index_path)) if os.path.exists(index_path) else {}
     instruments = index.get('instruments', {})
-    for name, spec in PITCHED.items():
-        if spec[1] in ('guitar', 'banjo', 'ebass', 'freepats', 'sax') and not src[spec[1]]:
+    for name, spec in ({} if layers_only else PITCHED).items():
+        if spec[1] in ('guitar', 'banjo', 'ebass', 'freepats', 'sax', 'cello') and not src[spec[1]]:
             continue
         if not only or name in only:
             instruments[name] = build_pitched(name, spec, src)
-    for name, spec in TIMPANI.items():
+    for name, spec in ({} if layers_only else TIMPANI).items():
         if not only or name in only:
             instruments[name] = build_timpani(name, spec, src)
-    for name, spec in HITS.items():
+    for name, spec in ({} if layers_only else HITS).items():
         if not only or name in only:
             instruments[name] = build_hit(name, spec, src)
-    if src['drums']:
+    if src['drums'] and not layers_only:
         for name, spec in KIT.items():
             if not only or name in only:
                 instruments[name] = build_hit(name, spec, src, 'drums')
+    if with_layers:
+        for name in LAYERED:
+            if (not only or name in only) and name in instruments and all(str(w) in piano_layers for _, w in LAYERED[name] if w != 'main'):
+                instruments[name]['layers'] = build_pitched_layers(name, instruments[name], src, piano_layers)
+        for name in HIT_LAYERS:
+            if (not only or name in only) and name in instruments and (src['drums'] or not name.startswith('kit-')):
+                instruments[name]['layers'] = build_hit_layers(name, instruments[name], src)
     index['instruments'] = instruments
     index.setdefault('voices', {})
     index['credits'] = {
@@ -411,6 +569,7 @@ def main():
         'freepats-sax': 'Tenor Saxophone by Roberto (FreePats project), from VSCO 2 samples, CC0',
         'flamestudios-bass': 'Ibanez Electric Bass Guitar by FlameStudios (Gary Campion), GNU GPL v3',
         'flamestudios-banjo': 'Kay 5-String Banjo by FlameStudios (Gary Campion), SFZ edit by S. Christian Collins, GNU GPL v3',
+        'karoryfer-cello': 'Karoryfer x bigcat cello by Karoryfer Samples and bigcat instruments, played by Kamila Borowiak, CC0',
     }
     with open(index_path, 'w') as f:
         json.dump(index, f, indent=1)

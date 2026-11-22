@@ -15,7 +15,7 @@ export async function mount(stage, ex, kit) {
   const lo = open[0];
   const hi = open[N - 1] + span;
   const [arco, pizz] = await Promise.all([pitched(o.arco, lo, hi), pitched(o.pizz, lo, hi)]);
-  const voices = open.map(() => arco.sustain({ attack: 0.07, release: 0.18, glide: 0.008 }));
+  const voices = open.map(() => arco.sustain({ attack: 0.07, release: 0.18, glide: 0.008, vibrato: o.vibrato }));
 
   const box = document.createElement('div');
   box.className = 'zone bowed';
@@ -300,6 +300,15 @@ export async function mount(stage, ex, kit) {
       g.beginPath(); g.arc(5, len / 2 - 12, 3.5, 0, 7); g.fill();
       g.restore();
     }
+  }
+
+  if (o.vibrato) {
+    kit.toggle({
+      label: 'Vibrato',
+      on: true,
+      icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12c2-5 4-5 5 0s3 5 5 0 3-5 5 0 3 5 5 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+      onChange: (on) => voices.forEach((v) => v.vibrato(on)),
+    });
   }
 
   kit.choice({

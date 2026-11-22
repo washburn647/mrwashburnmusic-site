@@ -294,6 +294,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 480px) {
   .bar h2 { display: none; }
   .tools { justify-content: flex-start; }
+  .tool, .seg button { padding: 0 10px; }
+  .tool[aria-label] { padding: 0 9px; }
 }
 @media (max-height: 460px) {
   :root { --bar-h: 50px; }
