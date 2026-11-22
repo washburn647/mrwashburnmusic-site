@@ -79,8 +79,10 @@ const WOODS = {
   spruce: { base: '#E4C690', dark: '#B48A4E', light: '#F4E0B4', lines: 90, wave: 0.35, bands: 10 },
   // spruce under amber varnish, as on a violin's or a cello's top
   varnish: { base: '#B6591E', dark: '#6E2A0C', light: '#E39041', lines: 80, wave: 0.35, bands: 14 },
-  // a darker, older varnish (cellos, basses)
+  // a darker, older varnish (cellos), a redder one (violas) and a brown one (basses)
   oldvarnish: { base: '#8E3A14', dark: '#4E1806', light: '#C2642A', lines: 80, wave: 0.35, bands: 14 },
+  redvarnish: { base: '#A2401A', dark: '#5E1A08', light: '#D2703A', lines: 80, wave: 0.35, bands: 14 },
+  darkvarnish: { base: '#5A2E16', dark: '#2A1208', light: '#86522E', lines: 80, wave: 0.35, bands: 14 },
   maple: { base: '#D2A26A', dark: '#9C6A34', light: '#EED2A2', lines: 50, wave: 0.8, figure: 0.55, bands: 8 },
   flame: { base: '#C27A34', dark: '#7E4416', light: '#F2C27E', lines: 40, wave: 0.8, figure: 1, bands: 8 },
   rosewood: { base: '#5C2C18', dark: '#2A1008', light: '#86472A', lines: 110, wave: 1.4, pores: 0.8, bands: 16 },
@@ -463,7 +465,7 @@ export function string(g, x0, y0, x1, y1, { width = 1.5, color = '#D8DDE2', woun
       g.lineTo(x, y);
     }
     g.closePath();
-    g.fillStyle = glow ? `rgba(255,226,160,${0.22 + 0.2 * glow})` : 'rgba(255,255,255,.16)';
+    g.fillStyle = glow ? `rgba(255,226,160,${0.3 + 0.3 * glow})` : 'rgba(255,255,255,.2)';
     g.fill();
   }
   // the string: the still ends, and the ringing part where it is caught at this moment
