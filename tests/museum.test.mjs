@@ -153,3 +153,303 @@ test('the bassoon plays its scale from the six finger holes and the thumb keys',
   for (const key of 'fdsjklnv ') await k.up(key);
   await page.evaluate(() => { location.hash = ''; });
 });
+
+/* The keys are drawn to a piano's proportions, black keys leaning as they do, and you can play
+   the strings inside the piano and the organ's pipes: touching any of them plays the note drawn
+   there. */
+test('keys, bars, strings and pipes play the note drawn where they are touched', async () => {
+  const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const full = (m) => `${NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
+  async function touch(m, where) {
+    const at = await page.evaluate(([m, where]) => {
+      const c = document.querySelector('#stage canvas');
+      const p = c.museumAt(m, where);
+      const r = c.getBoundingClientRect();
+      return p && { x: r.left + p.u, y: r.top + p.v };
+    }, [m, where]);
+    assert.ok(at, `${full(m)} ${where || ''} is showing`);
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    const n = await readout();
+    await page.mouse.up();
+    return n;
+  }
+  await open('piano');
+  for (let m = 48; m < 72; m++) assert.equal(await touch(m), full(m));
+  for (const m of [50, 61, 66, 70]) assert.equal(await touch(m, 'inside'), full(m), 'its strings');
+  await open('organ');
+  for (const m of [49, 54, 58, 60]) assert.equal(await touch(m), full(m));
+  assert.equal(await touch(55, 'inside'), full(55), 'its pipe');
+  // (the readout shows the written note: a glockenspiel's music is written two octaves down)
+  for (const [id, lo] of [['glockenspiel', 79], ['xylophone', 72], ['marimba', 55]]) {
+    await open(id);
+    const written = EXHIBITS.find((e) => e.id === id).written || 0;
+    for (let m = lo; m < lo + 12; m++) assert.equal(await touch(m), full(m + written), id);
+  }
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
+
+/* The brass are drawn as they're held: the lips on the player's side, then the mouthpiece, then
+   valve 1 (nearest the mouthpiece, as on the real instrument), 2 and 3. A finger on a valve and
+   one on the lips play the harmonic drawn there, lowered by the valve; the trombone's slide
+   plays the position under it. On a phone the valves are shown again, close up, big enough to
+   finger. */
+test('brass play what is drawn, valve 1 nearest the mouthpiece, big valves on a phone', async () => {
+  const at = (pg, what, i) => pg.evaluate(([what, i]) => {
+    const c = document.querySelector('#stage canvas');
+    const p = c.museumAt(what, i);
+    const r = c.getBoundingClientRect();
+    return p && { x: r.left + p.u, y: r.top + p.v };
+  }, [what, i]);
+  const finger = (pg, type, id, p) => pg.evaluate(([type, id, p]) => {
+    document.querySelector('#stage canvas').dispatchEvent(new PointerEvent(type, {
+      pointerId: id, clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, pointerType: 'touch',
+    }));
+  }, [type, id, p]);
+  await open('trumpet');
+  const [lips, mp, v1, v2, v3] = [await at(page, 'lips', 2), await at(page, 'mouthpiece'),
+    await at(page, 'valve', 0), await at(page, 'valve', 1), await at(page, 'valve', 2)];
+  assert.ok(lips.x < mp.x && mp.x < v1.x && v1.x < v2.x && v2.x < v3.x, 'lips, mouthpiece, then valves 1, 2, 3');
+  // the fourth harmonic is B♭4 (written C5); valve 1 lowers it a whole step (written B♭4)
+  await finger(page, 'pointerdown', 2, v1);
+  await finger(page, 'pointerdown', 3, lips);
+  assert.equal(await readout(), 'B♭4');
+  await finger(page, 'pointerup', 2, v1);
+  assert.equal(await readout(), 'C5');
+  await finger(page, 'pointerdown', 4, v3);
+  assert.equal(await readout(), 'A4');
+  await finger(page, 'pointerup', 4, v3);
+  await finger(page, 'pointerup', 3, lips);
+  // the trombone: lips on its second band (F3), the slide out to fourth position (D3)
+  await open('trombone');
+  const tl = await at(page, 'lips', 1);
+  await finger(page, 'pointerdown', 5, await at(page, 'slide', 4));
+  await finger(page, 'pointerup', 5, await at(page, 'slide', 4));
+  await finger(page, 'pointerdown', 6, tl);
+  assert.equal(await readout(), 'D3');
+  await finger(page, 'pointerup', 6, tl);
+
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const phone = await ctx.newPage();
+  phone.on('pageerror', (e) => errors.push(e.message));
+  await phone.goto(mock.base + '/museum/#tuba');
+  await phone.waitForFunction(() => !document.getElementById('stage').classList.contains('loading')
+    && document.querySelector('#stage canvas'), null, { timeout: 15000 });
+  const b = [];
+  for (let i = 0; i < 4; i++) b.push(await at(phone, 'valve', i));
+  for (let i = 1; i < 4; i++) assert.ok(b[i].x - b[i - 1].x >= 60, `tuba valves ${i} and ${i + 1} a finger apart on a phone`);
+  const pl = await at(phone, 'lips', 0);
+  await finger(phone, 'pointerdown', 2, b[3]);
+  await finger(phone, 'pointerdown', 3, pl);
+  // the tuba's second harmonic is B♭1; valve 4 lowers it a fourth, to F1
+  assert.equal(await phone.evaluate(() => document.getElementById('nn').textContent), 'F1');
+  await ctx.close();
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
+
+/* The drums are drawn as you see them from where you play (the drum set from the drummer's
+   seat), and touching a drum, a cymbal or a pedal plays the one drawn there: its middle, and
+   near its edge. A tap beside an orchestral percussion instrument strikes nothing. */
+test('drums and cymbals play the one drawn where they are touched', async () => {
+  const where = (args, dx = 0) => page.evaluate(([args, dx]) => {
+    const c = document.querySelector('#stage canvas');
+    const p = c.museumAt(...args);
+    const r = c.getBoundingClientRect();
+    return p && { x: r.left + p.u + (p.rx || 0) * dx, y: r.top + p.v };
+  }, [args, dx]);
+  const heard = () => page.evaluate(() => ({ n: 0, ...document.getElementById('stage').museumHeard }));
+  async function tap(p, what) {
+    assert.ok(p, `${what} is showing`);
+    const before = (await heard()).n;
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    const after = await heard();
+    return after.n > before ? after.part : null;
+  }
+  await open('drums');
+  for (const [id, code] of [['snare', 's'], ['tom1', 't'], ['tom2', 'm'], ['floor', 'f'], ['hihat', 'h'],
+    ['crash', 'c'], ['splash', 'w'], ['pedal', 'p'], ['kickpedal', 'k']]) {
+    assert.equal(await tap(await where([id]), id), code, id);
+  }
+  assert.equal(await tap(await where(['ride'], 0.7), 'ride'), 'r', 'the ride');
+  assert.equal(await tap(await where(['ride']), 'ride bell'), 'b', 'its bell');
+  assert.equal(await tap(await where(['snare'], 0.6), 'snare'), 's', 'the snare off its middle');
+
+  for (const id of ['snare', 'bassdrum', 'cymbals', 'triangle', 'tambourine', 'gong']) {
+    await open(id);
+    const modes = id === 'cymbals' ? ['Crash', 'Suspended'] : [null];
+    for (const mode of modes) {
+      if (mode) await page.getByRole('radio', { name: mode }).click();
+      const name = `${id}${mode ? ` (${mode})` : ''}`;
+      assert.equal(await tap(await where(['middle']), name), 'x', `${name}: its middle`);
+      assert.equal(await tap(await where(['edge']), name), 'x', `${name}: near its edge`);
+      const off = await where(['off']);
+      if (off) assert.equal(await tap(off, name), null, `${name}: beside it`);
+    }
+  }
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
+
+/* Each timpani's gauge runs from its lowest note to its highest, and so does its pedal, heel
+   to toe; struck, it plays the note it is tuned to. */
+test('a timpani tunes across its range by gauge or pedal, and plays the note shown', async () => {
+  const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const full = (m) => `${NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
+  const where = (...args) => page.evaluate((args) => {
+    const c = document.querySelector('#stage canvas');
+    const p = c.museumAt(...args);
+    const r = c.getBoundingClientRect();
+    return p && { x: r.left + p.u, y: r.top + p.v };
+  }, args);
+  const pitch = (i) => page.evaluate((i) => document.querySelector('#stage canvas').museumPitch(i), i);
+  async function press(p, what) {
+    assert.ok(p, `${what} is showing`);
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    await page.mouse.up();
+  }
+  await open('timpani');
+  const RANGES = [[38, 45], [41, 48], [46, 53], [50, 57]];
+  for (let i = 0; i < 4; i++) {
+    const [lo, hi] = RANGES[i];
+    await press(await where('gauge', i, 0), `drum ${i + 1}'s gauge`);
+    assert.equal(Math.round(await pitch(i)), lo, `drum ${i + 1}: the gauge's low end`);
+    await press(await where('gauge', i, 1), `drum ${i + 1}'s gauge`);
+    assert.equal(Math.round(await pitch(i)), hi, `drum ${i + 1}: the gauge's high end`);
+    await press(await where('pedal', i, 0.02), `drum ${i + 1}'s pedal`);
+    assert.ok(await pitch(i) < lo + 0.5, `drum ${i + 1}: the pedal's heel`);
+    await press(await where('pedal', i, 0.98), `drum ${i + 1}'s pedal`);
+    assert.ok(await pitch(i) > hi - 0.5, `drum ${i + 1}: the pedal's toe`);
+    await press(await where('gauge', i, 0.5), `drum ${i + 1}'s gauge`);
+    const m = Math.round(await pitch(i));
+    await press(await where('head', i), `drum ${i + 1}'s head`);
+    assert.equal(await readout(), full(m), `drum ${i + 1} plays the note it is tuned to`);
+  }
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
+
+/* The world's instruments are drawn as solid models on a mat, so a touch has to find the one
+   drawn under it: each drum, bell and stick plays at its middle and near its edge, and nothing
+   plays beside them. The güiro sounds as the stick is drawn along its ridges, and each kalimba
+   tine plays the note it is tuned to. */
+test('world instruments play the part drawn where they are touched', async () => {
+  const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const full = (m) => `${NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
+  const where = (...args) => page.evaluate((args) => {
+    const c = document.querySelector('#stage canvas');
+    const p = c.museumAt(...args);
+    const r = c.getBoundingClientRect();
+    return p && { x: r.left + p.u, y: r.top + p.v };
+  }, args);
+  const heard = () => page.evaluate(() => ({ n: 0, ...document.getElementById('stage').museumHeard }));
+  async function tap(p, what) {
+    assert.ok(p, `${what} is showing`);
+    const before = (await heard()).n;
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    const after = await heard();
+    return after.n > before ? after.part : null;
+  }
+  const world = EXHIBITS.filter((e) => e.play === 'hand' && e.opts.parts);
+  assert.ok(world.length >= 10, 'the world instruments are all there');
+  for (const ex of world) {
+    await open(ex.id);
+    const { parts } = ex.opts;
+    for (let i = 0; i < parts.length; i++) {
+      const code = parts.length === 1 ? 'x' : 'hl'[i];
+      const name = `${ex.id}${parts[i].name ? ` (${parts[i].name})` : ''}`;
+      if (parts[i].shape === 'guiro') {
+        const [a, b] = [await where(i, 'edge'), await where(i, 'end')];
+        assert.ok(a && b, `${name}'s ridges are showing`);
+        const before = (await heard()).n;
+        await page.mouse.move(a.x, a.y);
+        await page.mouse.down();
+        await page.mouse.move(b.x, b.y, { steps: 12 });
+        await page.mouse.up();
+        const after = await heard();
+        assert.ok(after.n - before >= 2, `${name}: a scrape along its ridges sounds (${after.n - before} times)`);
+        assert.equal(after.part, code, name);
+        continue;
+      }
+      assert.equal(await tap(await where(i, 'middle'), name), code, `${name}: its middle`);
+      assert.equal(await tap(await where(i, 'edge'), name), code, `${name}: near its edge`);
+    }
+    const off = await where(0, 'off');
+    if (off) assert.equal(await tap(off, ex.id), null, `${ex.id}: beside it`);
+  }
+
+  await open('kalimba');
+  const written = EXHIBITS.find((e) => e.id === 'kalimba').written || 0;
+  const n = EXHIBITS.find((e) => e.id === 'kalimba').opts.tines.length;
+  const heardNotes = new Set();
+  for (let i = 0; i < n; i++) {
+    const p = await where(i);
+    assert.ok(p, `tine ${i + 1} is showing`);
+    const m = await page.evaluate((i) => document.querySelector('#stage canvas').museumTine(i), i);
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    assert.equal(await readout(), full(m + written), `tine ${i + 1}`);
+    await page.mouse.up();
+    heardNotes.add(m);
+  }
+  assert.equal(heardNotes.size, n, 'every tine is a different note');
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
+
+test('every exhibit has its own drawing in the hall, painted inside its case', async () => {
+  await page.evaluate(() => { location.hash = ''; });
+  const res = await page.evaluate(async () => {
+    const { art } = await import('/museum/art.js');
+    const { EXHIBITS } = await import('/museum/data.js');
+    const seen = new Set();
+    const out = [];
+    for (const ex of EXHIBITS) {
+      const doc = new DOMParser().parseFromString(art(ex.id, ex.name).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '), 'image/svg+xml');
+      const svg = doc.documentElement;
+      const bad = doc.querySelector('parsererror') ? ['does not parse'] : [];
+      // every gradient and clip it uses is in it, and no two drawings share an id
+      for (const el of svg.querySelectorAll('[id]')) { if (seen.has(el.id)) bad.push(`id ${el.id} twice`); seen.add(el.id); }
+      for (const [, ref] of new XMLSerializer().serializeToString(svg).matchAll(/(?:url\(#|href="#)([\w-]+)/g)) {
+        if (!svg.querySelector(`[id="${ref}"]`)) bad.push(`no ${ref}`);
+      }
+      // paint it, less its soft floor shadow, with room round it, and see where the paint goes
+      for (const el of svg.querySelectorAll('[fill*="shadow"]')) el.remove();
+      svg.setAttribute('viewBox', '-20 -20 160 160');
+      svg.setAttribute('width', '320');
+      svg.setAttribute('height', '320');
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = c.height = 320;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const a = g.getImageData(0, 0, 320, 320).data;
+      let [x0, y0, x1, y1] = [320, 320, -1, -1];
+      for (let y = 0; y < 320; y++) {
+        for (let x = 0; x < 320; x++) {
+          if (a[(y * 320 + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+        }
+      }
+      out.push({ id: ex.id, bad, box: [x0, y0, x1 + 1, y1 + 1].map((v) => v / 2 - 20) });
+    }
+    return out;
+  });
+  assert.equal(res.length, EXHIBITS.length);
+  for (const { id, bad, box } of res) {
+    assert.deepEqual(bad, [], id);
+    const [x0, y0, x1, y1] = box;
+    // inside the case's frame (its 120 units and a little of the margin round them), and filling it
+    assert.ok(x0 >= -4 && y0 >= -4 && x1 <= 124 && y1 <= 124, `${id} is painted out to ${box.join(', ')}`);
+    assert.ok(Math.max(x1 - x0, y1 - y0) >= 80, `${id} is painted small: ${box.join(', ')}`);
+  }
+});
