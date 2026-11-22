@@ -98,6 +98,8 @@ const WOODS = {
   birch: { base: '#E2C79A', dark: '#B9996A', light: '#F4E3C2', lines: 40, wave: 0.6, bands: 6 },
   bamboo: { base: '#D8B46A', dark: '#A4813E', light: '#F0D594', lines: 60, wave: 0.15, bands: 6 },
   teak: { base: '#9A6232', dark: '#5E3414', light: '#C48A52', lines: 90, wave: 1.3, pores: 0.7, bands: 14 },
+  // Hawaiian koa, curly, as on a ukulele
+  koa: { base: '#A8642C', dark: '#5E2E10', light: '#D9954E', lines: 70, wave: 1.4, figure: 0.7, bands: 14 },
 };
 
 function paintWood(c, w, h, t, seed) {
@@ -169,29 +171,28 @@ function paintWood(c, w, h, t, seed) {
       c.fillRect(r() * w, r() * h, 6 + r() * 16, 1 + r() * 2);
     }
   }
-  // figure: the shimmering stripes across the grain of flamed maple
+  // figure: the shimmering stripes across the grain of flamed maple, light and dark in turn,
+  // each one wavering a little as it crosses the grain (painted in thin slices, so its light
+  // stays in the middle of it as it wanders)
   if (t.figure) {
-    const stripes = 22;
+    const stripes = 24;
     for (let i = 0; i < stripes; i++) {
-      const x0 = (i / stripes) * w + r() * 6;
-      const sw = 4 + r() * 9;
-      const lean = 6 + r() * 8;
+      const x0 = (i / stripes) * w + r() * 5;
+      const sw = 5 + r() * 6;
+      const lean = 1.5 + r() * 2.5;
+      const ph = r() * 6.283;
+      const col = i % 2 ? t.light : t.dark;
+      c.globalAlpha = (0.2 + r() * 0.24) * t.figure;
       for (const dx of [-w, 0, w]) {
-        const gr = c.createLinearGradient(x0 + dx - sw, 0, x0 + dx + sw, 0);
-        gr.addColorStop(0, 'rgba(0,0,0,0)');
-        gr.addColorStop(0.5, i % 2 ? t.light : t.dark);
-        gr.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = gr;
-        c.globalAlpha = (0.16 + r() * 0.2) * t.figure;
-        c.beginPath();
-        // a stripe that wanders a little as it crosses the grain (whole waves, so it repeats)
-        for (let y = 0; y <= h; y += 8) {
-          const x = x0 + dx + lean * Math.sin((y / h) * 6.283 * 2 + i);
-          if (y) c.lineTo(x - sw, y); else c.moveTo(x - sw, y);
+        for (let y = 0; y < h; y += 3) {
+          const x = x0 + dx + lean * Math.sin((y / h) * 6.283 + ph);
+          const gr = c.createLinearGradient(x - sw, 0, x + sw, 0);
+          gr.addColorStop(0, 'rgba(0,0,0,0)');
+          gr.addColorStop(0.5, col);
+          gr.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = gr;
+          c.fillRect(x - sw, y, sw * 2, 3.2);
         }
-        for (let y = h; y >= 0; y -= 8) c.lineTo(x0 + dx + lean * Math.sin((y / h) * 6.283 * 2 + i) + sw, y);
-        c.closePath();
-        c.fill();
       }
     }
   }

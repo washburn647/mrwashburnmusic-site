@@ -5,10 +5,18 @@
    chords (a set below, or none), look (classical, electric, bass, banjo, ukulele) and short
    (a string that starts partway up the neck, like the banjo's fifth: { string, from }).
    On a computer, click a fret to put a finger there (click again to lift it), drag across the
-   strings to strum, Space strums down (Shift+Space up), and 1 to 0 pick chords. */
+   strings to strum, Space strums down (Shift+Space up), and 1 to 0 pick chords.
+
+   Each is drawn as itself: a classical guitar's spruce top, mosaic rosette and tie-block
+   bridge, with nylon trebles and wound basses, and its slotted headstock; a ukulele in curly
+   koa; an electric guitar's red solid body with its horns, pickguard, three pickups and steel
+   saddles, and a maple neck; an electric bass in blue with its split pickup; a banjo's drum,
+   with its chrome hoop and hooks, its thin bridge on the head and pearl inlays up the neck.
+   The strings spread a little from the nut to the bridge, and blur as they ring. */
 
 import { surface, rr, label } from '../surface.js';
 import { pitched } from '../audio.js';
+import { wood, metal, string, pool, layer, put, rand, pin, screw, grain, head, gloss } from '../paint.js';
 
 const CHORD_SETS = {};
 CHORD_SETS.guitar = [
@@ -55,16 +63,16 @@ CHORD_SETS.banjo = [
 ];
 const CHORD_KEYS = '1234567890-=';
 
-const FRETBOARD = '#3B2418';
-
-/* How each one looks: the body's wood or paint, and what sits on it. */
+/* How each one looks: its top (wood) or paint, its fingerboard, its strings (plain and wound),
+   and what sits on its body. */
 const LOOKS = {
-  classical: { body: ['#C98E50', '#D8A266'], grain: 'rgba(120,70,30,.10)', top: 'hole', board: FRETBOARD },
-  ukulele: { body: ['#B8743C', '#CF9455'], grain: 'rgba(100,55,20,.12)', top: 'hole', board: '#2E1C12' },
-  electric: { body: ['#8E1F24', '#C8333A'], grain: null, top: 'pickups', pickups: 3, board: '#E3C79A', guard: '#F3EEE4' },
-  bass: { body: ['#1F3E63', '#2E5A8C'], grain: null, top: 'pickups', pickups: 2, board: '#2A1A10', guard: '#1A1A1A' },
-  banjo: { body: ['#7A4A24', '#8E5A2E'], grain: 'rgba(60,30,10,.12)', top: 'drum', board: '#22160E' },
+  classical: { top: 'hole', wood: 'spruce', board: 'rosewood', head: 'slotted', plain: 'rgba(244,236,220,.92)', wound: '#CBC5BA', binding: '#3A1C0E', rosette: true, tie: true },
+  ukulele: { top: 'hole', wood: 'koa', board: 'rosewood', head: 'pegs', plain: 'rgba(246,242,232,.95)', wound: '#CBC5BA', binding: '#F1E6CF', tie: true, small: true },
+  electric: { top: 'pickups', paint: '#B81E28', board: 'maple', head: 'inline', plain: '#E6EAED', wound: '#BFC5CA', guard: '#F4EFE4', pickups: 3, horns: true },
+  bass: { top: 'pickups', paint: '#245A9A', board: 'rosewood', head: 'inline', plain: '#B9BFC5', wound: '#AEB5BB', guard: '#1A1A1C', pickups: 2, horns: true },
+  banjo: { top: 'drum', board: 'ebony', head: 'peghead', plain: '#E3E7EA', wound: '#C3C9CE' },
 };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export async function mount(stage, ex, kit) {
   const o = ex.opts;
@@ -78,8 +86,8 @@ export async function mount(stage, ex, kit) {
   // Thicker strings for lower notes; the low ones are wound with wire.
   const lowest = Math.min(...tuning);
   const highest = Math.max(...tuning);
-  const widthOf = (i) => (o.look === 'bass' ? 2.2 : 1.2) + ((highest - tuning[i]) / Math.max(1, highest - lowest)) * (o.look === 'bass' ? 2.4 : 2.2);
-  const wound = (i) => o.look === 'bass' || tuning[i] <= 52;
+  const widthOf = (i) => ((o.look === 'bass' ? 2.4 : 1.1) + ((highest - tuning[i]) / Math.max(1, highest - lowest)) * (o.look === 'bass' ? 2.6 : 2)) * clamp((G?.H || 600) / 520, 1, 1.7);
+  const wound = (i) => o.look === 'bass' || (o.look !== 'ukulele' && tuning[i] <= (o.look === 'banjo' ? 50 : o.look === 'electric' ? 50 : 52));
   /* The note of string i stopped at fret f (the short string is open below its first fret). */
   const noteOf = (i, f) => (short && i === short.string ? tuning[i] + Math.max(0, f - short.from) : tuning[i] + f);
 
@@ -98,19 +106,25 @@ export async function mount(stage, ex, kit) {
   let G = null;
   function geom(s) {
     const neckEnd = s.W * (s.tall ? 0.62 : 0.64);
-    const nut = Math.max(18, s.W * 0.025);
-    const top = s.H * 0.13;
-    const bottom = s.H * 0.87;
-    const gap = (bottom - top) / (N - 1);
+    const nut = Math.max(34, s.W * 0.055);       // the headstock lies beyond it
+    const mid = s.H / 2;
+    const spread = s.H * 0.74;                    // across the strings, at the bridge
     const reach = 1 - 2 ** (-(FRETS + 0.6) / 12);
     const fretAt = (n) => nut + ((1 - 2 ** (-n / 12)) / reach) * (neckEnd - nut);
-    const bridge = s.W - Math.max(26, s.W * 0.05);
-    const hole = neckEnd + (bridge - neckEnd) * 0.38;
-    G = { neckEnd, nut, top, bottom, gap, fretAt, bridge, hole };
+    const bridge = s.W - Math.max(30, s.W * 0.075);
+    const hole = neckEnd + (bridge - neckEnd) * 0.36;
+    G = { neckEnd, nut, mid, spread, fretAt, bridge, hole, taper: 0.8, W: s.W, H: s.H };
     return G;
   }
-  // Strings fan in a little toward the bridge, like a real guitar.
-  const stringV = (i) => G.top + i * G.gap;
+  // The strings spread a little from the nut to the bridge, like a real guitar's.
+  const gapAt = (u) => (G.spread / (N - 1)) * (G.taper + (1 - G.taper) * clamp((u - G.nut) / (G.bridge - G.nut), 0, 1));
+  const stringV = (i, u) => G.mid + (i - (N - 1) / 2) * gapAt(u);
+  const stringAt = (u, v, within) => {
+    const i = Math.round((v - G.mid) / gapAt(u) + (N - 1) / 2);
+    return i >= 0 && i < N && Math.abs(v - stringV(i, u)) <= gapAt(u) * within ? i : -1;
+  };
+  // Half the fingerboard's width at u.
+  const boardHalf = (u) => (gapAt(u) * (N - 1)) / 2 + gapAt(u) * 0.55;
 
   function fretted(i) {
     if (mode === 'chords') return CHORDS[chord][1][i];
@@ -157,8 +171,8 @@ export async function mount(stage, ex, kit) {
 
   function neckHit(p) {
     if (p.u > G.neckEnd || p.u < G.nut - 4) return null;
-    const i = Math.round((p.v - G.top) / G.gap);
-    if (i < 0 || i >= N || Math.abs(p.v - stringV(i)) > G.gap * 0.62) return null;
+    const i = stringAt(p.u, p.v, 0.62);
+    if (i < 0) return null;
     let f = 1;
     while (f < FRETS && p.u > G.fretAt(f)) f++;
     return { string: i, fret: f };
@@ -183,8 +197,8 @@ export async function mount(stage, ex, kit) {
       }
       p.data.strum = true;
       p.data.last = performance.now();
-      const i = Math.round((p.v - G.top) / G.gap);
-      if (i >= 0 && i < N && Math.abs(p.v - stringV(i)) < G.gap * 0.3) { pluck(i, 0.62); p.data.hit = i; }
+      const i = stringAt(p.u, p.v, 0.3);
+      if (i >= 0) { pluck(i, 0.62); p.data.hit = i; }
     },
     move(p) {
       if (fingers.has(p.id)) {
@@ -203,11 +217,11 @@ export async function mount(stage, ex, kit) {
       const dt = Math.max(1, p.t - p.pt);
       const speed = Math.abs(dv) / dt;
       for (let i = 0; i < N; i++) {
-        const y = stringV(i);
+        const y = stringV(i, p.u);
         if ((p.pv - y) * (p.v - y) < 0 && p.data.hit !== i) {
           pluck(i, Math.min(0.95, 0.4 + speed * 0.35));
         }
-        if (p.data.hit === i && Math.abs(p.v - y) > G.gap * 0.3) p.data.hit = null;
+        if (p.data.hit === i && Math.abs(p.v - y) > gapAt(p.u) * 0.3) p.data.hit = null;
       }
     },
     up(p) {
@@ -219,83 +233,40 @@ export async function mount(stage, ex, kit) {
   s.onresize = (s) => { geom(s); placePads(); };
   geom(s);
 
-  function draw(g, s, t) {
+  function draw(g, s) {
     geom(s);
     const now = performance.now();
-    drawBody(g, s);
+    put(g, s, layer(s, 'guitar', '', (c) => paint(c, s)));
 
-    // neck
-    g.fillStyle = '#1A110B';
-    g.fillRect(0, 0, G.neckEnd, s.H);
-    const fb = g.createLinearGradient(0, G.top - G.gap * 0.7, 0, G.bottom + G.gap * 0.7);
-    fb.addColorStop(0, '#2C1A11'); fb.addColorStop(0.5, FRETBOARD); fb.addColorStop(1, '#2C1A11');
-    g.fillStyle = look.board === FRETBOARD ? fb : look.board;
-    g.fillRect(G.nut, G.top - G.gap * 0.7, G.neckEnd - G.nut, G.bottom - G.top + G.gap * 1.4);
-    // inlays
-    g.fillStyle = look.board === '#E3C79A' ? 'rgba(30,20,12,.8)' : 'rgba(240,232,214,.75)';
-    for (const n of [3, 5, 7, 9, 12, 15]) {
-      if (n > FRETS) continue;
-      const x = (G.fretAt(n - 1) + G.fretAt(n)) / 2;
-      const r = Math.min(9, G.gap * 0.22);
-      if (n === 12) {
-        g.beginPath(); g.arc(x, G.top + G.gap * 1.5, r, 0, 7); g.arc(x, G.bottom - G.gap * 1.5, r, 0, 7); g.fill();
-      } else { g.beginPath(); g.arc(x, s.H / 2, r, 0, 7); g.fill(); }
-    }
-    // frets
-    for (let n = 1; n <= FRETS; n++) {
-      const x = G.fretAt(n);
-      const fg = g.createLinearGradient(x - 2, 0, x + 2, 0);
-      fg.addColorStop(0, '#8E979E'); fg.addColorStop(0.5, '#F2F5F7'); fg.addColorStop(1, '#7D868D');
-      g.fillStyle = fg;
-      g.fillRect(x - 2, G.top - G.gap * 0.7, 4, G.bottom - G.top + G.gap * 1.4);
-    }
-    // nut
-    g.fillStyle = '#F1E9D6';
-    g.fillRect(G.nut - 7, G.top - G.gap * 0.7, 7, G.bottom - G.top + G.gap * 1.4);
-
-    // strings
+    // the strings, nut to bridge (the banjo's short string from its own peg)
     for (let i = 0; i < N; i++) {
-      const y = stringV(i);
       const r = ring[i];
       const age = (now - r.at) / 1000;
       const amp = r.voice ? r.amp * Math.exp(-age * 2.2) : 0;
-      const w = widthOf(i);
       const f = fretted(i);
       const isShort = short && i === short.string;
-      const start = isShort ? G.fretAt(short.from) : G.nut;
-      const from = f > 0 && !(isShort && f <= short.from) ? G.fretAt(f - 1) + (G.fretAt(f) - G.fretAt(f - 1)) * 0.5 : start;
-      g.strokeStyle = wound(i) ? (o.look === 'electric' || o.look === 'bass' ? '#C9CED2' : '#D9B98A') : '#ECE7DD';
-      g.lineWidth = w;
-      g.beginPath(); g.moveTo(isShort ? start : G.nut - 6, y); g.lineTo(from, y); g.stroke();
-      if (isShort) {
-        // the fifth string's own tuning peg, partway up the neck
-        g.save();
-        g.fillStyle = '#F1E9D6';
-        g.beginPath(); g.arc(start - 4, y, Math.min(7, G.gap * 0.22), 0, 7); g.fill();
-        g.restore();
-      }
-      // the part that vibrates
-      if (amp > 0.01) {
-        const k = 18 + i * 3;
-        g.save();
-        g.globalAlpha = 0.9;
-        g.beginPath();
-        for (let x = from; x <= G.bridge; x += 6) {
-          const pos = (x - from) / (G.bridge - from);
-          const env = Math.sin(pos * Math.PI);
-          const dy = Math.sin(now / (8 - i) + x / k) * amp * env * Math.min(G.gap * 0.28, 9);
-          x === from ? g.moveTo(x, y + dy) : g.lineTo(x, y + dy);
-        }
-        g.lineTo(G.bridge, y);
-        g.stroke();
-        g.restore();
-      } else {
-        g.beginPath(); g.moveTo(from, y); g.lineTo(G.bridge, y); g.stroke();
-      }
-      if (mode === 'chords' && f < 0) {
+      const start = isShort ? G.fretAt(short.from) - 6 : G.nut;
+      const from = f > 0 && !(isShort && f <= short.from) ? G.fretAt(f) - 2 : start;
+      const muted = mode === 'chords' && f < 0;
+      string(g, start, stringV(i, start), G.bridge, stringV(i, G.bridge), {
+        width: widthOf(i),
+        color: wound(i) ? look.wound : look.plain,
+        wound: wound(i),
+        amp: amp > 0.01 ? amp * Math.min(gapAt(G.bridge) * 0.22, 8) : 0,
+        glow: amp > 0.05 ? amp : 0,
+        t: now,
+        freq: 1.6 + (N - i) * 0.25,
+        from: (from - start) / (G.bridge - start),
+        to: 1,
+      });
+      if (muted) {
+        // a muted string: a finger lies across it, so it doesn't ring
         g.strokeStyle = 'rgba(0,0,0,.45)';
-        g.lineWidth = w + 3;
-        g.beginPath(); g.moveTo(G.neckEnd, y); g.lineTo(G.bridge, y); g.stroke();
+        g.lineWidth = widthOf(i) + 3;
+        g.beginPath();
+        g.moveTo(G.neckEnd, stringV(i, G.neckEnd));
+        g.lineTo(G.bridge, stringV(i, G.bridge));
+        g.stroke();
       }
     }
 
@@ -307,93 +278,658 @@ export async function mount(stage, ex, kit) {
       for (let i = 0; i < N; i++) { const f = fretted(i); if (f > 0) dots.push([i, f]); }
     }
     for (const [i, f] of dots) {
-      const x = G.fretAt(f - 1) + (G.fretAt(f) - G.fretAt(f - 1)) * 0.55;
-      const y = stringV(i);
-      const r = Math.min(G.gap * 0.36, 17);
+      const x = G.fretAt(f - 1) + (G.fretAt(f) - G.fretAt(f - 1)) * 0.6;
+      const y = stringV(i, x);
+      const r = Math.min(gapAt(x) * 0.36, 17);
       g.save();
-      g.shadowColor = 'rgba(0,0,0,.4)'; g.shadowBlur = 6;
-      g.fillStyle = '#E8B85A';
-      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+      g.shadowColor = 'rgba(0,0,0,.5)';
+      g.shadowBlur = 7;
+      g.shadowOffsetX = 2;
+      g.shadowOffsetY = 3;
+      const fg = g.createRadialGradient(x - r * 0.3, y - r * 0.3, 1, x, y, r * 1.2);
+      fg.addColorStop(0, '#FFE3A4');
+      fg.addColorStop(1, '#D9A24C');
+      g.fillStyle = fg;
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
       g.restore();
-      g.strokeStyle = '#FFF3D0'; g.lineWidth = 2;
-      g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke();
+      g.strokeStyle = 'rgba(255,243,208,.9)';
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.stroke();
     }
-    // open and muted marks at the nut in chord mode
+    // muted strings marked at the nut in chord mode
     if (mode === 'chords') {
       CHORDS[chord][1].forEach((f, i) => {
-        const y = stringV(i);
-        if (f < 0) label(g, s, '✕', G.nut / 2 - 1, y, { size: Math.min(16, G.gap * 0.5), color: '#E08A7A' });
+        if (f < 0) label(g, s, '✕', G.nut - 12, stringV(i, G.nut), { size: Math.min(16, gapAt(G.nut) * 0.5), color: '#E08A7A' });
       });
     }
   }
 
-  function drawBody(g, s) {
-    const grad = g.createLinearGradient(G.neckEnd, 0, s.W, 0);
-    grad.addColorStop(0, look.body[0]);
-    grad.addColorStop(1, look.body[1]);
-    g.fillStyle = grad;
-    g.fillRect(G.neckEnd - 2, 0, s.W - G.neckEnd + 2, s.H);
-    if (look.grain) {
-      g.strokeStyle = look.grain;
-      g.lineWidth = 1;
-      for (let y = 6; y < s.H; y += 9) { g.beginPath(); g.moveTo(G.neckEnd, y); g.bezierCurveTo(G.neckEnd + 80, y + 3, s.W - 80, y - 3, s.W, y + 1); g.stroke(); }
+  /* ---- what doesn't move, painted once ---- */
+
+  function paint(c, s) {
+    const { W, H, mid } = G;
+    c.fillStyle = '#15110E';
+    c.fillRect(0, 0, W, H);
+    pool(c, W * 0.6, mid, W * 0.65, '#3A2E25', 0.5, 0.8);
+    if (look.top === 'drum') paintBanjo(c);
+    else if (look.top === 'pickups') paintSolid(c);
+    else paintAcoustic(c);
+    paintNeck(c);
+    paintHead(c);
+    // the strings' ends past the bridge (and, on a banjo, to its tailpiece)
+    for (let i = 0; i < N; i++) {
+      const y = stringV(i, G.bridge);
+      const end = look.top === 'drum' ? G.bridge + (W - G.bridge) * 0.55 : look.tie ? G.bridge + 14 : G.bridge + 8;
+      const y2 = look.top === 'drum' ? mid + (y - mid) * 0.55 : y;
+      string(c, G.bridge, y, end, y2, { width: widthOf(i), color: wound(i) ? look.wound : look.plain, wound: wound(i) });
+      if (look.tie) {
+        // tied round itself on the tie block, as nylon strings are
+        c.strokeStyle = wound(i) ? look.wound : look.plain;
+        c.lineWidth = widthOf(i);
+        c.beginPath();
+        c.ellipse(end + 3, y, 3.5, Math.max(2.5, widthOf(i) * 1.4), 0, 0, Math.PI * 2);
+        c.stroke();
+        c.strokeStyle = 'rgba(0,0,0,.3)';
+        c.lineWidth = 0.8;
+        c.stroke();
+      }
     }
-    const cy = (G.top + G.bottom) / 2;
-    const span = G.bottom - G.top + G.gap * 1.2;
-    if (look.top === 'hole') {
-      // sound hole and rosette
-      const hr = Math.min(s.H * 0.36, (G.bridge - G.neckEnd) * 0.34);
-      g.fillStyle = '#5A3A1E';
-      g.beginPath(); g.arc(G.hole, cy, hr + 12, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = '#E9C893'; g.lineWidth = 3;
-      g.beginPath(); g.arc(G.hole, cy, hr + 7, 0, Math.PI * 2); g.stroke();
-      g.fillStyle = '#1B120C';
-      g.beginPath(); g.arc(G.hole, cy, hr, 0, Math.PI * 2); g.fill();
-    } else if (look.top === 'pickups') {
-      // a pickguard, and the pickups: magnets under each string that turn its shaking into electricity
-      g.fillStyle = look.guard;
-      rr(g, G.neckEnd + 6, G.top - G.gap * 0.9, (G.bridge - G.neckEnd) * 0.82, span + G.gap * 0.6, 22);
-      g.fill();
-      const n = look.pickups;
-      for (let k = 0; k < n; k++) {
-        const x = G.neckEnd + (G.bridge - G.neckEnd) * (0.18 + k * (0.55 / Math.max(1, n - 1)));
-        g.fillStyle = '#141414';
-        rr(g, x - 12, G.top - G.gap * 0.5, 24, span - G.gap * 0.2, 7);
-        g.fill();
-        g.fillStyle = '#9AA3A9';
-        for (let i = 0; i < N; i++) { g.beginPath(); g.arc(x, G.top + i * G.gap, 3, 0, 7); g.fill(); }
+  }
+
+  /* The body's edge near the neck: shoulders (an acoustic's), or horns (a solid body's). */
+  function bodyPath(c) {
+    const { neckEnd, mid, H, W } = G;
+    const nh = boardHalf(neckEnd) * 0.95;
+    c.beginPath();
+    if (look.horns) {
+      const hl = W * 0.075;                       // the upper horn reaches up the neck
+      const hl2 = W * 0.04;
+      c.moveTo(W + 20, -20);
+      c.lineTo(neckEnd + W * 0.07, -20);
+      c.bezierCurveTo(neckEnd + W * 0.01, mid - nh - H * 0.16, neckEnd - hl - 10, mid - nh - H * 0.12, neckEnd - hl, mid - nh - H * 0.03);
+      c.quadraticCurveTo(neckEnd - hl + 4, mid - nh, neckEnd - hl + 18, mid - nh);
+      c.lineTo(neckEnd + 2, mid - nh);
+      c.lineTo(neckEnd + 2, mid + nh);
+      c.lineTo(neckEnd - hl2 + 14, mid + nh);
+      c.quadraticCurveTo(neckEnd - hl2, mid + nh, neckEnd - hl2, mid + nh + H * 0.04);
+      c.bezierCurveTo(neckEnd - hl2 - 6, mid + nh + H * 0.14, neckEnd + W * 0.02, mid + nh + H * 0.2, neckEnd + W * 0.08, H + 20);
+      c.lineTo(W + 20, H + 20);
+    } else {
+      const fl = W * (look.small ? 0.06 : 0.05);
+      c.moveTo(W + 20, -20);
+      c.lineTo(neckEnd + fl + 6, -20);
+      c.bezierCurveTo(neckEnd + fl * 0.6, mid - nh - H * 0.2, neckEnd + 4, mid - nh - H * 0.05, neckEnd + 2, mid - nh);
+      c.lineTo(neckEnd + 2, mid + nh);
+      c.bezierCurveTo(neckEnd + 4, mid + nh + H * 0.05, neckEnd + fl * 0.6, mid + nh + H * 0.2, neckEnd + fl + 6, H + 20);
+      c.lineTo(W + 20, H + 20);
+    }
+    c.closePath();
+  }
+
+  /* A classical guitar or a ukulele: wood top, binding, sound hole and rosette, tie bridge. */
+  function paintAcoustic(c) {
+    const { neckEnd, mid, H, W, bridge, hole } = G;
+    const top = () => wood(c, look.wood, { scale: 1.2, seed: 3 });
+    c.save();
+    bodyPath(c);
+    c.shadowColor = 'rgba(0,0,0,.6)';
+    c.shadowBlur = 18;
+    c.fillStyle = top();
+    c.fill();
+    c.restore();
+    c.save();
+    bodyPath(c);
+    c.clip();
+    const light = c.createLinearGradient(0, 0, 0, H);
+    light.addColorStop(0, 'rgba(0,0,0,.25)');
+    light.addColorStop(0.4, 'rgba(255,240,210,.1)');
+    light.addColorStop(1, 'rgba(0,0,0,.3)');
+    c.fillStyle = light;
+    c.fillRect(0, 0, W, H);
+    // the binding round the edge, and the purfling strips inside it
+    bodyPath(c);
+    const strips = look.rosette
+      ? [[26, '#1A0C05'], [23, '#E8D6B0'], [21, '#7A2E1E'], [19, '#E8D6B0'], [17, '#1A0C05'], [14, look.binding]]
+      : [[16, '#1A0C05'], [13, look.binding]];
+    for (const [w, st] of strips) { c.lineWidth = w; c.strokeStyle = st; c.stroke(); }
+    c.lineWidth = 3;
+    c.strokeStyle = 'rgba(255,230,190,.35)';
+    c.stroke();
+    // the sound hole, its rosette, and the maker's label glimpsed inside
+    const hr = Math.min(H * (look.small ? 0.3 : 0.34), (bridge - neckEnd) * 0.3);
+    if (look.rosette) {
+      const tiles = 90;
+      for (let ring2 = 0; ring2 < 3; ring2++) {
+        const r0 = hr + 10 + ring2 * 5;
+        for (let k = 0; k < tiles; k++) {
+          const a0 = (k / tiles) * Math.PI * 2;
+          const a1 = ((k + 1) / tiles) * Math.PI * 2;
+          c.beginPath();
+          c.arc(hole, mid, r0 + 5, a0, a1);
+          c.arc(hole, mid, r0, a1, a0, true);
+          c.closePath();
+          c.fillStyle = ['#7A2E1E', '#E8D6B0', '#2E4A2E', '#C9A050'][(k + ring2 * 2) % 4];
+          c.fill();
+        }
       }
-      // volume and tone knobs
-      for (let k = 0; k < 2; k++) {
-        g.fillStyle = '#E8E2D4';
-        g.beginPath(); g.arc(G.bridge - 30 - k * 34, G.bottom + G.gap * 0.55, 10, 0, 7); g.fill();
+      for (const [r, w, st] of [[hr + 6, 2.5, '#1A0C05'], [hr + 9, 1.5, '#E8D6B0'], [hr + 26, 1.5, '#E8D6B0'], [hr + 29, 2.5, '#1A0C05'], [hr + 34, 1.2, '#1A0C05']]) {
+        c.beginPath();
+        c.arc(hole, mid, r, 0, Math.PI * 2);
+        c.lineWidth = w;
+        c.strokeStyle = st;
+        c.stroke();
       }
-    } else if (look.top === 'drum') {
-      // a banjo's body is a drum: a round frame with a head stretched over it
-      const r = Math.max(span * 0.7, (G.bridge - G.neckEnd) * 0.55);
-      const cx = G.neckEnd + r * 0.95;
-      g.save();
-      g.beginPath(); g.rect(G.neckEnd - 2, 0, s.W - G.neckEnd + 2, s.H); g.clip();
-      g.fillStyle = '#B8BEC3';
-      g.beginPath(); g.arc(cx, cy, r + 10, 0, 7); g.fill();
+    } else {
+      for (const [r, w, st] of [[hr + 6, 3, '#F1E6CF'], [hr + 11, 1.5, '#1A0C05'], [hr + 15, 2, '#F1E6CF']]) {
+        c.beginPath();
+        c.arc(hole, mid, r, 0, Math.PI * 2);
+        c.lineWidth = w;
+        c.strokeStyle = st;
+        c.stroke();
+      }
+    }
+    c.beginPath();
+    c.arc(hole, mid, hr, 0, Math.PI * 2);
+    const inside = c.createRadialGradient(hole - hr * 0.2, mid - hr * 0.2, hr * 0.1, hole, mid, hr);
+    inside.addColorStop(0, '#2A1A10');
+    inside.addColorStop(1, '#0C0705');
+    c.fillStyle = inside;
+    c.fill();
+    c.save();
+    c.clip();
+    c.fillStyle = 'rgba(236,224,196,.5)';
+    c.translate(hole + hr * 0.5, mid + hr * 0.28);
+    c.rotate(-0.1);
+    c.fillRect(-hr * 0.3, -hr * 0.2, hr * 0.6, hr * 0.4);
+    c.fillStyle = 'rgba(60,40,20,.35)';
+    for (let k = 0; k < 3; k++) c.fillRect(-hr * 0.22, -hr * 0.1 + k * hr * 0.09, hr * (k === 0 ? 0.44 : 0.3), 1.5);
+    c.restore();
+    c.beginPath();
+    c.arc(hole, mid, hr, 0, Math.PI * 2);
+    c.lineWidth = 2;
+    c.strokeStyle = 'rgba(255,230,190,.35)';
+    c.stroke();
+    c.restore();
+    // the bridge: rosewood, with a bone saddle the strings press on, then the tie block
+    const half = (gapAt(bridge) * (N - 1)) / 2;
+    const bw = clamp(W * 0.022, 16, 34);
+    c.save();
+    c.beginPath();
+    c.moveTo(bridge - bw * 0.55, mid - half - gapAt(bridge) * 0.8);
+    c.quadraticCurveTo(bridge - bw * 0.7, mid - half - gapAt(bridge) * 1.6, bridge + bw * 0.4, mid - half - gapAt(bridge) * 2);
+    c.lineTo(bridge + bw * 1.05, mid - half - gapAt(bridge) * 1.6);
+    c.lineTo(bridge + bw * 1.05, mid + half + gapAt(bridge) * 1.6);
+    c.lineTo(bridge + bw * 0.4, mid + half + gapAt(bridge) * 2);
+    c.quadraticCurveTo(bridge - bw * 0.7, mid + half + gapAt(bridge) * 1.6, bridge - bw * 0.55, mid + half + gapAt(bridge) * 0.8);
+    c.closePath();
+    c.shadowColor = 'rgba(0,0,0,.5)';
+    c.shadowBlur = 8;
+    c.shadowOffsetX = 3;
+    c.shadowOffsetY = 4;
+    c.fillStyle = wood(c, 'rosewood', { angle: 90, scale: 0.7, seed: 6 });
+    c.fill();
+    c.restore();
+    // a mosaic strip on the tie block, to match the rosette
+    if (look.rosette) {
+      const tx = bridge + bw * 0.72;
       for (let k = 0; k < 24; k++) {
-        const t = (k / 24) * Math.PI * 2;
-        g.fillStyle = '#E8ECEF';
-        g.beginPath(); g.arc(cx + Math.cos(t) * (r + 5), cy + Math.sin(t) * (r + 5), 3.2, 0, 7); g.fill();
+        c.fillStyle = ['#7A2E1E', '#E8D6B0', '#2E4A2E', '#C9A050'][k % 4];
+        const y0 = mid - half - gapAt(bridge) * 1.2;
+        const step = (half * 2 + gapAt(bridge) * 2.4) / 24;
+        c.fillRect(tx, y0 + k * step, 4, step);
       }
-      const h = g.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
-      h.addColorStop(0, '#FFFDF4');
-      h.addColorStop(1, '#E6DCC4');
-      g.fillStyle = h;
-      g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
-      g.restore();
     }
-    // bridge
-    g.fillStyle = look.top === 'drum' ? '#C9A46A' : '#2C1B10';
-    rr(g, G.bridge - 8, G.top - G.gap * 0.6, 22, G.bottom - G.top + G.gap * 1.2, 6);
-    g.fill();
-    g.fillStyle = look.top === 'pickups' ? '#B7C0C6' : '#EFE6D2';
-    g.fillRect(G.bridge - 2, G.top - G.gap * 0.4, 4, G.bottom - G.top + G.gap * 0.8);
+    c.fillStyle = metal(c, 'nickel', bridge - 3, 0, bridge + 3, 0);
+    c.fillStyle = '#F2EBDA';
+    rr(c, bridge - 3, mid - half - gapAt(bridge) * 0.55, 6, half * 2 + gapAt(bridge) * 1.1, 2);
+    c.fill();
+    c.fillStyle = 'rgba(0,0,0,.2)';
+    c.fillRect(bridge + 2, mid - half - gapAt(bridge) * 0.55, 1, half * 2 + gapAt(bridge) * 1.1);
+  }
+
+  /* An electric guitar or bass: a painted solid body, a pickguard with its screws, pickups
+     under the strings, knobs, and a steel bridge with a saddle for each string. */
+  function paintSolid(c) {
+    const { neckEnd, mid, H, W, bridge } = G;
+    c.save();
+    bodyPath(c);
+    c.shadowColor = 'rgba(0,0,0,.65)';
+    c.shadowBlur = 20;
+    c.fillStyle = look.paint;
+    c.fill();
+    c.restore();
+    c.save();
+    bodyPath(c);
+    c.clip();
+    // deep lacquer: darker at the edges, where the body rounds over, a sheen across it
+    const lac = c.createLinearGradient(0, 0, 0, H);
+    lac.addColorStop(0, 'rgba(0,0,0,.45)');
+    lac.addColorStop(0.25, 'rgba(255,255,255,.08)');
+    lac.addColorStop(0.5, 'rgba(255,255,255,0)');
+    lac.addColorStop(1, 'rgba(0,0,0,.5)');
+    c.fillStyle = lac;
+    c.fillRect(0, 0, W, H);
+    gloss(c, neckEnd, 0, W - neckEnd, H, { alpha: 0.16, at: 0.3, across: true });
+    bodyPath(c);
+    c.lineWidth = 14;
+    c.strokeStyle = 'rgba(255,255,255,.12)';
+    c.stroke();
+    c.lineWidth = 5;
+    c.strokeStyle = 'rgba(0,0,0,.35)';
+    c.stroke();
+    // the pickguard: three layers, so its edge shows a black line
+    const gx0 = neckEnd + 4;
+    const gx1 = bridge - (bridge - neckEnd) * 0.12;
+    const half = G.spread / 2;
+    const guard = () => {
+      c.beginPath();
+      c.moveTo(gx0, mid - half * 0.95);
+      c.bezierCurveTo(gx0 + (gx1 - gx0) * 0.3, mid - half * 1.32, gx0 + (gx1 - gx0) * 0.7, mid - half * 1.05, gx1, mid - half * 1.12);
+      c.bezierCurveTo(gx1 + 30, mid - half * 0.4, gx1 - 10, mid + half * 0.4, gx1 + 10, mid + half * 1.15);
+      c.bezierCurveTo(gx0 + (gx1 - gx0) * 0.6, mid + half * 1.45, gx0 + (gx1 - gx0) * 0.2, mid + half * 1.28, gx0, mid + half * 1.05);
+      c.closePath();
+    };
+    c.save();
+    guard();
+    c.shadowColor = 'rgba(0,0,0,.45)';
+    c.shadowBlur = 6;
+    c.shadowOffsetY = 2;
+    c.fillStyle = look.guard;
+    c.fill();
+    c.restore();
+    guard();
+    c.lineWidth = 3;
+    c.strokeStyle = look.guard === '#1A1A1C' ? '#E8E2D4' : '#1A1A1C';
+    c.stroke();
+    c.lineWidth = 1;
+    c.strokeStyle = 'rgba(255,255,255,.25)';
+    c.stroke();
+    // its screws
+    const sr = rand(8);
+    for (let k = 0; k < 9; k++) {
+      const t = k / 9;
+      const x = gx0 + 14 + (gx1 - gx0 - 20) * (t < 0.5 ? t * 2 : (1 - t) * 2);
+      const y = t < 0.5 ? mid - half * 1.12 + 12 : mid + half * 1.15 - 12;
+      screw(c, x, y + (sr() - 0.5) * 6, 3.2, { kind: 'chrome', angle: sr() * 3 });
+    }
+    // the pickups, each with a pole piece under every string
+    const n = look.pickups;
+    for (let k = 0; k < n; k++) {
+      const x = neckEnd + (bridge - neckEnd) * (n === 3 ? 0.2 + k * 0.24 : 0.3 + k * 0.36);
+      const pw = clamp(gapAt(x) * 0.62, 18, 56);
+      const slant = n === 3 && k === 2 ? 0.12 : 0;
+      const ph = gapAt(x) * (N - 1) + gapAt(x) * 1.1;
+      const split = o.look === 'bass' && k === 0;
+      c.save();
+      c.translate(x, mid);
+      c.rotate(slant);
+      for (const part of split ? [-1, 1] : [0]) {
+        const y0 = split ? (part < 0 ? -ph / 2 : 0) + part * 4 : -ph / 2;
+        const hh = split ? ph / 2 : ph;
+        const dx = split ? part * pw * 0.35 : 0;
+        c.fillStyle = 'rgba(0,0,0,.4)';
+        rr(c, dx - pw / 2 + 2, y0 + 3, pw, hh, pw * 0.4);
+        c.fill();
+        const cover = c.createLinearGradient(dx - pw / 2, 0, dx + pw / 2, 0);
+        const base = o.look === 'bass' ? '#1C1C1E' : '#EFE8D8';
+        cover.addColorStop(0, base === '#1C1C1E' ? '#3A3A3E' : '#FFFBF0');
+        cover.addColorStop(0.5, base);
+        cover.addColorStop(1, base === '#1C1C1E' ? '#0E0E10' : '#CFC6B2');
+        c.fillStyle = cover;
+        rr(c, dx - pw / 2, y0, pw, hh, pw * 0.4);
+        c.fill();
+      }
+      c.restore();
+      for (let i = 0; i < N; i++) {
+        const y = stringV(i, x);
+        const off = split ? (i < N / 2 ? -1 : 1) * pw * 0.35 : 0;
+        pin(c, x + off + (y - mid) * -slant, y, clamp(pw * 0.12, 2.4, 5), 'chrome');
+      }
+    }
+    // knobs and the pickup switch
+    const kr = clamp(H * 0.035, 9, 18);
+    for (let k = 0; k < (o.look === 'bass' ? 2 : 3); k++) {
+      const x = bridge - (bridge - neckEnd) * (0.1 + k * 0.14);
+      const y = mid + half * 1.15 + kr * 1.6 + k * kr * 0.6;
+      c.save();
+      c.shadowColor = 'rgba(0,0,0,.5)';
+      c.shadowBlur = 5;
+      c.shadowOffsetY = 2;
+      c.beginPath();
+      c.arc(x, y, kr, 0, Math.PI * 2);
+      c.fillStyle = o.look === 'bass' ? metal(c, 'chrome', x - kr, y - kr, x + kr, y + kr) : '#F1EADA';
+      c.fill();
+      c.restore();
+      c.beginPath();
+      c.arc(x, y, kr * 0.62, 0, Math.PI * 2);
+      c.strokeStyle = 'rgba(0,0,0,.18)';
+      c.lineWidth = 1;
+      c.stroke();
+    }
+    if (o.look !== 'bass') {
+      const x = neckEnd + (bridge - neckEnd) * 0.62;
+      const y = mid + half * 1.12;
+      c.fillStyle = '#1A1A1C';
+      rr(c, x - 22, y - 3, 44, 6, 3);
+      c.fill();
+      c.fillStyle = '#F1EADA';
+      rr(c, x - 4, y - 6, 9, 12, 3);
+      c.fill();
+    }
+    c.restore();
+    // the bridge: a steel plate, a saddle under each string, height screws in them
+    const bh = gapAt(bridge) * (N - 1) + gapAt(bridge) * 1.2;
+    const bw = clamp(W * 0.03, 20, 40);
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,.5)';
+    c.shadowBlur = 6;
+    c.shadowOffsetX = 2;
+    c.shadowOffsetY = 3;
+    c.fillStyle = metal(c, 'chrome', bridge - bw * 0.3, mid - bh / 2, bridge + bw, mid + bh / 2);
+    rr(c, bridge - bw * 0.3, mid - bh / 2, bw * 1.3, bh, 4);
+    c.fill();
+    c.restore();
+    for (let i = 0; i < N; i++) {
+      const y = stringV(i, bridge);
+      const sh = gapAt(bridge) * 0.78;
+      c.fillStyle = metal(c, 'steel', 0, y - sh / 2, 0, y + sh / 2);
+      rr(c, bridge - 4 + (i % 2) * 3, y - sh / 2, bw * 0.75, sh, 2);
+      c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.35)';
+      c.lineWidth = 1;
+      c.stroke();
+      pin(c, bridge + bw * 0.45, y - sh * 0.25, 1.6, 'steel');
+      pin(c, bridge + bw * 0.45, y + sh * 0.25, 1.6, 'steel');
+    }
+  }
+
+  /* A banjo: a drum under the strings. A chrome hoop holds the head down with hooks and nuts
+     all round; a thin maple bridge stands on the head; the strings go on to the tailpiece. */
+  function paintBanjo(c) {
+    const { neckEnd, mid, H, W, bridge } = G;
+    const r = Math.max(G.spread * 1.2, (bridge - neckEnd) * 0.95);
+    const cx = neckEnd - 6 + r;
+    c.save();
+    c.beginPath();
+    c.rect(neckEnd - 30, 0, W - neckEnd + 30, H);
+    c.clip();
+    // the resonator's wooden flange, beyond the hoop
+    c.beginPath();
+    c.arc(cx, mid, r + 34, 0, Math.PI * 2);
+    c.shadowColor = 'rgba(0,0,0,.6)';
+    c.shadowBlur = 16;
+    c.fillStyle = wood(c, 'mahogany', { angle: 30, seed: 2 });
+    c.fill();
+    c.shadowColor = 'transparent';
+    c.beginPath();
+    c.arc(cx, mid, r + 34, 0, Math.PI * 2);
+    c.lineWidth = 4;
+    c.strokeStyle = 'rgba(255,230,190,.25)';
+    c.stroke();
+    // the head
+    head(c, cx, mid, r, { kind: 'coated' });
+    // the tension hoop, and the hooks with their nuts all round it
+    c.beginPath();
+    c.arc(cx, mid, r + 6, 0, Math.PI * 2);
+    c.lineWidth = 12;
+    c.strokeStyle = metal(c, 'chrome', cx - r, mid - r, cx + r, mid + r);
+    c.stroke();
+    c.lineWidth = 1.5;
+    c.strokeStyle = 'rgba(255,255,255,.6)';
+    c.beginPath();
+    c.arc(cx, mid, r + 2, 0, Math.PI * 2);
+    c.stroke();
+    const hooks = 24;
+    for (let k = 0; k < hooks; k++) {
+      const a = (k / hooks) * Math.PI * 2;
+      const x = cx + Math.cos(a) * (r + 20);
+      const y = mid + Math.sin(a) * (r + 20);
+      c.save();
+      c.translate(x, y);
+      c.rotate(a);
+      c.fillStyle = metal(c, 'chrome', -8, -3, 8, 3);
+      rr(c, -14, -2.5, 22, 5, 2);
+      c.fill();
+      c.fillStyle = metal(c, 'nickel', -5, -5, 5, 5);
+      c.beginPath();
+      for (let q = 0; q < 6; q++) c.lineTo(Math.cos((q / 6) * Math.PI * 2) * 5 + 6, Math.sin((q / 6) * Math.PI * 2) * 5);
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
+    // the armrest, over the hoop where the picking arm lies
+    c.beginPath();
+    c.arc(cx, mid, r + 14, 0.25, 1.25);
+    c.lineWidth = 10;
+    c.strokeStyle = metal(c, 'chrome', cx, mid, cx + r, mid + r);
+    c.stroke();
+    // the tailpiece the strings go on to
+    const tx = bridge + (W - bridge) * 0.55;
+    const tw = gapAt(bridge) * (N - 1) * 0.7;
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,.5)';
+    c.shadowBlur = 8;
+    c.shadowOffsetX = 3;
+    c.shadowOffsetY = 3;
+    c.beginPath();
+    c.moveTo(tx - 6, mid - tw / 2 - 8);
+    c.lineTo(W + 20, mid - tw * 0.3);
+    c.lineTo(W + 20, mid + tw * 0.3);
+    c.lineTo(tx - 6, mid + tw / 2 + 8);
+    c.closePath();
+    c.fillStyle = metal(c, 'chrome', tx, mid - tw, tx, mid + tw);
+    c.fill();
+    c.restore();
+    c.restore();
+    // the bridge: thin maple with an ebony top, standing on the head
+    const bh = gapAt(bridge) * (N - 1) + gapAt(bridge) * 0.9;
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,.45)';
+    c.shadowBlur = 6;
+    c.shadowOffsetX = 4;
+    c.shadowOffsetY = 3;
+    c.fillStyle = '#D6B27A';
+    rr(c, bridge - 5, mid - bh / 2, 10, bh, 3);
+    c.fill();
+    c.restore();
+    c.fillStyle = '#1A1210';
+    c.fillRect(bridge - 1.5, mid - bh / 2 + 2, 3, bh - 4);
+    for (const k of [0.25, 0.5, 0.75]) {
+      c.fillStyle = 'rgba(0,0,0,.25)';
+      c.fillRect(bridge - 5, mid - bh / 2 + bh * k - 3, 10, 6);
+    }
+  }
+
+  /* The fingerboard: its wood, inlays, frets and nut; a banjo's short string's peg. */
+  function paintNeck(c) {
+    const { nut, neckEnd, mid } = G;
+    const path = () => {
+      c.beginPath();
+      c.moveTo(nut - 6, mid - boardHalf(nut));
+      c.lineTo(neckEnd + 2, mid - boardHalf(neckEnd));
+      c.lineTo(neckEnd + 2, mid + boardHalf(neckEnd));
+      c.lineTo(nut - 6, mid + boardHalf(nut));
+      c.closePath();
+    };
+    c.save();
+    path();
+    c.shadowColor = 'rgba(0,0,0,.6)';
+    c.shadowBlur = 14;
+    c.shadowOffsetX = 2;
+    c.shadowOffsetY = 6;
+    c.fillStyle = wood(c, look.board, { scale: 0.9, seed: 1 });
+    c.fill();
+    c.restore();
+    c.save();
+    path();
+    c.clip();
+    // a maple neck is lacquered pale gold; the others are oiled dark wood
+    const cam = c.createLinearGradient(0, mid - boardHalf(neckEnd), 0, mid + boardHalf(neckEnd));
+    cam.addColorStop(0, 'rgba(0,0,0,.3)');
+    cam.addColorStop(0.4, look.board === 'maple' ? 'rgba(255,240,200,.15)' : 'rgba(255,255,255,.05)');
+    cam.addColorStop(1, 'rgba(0,0,0,.35)');
+    c.fillStyle = cam;
+    c.fillRect(nut - 8, 0, neckEnd - nut + 12, G.H);
+    // inlays: dots (pearl on dark wood, black on maple), fancier on a banjo
+    const pearl = () => {
+      const pg = c.createLinearGradient(0, mid - 10, 0, mid + 10);
+      pg.addColorStop(0, '#FFFFFF');
+      pg.addColorStop(0.5, '#D8E6EC');
+      pg.addColorStop(1, '#F2E8F0');
+      return pg;
+    };
+    for (const n of [3, 5, 7, 9, 12, 15]) {
+      if (n > FRETS) continue;
+      const x = (G.fretAt(n - 1) + G.fretAt(n)) / 2;
+      const r = Math.min(9, gapAt(x) * 0.22);
+      c.fillStyle = look.board === 'maple' ? '#1C1410' : pearl();
+      if (look.top === 'drum') {
+        // diamonds, and a double diamond at the twelfth
+        const dw = (G.fretAt(n) - G.fretAt(n - 1)) * 0.3;
+        for (const dy of n === 12 ? [-gapAt(x) * 0.9, gapAt(x) * 0.9] : [0]) {
+          c.beginPath();
+          c.moveTo(x - dw, mid + dy);
+          c.lineTo(x, mid + dy - r * 1.6);
+          c.lineTo(x + dw, mid + dy);
+          c.lineTo(x, mid + dy + r * 1.6);
+          c.closePath();
+          c.fill();
+        }
+      } else if (n === 12) {
+        c.beginPath();
+        c.arc(x, mid - gapAt(x) * 1.5, r, 0, Math.PI * 2);
+        c.arc(x, mid + gapAt(x) * 1.5, r, 0, Math.PI * 2);
+        c.fill();
+      } else {
+        c.beginPath();
+        c.arc(x, mid, r, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+    // frets: nickel silver wire, a highlight along each, a shadow behind
+    for (let n = 1; n <= FRETS; n++) {
+      const x = G.fretAt(n);
+      const h = boardHalf(x);
+      c.fillStyle = 'rgba(0,0,0,.35)';
+      c.fillRect(x + 1.5, mid - h, 2.5, h * 2);
+      c.fillStyle = metal(c, 'nickel', x - 2, 0, x + 2, 0);
+      c.fillRect(x - 2, mid - h, 4, h * 2);
+    }
+    c.restore();
+    // the nut: bone
+    const nh = boardHalf(nut);
+    c.fillStyle = '#F1E9D6';
+    c.fillRect(nut - 7, mid - nh, 7, nh * 2);
+    c.fillStyle = 'rgba(0,0,0,.2)';
+    c.fillRect(nut - 1.5, mid - nh, 1.5, nh * 2);
+    // a banjo's short fifth string has its own peg, out of the side of the neck
+    if (short) {
+      const x = G.fretAt(short.from) - 6;
+      const y = stringV(short.string, x);
+      const side = y < mid ? -1 : 1;
+      const edge = mid + side * boardHalf(x);
+      pin(c, x, y, Math.min(4, gapAt(x) * 0.12), 'chrome');
+      c.fillStyle = metal(c, 'chrome', x - 3, 0, x + 3, 0);
+      c.fillRect(x - 2.5, Math.min(edge, edge + side * 10), 5, 10);
+      c.beginPath();
+      c.ellipse(x, edge + side * 18, 7, 9, 0, 0, Math.PI * 2);
+      c.fillStyle = '#F1E9D6';
+      c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.25)';
+      c.lineWidth = 1;
+      c.stroke();
+    }
+  }
+
+  /* The headstock, beyond the nut, where the strings go to their tuners. */
+  function paintHead(c) {
+    const { nut, mid } = G;
+    const nh = boardHalf(nut);
+    const x1 = nut - 7;
+    const hh = nh * 1.25;
+    const face = look.head === 'inline' ? (look.board === 'maple' ? 'maple' : 'rosewood') : look.head === 'peghead' ? 'ebony' : 'rosewood';
+    c.save();
+    c.beginPath();
+    if (look.head === 'inline') {
+      // six (or four) tuners in a line along one side
+      c.moveTo(x1, mid - nh);
+      c.lineTo(-10, mid - hh * 1.05);
+      c.lineTo(-10, mid + nh * 0.6);
+      c.quadraticCurveTo(x1 * 0.6, mid + nh * 0.75, x1, mid + nh);
+    } else {
+      c.moveTo(x1, mid - nh);
+      c.lineTo(-10, mid - hh);
+      c.lineTo(-10, mid + hh);
+      c.lineTo(x1, mid + nh);
+    }
+    c.closePath();
+    c.shadowColor = 'rgba(0,0,0,.6)';
+    c.shadowBlur = 10;
+    c.shadowOffsetY = 4;
+    c.fillStyle = wood(c, face, { scale: 0.8, seed: 7 });
+    c.fill();
+    c.restore();
+    // where each string goes: its post (or roller), along the headstock
+    const posts = [];
+    for (let i = 0; i < N; i++) {
+      if (short && i === short.string) continue;
+      let x;
+      let y;
+      if (look.head === 'inline') {
+        x = x1 - 10 - (i / Math.max(1, N - 1)) * Math.max(10, x1 - 24);
+        y = mid - nh * 0.55 - (i / Math.max(1, N - 1)) * nh * 0.25;
+      } else if (look.head === 'slotted') {
+        const side = i < N / 2 ? -1 : 1;
+        const k = side < 0 ? i : N - 1 - i;
+        x = x1 - 12 - k * Math.max(6, (x1 - 22) / 3);
+        y = mid + side * nh * 0.42;
+      } else {
+        const strs = N - (short ? 1 : 0);
+        const j = short && i > short.string ? i - 1 : i;
+        const side = j < strs / 2 ? -1 : 1;
+        const k = side < 0 ? j : strs - 1 - j;
+        x = x1 - 12 - k * Math.max(8, (x1 - 20) / 2);
+        y = mid + side * nh * 0.55;
+      }
+      posts.push({ i, x, y });
+    }
+    if (look.head === 'slotted') {
+      // two slots, with white rollers across them
+      for (const side of [-1, 1]) {
+        c.fillStyle = '#120A06';
+        rr(c, 2, mid + side * nh * 0.42 - nh * 0.16, x1 - 8, nh * 0.32, 3);
+        c.fill();
+      }
+      for (const p of posts) {
+        c.fillStyle = metal(c, 'nickel', 0, p.y - nh * 0.16, 0, p.y + nh * 0.16);
+        c.fillStyle = '#EFE7D6';
+        rr(c, p.x - 3, p.y - nh * 0.17, 6, nh * 0.34, 2);
+        c.fill();
+      }
+    }
+    for (const p of posts) {
+      const w = widthOf(p.i);
+      string(c, nut - 4, stringV(p.i, nut), p.x, p.y, { width: w, color: wound(p.i) ? look.wound : look.plain, wound: wound(p.i) });
+      if (look.head !== 'slotted') pin(c, p.x, p.y, look.head === 'inline' ? clamp(nh * 0.09, 3, 6) : clamp(nh * 0.08, 3, 5), 'chrome');
+      // the tuner's button, out of the side
+      if (look.head !== 'inline') {
+        const side = p.y < mid ? -1 : 1;
+        const edge = mid + side * (look.head === 'slotted' ? nh : hh * 0.96);
+        c.fillStyle = metal(c, 'chrome', p.x - 2, 0, p.x + 2, 0);
+        c.fillRect(p.x - 2, Math.min(edge, edge + side * 8), 4, 8);
+        c.beginPath();
+        c.ellipse(p.x, edge + side * 15, clamp(nh * 0.1, 4, 8), clamp(nh * 0.13, 5, 10), 0, 0, Math.PI * 2);
+        c.fillStyle = look.head === 'pegs' ? '#1A1512' : '#F1E9D6';
+        c.fill();
+        c.strokeStyle = 'rgba(0,0,0,.3)';
+        c.lineWidth = 1;
+        c.stroke();
+      }
+    }
   }
 
   // ---- chord pads ----
