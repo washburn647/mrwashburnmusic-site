@@ -24,12 +24,16 @@
       <a class="back" href="#" aria-label="Back to the museum"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       <h2 id="ex-name"></h2>
       <div class="tools" id="ex-tools"></div>
+      <button class="tool coach-btn" id="listen" aria-haspopup="menu" aria-expanded="false" aria-controls="menu" aria-label="Listen" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="3" y="14" width="5" height="7" rx="2" fill="currentColor"/><rect x="16" y="14" width="5" height="7" rx="2" fill="currentColor"/></svg><span class="word">Listen</span></button>
+      <button class="tool coach-btn" id="try" aria-haspopup="menu" aria-expanded="false" aria-controls="menu" aria-label="Try this" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg><span class="word">Try this</span></button>
       <output class="readout" id="readout" aria-live="polite">
         <span class="staff" id="staff"></span>
         <span class="nn" id="nn"></span>
       </output>
       <button class="info" id="info" aria-label="About this instrument" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10.5v6.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="7.2" r="1.5" fill="currentColor"/></svg></button>
     </header>
+    <div class="menu" id="menu" role="menu" hidden></div>
+    <div class="coach" id="coach" aria-live="polite" hidden></div>
     <div class="stage" id="stage"></div>
   </div>
 

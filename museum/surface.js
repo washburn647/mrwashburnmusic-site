@@ -24,6 +24,7 @@ export function surface(box, { turn = true, draw, down, move, up, label = '' } =
   };
 
   let raf = 0;
+  let drawn = false;
   function kick() { if (!raf) raf = requestAnimationFrame(frame); }
   function frame(t) {
     raf = 0;
@@ -33,6 +34,7 @@ export function surface(box, { turn = true, draw, down, move, up, label = '' } =
       g.clearRect(0, 0, canvas.width, canvas.height);
       if (s.tall) g.transform(0, 1, 1, 0, 0, 0);
       draw?.(g, s, t);
+      drawn = true;
     }
     if (t < s.animating) kick();
   }
@@ -48,7 +50,14 @@ export function surface(box, { turn = true, draw, down, move, up, label = '' } =
     s.W = s.tall ? r.height : r.width;
     s.H = s.tall ? r.width : r.height;
     s.onresize?.(s);
-    s.redraw();
+    // Once the instrument has drawn, a resize (the coach's strip opening above it, a phone
+    // turned) draws at once, before the page paints: resizing cleared the canvas, and waiting
+    // a frame would flash it blank. The first time, the instrument may still be setting up.
+    if (!drawn) { s.redraw(); return; }
+    cancelAnimationFrame(raf);
+    raf = 0;
+    s.dirty = true;
+    frame(performance.now());
   }
   const ro = new ResizeObserver(resize);
   ro.observe(box);

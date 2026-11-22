@@ -20,8 +20,11 @@ const PARTS = [
   ['pedal', 'pedal', 'kit-hihat-pedal', 0.1, 0.9, 0.16, 0.86, 0.07, 'shift'],
 ];
 const RATE = { tom2: 0.86, floor: 0.92 };
+/* Each part's letter in lessons.js, and its name. */
+const CODE = { kick: 'k', snare: 's', hihat: 'h', pedal: 'p', ride: 'r', crash: 'c', splash: 'w', tom1: 't', tom2: 'm', floor: 'f' };
+const NAMES = { k: 'Kick', s: 'Snare', x: 'Cross-stick', h: 'Hi-hat', o: 'Open hi-hat', p: 'Hi-hat pedal', r: 'Ride', b: 'Ride bell', c: 'Crash', w: 'Splash', t: 'Tom 1', m: 'Tom 2', f: 'Floor tom' };
 
-export async function mount(stage, ex) {
+export async function mount(stage, ex, kit) {
   const names = [...new Set(PARTS.map((p) => p[2])), 'kit-hihat-open', 'kit-cross-stick', 'kit-ride-bell', 'kit-snare-ghost'];
   const sounds = Object.fromEntries(await Promise.all(names.map(async (n) => [n, await hit(n)])));
 
@@ -74,6 +77,8 @@ export async function mount(stage, ex) {
     }
     anim.set(id, { at: performance.now(), x: at.x, y: at.y, power: vol });
     s.animate(kind === 'cymbal' ? 2200 : 700);
+    const code = name === 'kit-cross-stick' ? 'x' : name === 'kit-ride-bell' ? 'b' : name === 'kit-hihat-open' ? 'o' : CODE[id];
+    kit.hit(code);
   }
 
   function partAt(u, v) {
@@ -247,6 +252,32 @@ export async function mount(stage, ex) {
     }
     g.restore();
   }
+
+  // Listen: the sticks (and feet) play each part by itself. A drum is hit harder nearer the
+  // middle, a cymbal nearer the edge.
+  const ID = Object.fromEntries(Object.entries(CODE).map(([id, c]) => [c, id]));
+  kit.performer({
+    levels: ['f', 'm', 't'],
+    ladder: ['s', 'c+k'],
+    names: NAMES,
+    can: (e) => e.part != null && (e.part in ID || 'xob'.includes(e.part)),
+    down(e) {
+      const v = e.vel ?? 0.72;
+      if (e.part === 'x') strike('snare', { x: 0.9, y: 0, d: 0.9 });
+      else if (e.part === 'b') strike('ride', { x: 0, y: 0, d: 0.1 });
+      else if (e.part === 'o') { open = true; strike('hihat', { x: 0, y: 0, d: 0.3 }); open = false; }
+      else if (e.part === 'p') strike('pedal');
+      else {
+        const kind = PARTS.find((q) => q[0] === ID[e.part])[1];
+        const d = kind === 'cymbal' ? Math.max(0, (v - 0.45) / 0.55) : kind === 'hats' ? (1 - v) * 2 : (1 - v) / 0.6;
+        strike(ID[e.part], { x: 0, y: 0, d: Math.max(0, Math.min(0.85, d)) });
+      }
+      s.redraw();
+      return null;
+    },
+    up() {},
+    finish() {},
+  });
 
   let keyPedal = false;
   function keydown(e) {

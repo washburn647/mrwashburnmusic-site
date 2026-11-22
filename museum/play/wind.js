@@ -1,8 +1,10 @@
-/* Flute, clarinet, oboe, saxophone. The keys sit where the fingers go on the real instrument:
+/* Flute, clarinet, oboe, saxophone, bassoon. The keys sit where the fingers go on the real instrument:
    left hand nearer the mouthpiece, right hand farther down, thumbs underneath. Hold the
    mouthpiece to blow (the lock keeps the air going). Change fingers while blowing to slur.
    On the flute, blowing higher on the lip plate overblows to the next octave; the clarinet's
-   register key jumps a twelfth; the sax and oboe have an octave key.
+   register key jumps a twelfth; the sax and oboe have an octave key. The bassoon's thumb keys
+   reach its lowest notes (F, and E with the pinky), and its flick key, like an octave key,
+   lifts the same fingers to the next register.
    On a computer: F D S A are the left hand's fingers and pinky, J K L ; the right hand's,
    V the thumb key, B the clarinet's register key, Space blows, Shift overblows the flute.
    A click on a key presses it until the next click. */
@@ -30,6 +32,12 @@ const KEYSETS = {
   ],
 };
 KEYSETS.oboe = KEYSETS.sax;
+KEYSETS.bassoon = [
+  ['Oct', 0.28, 1, 0.6, 'v'],
+  ['L1', 0.33, 0, 1, 'f'], ['L2', 0.42, 0, 1, 'd'], ['L3', 0.51, 0, 1, 's'],
+  ['R1', 0.65, 0, 1, 'j'], ['R2', 0.74, 0, 1, 'k'], ['R3', 0.83, 0, 1, 'l'],
+  ['Ft', 0.7, 1, 0.65, 'n'], ['E', 0.78, 1, 0.55, 'm'], ['Ab', 0.9, -1, 0.6, ';'],
+];
 
 /* Fingerings: keys pressed -> written note. */
 const F = (list) => list.map(([k, m]) => [new Set(k.split(' ').filter(Boolean)), m]);
@@ -51,6 +59,14 @@ const FINGERINGS = {
   ]),
 };
 FINGERINGS.oboe = FINGERINGS.sax;
+// Bassoon (sounds as written, in bass clef): six fingers make the scale from G to F, like a
+// recorder, and the right thumb's keys go lower.
+FINGERINGS.bassoon = F([
+  ['L1 L2 L3 R1 R2 R3 Ft E', 40], ['L1 L2 L3 R1 R2 R3 Ft', 41], ['L1 L2 L3 R1 R2 R3 Ft Ab', 42],
+  ['L1 L2 L3 R1 R2 R3', 43], ['L1 L2 L3 R1 R2 R3 Ab', 44], ['L1 L2 L3 R1 R2', 45], ['L1 L2 L3 R1 Ft', 46],
+  ['L1 L2 L3 R1', 47], ['L1 L2 L3', 48], ['L1 L2 L3 Ab', 49], ['L1 L2', 50], ['L1 L3', 51], ['L1', 52], ['', 53],
+  ['L2 L3', 54],
+]);
 const MAIN = ['L1', 'L2', 'L3', 'R1', 'R2', 'R3'];
 const same = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
 
@@ -83,7 +99,7 @@ function writtenNote(kind, keys, high) {
   if (m == null) {
     let n = 0;
     while (n < MAIN.length && base.has(MAIN[n])) n++;
-    m = [73, 71, 69, 67, 65, 64, 62][n];
+    m = (kind === 'bassoon' ? [53, 52, 50, 48, 47, 45, 43] : [73, 71, 69, 67, 65, 64, 62])[n];
     if (kind === 'flute' && !base.has('T') && n >= 1) m += 1;
   }
   return oct ? m + 12 : m;
@@ -94,6 +110,7 @@ const LOOKS = {
   clarinet: { body: ['#3A3634', '#1D1A18', '#0E0C0B'], key: 'ring', thick: 0.15 },
   oboe: { body: ['#3A3634', '#1D1A18', '#0E0C0B'], key: 'plate', thick: 0.12 },
   sax: { body: ['#F6DB8C', '#E2B44A', '#A97B1F'], key: 'pearl', thick: 0.2 },
+  bassoon: { body: ['#A2502E', '#7A3519', '#3E1709'], key: 'ring', thick: 0.18 },
 };
 
 export async function mount(stage, ex, kit) {
@@ -142,8 +159,9 @@ export async function mount(stage, ex, kit) {
   };
   const lockBox = () => ({ u: G.pad / 2, v: G.cy + G.th / 2 + 58, r: 22 });
 
-  function blowing() { return !!breath || locked || spaceBlow; }
-  const high = () => (breath ? breath.high : locked ? lockHigh : shiftHigh);
+  let autoBlow = null;           // { high }, while the instrument plays a tune itself
+  function blowing() { return !!breath || locked || spaceBlow || !!autoBlow; }
+  const high = () => (breath ? breath.high : locked ? lockHigh : autoBlow ? autoBlow.high : shiftHigh);
 
   function keysNow() {
     const out = new Set();
@@ -160,9 +178,10 @@ export async function mount(stage, ex, kit) {
     }
     const w = writtenNote(kind, keysNow(), high());
     const midi = Math.max(range[0], Math.min(range[1], w - written));
-    if (!sounding || attack) { voice.start(midi, 0.8); sounding = true; }
+    const fresh = !sounding || attack;
+    if (fresh) { voice.start(midi, autoBlow?.level ?? 0.8); sounding = true; }
     else voice.pitch(midi);
-    kit.note(midi);
+    kit.note(midi, fresh ? 'fresh' : undefined);
     s.redraw();
   }
 
@@ -247,8 +266,8 @@ export async function mount(stage, ex, kit) {
     } else {
       g.fillStyle = on ? 'rgba(246,219,140,.22)' : 'rgba(255,255,255,.05)';
       rr(g, 8, 10, G.pad - 16, s.H - 20, 18); g.fill();
-      // mouthpiece and reed
-      g.fillStyle = kind === 'sax' ? '#1D1A18' : '#141210';
+      // mouthpiece and reed (the bassoon's reed sits on its bocal instead, drawn below)
+      g.fillStyle = kind === 'sax' ? '#1D1A18' : kind === 'bassoon' ? 'rgba(0,0,0,0)' : '#141210';
       g.beginPath();
       g.moveTo(G.pad * 0.12, cy - th * 0.12);
       g.lineTo(bodyX, cy - th * 0.45);
@@ -256,7 +275,14 @@ export async function mount(stage, ex, kit) {
       g.lineTo(G.pad * 0.12, cy + th * 0.2);
       g.closePath();
       g.fill();
-      if (kind !== 'oboe') {
+      if (kind === 'bassoon') {
+        // the bocal: a curved metal tube from the double reed into the body
+        g.strokeStyle = '#C9D1D6';
+        g.lineWidth = 5;
+        g.beginPath(); g.moveTo(G.pad * 0.12, cy - th * 0.45); g.quadraticCurveTo(G.pad * 0.5, cy - th * 0.9, bodyX, cy - th * 0.2); g.stroke();
+        g.fillStyle = '#C79A64';
+        g.fillRect(G.pad * 0.02, cy - th * 0.52, G.pad * 0.14, th * 0.16);
+      } else if (kind !== 'oboe') {
         g.fillStyle = '#D8B878';
         g.fillRect(G.pad * 0.14, cy + th * 0.18, bodyX - G.pad * 0.3, th * 0.12);
       } else {
@@ -391,6 +417,39 @@ export async function mount(stage, ex, kit) {
   }
   addEventListener('keydown', keydown);
   addEventListener('keyup', keyup);
+
+  // Listen: the fingers go down for each note, and the breath plays it (tongued, or slurred).
+  const fingering = new Map();   // written note -> { keys, high }
+  // The usual fingerings first, then the same with the octave (or register) key or faster air.
+  const extra = kind === 'clarinet' ? 'Rg' : kind === 'flute' ? null : 'Oct';
+  for (const hi of [false, true]) {
+    for (const [keys] of FINGERINGS[kind]) {
+      const k = new Set(keys);
+      if (hi && extra) k.add(extra);
+      const w = writtenNote(kind, k, hi && !extra);
+      if (!fingering.has(w)) fingering.set(w, { keys: k, high: hi && !extra });
+    }
+  }
+  let autoNote = 0;
+  const lift = () => { for (const [k] of keyset) release(k, 'auto'); };
+  kit.performer({
+    can: (e) => e.midi != null && fingering.has(Math.round(e.midi + written)),
+    down(e) {
+      const f = fingering.get(Math.round(e.midi + written));
+      lift();
+      for (const k of f.keys) press(k, 'auto');
+      autoBlow = { high: f.high, level: 0.45 + (e.vel ?? 0.7) * 0.45 };
+      update(!e.glide);
+      return ++autoNote;
+    },
+    up(n) {
+      if (n !== autoNote) return;
+      autoBlow = null;
+      lift();
+      update();
+    },
+    finish() { autoBlow = null; lift(); update(); },
+  });
 
   if (ex.opts.vibrato) {
     kit.toggle({

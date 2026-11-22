@@ -26,6 +26,7 @@ export async function mount(stage, ex, kit) {
   stage.append(box);
 
   const down = new Set();            // valves held (0-based)
+  const autoDown = new Set();        // valves held while the instrument plays a tune itself
   const valvePointers = new Map();   // pointer id -> valve
   const keysDown = new Set();
   let pos = 1;                       // trombone slide position, 1..7, continuous
@@ -54,7 +55,7 @@ export async function mount(stage, ex, kit) {
   function current() {
     let semis = 0;
     if (slide) semis = pos - 1;
-    else for (const v of down) semis += valves[v];
+    else for (const v of new Set([...down, ...autoDown])) semis += valves[v];
     let band;
     let bend = 0;
     let loud = 0.75;
@@ -78,14 +79,15 @@ export async function mount(stage, ex, kit) {
       return;
     }
     const c = current();
-    if (!sounding || attack) {
+    const fresh = !sounding || attack;
+    if (fresh) {
       voice.start(c.midi, c.loud);
       sounding = true;
     } else {
       voice.pitch(c.midi);
       voice.level(c.loud, 0.06);
     }
-    kit.note(c.midi);
+    kit.note(c.midi, fresh ? 'fresh' : undefined);
     s.redraw();
   }
 
@@ -237,7 +239,7 @@ export async function mount(stage, ex, kit) {
     g.lineTo(G.left.x + G.left.w, midY + r[0].h * 0.75);
     g.stroke();
     r.forEach((q, i) => {
-      const on = down.has(i);
+      const on = down.has(i) || autoDown.has(i);
       const press = on ? q.h * 0.18 : 0;
       // casing
       const cg = g.createLinearGradient(q.x, 0, q.x + q.w, 0);
@@ -354,6 +356,67 @@ export async function mount(stage, ex, kit) {
   }
   addEventListener('keydown', keydown);
   addEventListener('keyup', keyup);
+
+  // Listen: for each note, the valves (or slide) and the lips a real player would use: the open
+  // note just above it, lowered as little as possible. The lips nudge it in tune.
+  const combos = new Map();          // half steps down -> the valves that give it most simply
+  for (let bits = 0; bits < 2 ** valves.length; bits++) {
+    const set = new Set(valves.map((_, i) => i).filter((i) => bits & (1 << i)));
+    let semis = 0;
+    let cost = 0;
+    for (const i of set) { semis += valves[i]; cost += valves[i] === 3 ? 2.2 : 1; }
+    if (!combos.has(semis) || cost < combos.get(semis).cost) combos.set(semis, { set, cost });
+  }
+  function plan(m) {
+    let best = null;
+    parts.forEach((n, b) => {
+      const need = pitchOf(n) - m;
+      let c = null;
+      if (slide) {
+        if (need >= -0.2 && need <= 6.2) c = { b, need, pos: 1 + Math.max(0, need), bend: Math.max(0, -need) };
+      } else {
+        const k = Math.round(need);
+        if (k >= 0 && Math.abs(need - k) <= 0.35 && combos.has(k)) c = { b, need: k, valves: combos.get(k).set, bend: k - need };
+      }
+      if (c && (!best || c.need < best.need)) best = c;
+    });
+    return best;
+  }
+  let tween = 0;
+  function slideTo(target, ms) {
+    cancelAnimationFrame(tween);
+    const from = pos;
+    const t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / ms);
+      pos = from + (target - from) * k;
+      update();
+      if (k < 1) tween = requestAnimationFrame(step);
+    };
+    tween = requestAnimationFrame(step);
+  }
+  let autoNote = 0;
+  kit.performer({
+    can: (e) => e.midi != null && !!plan(e.midi),
+    down(e) {
+      const p = plan(e.midi);
+      const inBand = Math.max(0.03, Math.min(0.97, 0.5 + p.bend / 0.3));
+      const glide = e.glide && sounding && slide;
+      autoDown.clear();
+      if (!slide) p.valves.forEach((v) => autoDown.add(v));
+      lip = { id: 'auto', x: 0.45 + (e.vel ?? 0.7) * 0.45, y: (p.b + inBand) / parts.length };
+      if (glide) slideTo(p.pos, Math.min(260, e.dur * 500));
+      else { if (slide) { cancelAnimationFrame(tween); pos = p.pos; } update(!e.glide); }
+      return ++autoNote;
+    },
+    up(n) {
+      if (n !== autoNote) return;
+      if (lip?.id === 'auto') lip = null;
+      autoDown.clear();
+      update();
+    },
+    finish() { cancelAnimationFrame(tween); if (lip?.id === 'auto') lip = null; autoDown.clear(); update(); },
+  });
 
   if (o.vibrato) {
     kit.toggle({
