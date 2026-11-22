@@ -1,3 +1,4 @@
+import { rr } from './surface.js';
 /* Materials for the museum's instruments: wood with its grain, polished metal, drum heads,
    felt, and strings that blur as they ring. Patterns are painted once into small offscreen
    canvases and reused. The parts of an instrument that never move are painted once into a
@@ -555,6 +556,175 @@ export function gloss(g, x, y, w, h, { alpha = 0.22, at = 0.3, across = false } 
   g.fillStyle = gr;
   g.fillRect(x, y, w, h);
 }
+
+/* ---------- tubes and keywork (wind and brass instruments) ---------- */
+
+export const TAU = Math.PI * 2;
+// Small parts in each metal (rods, posts, key cups): shadow, body, light.
+export const TONE = {
+  silver: ['#56626A', '#B9C3CA', '#F7FAFB'],
+  nickel: ['#5A5E5C', '#B6B9B5', '#F4F4F0'],
+  brass: ['#6A460E', '#D2A448', '#FFF0C0'],
+};
+// A round tube: light along its upper part, shade toward both edges.
+export const ROUND = [[0, 'rgba(0,0,0,.62)'], [0.1, 'rgba(0,0,0,.2)'], [0.2, 'rgba(255,255,255,.05)'], [0.28, 'rgba(255,255,255,.26)'],
+  [0.35, 'rgba(255,255,255,.05)'], [0.6, 'rgba(0,0,0,.04)'], [0.86, 'rgba(0,0,0,.3)'], [1, 'rgba(0,0,0,.66)']];
+export const gradient = (g, list) => (y0, y1) => {
+  const gr = g.createLinearGradient(0, y0, 0, y1);
+  for (const [o, c] of list) gr.addColorStop(o, c);
+  return gr;
+};
+
+/* A tube along u from x0 to x1, its edges at top(x) and bot(x). */
+export function tubePath(g, x0, x1, top, bot) {
+  const n = Math.max(2, Math.ceil(Math.abs(x1 - x0) / 4));
+  g.beginPath();
+  for (let k = 0; k <= n; k++) {
+    const x = x0 + ((x1 - x0) * k) / n;
+    if (k) g.lineTo(x, top(x));
+    else g.moveTo(x, top(x));
+  }
+  for (let k = n; k >= 0; k--) {
+    const x = x0 + ((x1 - x0) * k) / n;
+    g.lineTo(x, bot(x));
+  }
+  g.closePath();
+}
+
+/* Paint across a tube in strips 4 pixels wide, each with its own gradient from edge to edge,
+   so a cone or a flaring bell is lit as well as a straight tube. (Strips on whole multiples of
+   4 meet on whole device pixels at the usual screen scales, so no seams show.) */
+export function across(g, x0, x1, top, bot, fill) {
+  g.save();
+  tubePath(g, x0, x1, top, bot);
+  g.clip();
+  const lo = Math.min(x0, x1);
+  const hi = Math.max(x0, x1);
+  for (let x = Math.floor(lo / 4) * 4; x < hi; x += 4) {
+    const m = Math.max(lo, Math.min(hi, x + 2));
+    const t = top(m);
+    const d = bot(m);
+    g.fillStyle = fill(t, d);
+    g.fillRect(x, t - 3, 4, d - t + 6);
+  }
+  g.restore();
+}
+
+/* The two sides of a tube along a curving centre line [[x, y, half width]...]. */
+export function sides(pts) {
+  const L = [];
+  const R = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[Math.max(0, i - 1)];
+    const b = pts[Math.min(pts.length - 1, i + 1)];
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const dx = (b[0] - a[0]) / d;
+    const dy = (b[1] - a[1]) / d;
+    const [x, y, w] = pts[i];
+    L.push([x + dy * w, y - dx * w]);
+    R.push([x - dy * w, y + dx * w]);
+  }
+  return { L, R };
+}
+export function outline(g, { L, R }) {
+  g.beginPath();
+  L.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+  for (let i = R.length - 1; i >= 0; i--) g.lineTo(R[i][0], R[i][1]);
+  g.closePath();
+}
+/* Polished metal along a curving tube: each short piece lit across its width, reaching a
+   little into the next so no seam shows. */
+export function metalAlong(g, kind, { L, R }) {
+  for (let i = 0; i < L.length - 1; i++) {
+    const [a, b, c, d] = [L[i], L[i + 1], R[i + 1], R[i]];
+    const e = 0.2;
+    g.fillStyle = metal(g, kind, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (c[0] + d[0]) / 2, (c[1] + d[1]) / 2);
+    g.beginPath();
+    g.moveTo(a[0] - (b[0] - a[0]) * e, a[1] - (b[1] - a[1]) * e);
+    g.lineTo(b[0] + (b[0] - a[0]) * e, b[1] + (b[1] - a[1]) * e);
+    g.lineTo(c[0] + (c[0] - d[0]) * e, c[1] + (c[1] - d[1]) * e);
+    g.lineTo(d[0] - (c[0] - d[0]) * e, d[1] - (c[1] - d[1]) * e);
+    g.closePath();
+    g.fill();
+  }
+}
+
+/* A metal ring around a tube at x, w wide, from y0 to y1. */
+export function band(g, kind, x, w, y0, y1) {
+  g.fillStyle = metal(g, kind, 0, y0, 0, y1);
+  rr(g, x - w / 2, y0, w, y1 - y0, Math.min(2, w / 3));
+  g.fill();
+  const e = Math.max(0.8, w * 0.1);
+  g.fillStyle = 'rgba(0,0,0,.32)';
+  g.fillRect(x - w / 2, y0 + 1, e, y1 - y0 - 2);
+  g.fillRect(x + w / 2 - e, y0 + 1, e, y1 - y0 - 2);
+  g.fillStyle = 'rgba(255,255,255,.4)';
+  g.fillRect(x - w * 0.2, y0 + 1, e, y1 - y0 - 2);
+}
+
+/* A metal rod or lever from (x0, y0) to (x1, y1), w thick, with its shadow. */
+export function bar(g, x0, y0, x1, y1, w, kind) {
+  const [d, m, l] = TONE[kind] || TONE.silver;
+  const len = Math.hypot(x1 - x0, y1 - y0) || 1;
+  const ox = ((y1 - y0) / len) * w * 0.22;
+  const oy = (-(x1 - x0) / len) * w * 0.22;
+  const line = (dx, dy) => {
+    g.beginPath();
+    g.moveTo(x0 + dx, y0 + dy);
+    g.lineTo(x1 + dx, y1 + dy);
+  };
+  g.save();
+  g.lineCap = 'round';
+  line(0.8, w * 0.5 + 1);
+  g.strokeStyle = 'rgba(0,0,0,.28)';
+  g.lineWidth = w + 1;
+  g.stroke();
+  line(0, 0);
+  g.strokeStyle = d;
+  g.lineWidth = w;
+  g.stroke();
+  g.strokeStyle = m;
+  g.lineWidth = w * 0.6;
+  g.stroke();
+  line(ox, oy);
+  g.strokeStyle = l;
+  g.lineWidth = Math.max(0.7, w * 0.22);
+  g.stroke();
+  g.restore();
+}
+
+/* A post holding a rod, seen from above: a little pillar on its foot. */
+export function post(g, x, y, s, kind) {
+  g.beginPath();
+  g.ellipse(x + 0.8, y + 1.6, s * 1.3, s * 1.05, 0, 0, TAU);
+  g.fillStyle = 'rgba(0,0,0,.3)';
+  g.fill();
+  pin(g, x, y, s, kind === 'brass' ? 'brass' : 'silver');
+}
+
+/* A closed pad cup seen from above: domed metal. */
+export function cup(g, x, y, r, kind) {
+  const [d, m, l] = TONE[kind] || TONE.silver;
+  g.beginPath();
+  g.arc(x + r * 0.08, y + r * 0.18, r, 0, TAU);
+  g.fillStyle = 'rgba(0,0,0,.35)';
+  g.fill();
+  g.beginPath();
+  g.arc(x, y, r, 0, TAU);
+  const gr = g.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r);
+  gr.addColorStop(0, '#fff');
+  gr.addColorStop(0.35, l);
+  gr.addColorStop(0.75, m);
+  gr.addColorStop(1, d);
+  g.fillStyle = gr;
+  g.fill();
+  g.beginPath();
+  g.arc(x, y, r * 0.78, 0, TAU);
+  g.strokeStyle = 'rgba(255,255,255,.35)';
+  g.lineWidth = Math.max(0.6, r * 0.06);
+  g.stroke();
+}
+
 
 /* ---------- layers ---------- */
 

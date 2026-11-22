@@ -189,3 +189,62 @@ test('keys, bars, strings and pipes play the note drawn where they are touched',
   await page.evaluate(() => { location.hash = ''; });
   assert.deepEqual(errors, []);
 });
+
+/* The brass are drawn as they're held: the lips on the player's side, then the mouthpiece, then
+   valve 1 (nearest the mouthpiece, as on the real instrument), 2 and 3. A finger on a valve and
+   one on the lips play the harmonic drawn there, lowered by the valve; the trombone's slide
+   plays the position under it. On a phone the valves are shown again, close up, big enough to
+   finger. */
+test('brass play what is drawn, valve 1 nearest the mouthpiece, big valves on a phone', async () => {
+  const at = (pg, what, i) => pg.evaluate(([what, i]) => {
+    const c = document.querySelector('#stage canvas');
+    const p = c.museumAt(what, i);
+    const r = c.getBoundingClientRect();
+    return p && { x: r.left + p.u, y: r.top + p.v };
+  }, [what, i]);
+  const finger = (pg, type, id, p) => pg.evaluate(([type, id, p]) => {
+    document.querySelector('#stage canvas').dispatchEvent(new PointerEvent(type, {
+      pointerId: id, clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, pointerType: 'touch',
+    }));
+  }, [type, id, p]);
+  await open('trumpet');
+  const [lips, mp, v1, v2, v3] = [await at(page, 'lips', 2), await at(page, 'mouthpiece'),
+    await at(page, 'valve', 0), await at(page, 'valve', 1), await at(page, 'valve', 2)];
+  assert.ok(lips.x < mp.x && mp.x < v1.x && v1.x < v2.x && v2.x < v3.x, 'lips, mouthpiece, then valves 1, 2, 3');
+  // the fourth harmonic is B♭4 (written C5); valve 1 lowers it a whole step (written B♭4)
+  await finger(page, 'pointerdown', 2, v1);
+  await finger(page, 'pointerdown', 3, lips);
+  assert.equal(await readout(), 'B♭4');
+  await finger(page, 'pointerup', 2, v1);
+  assert.equal(await readout(), 'C5');
+  await finger(page, 'pointerdown', 4, v3);
+  assert.equal(await readout(), 'A4');
+  await finger(page, 'pointerup', 4, v3);
+  await finger(page, 'pointerup', 3, lips);
+  // the trombone: lips on its second band (F3), the slide out to fourth position (D3)
+  await open('trombone');
+  const tl = await at(page, 'lips', 1);
+  await finger(page, 'pointerdown', 5, await at(page, 'slide', 4));
+  await finger(page, 'pointerup', 5, await at(page, 'slide', 4));
+  await finger(page, 'pointerdown', 6, tl);
+  assert.equal(await readout(), 'D3');
+  await finger(page, 'pointerup', 6, tl);
+
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const phone = await ctx.newPage();
+  phone.on('pageerror', (e) => errors.push(e.message));
+  await phone.goto(mock.base + '/museum/#tuba');
+  await phone.waitForFunction(() => !document.getElementById('stage').classList.contains('loading')
+    && document.querySelector('#stage canvas'), null, { timeout: 15000 });
+  const b = [];
+  for (let i = 0; i < 4; i++) b.push(await at(phone, 'valve', i));
+  for (let i = 1; i < 4; i++) assert.ok(b[i].x - b[i - 1].x >= 60, `tuba valves ${i} and ${i + 1} a finger apart on a phone`);
+  const pl = await at(phone, 'lips', 0);
+  await finger(phone, 'pointerdown', 2, b[3]);
+  await finger(phone, 'pointerdown', 3, pl);
+  // the tuba's second harmonic is B♭1; valve 4 lowers it a fourth, to F1
+  assert.equal(await phone.evaluate(() => document.getElementById('nn').textContent), 'F1');
+  await ctx.close();
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
