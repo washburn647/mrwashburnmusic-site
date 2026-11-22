@@ -100,6 +100,10 @@ const WOODS = {
   teak: { base: '#9A6232', dark: '#5E3414', light: '#C48A52', lines: 90, wave: 1.3, pores: 0.7, bands: 14 },
   // Hawaiian koa, curly, as on a ukulele
   koa: { base: '#A8642C', dark: '#5E2E10', light: '#D9954E', lines: 70, wave: 1.4, figure: 0.7, bands: 14 },
+  // grenadilla (African blackwood), as on clarinets and oboes: nearly black, a brown streak here and there
+  grenadilla: { base: '#2A2220', dark: '#0E0A09', light: '#54423A', lines: 120, wave: 0.5, pores: 0.35, bands: 12 },
+  // flamed maple stained red-brown, as on a bassoon
+  bassoon: { base: '#97401E', dark: '#561C08', light: '#CF7444', lines: 50, wave: 0.8, figure: 0.85, bands: 10 },
 };
 
 function paintWood(c, w, h, t, seed) {
