@@ -1,5 +1,6 @@
-/* The Instrument Museum (museum/), in Chromium: every exhibit opens, and the sound engine
-   (museum/audio.js) picks samples by strength, varies drum takes and grows vibrato. */
+/* The Instrument Museum (museum/), in Chromium: every exhibit opens, a few play the notes they
+   should, and the sound engine (museum/audio.js) picks samples by strength, varies drum takes
+   and grows vibrato. */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -111,4 +112,44 @@ test('a held cello note grows vibrato once it settles, and a new note starts it 
   assert.ok(r.grown > 20, `vibrato grown (${r.grown})`);
   assert.ok(r.after < 5, `stopped by a new note (${r.after})`);
   assert.ok(r.off < 0.5, `turned off (${r.off})`);
+});
+
+/** The note name in the readout, as text (C4, F♯3...). */
+const readout = () => page.evaluate(() => document.getElementById('nn').textContent);
+async function open(id) {
+  await page.evaluate((x) => { location.hash = x; }, id);
+  await page.waitForFunction(() => !document.getElementById('stage').classList.contains('loading')
+    && document.querySelector('#stage canvas'), null, { timeout: 15000 });
+}
+
+test('a harp pedal changes every string of its letter', async () => {
+  await open('harp');
+  await page.keyboard.press('a');
+  assert.equal(await readout(), 'C4');
+  await page.keyboard.press('f');
+  assert.equal(await readout(), 'F4');
+  // Penta: F strings go down to F flat, which sounds E; B strings up to B sharp, which sounds C.
+  await page.getByRole('radio', { name: 'Penta' }).click();
+  await page.keyboard.press('f');
+  assert.equal(await readout(), 'E4');
+  await page.keyboard.press('j');
+  assert.equal(await readout(), 'C5');
+  await page.evaluate(() => { location.hash = ''; });
+});
+
+test('the bassoon plays its scale from the six finger holes and the thumb keys', async () => {
+  await open('bassoon');
+  const k = page.keyboard;
+  for (const key of 'fdsjkl') await k.down(key);
+  await k.down(' ');
+  assert.equal(await readout(), 'G2');
+  await k.up('l');
+  assert.equal(await readout(), 'A2');
+  await k.down('l');
+  await k.down('n');
+  assert.equal(await readout(), 'F2');
+  await k.down('v');
+  assert.equal(await readout(), 'F3');
+  for (const key of 'fdsjklnv ') await k.up(key);
+  await page.evaluate(() => { location.hash = ''; });
 });
