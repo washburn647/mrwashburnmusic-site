@@ -402,3 +402,54 @@ test('world instruments play the part drawn where they are touched', async () =>
   await page.evaluate(() => { location.hash = ''; });
   assert.deepEqual(errors, []);
 });
+
+test('every exhibit has its own drawing in the hall, painted inside its case', async () => {
+  await page.evaluate(() => { location.hash = ''; });
+  const res = await page.evaluate(async () => {
+    const { art } = await import('/museum/art.js');
+    const { EXHIBITS } = await import('/museum/data.js');
+    const seen = new Set();
+    const out = [];
+    for (const ex of EXHIBITS) {
+      const doc = new DOMParser().parseFromString(art(ex.id, ex.name).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '), 'image/svg+xml');
+      const svg = doc.documentElement;
+      const bad = doc.querySelector('parsererror') ? ['does not parse'] : [];
+      // every gradient and clip it uses is in it, and no two drawings share an id
+      for (const el of svg.querySelectorAll('[id]')) { if (seen.has(el.id)) bad.push(`id ${el.id} twice`); seen.add(el.id); }
+      for (const [, ref] of new XMLSerializer().serializeToString(svg).matchAll(/(?:url\(#|href="#)([\w-]+)/g)) {
+        if (!svg.querySelector(`[id="${ref}"]`)) bad.push(`no ${ref}`);
+      }
+      // paint it, less its soft floor shadow, with room round it, and see where the paint goes
+      for (const el of svg.querySelectorAll('[fill*="shadow"]')) el.remove();
+      svg.setAttribute('viewBox', '-20 -20 160 160');
+      svg.setAttribute('width', '320');
+      svg.setAttribute('height', '320');
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = c.height = 320;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const a = g.getImageData(0, 0, 320, 320).data;
+      let [x0, y0, x1, y1] = [320, 320, -1, -1];
+      for (let y = 0; y < 320; y++) {
+        for (let x = 0; x < 320; x++) {
+          if (a[(y * 320 + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+        }
+      }
+      out.push({ id: ex.id, bad, box: [x0, y0, x1 + 1, y1 + 1].map((v) => v / 2 - 20) });
+    }
+    return out;
+  });
+  assert.equal(res.length, EXHIBITS.length);
+  for (const { id, bad, box } of res) {
+    assert.deepEqual(bad, [], id);
+    const [x0, y0, x1, y1] = box;
+    // inside the case's frame (its 120 units and a little of the margin round them), and filling it
+    assert.ok(x0 >= -4 && y0 >= -4 && x1 <= 124 && y1 <= 124, `${id} is painted out to ${box.join(', ')}`);
+    assert.ok(Math.max(x1 - x0, y1 - y0) >= 80, `${id} is painted small: ${box.join(', ')}`);
+  }
+});
