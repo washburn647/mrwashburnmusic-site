@@ -40,7 +40,7 @@ function tile(key, w, h, paint) {
   return c;
 }
 
-function pattern(g, key, w, h, paint) {
+export function pattern(g, key, w, h, paint) {
   let m = patterns.get(g);
   if (!m) patterns.set(g, (m = new Map()));
   let p = m.get(key);
@@ -52,7 +52,7 @@ function pattern(g, key, w, h, paint) {
 }
 
 /* Where a pattern lies: its origin, its angle in degrees (0: grain runs along u), its size. */
-function place(p, x = 0, y = 0, angle = 0, scale = 1) {
+export function place(p, x = 0, y = 0, angle = 0, scale = 1) {
   if (p?.setTransform) p.setTransform(new DOMMatrix().translateSelf(x, y).rotateSelf(angle).scaleSelf(scale / RES));
   return p;
 }
