@@ -1,33 +1,39 @@
-/* The museum: the hall of exhibits, and each exhibit's room (#piano, #violin, ...). */
+/* The museum. Its places, by the address after the #:
+     (nothing)       the lobby: the floor plan, the tour's ticket, the passport (lobby.js)
+     room/strings    a walk through a room (gallery.js)
+     tour/3          the tour's third stop: its room, with the docent's card (tour.js)
+     quiz            the quiz at the end of the tour (quiz.js)
+     piano, violin…  an exhibit, to play */
 
-import { ROOMS, EXHIBITS, byId } from './data.js';
+import { ROOMS, byId } from './data.js';
 import { art } from './art.js';
 import * as notes from './notes.js';
 import { context } from './audio.js';
 import * as coach from './coach.js';
+import * as lobby from './lobby.js';
+import * as gallery from './gallery.js';
+import * as tour from './tour.js';
+import * as quiz from './quiz.js';
+import * as passport from './passport.js';
+import { sizeText } from './gallery.js';
 
 const $ = (id) => document.getElementById(id);
 const hall = $('hall');
+const galleryView = $('gallery');
+const quizView = $('quiz');
 const exhibit = $('exhibit');
 const stage = $('stage');
 const tools = $('ex-tools');
 const placard = $('placard');
 
-function buildHall() {
-  const rooms = $('rooms');
-  for (const room of ROOMS) {
-    const sec = document.createElement('section');
-    sec.className = 'room';
-    sec.style.setProperty('--hue', room.hue);
-    sec.innerHTML = `<h2>${room.name}</h2><ul class="cases"></ul>`;
-    const ul = sec.querySelector('ul');
-    for (const ex of EXHIBITS.filter((e) => e.room === room.id)) {
-      const li = document.createElement('li');
-      li.innerHTML = `<a class="case" href="#${ex.id}"><span class="plinth">${art(ex.id)}</span><span class="tag">${ex.name}</span></a>`;
-      ul.append(li);
-    }
-    rooms.append(sec);
-  }
+export function route(hash) {
+  const h = decodeURIComponent(hash.replace(/^#/, ''));
+  if (byId[h]) return { view: 'exhibit', ex: byId[h] };
+  const m = h.match(/^(room|tour)\/([\w-]+)$/);
+  if (m?.[1] === 'room' && ROOMS.some((r) => r.id === m[2])) return { view: 'gallery', room: m[2] };
+  if (m?.[1] === 'tour' && tour.STOPS[+m[2] - 1]) return { view: 'gallery', room: tour.STOPS[+m[2] - 1].room, stop: +m[2] };
+  if (h === 'quiz') return { view: 'quiz' };
+  return { view: 'lobby' };
 }
 
 /* What an instrument module gets: the readout, a place for its switches, and the coach (Listen
@@ -44,6 +50,13 @@ function kitFor(ex) {
   readout.classList.add('empty');
   nn.textContent = '';
   staffEl.innerHTML = '';
+  // The passport: played, when the visitor makes a sound (not when the instrument plays a tune).
+  let marked = false;
+  const mine = () => {
+    if (marked || coach.state().show) return;
+    marked = true;
+    passport.play(ex.id);
+  };
   return {
     perf: null,
     /* Show a sounding note (MIDI, may be fractional while sliding). null clears. how: 'fresh'
@@ -51,7 +64,10 @@ function kitFor(ex) {
        show it without its being played (a timpani being tuned). */
     note(midi, how) {
       const m = midi == null ? null : Math.round(midi + written);
-      if (midi != null && how !== 'show' && (how === 'fresh' || m !== shown)) coach.heard({ midi: Math.round(midi) });
+      if (midi != null && how !== 'show' && (how === 'fresh' || m !== shown)) {
+        coach.heard({ midi: Math.round(midi) });
+        mine();
+      }
       if (m === shown) return;
       shown = m;
       if (m == null) { readout.classList.add('idle'); return; }
@@ -68,8 +84,9 @@ function kitFor(ex) {
       // (for tests: how many strokes so far, and the last part struck)
       stage.museumHeard = { n: (stage.museumHeard?.n || 0) + 1, part };
       coach.heard({ part, ...how });
+      mine();
     },
-    chord(name) { coach.heard({ chord: name }); },
+    chord(name) { coach.heard({ chord: name }); mine(); },
     /* How the instrument plays a tune by itself (see coach.js). */
     performer(p) { this.perf = p; },
     /* Show a word instead of a note (a chord name). */
@@ -125,36 +142,83 @@ function kitFor(ex) {
 
 let unmount = null;
 let token = 0;
+let last = null;      // the place showing
+let lastHash = null;  // and its address
+let cameFrom = null;  // the address of the page before it in this visit, null if it is the first
+
+/* Each page of the visit remembers the museum page before it, in its history entry, so the
+   Back button knows it after the browser's Back and Forward and after a reload. */
+function stamp(from) {
+  const st = history.state;
+  if (st && typeof st === 'object' && 'museumFrom' in st) return st.museumFrom;
+  history.replaceState({ ...(st && typeof st === 'object' ? st : {}), museumFrom: from }, '');
+  return from;
+}
 
 async function show() {
-  const id = location.hash.slice(1);
-  const ex = byId[id];
+  const here = location.hash;
+  const to = route(here);
+  const was = last || {};
+  cameFrom = stamp(last ? lastHash : null);
+  last = to;
+  lastHash = here;
   coach.unmount();
   unmount?.();
   unmount = null;
   stage.innerHTML = '';
   tools.innerHTML = '';
+  tour.hideBar();
   if (placard.open) placard.close();
-  if (!ex) {
-    exhibit.hidden = true;
-    hall.hidden = false;
+  if (to.view !== 'gallery') { gallery.unmount(); tour.hideCard(); }
+  if (to.view !== 'quiz') quiz.unmount();
+  if (to.view !== 'lobby') lobby.unmount();
+  hall.hidden = to.view !== 'lobby';
+  galleryView.hidden = to.view !== 'gallery';
+  quizView.hidden = to.view !== 'quiz';
+  exhibit.hidden = to.view !== 'exhibit';
+  document.body.classList.toggle('in-room', to.view !== 'lobby');
+  const mine = ++token;
+
+  if (to.view === 'lobby') {
     document.title = 'Instrument Museum · Mr. Washburn Music';
-    document.body.classList.remove('in-room');
-    const back = sessionStorage.getItem('museum-from');
-    if (back) document.querySelector(`a[href="#${back}"]`)?.focus({ preventScroll: false });
+    lobby.mount();
+    // back from an exhibit or a room: stand where you were on the plan; from the tour or the
+    // quiz, at the ticket
+    const back = was.view === 'exhibit' ? `#${was.ex.id}` : was.view === 'gallery' && !was.stop ? `#room/${was.room}` : null;
+    if (back) document.querySelector(`#plan a[href="${back}"]`)?.focus({ preventScroll: false });
+    else if (was.stop || was.view === 'quiz') $('ticket').querySelector('a')?.focus({ preventScroll: true });
     return;
   }
-  try { sessionStorage.setItem('museum-from', id); } catch { /* private mode */ }
-  hall.hidden = true;
-  exhibit.hidden = false;
-  document.body.classList.add('in-room');
+  if (to.view === 'gallery') {
+    const room = ROOMS.find((r) => r.id === to.room);
+    document.title = `${to.stop ? `Tour stop ${to.stop}: ` : ''}${room.name} · Instrument Museum`;
+    let from = 'left';
+    try { from = sessionStorage.getItem('museum-door') || 'left'; sessionStorage.removeItem('museum-door'); } catch { /* fine */ }
+    // back from an exhibit in this room: stand in front of it again
+    const focus = to.stop ? tour.STOPS[to.stop - 1].id : was.view === 'exhibit' && was.ex.room === to.room ? was.ex.id : null;
+    const stopId = to.stop ? tour.STOPS[to.stop - 1].id : null;
+    if (to.stop) tour.showCard(to.stop);
+    else tour.hideCard();
+    gallery.mount(to.room, { focus, from, stop: stopId, stopNo: to.stop, played: passport.played() });
+    if (focus && was.view === 'exhibit' && was.ex.id === focus) document.querySelector(`#track a[href="#${focus}"]`)?.focus({ preventScroll: true });
+    // at a new stop, the docent's Hear it play is next for the keyboard
+    if (to.stop && !galleryView.contains(document.activeElement)) $('docent').querySelector('.hear')?.focus({ preventScroll: true });
+    return;
+  }
+  if (to.view === 'quiz') {
+    document.title = 'Museum quiz · Instrument Museum';
+    quiz.mount();
+    return;
+  }
+
+  const ex = to.ex;
   exhibit.dataset.room = ex.room;
   exhibit.style.setProperty('--hue', ROOMS.find((r) => r.id === ex.room).hue);
   $('ex-name').textContent = ex.name;
   document.title = `${ex.name} · Instrument Museum`;
-  const mine = ++token;
   stage.dataset.play = ex.play;
   stage.classList.add('loading');
+  tour.showBar(ex);
   const mod = await import(`./play/${ex.play}.js`);
   if (mine !== token) return;
   const kit = kitFor(ex);
@@ -162,6 +226,13 @@ async function show() {
   if (mine !== token) { unmount?.(); unmount = null; return; }
   coach.mount(ex, kit);
   stage.classList.remove('loading');
+  // Hear it play, from the tour: the instrument plays its own tune
+  let auto = null;
+  try { auto = sessionStorage.getItem('museum-autoplay'); sessionStorage.removeItem('museum-autoplay'); } catch { /* fine */ }
+  if (auto === ex.id && kit.perf) {
+    const t = coach.tune(ex, 3);
+    coach.play(t.evs, t);
+  }
 }
 
 function openPlacard() {
@@ -172,9 +243,9 @@ function openPlacard() {
   $('pl-name').textContent = ex.name;
   $('pl-facts').innerHTML = ex.facts.map((f) => `<li>${f}</li>`).join('');
   const flats = !!ex.flats;
-  $('pl-range').innerHTML = ex.range
-    ? `<dt>Range</dt><dd>${notes.full(ex.range[0] + (ex.written || 0), flats)} – ${notes.full(ex.range[1] + (ex.written || 0), flats)}</dd>`
-    : '';
+  $('pl-range').innerHTML = (ex.range
+    ? `<div><dt>Range</dt><dd>${notes.full(ex.range[0] + (ex.written || 0), flats)} – ${notes.full(ex.range[1] + (ex.written || 0), flats)}</dd></div>`
+    : '') + (ex.size ? `<div><dt>Size</dt><dd>${sizeText(ex.size)}</dd></div>` : '');
   placard.style.setProperty('--hue', ROOMS.find((r) => r.id === ex.room).hue);
   placard.showModal();
 }
@@ -182,18 +253,47 @@ function openPlacard() {
 $('info').addEventListener('click', openPlacard);
 $('placard-close').addEventListener('click', () => placard.close());
 placard.addEventListener('click', (e) => { if (e.target === placard) placard.close(); });
-document.querySelector('.back').addEventListener('click', (e) => {
-  e.preventDefault();
-  if (history.length > 1 && sessionStorage.getItem('museum-entered')) history.back();
-  else location.hash = '';
-});
+/* Back. An exhibit goes back to where you came from in the museum (the plan, its room, a tour
+   stop), or up to its room if you came straight to it. A room and the quiz go to the floor
+   plan. The browser's own Back is used only when the page before is that place, so this button
+   never takes you out of the museum, and never round the rooms you walked through. */
+for (const b of document.querySelectorAll('.back')) {
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    const from = cameFrom == null ? null : route(cameFrom);
+    if (last.view === 'exhibit') {
+      if (from) history.back();
+      else location.hash = `room/${last.ex.room}`;
+    } else if (from?.view === 'lobby') history.back();
+    else location.hash = '';
+  });
+}
 document.addEventListener('click', (e) => {
-  if (e.target.closest('a.case')) { try { sessionStorage.setItem('museum-entered', '1'); } catch { /* fine */ } }
+  const a = e.target.closest('a[data-from]');
+  // through a door: come in by the matching door of the next room
+  if (a) try { sessionStorage.setItem('museum-door', a.dataset.from); } catch { /* fine */ }
 });
+$('gal-prev').addEventListener('click', () => gallery.step(-1));
+$('gal-next').addEventListener('click', () => gallery.step(1));
+document.addEventListener('keydown', (e) => {
+  if (galleryView.hidden || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.target.closest('input, textarea, select, #docent')) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    const links = [...document.querySelectorAll('#track .door, #track .bay')].sort((a, b) => a.offsetLeft - b.offsetLeft);
+    const at = links.indexOf(document.activeElement);
+    if (at < 0) { gallery.step(e.key === 'ArrowRight' ? 1 : -1); return; }
+    const next = links[at + (e.key === 'ArrowRight' ? 1 : -1)];
+    if (next) {
+      next.focus({ preventScroll: true });
+      next.scrollIntoView({ inline: 'center', block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+  }
+});
+passport.onChange(() => { if (!hall.hidden) lobby.mount(); });
 // Keep the browser from scrolling or zooming the page while an instrument is played.
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 window.addEventListener('hashchange', show);
 document.addEventListener('pointerdown', () => context(), { once: true });
 
-buildHall();
 show();

@@ -15,8 +15,38 @@
     <header class="hall-top">
       <a class="home" href="../" aria-label="Mr. Washburn Music"><img src="../assets/logo/option-f-notes-badge-icon.svg" alt=""></a>
       <h1>Instrument Museum</h1>
+      <p class="tagline">Walk the rooms. Play everything.</p>
     </header>
-    <main id="rooms"></main>
+    <section class="welcome" aria-label="Your visit">
+      <div class="ticket" id="ticket"></div>
+      <div class="passport" id="passport"></div>
+    </section>
+    <main id="plan" class="plan" aria-label="Floor plan: tap an instrument to play it, or a room’s sign to walk through it"></main>
+  </div>
+
+  <div id="gallery" class="gallery" hidden>
+    <header class="bar">
+      <a class="back" href="#" aria-label="Back to the floor plan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <h2 id="gal-name"></h2>
+      <nav class="mini" id="gal-map" aria-label="Rooms"></nav>
+    </header>
+    <div class="room-body">
+      <div class="walkwrap">
+        <div class="walk" id="walk"><div class="track" id="track"></div></div>
+        <button class="stepper prev" id="gal-prev" aria-label="Walk left"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="stepper next" id="gal-next" aria-label="Walk right"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <section class="docent" id="docent" aria-live="polite" hidden></section>
+    </div>
+  </div>
+
+  <div id="quiz" class="quizview" hidden>
+    <header class="bar">
+      <a class="back" href="#" aria-label="Back to the museum"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <h2>Museum quiz</h2>
+      <ol class="dots" id="quiz-dots" aria-label="Questions"></ol>
+    </header>
+    <div class="quiz-main" id="quiz-main"></div>
   </div>
 
   <div id="exhibit" class="exhibit" hidden>
@@ -34,6 +64,7 @@
     </header>
     <div class="menu" id="menu" role="menu" hidden></div>
     <div class="coach" id="coach" aria-live="polite" hidden></div>
+    <div class="tourbar" id="tourbar" hidden></div>
     <div class="stage" id="stage"></div>
   </div>
 
