@@ -5,7 +5,7 @@
    ellipse whose height shows how far it is tipped toward you. Used by the drum set, the
    timpani, the orchestra's percussion and the hand drums. */
 
-import { metal, sheen, lathe, head as skin, wood, pool, rand, tint, pattern, place, bar, TAU } from './paint.js';
+import { metal, sheen, lathe, head as skin, wood, pool, rand, tint, mix, pattern, place, bar, RES, TAU } from './paint.js';
 
 /* ---------- the camera ---------- */
 
@@ -674,6 +674,96 @@ export function backdrop(g, W, H, y, cam, { color = '#5A1218', kind = 'walnut', 
   sh.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = sh;
   g.fillRect(0, y, W, Math.max(8, cam.k * 3));
+}
+
+/* A mat woven from strips of palm leaf, each about an inch wide, over one and under the next,
+   lying on the floor at 45 degrees and seen at the camera's tilt: what the world's hand drums
+   stand on. k: pixels to the inch; (x, y): where the light falls. */
+export function mat(g, W, H, { k = 20, tilt = Math.PI / 3, x = W / 2, y = H / 2, light = 0.12, dark = 0.6, dim = 0.36 } = {}) {
+  const p = pattern(g, 'mat', 120, 120, paintMat);
+  const pitch = Math.max(15, Math.min(46, k * 1.05));
+  p.setTransform?.(new DOMMatrix().translateSelf(x, y).scaleSelf(1, Math.max(0.2, Math.sin(tilt))).rotateSelf(45).scaleSelf(pitch / 30 / RES));
+  g.save();
+  g.fillStyle = p;
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = `rgba(24,14,4,${dim})`;
+  g.fillRect(0, 0, W, H);
+  g.restore();
+  spot(g, W, H, x, y, Math.max(W, H) * 0.75, { light, dark });
+}
+
+/* One tile of the mat: four strips each way, 30 pixels apart. */
+function paintMat(c, w, h) {
+  const n = 4;
+  const P = w / n;
+  const gap = P * 0.09;
+  const half = (P - gap) / 2;
+  const r = rand(23);
+  // the straw of each strip, each a little different: paler, greener or browner
+  const straw = () => {
+    const v = r();
+    return mix('#D8B97C', v < 0.35 ? '#BE9552' : v < 0.7 ? '#E4CD98' : '#CDB173', 0.3 + r() * 0.6);
+  };
+  const across = Array.from({ length: n }, straw);
+  const down = Array.from({ length: n }, straw);
+  c.fillStyle = '#21160A';
+  c.fillRect(0, 0, w, h);
+  /* A strip's piece over one crossing: from where it comes up from under one strip to where it
+     dives under the next. horiz: it runs across; under: it is the one beneath here. */
+  const piece = (i, j, horiz, under) => {
+    const col = horiz ? across[j] : down[i];
+    c.save();
+    if (horiz) c.translate(i * P, j * P + P / 2);
+    else { c.translate(i * P + P / 2, j * P); c.rotate(Math.PI / 2); }
+    if (under) {
+      c.fillStyle = tint(col, -0.5);
+      c.fillRect(-0.5, -half, P + 1, half * 2);
+      c.restore();
+      return;
+    }
+    // along it: dark where it bends under its neighbours, light where it rides over
+    const gr = c.createLinearGradient(0, 0, P, 0);
+    gr.addColorStop(0, tint(col, -0.46));
+    gr.addColorStop(0.16, tint(col, -0.12));
+    gr.addColorStop(0.45, tint(col, 0.08));
+    gr.addColorStop(0.84, tint(col, -0.12));
+    gr.addColorStop(1, tint(col, -0.46));
+    c.fillStyle = gr;
+    c.fillRect(-0.5, -half, P + 1, half * 2);
+    // across it: a leaf strip is a little cupped, lit on one side
+    const ac = c.createLinearGradient(0, -half, 0, half);
+    ac.addColorStop(0, 'rgba(255,244,210,.22)');
+    ac.addColorStop(0.25, 'rgba(255,244,210,0)');
+    ac.addColorStop(0.7, 'rgba(0,0,0,0)');
+    ac.addColorStop(1, 'rgba(0,0,0,.32)');
+    c.fillStyle = ac;
+    c.fillRect(0, -half, P, half * 2);
+    // the leaf's veins, running along it
+    for (let f = 0; f < 10; f++) {
+      const yy = -half + ((f + 0.5 + (r() - 0.5) * 0.7) / 10) * half * 2;
+      c.strokeStyle = r() < 0.6 ? `rgba(92,62,24,${0.18 + r() * 0.25})` : `rgba(255,246,220,${0.12 + r() * 0.2})`;
+      c.lineWidth = 0.3 + r() * 0.5;
+      c.beginPath();
+      c.moveTo(0, yy);
+      c.lineTo(P, yy + (r() - 0.5) * 0.9);
+      c.stroke();
+    }
+    // now and then a split in the leaf
+    if (r() < 0.3) {
+      const yy = (r() - 0.5) * half * 1.4;
+      const x0 = r() * P * 0.6;
+      c.strokeStyle = 'rgba(40,26,8,.45)';
+      c.lineWidth = 0.6;
+      c.beginPath();
+      c.moveTo(x0, yy);
+      c.lineTo(x0 + P * (0.2 + r() * 0.3), yy + (r() - 0.5));
+      c.stroke();
+    }
+    c.restore();
+  };
+  // plain weave: across strips on top where i + j is even, the others where it is odd
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) piece(i, j, (i + j) % 2 === 1, true);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) piece(i, j, (i + j) % 2 === 0, false);
 }
 
 /* A soft spotlight and the dark around it. */

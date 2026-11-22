@@ -16,7 +16,7 @@ export function rand(seed = 1) {
   };
 }
 
-const RES = 2;                     // tiles are painted at twice their size, for sharp screens
+export const RES = 2;              // tiles are painted at twice their size, for sharp screens
 const tiles = new Map();
 const patterns = new WeakMap();    // context -> key -> CanvasPattern
 
@@ -410,6 +410,83 @@ export function head(g, cx, cy, r, { kind = 'coated', light = 1 } = {}) {
       g.stroke();
     }
     grain(g, 0.1);
+  } else if (kind === 'rawhide') {
+    // the thick natural skin of a conga or bongo: creamy and mottled, darker and thicker
+    // toward the edge where it is pulled over, the line of the animal's spine across it, and
+    // darker where hands have played it for years
+    const rr = rand(Math.round(r * 7) + 3);
+    const gr = g.createRadialGradient(cx - r * 0.18, cy - r * 0.22, r * 0.05, cx, cy, r);
+    gr.addColorStop(0, '#F3E0B6');
+    gr.addColorStop(0.5, '#E8CC96');
+    gr.addColorStop(0.82, '#D6B074');
+    gr.addColorStop(1, '#9E7440');
+    g.fillStyle = gr;
+    g.fillRect(cx - r, cy - r, r * 2, r * 2);
+    const patch = (x, y, s, col, a) => {
+      const p = g.createRadialGradient(x, y, 0, x, y, s);
+      p.addColorStop(0, `rgba(${col},${a})`);
+      p.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = p;
+      g.fillRect(x - s, y - s, s * 2, s * 2);
+    };
+    for (let i = 0; i < 22; i++) {
+      const a = rr() * 6.283;
+      const d = Math.sqrt(rr()) * r * 0.95;
+      patch(cx + Math.cos(a) * d, cy + Math.sin(a) * d, r * (0.12 + rr() * 0.32), rr() < 0.6 ? '160,112,58' : '255,244,214', 0.06 + rr() * 0.12);
+    }
+    // the spine: a soft darker band, gently curved, across the middle
+    const sa = rr() * Math.PI;
+    const ux = Math.cos(sa);
+    const uy = Math.sin(sa);
+    const off = (rr() - 0.5) * r * 0.5;
+    const bend = (rr() - 0.5) * r * 0.5;
+    g.lineCap = 'round';
+    for (let k = 0; k < 6; k++) {
+      g.strokeStyle = `rgba(150,100,48,${0.035})`;
+      g.lineWidth = r * (0.03 + k * 0.035);
+      g.beginPath();
+      g.moveTo(cx - ux * r - uy * off, cy - uy * r + ux * off);
+      g.quadraticCurveTo(cx - uy * (off + bend), cy + ux * (off + bend), cx + ux * r - uy * off, cy + uy * r + ux * off);
+      g.stroke();
+    }
+    // fibres: short soft strands
+    for (let i = 0; i < 120; i++) {
+      const a = rr() * 6.283;
+      const d = Math.sqrt(rr()) * r;
+      const x = cx + Math.cos(a) * d;
+      const y = cy + Math.sin(a) * d;
+      const b = rr() * 6.283;
+      const l = r * (0.03 + rr() * 0.09);
+      g.strokeStyle = rr() < 0.7 ? `rgba(140,96,50,${0.05 + rr() * 0.08})` : `rgba(255,246,220,${0.06 + rr() * 0.08})`;
+      g.lineWidth = Math.max(0.6, r * 0.006);
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + Math.cos(b) * l, y + Math.sin(b) * l);
+      g.stroke();
+    }
+    // a few faint veins, branching
+    g.strokeStyle = 'rgba(150,92,44,.09)';
+    g.lineWidth = Math.max(0.7, r * 0.008);
+    for (let i = 0; i < 4; i++) {
+      let x = cx + (rr() - 0.5) * r * 1.2;
+      let y = cy + (rr() - 0.5) * r * 1.2;
+      let a = rr() * 6.283;
+      g.beginPath();
+      g.moveTo(x, y);
+      for (let j = 0; j < 7; j++) {
+        a += (rr() - 0.5) * 0.9;
+        x += Math.cos(a) * r * 0.07;
+        y += Math.sin(a) * r * 0.07;
+        g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    // played: darker where the hands land, at the near edge and in the middle
+    patch(cx, cy + r * 0.62, r * 0.45, '120,80,40', 0.13);
+    patch(cx + r * 0.1, cy + r * 0.05, r * 0.4, '120,80,40', 0.07);
+    g.beginPath();
+    g.arc(cx, cy, r, 0, Math.PI * 2);
+    grain(g, 0.08);
   } else if (kind === 'black') {
     const gr = g.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.05, cx, cy, r);
     gr.addColorStop(0, '#3A3A3C');

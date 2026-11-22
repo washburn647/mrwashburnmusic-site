@@ -332,3 +332,73 @@ test('a timpani tunes across its range by gauge or pedal, and plays the note sho
   await page.evaluate(() => { location.hash = ''; });
   assert.deepEqual(errors, []);
 });
+
+/* The world's instruments are drawn as solid models on a mat, so a touch has to find the one
+   drawn under it: each drum, bell and stick plays at its middle and near its edge, and nothing
+   plays beside them. The güiro sounds as the stick is drawn along its ridges, and each kalimba
+   tine plays the note it is tuned to. */
+test('world instruments play the part drawn where they are touched', async () => {
+  const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const full = (m) => `${NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
+  const where = (...args) => page.evaluate((args) => {
+    const c = document.querySelector('#stage canvas');
+    const p = c.museumAt(...args);
+    const r = c.getBoundingClientRect();
+    return p && { x: r.left + p.u, y: r.top + p.v };
+  }, args);
+  const heard = () => page.evaluate(() => ({ n: 0, ...document.getElementById('stage').museumHeard }));
+  async function tap(p, what) {
+    assert.ok(p, `${what} is showing`);
+    const before = (await heard()).n;
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    const after = await heard();
+    return after.n > before ? after.part : null;
+  }
+  const world = EXHIBITS.filter((e) => e.play === 'hand' && e.opts.parts);
+  assert.ok(world.length >= 10, 'the world instruments are all there');
+  for (const ex of world) {
+    await open(ex.id);
+    const { parts } = ex.opts;
+    for (let i = 0; i < parts.length; i++) {
+      const code = parts.length === 1 ? 'x' : 'hl'[i];
+      const name = `${ex.id}${parts[i].name ? ` (${parts[i].name})` : ''}`;
+      if (parts[i].shape === 'guiro') {
+        const [a, b] = [await where(i, 'edge'), await where(i, 'end')];
+        assert.ok(a && b, `${name}'s ridges are showing`);
+        const before = (await heard()).n;
+        await page.mouse.move(a.x, a.y);
+        await page.mouse.down();
+        await page.mouse.move(b.x, b.y, { steps: 12 });
+        await page.mouse.up();
+        const after = await heard();
+        assert.ok(after.n - before >= 2, `${name}: a scrape along its ridges sounds (${after.n - before} times)`);
+        assert.equal(after.part, code, name);
+        continue;
+      }
+      assert.equal(await tap(await where(i, 'middle'), name), code, `${name}: its middle`);
+      assert.equal(await tap(await where(i, 'edge'), name), code, `${name}: near its edge`);
+    }
+    const off = await where(0, 'off');
+    if (off) assert.equal(await tap(off, ex.id), null, `${ex.id}: beside it`);
+  }
+
+  await open('kalimba');
+  const written = EXHIBITS.find((e) => e.id === 'kalimba').written || 0;
+  const n = EXHIBITS.find((e) => e.id === 'kalimba').opts.tines.length;
+  const heardNotes = new Set();
+  for (let i = 0; i < n; i++) {
+    const p = await where(i);
+    assert.ok(p, `tine ${i + 1} is showing`);
+    const m = await page.evaluate((i) => document.querySelector('#stage canvas').museumTine(i), i);
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    assert.equal(await readout(), full(m + written), `tine ${i + 1}`);
+    await page.mouse.up();
+    heardNotes.add(m);
+  }
+  assert.equal(heardNotes.size, n, 'every tine is a different note');
+  await page.evaluate(() => { location.hash = ''; });
+  assert.deepEqual(errors, []);
+});
