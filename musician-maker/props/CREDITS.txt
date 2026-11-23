@@ -60,3 +60,12 @@ From iNaturalist, via GBIF (photographer chose CC0):
 From Wikimedia Commons:
   teacup.png        "Teacup.png", Rijksmuseum, CC0.
                     https://commons.wikimedia.org/wiki/File:Teacup.png
+
+For Dancing Time (WebP, which keeps a photo's shading better than PNG):
+  gramophone.webp   Gramophone, photo by Bigul Malayi, WordPress Photo Directory, CC0.
+                    https://wordpress.org/photos/photo/74069cc17e/
+                    (Its old maker's plaque is covered in the game by Grammy's nameplate.)
+  owl.webp          Barn owl, photo by wizz1, iNaturalist photo 130209679, CC0. Cropped.
+                    https://www.inaturalist.org/observations/79493816
+  flamingo.webp     Flamingo, photo by hllrnnr, iNaturalist photo 456115764, CC0.
+                    https://www.inaturalist.org/observations/254621857

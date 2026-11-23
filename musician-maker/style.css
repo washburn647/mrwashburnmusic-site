@@ -950,6 +950,13 @@ audio.intro-media { background: none; }
 .look-maracas .part { transform-origin: 50% 100%; }
 .big-inst.look-maracas.hit[data-side="l"] .part.l, .big-inst.look-maracas.hit[data-side="r"] .part.r { animation: bi-shake .3s ease-out; }
 @keyframes bi-shake { 25% { transform: translate(-6px, -10px) rotate(-10deg); } 60% { transform: translate(4px, 2px) rotate(6deg); } }
+/* The tambourine: the hoop is struck (as the drums are), its jingles rattle and its ribbons fly. */
+.look-tambourine .jingle { transform-box: fill-box; transform-origin: center; }
+.look-tambourine .ribbons { transform-box: fill-box; transform-origin: 50% 0; }
+.big-inst.look-tambourine.hit .jingle { animation: bi-jingle .28s ease-out; }
+.big-inst.look-tambourine.hit .ribbons { animation: bi-ribbons .4s ease-out; }
+@keyframes bi-jingle { 0% { fill: #fff; transform: translateX(-3px) scale(1.2); } 40% { transform: translateX(3px); } 70% { transform: translateX(-2px); } }
+@keyframes bi-ribbons { 35% { transform: rotate(9deg) scaleY(1.15); } 70% { transform: rotate(-5deg); } }
 /* The mic: the glow follows the voice, and each syllable it hears bumps it. */
 .look-mic .big-glow { opacity: calc(.25 + var(--lv, 0) * .75); transform: scale(calc(.7 + var(--lv, 0) * .6)); animation: none; }
 .controls.live .look-mic .big-glow { animation: none; }

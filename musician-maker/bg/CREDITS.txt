@@ -1,5 +1,6 @@
-Pictures behind Petting Time (scene-pet.js). Every one is CC0 or public domain: free to use,
-no credit required, credited here anyway. All were cropped and shrunk.
+Pictures behind Petting Time (scene-pet.js) and Dancing Time (scene-dance.js; it also uses
+moon.jpg, earth.jpg and wood.jpg). Every one is CC0 or public domain: free to use, no credit
+required, credited here anyway. All were cropped and shrunk.
 
 From the Cleveland Museum of Art Open Access collection (https://www.clevelandart.org/open-access), CC0:
   strawberry-thief.jpg  Strawberry Thief, William Morris, printed c. 1936 at Merton Abbey. 1937.696
@@ -20,3 +21,11 @@ From NASA (public domain; https://images.nasa.gov):
 From ambientCG (https://ambientcg.com), CC0:
   brick.jpg             Bricks 105   https://ambientcg.com/view?id=Bricks105
   wood.jpg              Wood Floor 051   https://ambientcg.com/view?id=WoodFloor051
+
+For Dancing Time:
+  aurora.jpg            Aurora borealis over Lapland, photo by Vincent Guth (via Unsplash), CC0.
+                        https://commons.wikimedia.org/w/index.php?curid=61916445
+  reef.jpg              Coral Reef, NOAA's National Ocean Service, public domain.
+                        https://www.flickr.com/photos/40322276@N04/5514332777
+  curtain.jpg           Red curtain, rawpixel, CC0.
+                        https://www.rawpixel.com/image/6038875/red-curtain-free-public-domain-cc0-photo

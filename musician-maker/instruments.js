@@ -58,6 +58,24 @@ const ART = {
     </g>
     <g class="part r"><rect x="60" y="20" width="120" height="9" rx="4.5" fill="${WOOD}" transform="rotate(-14 120 24)"/>
       <rect x="150" y="6" width="34" height="13" rx="6" fill="${WOOD_DARK}" transform="rotate(-14 167 12)"/></g></svg>`,
+  // A tambourine: a hoop with pairs of jingles round it, a paw print on the head, ribbons.
+  // The hoop is struck (it bounces and the jingles flash) and the ribbons fly.
+  tambourine: `<svg viewBox="0 0 200 140" aria-hidden="true">
+    <g class="ribbons"><path d="M84 116 Q74 128 82 140 Q70 132 74 116 Z" fill="#ff5c8a"/><path d="M116 116 Q128 126 120 140 Q132 130 126 116 Z" fill="#4fc3f7"/></g>
+    <g class="part l r">
+      <ellipse cx="100" cy="72" rx="82" ry="50" fill="#a8622a"/>
+      <ellipse cx="100" cy="64" rx="82" ry="50" fill="#d98a3a"/>
+      <ellipse class="head" cx="100" cy="64" rx="70" ry="40" fill="${HEAD}"/>
+      <g fill="#c98a5a" opacity=".55"><ellipse cx="100" cy="72" rx="15" ry="10"/><ellipse cx="80" cy="57" rx="6" ry="5"/><ellipse cx="93" cy="50" rx="6" ry="5"/>
+        <ellipse cx="107" cy="50" rx="6" ry="5"/><ellipse cx="120" cy="57" rx="6" ry="5"/></g>
+      <g class="jingles">${[200, 240, 300, 340, 20, 75, 105, 160].map((a) => {
+        const r = (a * Math.PI) / 180;
+        const x = (100 + 76 * Math.cos(r)).toFixed(1);
+        const y = (68 + 46 * Math.sin(r)).toFixed(1);
+        return `<g transform="translate(${x} ${y})"><rect x="-9" y="-5" width="18" height="10" rx="3" fill="#5a3010"/>
+          <ellipse class="jingle" cx="0" cy="0" rx="7.5" ry="4.5" fill="#e8e2d0" stroke="#8a8270" stroke-width="1.2"/></g>`;
+      }).join('')}</g>
+    </g></svg>`,
   mic: `<svg viewBox="0 0 200 160" aria-hidden="true">
     <path d="M60 70 Q60 118 100 118 Q140 118 140 70" stroke="#5b6168" stroke-width="8" fill="none" stroke-linecap="round"/>
     <rect x="94" y="118" width="12" height="26" fill="#5b6168"/>
@@ -81,6 +99,7 @@ export function lookOf(inst = {}) {
   if (/bell|cowbell|agogo|triangle/.test(s)) return 'bell';
   if (/shaker|maraca/.test(s)) return 'maracas';
   if (s === 'guiro') return 'guiro';
+  if (s === 'tambourine') return 'tambourine';
   return 'drum';
 }
 

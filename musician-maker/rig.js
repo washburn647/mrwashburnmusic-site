@@ -11,6 +11,9 @@
    (gloss, sparkles and a slicked-back quiff).
    Petting Time adds purr (eyes shut, a grin, paws down), m.press() (a hand on his head),
    m.thump() (the tail slaps the floor) and m.knead() (making biscuits).
+   Dancing Time adds dance and yawn, m.pose({ l, r, sway, lean, footL, footR }) (both arms, a
+   sway about his feet, a lean and a lifted foot, all on springs, so one pose flows into the
+   next) and m.stomp(side) (a foot up and down, with a squash as it lands).
    Fixed markup only: nothing a learner types goes in here. Stops itself when removed. */
 
 import { fur } from './cats.js';
@@ -39,7 +42,7 @@ const MARKUP = `
   <g class="r-tufts">${tufts(TUFTS.slice(4))}</g>
   <g class="r-knots" stroke="#5c5c6a" stroke-width="2.2" fill="none" stroke-linecap="round">${knots([[72, 136], [118, 146], [80, 172], [114, 180], [96, 158]])}</g>
   <g class="r-gloss" stroke="#fff" stroke-linecap="round" fill="none"><path d="M68 132 Q63 160 71 186" stroke-width="4" opacity=".4"/><path d="M132 134 Q138 156 132 176" stroke-width="3" opacity=".3"/></g>
-  <ellipse cx="80" cy="200" rx="15" ry="8" fill="${CAT}"/><ellipse cx="120" cy="200" rx="15" ry="8" fill="${CAT}"/>
+  <g class="r-foot-l"><ellipse cx="80" cy="200" rx="15" ry="8" fill="${CAT}"/></g><g class="r-foot-r"><ellipse cx="120" cy="200" rx="15" ry="8" fill="${CAT}"/></g>
   <g class="r-arm-l"><path class="r-arm" fill="none" stroke="${CAT}" stroke-width="15" stroke-linecap="round"/>
     <g class="r-paw"><circle r="10" fill="${CAT}" stroke="${EDGE}" stroke-width="1.5"/>
       <g class="r-beans" fill="${PINK}"><ellipse cx="0" cy="2.5" rx="4" ry="3"/><circle cx="-5" cy="-3" r="1.9"/><circle cx="0" cy="-5.2" r="1.9"/><circle cx="5" cy="-3" r="1.9"/></g></g></g>
@@ -114,6 +117,9 @@ const MOODS = {
   sad: { eyes: 'open', mouth: 'wavy', dil: 2.8, crouch: 0.5, tail: 0.04, tailSpeed: 0.8, ears: -16, sweat: true },
   // Petting Time: being petted.
   purr: { eyes: 'happy', mouth: 'grin', dil: 1, crouch: 0.25, tail: 0.5, tailSpeed: 4, ears: 3, blush: true },
+  // Dancing Time: in the groove, and a yawn as big as his head.
+  dance: { eyes: 'happy', mouth: 'open', dil: 1, crouch: 0, tail: 0.8, tailSpeed: 8, ears: 5, blush: true },
+  yawn: { eyes: 'sleep', mouth: 'o', dil: 1, crouch: -0.3, tail: 0.1, tailSpeed: 1, ears: -10, arms: 'up' },
 };
 
 export function rigMookie() {
@@ -127,6 +133,7 @@ export function rigMookie() {
   const q = (s) => svg.querySelector(s);
   const parts = {
     root: q('.r-root'), head: q('.r-head'), earL: q('.r-ear-l'), earR: q('.r-ear-r'), tail: q('.r-tail'), bell: q('.r-bell'),
+    footL: q('.r-foot-l'), footR: q('.r-foot-r'),
     eyes: [...svg.querySelectorAll('.r-eye')], whiskers: q('.r-whiskers'),
     armL: { g: q('.r-arm-l'), path: q('.r-arm-l .r-arm'), paw: q('.r-arm-l .r-paw'), sx: 77, sy: 130 },
     armR: { g: q('.r-arm-r'), path: q('.r-arm-r .r-arm'), paw: q('.r-arm-r .r-paw'), smear: q('.r-smear'), sx: 123, sy: 130 },
@@ -142,6 +149,8 @@ export function rigMookie() {
     reachR: spring(0, 1100, 46),
     // A tail thump: the whole tail curls down to the floor and springs back.
     thump: spring(0, 320, 13),
+    // Dancing: a sway about his feet (degrees) and each foot's lift (0 on the floor, 1 up high).
+    sway: spring(0, 260, 15), footL: spring(0, 520, 22), footR: spring(0, 520, 22),
   };
   let mood = MOODS.idle;
   let moodName = 'idle';
@@ -242,7 +251,13 @@ export function rigMookie() {
 
     const sq = S.squash.x;
     const sx = 1 + (1 - sq) * 0.8;
-    parts.root.setAttribute('transform', `translate(${S.lean.x.toFixed(2)} ${S.bob.x.toFixed(2)}) translate(100 206) scale(${sx.toFixed(3)} ${sq.toFixed(3)}) translate(-100 -206)`);
+    parts.root.setAttribute('transform', `translate(${S.lean.x.toFixed(2)} ${S.bob.x.toFixed(2)}) rotate(${S.sway.x.toFixed(2)} 100 206) translate(100 206) scale(${sx.toFixed(3)} ${sq.toFixed(3)}) translate(-100 -206)`);
+    const fl = S.footL.x;
+    const fr = S.footR.x;
+    if (fl || fr || parts.footL.hasAttribute('transform')) {
+      parts.footL.setAttribute('transform', `translate(${(-fl * 6).toFixed(2)} ${(-fl * 22).toFixed(2)}) rotate(${(-fl * 18).toFixed(2)} 80 200)`);
+      parts.footR.setAttribute('transform', `translate(${(fr * 6).toFixed(2)} ${(-fr * 22).toFixed(2)}) rotate(${(fr * 18).toFixed(2)} 120 200)`);
+    }
     parts.head.setAttribute('transform', `translate(0 ${S.hb.x.toFixed(2)}) rotate(${S.tilt.x.toFixed(2)} 100 112)`);
     parts.earL.setAttribute('transform', `rotate(${(-S.earL.x).toFixed(2)} 76 52)`);
     parts.earR.setAttribute('transform', `rotate(${(-S.earR.x).toFixed(2)} 124 52)`);
@@ -354,6 +369,29 @@ export function rigMookie() {
     },
     /* A quick hop (on a win, say). */
     hop(power = 1) { S.bob.v -= 260 * power; S.squash.v += 2 * power; S.bell.v += 500; },
+    /* Dancing Time: a pose for the arms (degrees from hanging down: 150 is straight up, the
+       right arm's are negative), a sway about his feet (degrees), a lean (svg units) and each
+       foot's lift (0 to 1). Anything left out stays where it is. */
+    pose({ l, r, sway, lean, footL, footR } = {}) {
+      if (l != null) S.aL.t = l;
+      if (r != null) S.aR.t = r;
+      if (sway != null) S.sway.t = sway;
+      if (lean != null) S.lean.t = lean;
+      if (footL != null) S.footL.t = footL;
+      if (footR != null) S.footR.t = footR;
+      start();
+    },
+    /* A stomp: one foot up and back down (side -1 the one on the viewer's left, 1 the other),
+       and a squash as it lands. */
+    stomp(side = 1, power = 1) {
+      const f = side > 0 ? S.footR : S.footL;
+      f.v += 14 * power;
+      S.bob.v -= 70 * power;
+      setTimeout(() => { S.squash.v -= 1.3 * power; S.bell.v += 160; }, 90);
+      start();
+    },
+    /* Back to standing: arms down, no sway, feet on the floor. */
+    rest() { S.aL.t = mood.arms === 'up' ? 150 : 14; S.aR.t = mood.arms === 'up' ? -150 : -14; S.sway.t = 0; S.lean.t = 0; S.footL.t = 0; S.footR.t = 0; start(); },
     stop() { cancelAnimationFrame(raf); raf = 0; },
   };
   start();
