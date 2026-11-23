@@ -11,7 +11,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 ## A run
 
 - **Lap:** three sets of 4 micro-games (3 in Mookie mode) at 92, 108 and 126 bpm, each
-  followed by an 8-beat breather, then a boss (The Big Cheese, The Big Fluff, The Mane Event, The Belly or The Big Stink, by turns) and an intermission where the
+  followed by an 8-beat breather, then a boss (The Big Cheese, The Big Fluff, The Mane Event, The Belly, The Big Stink or Saturday Night Fur, by turns) and an intermission where the
   learner can stop. The next lap starts back at 92. A rung is held when the learner is
   struggling.
 - **Micro-game:** cue (4 beats) · call (4) · the learner's turn (4; Note It 8) · payoff (4;
@@ -77,7 +77,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   (`/assets/patterns/units.json`) replace the built-in set once published.
 - `games.js`: the micro-games. A game is a scene and a gesture; it never knows the step or the
   task. Each has a kit (`KITS`): the object Tap It taps and the instrument Play It plays.
-  Mouse Catcher, Supper Time, Brushing Time, Petting Time and Litterbox are in their own files. A game with a `bossName` can host
+  Mouse Catcher, Supper Time, Brushing Time, Petting Time, Litterbox and Dancing Time are in their own files. A game with a `bossName` can host
   the boss; `main.js` takes turns between them by lap.
 - `sound.js`: the groove, calls, cue words, effects. Uses Kyle's recordings where they're on
   the site (takes on "bum" and in syllables, cue words, groove loops per layer and tempo) and
@@ -200,18 +200,37 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   faints, the screen peels off, a fly in a tuxedo conducts the stinklets, Mookie strolls off.
   Combo: the box floats, stinklets in shades, disco sand, Bindi and Rusty peer in like gods. The
   boss is The Big Stink, with four arms: each hit buries one, and at the end Mookie sits on it.
+- `scene-dance.js`: Dancing Time (styles in `scene-dance.css`), rhythm only: Mookie on a
+  light-up dance floor under a mirror ball (drawn facet by facet on a canvas, throwing specks of
+  light round the room). Grammy, a gramophone with googly eyes, sings the call, and each note
+  sets a dotted paw print in a row of four counts at Mookie's feet (a du-de is two prints in one
+  count), so the row is the notation. Each tap is a dance step that fills its print as well as
+  its timing deserves: gold on time, silver close, and way off a red print where it fell. The
+  scene gets the timing from `onTap(fb)`. Judge Hoot, a barn owl at a desk, holds up the score.
+  Rooms take turns (`THEMES`: disco, a theatre stage, the Moon, a coral reef, the Arctic under
+  the northern lights), each with its own crowd (cats, aliens, fish, penguins). Combo: light
+  beams, then fog and a flamingo strutting past, then lasers and light sticks, then shades and
+  confetti. Wins: he dances the learner's own steps back, the moonwalk, a headspin, a kick line
+  of Mookies, a tango with the flamingo, a stage dive and crowd surf. Misses, he goes to sleep:
+  a yawn and a nightcap, the record runs down and so does he, he sleepwalks off the stage, the
+  curtain comes down (his tail sticks out), he dreams he can dance. The boss is Saturday Night
+  Fur, Rusty in a white disco suit: a dance-off where each hit sends a piece of the suit
+  flying, and at the end the mirror ball comes down on him.
 - `cats.js`: Bindi and Rusty, rigged like Mookie (springs, moods, tiptoe steps, rubber-hose
   reach, fur that poofs, bandit masks). Drawn from Kyle's photos of them, which aren't kept here.
-- `props/`: the photo props, CC0 museum objects cut out with a sticker edge
-  (`props/CREDITS.txt`). New props should be CC0 or public domain, transparent PNG, about
-  320px on the long side.
-- `bg/`: background pictures for Petting Time, CC0 or public domain paintings, prints,
-  NASA photos and textures (`bg/CREDITS.txt`), JPEG, under about 150 KB each.
+- `props/`: the photo props, CC0 museum objects and photos cut out with a sticker edge
+  (`props/CREDITS.txt`). New props should be CC0 or public domain, transparent PNG (WebP for
+  photos, which PNG's palette spoils), about 320 to 440px on the long side.
+- `bg/`: background pictures for Petting Time and Dancing Time, CC0 or public domain
+  paintings, prints, photos (NASA, NOAA and others) and textures (`bg/CREDITS.txt`), JPEG,
+  under about 150 KB each.
 - `rig.js`: rigged Mookie for scenes: springs on body, head, ears, eyes, arms and tail; moods
   (idle, hunt, happy, smug, star, shock, dizzy, and for Supper Time sleep, eat, sad); `reach()`
   to any point on the page. For Brushing Time, a coat: classes `furry` (size from `fluff()`,
   tufts from `tuft()`), `tangled` and `sleek` on the svg. For Petting Time, the mood `purr`
-  and `press()` (squished by a pat), `thump()` (the tail) and `knead()` (biscuits).
+  and `press()` (squished by a pat), `thump()` (the tail) and `knead()` (biscuits). For Dancing
+  Time, the moods `dance` and `yawn`, `pose()` (arms, sway, lean and a lifted foot, on springs),
+  `stomp()` and `rest()`.
 - `critters.js`: the mouse and The Big Cheese, with props (shades, flag, crown, bandage).
   `photoMouse()` is the mouse as a real photo with the same props and API; Mouse Catcher uses it.
 - `fx/`: cartoon sound effects from Kenney's CC0 packs (`fx/CREDITS.txt`); `toon()` in
@@ -219,7 +238,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   horn, frog croak, gong, choir, and for Supper Time the bowl ding, meow, yowl, chomp, burp,
   cluck, fanfare, hiss, snore and tiptoe, and for Brushing Time the brush, sproing, ting,
   spritz, static zap, purr, roar and sneeze, and for Petting Time the pat, arf, howl, vroom,
-  slurp, rotor and rattling bones).
+  slurp, rotor and rattling bones, and for Dancing Time the tap shoe, applause, cheer, yawn,
+  hoot, the record running down and an air horn).
 - `mookie.js`: Mookie (placeholder art from the Mookie mockups).
 - `avatar.js`: the learner's avatar (drawn SVG, one look per device), the items and their prices
   (`ITEMS`), what runs pay in notes (`EARN`) and the note coin (`token()`).

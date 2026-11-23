@@ -18,8 +18,9 @@ import { supperTime } from './scene-supper.js';
 import { brushingTime } from './scene-brush.js';
 import { pettingTime } from './scene-pet.js';
 import { litterbox } from './scene-litter.js';
+import { dancingTime } from './scene-dance.js';
 
-export { mouseCatcher, supperTime, brushingTime, pettingTime, litterbox };
+export { mouseCatcher, supperTime, brushingTime, pettingTime, litterbox, dancingTime };
 
 /* Restart a CSS animation class. */
 export function bump(el, cls) {
@@ -28,7 +29,7 @@ export function bump(el, cls) {
   el.classList.add(cls);
 }
 
-export const GAMES = [mouseCatcher, supperTime, brushingTime, pettingTime, litterbox];
+export const GAMES = [mouseCatcher, supperTime, brushingTime, pettingTime, litterbox, dancingTime];
 
 export const KITS = {
   'mouse-catcher': { object: { name: 'the mouse', icon: '🐭' }, instrument: { name: 'the bongos', icon: '🪘', sound: 'bongo-high' } },
@@ -36,6 +37,7 @@ export const KITS = {
   'brushing-time': { object: { name: 'the brush', icon: '🪮' }, instrument: { name: 'the maracas', icon: '🪇', sound: 'shaker' } },
   'petting-time': { object: { name: 'Mookie', icon: '🐈‍⬛' }, instrument: { name: 'the guiro', icon: '🪵', sound: 'guiro' } },
   litterbox: { object: { name: 'Mookie\'s paw', icon: '🐾' }, instrument: { name: 'the litter tub', icon: '🥁', sound: 'log-drum-low' } },
+  'dancing-time': { object: { name: 'the disco ball', icon: '🪩' }, instrument: { name: 'the tambourine', icon: '🥁', sound: 'tambourine' } },
 };
 const DEFAULT_KIT = { object: { name: 'the pad', icon: '👆' }, instrument: { name: 'the drum', icon: '🥁', sound: 'conga' } };
 for (const g of GAMES) g.kit ||= KITS[g.id] || DEFAULT_KIT;

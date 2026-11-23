@@ -510,6 +510,129 @@ export function toon(name, t, opts = {}) {
       break;
     }
     case 'fog': noise(t, 1.1, 0.16 * vol, 'lowpass', 180, 900, 1.5); synth(t, 55, 1, 0.1 * vol, fxBus, 'sawtooth', 0.8); break;
+    /* Dancing Time (scene-dance.js) */
+    case 'tapshoe':
+      // A tap shoe on a hard floor: a bright click with a little metal in it.
+      noise(t, 0.03, 0.4 * vol, 'highpass', 3200 * rate, 5200 * rate, 0.8);
+      synth(t, 2900 * rate, 0.05, 0.05 * vol, fxBus, 'square', 0.9);
+      synth(t, 180 * rate, 0.05, 0.12 * vol, fxBus, 'sine', 0.5);
+      break;
+    case 'applause':
+      // A room full of hands: forty quick claps, thick at first and thinning out.
+      for (let k = 0; k < 40; k++) {
+        const d = Math.random() ** 1.6 * 1.5;
+        noise(t + d, 0.018, (0.05 + Math.random() * 0.07) * vol, 'bandpass', 1200 + Math.random() * 1600, 900 + Math.random() * 900, 1.1);
+      }
+      break;
+    case 'cheer': {
+      // "Wooo!": a few voices sliding up a long way and wobbling at the top.
+      [330, 392, 466, 523].forEach((fq, i) => {
+        const o = ctx.createOscillator();
+        const lfo = ctx.createOscillator();
+        const lg = ctx.createGain();
+        const f = ctx.createBiquadFilter();
+        const g = ctx.createGain();
+        const d = i * 0.04;
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(fq * 0.7 * rate, t + d);
+        o.frequency.exponentialRampToValueAtTime(fq * 1.5 * rate, t + d + 0.35);
+        o.frequency.exponentialRampToValueAtTime(fq * 1.2 * rate, t + d + 0.9);
+        lfo.frequency.value = 6 + i;
+        lg.gain.value = fq * 0.03;
+        f.type = 'bandpass';
+        f.frequency.value = 1100;
+        f.Q.value = 1.6;
+        g.gain.setValueAtTime(0, t + d);
+        g.gain.linearRampToValueAtTime(0.045 * vol, t + d + 0.08);
+        g.gain.setValueAtTime(0.045 * vol, t + d + 0.6);
+        g.gain.linearRampToValueAtTime(0, t + d + 0.95);
+        lfo.connect(lg).connect(o.frequency);
+        o.connect(f).connect(g).connect(fxBus);
+        o.start(t + d); lfo.start(t + d);
+        o.stop(t + d + 1); lfo.stop(t + d + 1);
+      });
+      break;
+    }
+    case 'yawn': {
+      // A yawn as big as his head: a low buzzy "aaaAAAH-hm" that rises and sinks.
+      const o = ctx.createOscillator();
+      const f = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(260 * rate, t);
+      o.frequency.linearRampToValueAtTime(420 * rate, t + 0.45);
+      o.frequency.linearRampToValueAtTime(190 * rate, t + 1.1);
+      f.type = 'bandpass';
+      f.Q.value = 2.4;
+      f.frequency.setValueAtTime(600, t);
+      f.frequency.linearRampToValueAtTime(1300, t + 0.5);
+      f.frequency.linearRampToValueAtTime(500, t + 1.1);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.2 * vol, t + 0.2);
+      g.gain.setValueAtTime(0.2 * vol, t + 0.8);
+      g.gain.linearRampToValueAtTime(0, t + 1.15);
+      o.connect(f).connect(g).connect(fxBus);
+      o.start(t);
+      o.stop(t + 1.2);
+      break;
+    }
+    case 'hoot':
+      // The judge: "hoo-HOO", soft and round.
+      [[0, 1], [0.22, 1.12]].forEach(([d, up]) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(380 * up * rate, t + d);
+        o.frequency.linearRampToValueAtTime(340 * up * rate, t + d + 0.16);
+        g.gain.setValueAtTime(0, t + d);
+        g.gain.linearRampToValueAtTime(0.22 * vol, t + d + 0.04);
+        g.gain.linearRampToValueAtTime(0, t + d + 0.18);
+        o.connect(g).connect(fxBus);
+        o.start(t + d);
+        o.stop(t + d + 0.2);
+      });
+      break;
+    case 'rundown': {
+      // The gramophone runs down: a chord sinking in pitch and wobbling as the record slows.
+      [261.6, 329.6, 392].forEach((fq) => {
+        const o = ctx.createOscillator();
+        const lfo = ctx.createOscillator();
+        const lg = ctx.createGain();
+        const g = ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(fq * rate, t);
+        o.frequency.exponentialRampToValueAtTime(fq * 0.35 * rate, t + 1.3);
+        lfo.frequency.setValueAtTime(5, t);
+        lfo.frequency.linearRampToValueAtTime(1.5, t + 1.3);
+        lg.gain.value = fq * 0.02;
+        g.gain.setValueAtTime(0.07 * vol, t);
+        g.gain.setValueAtTime(0.07 * vol, t + 0.9);
+        g.gain.linearRampToValueAtTime(0, t + 1.35);
+        lfo.connect(lg).connect(o.frequency);
+        o.connect(g).connect(fxBus);
+        o.start(t); lfo.start(t);
+        o.stop(t + 1.4); lfo.stop(t + 1.4);
+      });
+      break;
+    }
+    case 'airhorn':
+      // A party horn: three blasts of a brassy chord.
+      [0, 0.16, 0.32].forEach((d, k) => {
+        [440, 554, 660].forEach((fq) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sawtooth';
+          o.frequency.setValueAtTime(fq * rate * (k === 2 ? 1 : 0.98), t + d);
+          g.gain.setValueAtTime(0, t + d);
+          g.gain.linearRampToValueAtTime(0.045 * vol, t + d + 0.01);
+          g.gain.setValueAtTime(0.045 * vol, t + d + (k === 2 ? 0.34 : 0.11));
+          g.gain.linearRampToValueAtTime(0, t + d + (k === 2 ? 0.4 : 0.13));
+          o.connect(g).connect(fxBus);
+          o.start(t + d);
+          o.stop(t + d + 0.42);
+        });
+      });
+      break;
     default: break;
   }
 }
