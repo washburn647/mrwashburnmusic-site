@@ -3,10 +3,10 @@
      room/strings    a walk through a room (gallery.js)
      tour/3          the tour's third stop: its room, with the docent's card (tour.js)
      quiz            the quiz at the end of the tour (quiz.js)
-     piano, violin…  an exhibit, to play */
+     compare/brass   a family side by side (compare.js)
+     piano, violin…  an exhibit, to play; its ⓘ opens the placard (placard.js) */
 
-import { ROOMS, byId } from './data.js';
-import { art } from './art.js';
+import { ROOMS, GROUPS, byId } from './data.js';
 import * as notes from './notes.js';
 import { context } from './audio.js';
 import * as coach from './coach.js';
@@ -15,23 +15,25 @@ import * as gallery from './gallery.js';
 import * as tour from './tour.js';
 import * as quiz from './quiz.js';
 import * as passport from './passport.js';
-import { sizeText } from './gallery.js';
+import * as compare from './compare.js';
+import * as placard from './placard.js';
 
 const $ = (id) => document.getElementById(id);
 const hall = $('hall');
 const galleryView = $('gallery');
 const quizView = $('quiz');
+const compareView = $('compare');
 const exhibit = $('exhibit');
 const stage = $('stage');
 const tools = $('ex-tools');
-const placard = $('placard');
 
 export function route(hash) {
   const h = decodeURIComponent(hash.replace(/^#/, ''));
   if (byId[h]) return { view: 'exhibit', ex: byId[h] };
-  const m = h.match(/^(room|tour)\/([\w-]+)$/);
+  const m = h.match(/^(room|tour|compare)\/([\w-]+)$/);
   if (m?.[1] === 'room' && ROOMS.some((r) => r.id === m[2])) return { view: 'gallery', room: m[2] };
   if (m?.[1] === 'tour' && tour.STOPS[+m[2] - 1]) return { view: 'gallery', room: tour.STOPS[+m[2] - 1].room, stop: +m[2] };
+  if (m?.[1] === 'compare' && GROUPS.some((g) => g.id === m[2])) return { view: 'compare', group: m[2] };
   if (h === 'quiz') return { view: 'quiz' };
   return { view: 'lobby' };
 }
@@ -168,13 +170,15 @@ async function show() {
   stage.innerHTML = '';
   tools.innerHTML = '';
   tour.hideBar();
-  if (placard.open) placard.close();
+  placard.close();
   if (to.view !== 'gallery') { gallery.unmount(); tour.hideCard(); }
   if (to.view !== 'quiz') quiz.unmount();
+  if (to.view !== 'compare') compare.unmount();
   if (to.view !== 'lobby') lobby.unmount();
   hall.hidden = to.view !== 'lobby';
   galleryView.hidden = to.view !== 'gallery';
   quizView.hidden = to.view !== 'quiz';
+  compareView.hidden = to.view !== 'compare';
   exhibit.hidden = to.view !== 'exhibit';
   document.body.classList.toggle('in-room', to.view !== 'lobby');
   const mine = ++token;
@@ -182,10 +186,10 @@ async function show() {
   if (to.view === 'lobby') {
     document.title = 'Instrument Museum · Mr. Washburn Music';
     lobby.mount();
-    // back from an exhibit or a room: stand where you were on the plan; from the tour or the
-    // quiz, at the ticket
-    const back = was.view === 'exhibit' ? `#${was.ex.id}` : was.view === 'gallery' && !was.stop ? `#room/${was.room}` : null;
-    if (back) document.querySelector(`#plan a[href="${back}"]`)?.focus({ preventScroll: false });
+    // back from an exhibit, a room or a family: stand where you were on the plan; from the
+    // tour or the quiz, at the ticket
+    const back = was.view === 'exhibit' ? `#${was.ex.id}` : was.view === 'gallery' && !was.stop ? `#room/${was.room}` : was.view === 'compare' ? `#compare/${was.group}` : null;
+    if (back) document.querySelector(`#hall a[href="${back}"]`)?.focus({ preventScroll: false });
     else if (was.stop || was.view === 'quiz') $('ticket').querySelector('a')?.focus({ preventScroll: true });
     return;
   }
@@ -208,6 +212,12 @@ async function show() {
   if (to.view === 'quiz') {
     document.title = 'Museum quiz · Instrument Museum';
     quiz.mount();
+    return;
+  }
+  if (to.view === 'compare') {
+    document.title = `${GROUPS.find((g) => g.id === to.group).name}, side by side · Instrument Museum`;
+    compare.mount(to.group);
+    $('cmp-main').scrollTop = 0;
     return;
   }
 
@@ -235,28 +245,15 @@ async function show() {
   }
 }
 
-function openPlacard() {
-  const ex = byId[location.hash.slice(1)];
-  if (!ex) return;
-  $('pl-art').innerHTML = art(ex.id, ex.name);
-  $('pl-fam').textContent = ROOMS.find((r) => r.id === ex.room).name;
-  $('pl-name').textContent = ex.name;
-  $('pl-facts').innerHTML = ex.facts.map((f) => `<li>${f}</li>`).join('');
-  const flats = !!ex.flats;
-  $('pl-range').innerHTML = (ex.range
-    ? `<div><dt>Range</dt><dd>${notes.full(ex.range[0] + (ex.written || 0), flats)} – ${notes.full(ex.range[1] + (ex.written || 0), flats)}</dd></div>`
-    : '') + (ex.size ? `<div><dt>Size</dt><dd>${sizeText(ex.size)}</dd></div>` : '');
-  placard.style.setProperty('--hue', ROOMS.find((r) => r.id === ex.room).hue);
-  placard.showModal();
-}
-
-$('info').addEventListener('click', openPlacard);
+$('info').addEventListener('click', () => { const ex = byId[decodeURIComponent(location.hash.slice(1))]; if (ex) placard.open(ex); });
 $('placard-close').addEventListener('click', () => placard.close());
-placard.addEventListener('click', (e) => { if (e.target === placard) placard.close(); });
+$('placard').addEventListener('click', (e) => { if (e.target.id === 'placard') placard.close(); });
 /* Back. An exhibit goes back to where you came from in the museum (the plan, its room, a tour
-   stop), or up to its room if you came straight to it. A room and the quiz go to the floor
-   plan. The browser's own Back is used only when the page before is that place, so this button
-   never takes you out of the museum, and never round the rooms you walked through. */
+   stop, a family side by side), or up to its room if you came straight to it. A family side
+   by side goes back to where you came from too, or to the floor plan. A room and the quiz go
+   to the floor plan. The browser's own Back is used only when the page before is that place,
+   so this button never takes you out of the museum, and never round the rooms you walked
+   through. */
 for (const b of document.querySelectorAll('.back')) {
   b.addEventListener('click', (e) => {
     e.preventDefault();
@@ -264,7 +261,8 @@ for (const b of document.querySelectorAll('.back')) {
     if (last.view === 'exhibit') {
       if (from) history.back();
       else location.hash = `room/${last.ex.room}`;
-    } else if (from?.view === 'lobby') history.back();
+    } else if (last.view === 'compare' && from) history.back();
+    else if (from?.view === 'lobby') history.back();
     else location.hash = '';
   });
 }

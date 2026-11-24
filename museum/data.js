@@ -519,3 +519,24 @@ export const EXHIBITS = [
 ];
 
 export const byId = Object.fromEntries(EXHIBITS.map((e) => [e.id, e]));
+
+/* Families to compare side by side (#compare/violins, compare.js), in the order they stand
+   there: roughly from small and high to big and low. Every exhibit is in one. */
+export const GROUPS = [
+  { id: 'violins', name: 'The violin family', short: 'Violin family', members: ['violin', 'viola', 'cello', 'bass'],
+    about: 'Four instruments built the same way, from small to big. The bigger the instrument, the longer and thicker its strings, and the lower it plays.' },
+  { id: 'plucked', name: 'Plucked strings', short: 'Plucked strings', members: ['ukulele', 'banjo', 'guitar', 'electric-guitar', 'electric-bass', 'harp'],
+    about: 'Strings plucked with a finger or a pick. Most ring from a hollow wooden body, the banjo from a drumhead, and the electric ones through an amplifier.' },
+  { id: 'woodwinds', name: 'Woodwinds', short: 'Woodwinds', members: ['flute', 'oboe', 'clarinet', 'saxophone', 'bassoon'],
+    about: 'A tube of air that rings when you blow across an edge, like the flute, or through a reed, like all the others. The longer the tube, the lower it plays.' },
+  { id: 'brass', name: 'Brass', short: 'Brass', members: ['trumpet', 'horn', 'trombone', 'tuba'],
+    about: 'Each is one long tube, coiled up, that your buzzing lips make ring. Unwound, the tuba’s tube is nearly four times as long as the trumpet’s.' },
+  { id: 'keys', name: 'Keys and bars', short: 'Keys and bars', members: ['kalimba', 'glockenspiel', 'xylophone', 'marimba', 'piano', 'organ'],
+    about: 'Every note has its own key, bar or tine, set out in a row from low to high. Strike one, press it or pluck it, and out comes its note.' },
+  { id: 'drums', name: 'Drums', short: 'Drums', members: ['bongos', 'snare', 'congas', 'timpani', 'bassdrum', 'drums', 'log-drum'],
+    about: 'A skin stretched over a shell and struck with a stick or a hand. The bigger and looser the skin, the lower the drum. The log drum has no skin: its wooden tongues ring instead.' },
+  { id: 'bells', name: 'Shakers, bells and cymbals', short: 'Shakers and bells', members: ['shaker', 'cabasa', 'claves', 'triangle', 'tambourine', 'sleigh-bells', 'cowbell', 'guiro', 'agogo', 'cymbals', 'gong'],
+    about: 'Percussion from all round the world, shaken, scraped or struck. None of them plays a tune: they keep the beat, and add a jingle, a click or a crash.' },
+];
+
+export const groupOf = (id) => GROUPS.find((g) => g.members.includes(id));
