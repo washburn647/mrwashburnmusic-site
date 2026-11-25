@@ -69,3 +69,8 @@ For Dancing Time (WebP, which keeps a photo's shading better than PNG):
                     https://www.inaturalist.org/observations/79493816
   flamingo.webp     Flamingo, photo by hllrnnr, iNaturalist photo 456115764, CC0.
                     https://www.inaturalist.org/observations/254621857
+
+  For Bedtime:
+  owl-jug.webp      Owl, Germany or Switzerland, 1540 (stoneware jug; the head is its lid).
+                    Cleveland Museum of Art 1950.370 (Nanny Hoo). Cut out by hand, the
+                    bottom of the jug cropped off.  https://clevelandart.org/art/1950.370

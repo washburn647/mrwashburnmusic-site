@@ -4,8 +4,8 @@
    often and Speak/Sing It most, then one of that task's stimuli for the step. It also keeps
    the learner near 80% success (flow). */
 
-import { STEPS, patternsFor, byId } from './steps.js';
-import { tasksAt, cellOf, stepsOf, taskKey } from './tasks.js';
+import { STEPS, patternsFor, byId, MAX_TONAL_STEP } from './steps.js';
+import { tasksAt, cellOf, stepsOf, taskKey, usesMic, taskById } from './tasks.js';
 
 export const TIERS = [0, 3, 6, 10, 15]; // combo needed for each groove layer
 export const TIER_NAMES = ['', 'Groovy', 'Hot', 'On fire', 'Legendary'];
@@ -22,10 +22,19 @@ export function levelOf(xp) {
 }
 
 const ease = (s, target, rate) => s + (target - s) * rate;
-const features = (p) => [...p.cells.flatMap((c, i) => (c === 'ee' ? [`ee${i}`] : [])), `n${p.cells.filter((c) => c === 'ee').length}`];
+// What a pattern is made of, for weak spots: where its du-des are, or its tone steps (re-mi).
+const features = (p) => (p.kind === 'tonal'
+  ? [...p.tones.slice(1).map((t, i) => `${p.tones[i]}-${t}`), `from-${p.tones[0]}`]
+  : [...p.cells.flatMap((c, i) => (c === 'ee' ? [`ee${i}`] : [])), `n${p.cells.filter((c) => c === 'ee').length}`]);
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
-export function makeDirector(st) {
+/* kind: 'rhythm' (Unit 1) or 'tonal' (melodic runs, Unit 4): each keeps its own progress,
+   the tonal one in st.mel, with the same fields. */
+export function makeDirector(root, kind = 'rhythm') {
+  const tonal = kind === 'tonal';
+  const st = tonal ? (root.mel ||= { frontier: 1, steps: {}, tasks: {}, pat: {}, feat: {} }) : root;
+  const top = tonal ? MAX_TONAL_STEP : 12;
+  const SET = STEPS.slice(1, top + 1);
   const recent = []; // last results, true/false
   const lastPatterns = [];
   const retries = []; // { step, task, id, due }
@@ -33,7 +42,7 @@ export function makeDirector(st) {
 
   const step = (n) => (st.steps[n] ||= { s: 0, n: 0, fast: 0, mastered: false });
   const task = (id, n) => ((st.tasks ||= {})[taskKey(id, n)] ||= { s: 0, n: 0 });
-  const mastered = () => STEPS.slice(1).filter((s) => step(s.n).mastered).map((s) => s.n);
+  const mastered = () => SET.filter((s) => step(s.n).mastered).map((s) => s.n);
 
   function flow() {
     const last = recent.slice(-8);
@@ -41,7 +50,7 @@ export function makeDirector(st) {
   }
 
   function choosePattern(stepN) {
-    const ids = patternsFor(STEPS[stepN].set);
+    const ids = patternsFor(STEPS[stepN].set, kind);
     const fresh = ids.filter((id) => !lastPatterns.includes(id));
     const list = fresh.length ? fresh : ids;
     // Weaker patterns and features come up more.
@@ -60,9 +69,9 @@ export function makeDirector(st) {
   /* A task the step uses: Speak/Sing It twice as often (it's the fundamental one), and any
      task that's weak at this step more often. */
   function chooseTask(stepN, noSay) {
-    const all = tasksAt(stepN);
-    const list = noSay && all.length > 1 ? all.filter((t) => t.id !== 'say') : all;
-    const ws = list.map((t) => (t.id === 'say' ? 2 : 1) * (1.25 - task(t.id, stepN).s / 100));
+    const all = tasksAt(stepN, kind);
+    const list = noSay && all.length > 1 ? all.filter((t) => !usesMic(t.id)) : all;
+    const ws = list.map((t) => (usesMic(t.id) ? 2 : 1) * (1.25 - task(t.id, stepN).s / 100));
     let r = Math.random() * ws.reduce((a, b) => a + b, 0);
     for (let i = 0; i < list.length; i++) if ((r -= ws[i]) <= 0) return list[i].id;
     return list[list.length - 1].id;
@@ -80,6 +89,9 @@ export function makeDirector(st) {
   }
 
   return {
+    kind,
+    top,
+    frontier: () => st.frontier,
     flow,
     mastered,
     step,
@@ -87,7 +99,9 @@ export function makeDirector(st) {
        one step. forceTask: only this task (a workshop test); with force too, when it fits.
        noSay: no Speak/Sing It (the mic is off). */
     next({ warm = false, force = null, forceTask = null, noSay = false } = {}) {
-      if (noSay && forceTask === 'say') forceTask = null;
+      if (forceTask && (taskById(forceTask)?.kind || 'rhythm') !== kind) forceTask = null;
+      if (noSay && usesMic(forceTask)) forceTask = null;
+      if (force > top) force = top;
       played++;
       if (forceTask && !(force && cellOf(forceTask, force))) force = stepFor(forceTask);
       const due = !force && retries.findIndex((r) => r.due <= played);
@@ -97,7 +111,7 @@ export function makeDirector(st) {
       }
       const frontier = force || st.frontier;
       const done = mastered().filter((n) => n !== frontier);
-      const weak = STEPS.slice(1, frontier).filter((s) => !step(s.n).mastered && step(s.n).n > 0).map((s) => s.n);
+      const weak = SET.slice(0, frontier - 1).filter((s) => !step(s.n).mastered && step(s.n).n > 0).map((s) => s.n);
       let n;
       const r = Math.random();
       if (force) n = force;
@@ -131,7 +145,7 @@ export function makeDirector(st) {
       // A miss comes back a few games later: the same pattern and task, a fresh stimulus.
       if (!right && !item.retry) retries.push({ step: item.step, task: item.task, id, due: played + 3 + Math.floor(Math.random() * 3) });
       // A step is mastered at strength 80+, 10+ graded items, and 3 right at 108 or faster.
-      const fastNeed = st.mookie ? 0 : 3;
+      const fastNeed = root.mookie ? 0 : 3;
       if (!st8.mastered && st8.s >= 80 && st8.n >= 10 && st8.fast >= fastNeed) {
         st8.mastered = true;
         return { mastered: item.step };
@@ -140,7 +154,7 @@ export function makeDirector(st) {
     },
     /* At a break: the frontier moves on when its step is mastered. */
     advance() {
-      if (st.frontier < 12 && step(st.frontier).mastered) {
+      if (st.frontier < top && step(st.frontier).mastered) {
         st.frontier++;
         return st.frontier;
       }

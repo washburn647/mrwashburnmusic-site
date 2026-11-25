@@ -13,7 +13,7 @@ import * as snd from '/musician-maker/sound.js';
 import { makeClock } from '/musician-maker/clock.js';
 import { GAMES } from '/musician-maker/games.js';
 import * as OPT from '/musician-maker/options.js';
-import { STEPS, ALL, onsets } from '/musician-maker/steps.js';
+import { STEPS, ALL, MALL, onsets, toneHeight, MAX_TONAL_STEP } from '/musician-maker/steps.js';
 import { TIER_NAMES } from '/musician-maker/director.js';
 import { TASKS, allTaskKeys } from '/musician-maker/tasks.js';
 import { introFor } from '/musician-maker/intro.js';
@@ -102,10 +102,18 @@ async function call() {
     if (i % 2) i++;
     t = c.timeOf(i);
   }
-  const p = ALL[Math.floor(Math.random() * ALL.length)];
-  snd.call(p, 'neutral', t, spb);
-  onsets(p).forEach((o, i) => later(ctx, t + o.b * spb, () => bench.api?.onCall(i, null)));
+  // A melodic game (or a melodic run picked below) hears a do re mi tune on its tuned instrument.
+  const g = game();
+  const tonal = runOf(g) === 'tonal';
+  const list = tonal ? MALL : ALL;
+  const p = list[Math.floor(Math.random() * list.length)];
+  if (tonal) snd.callTonal(p, 'instrument', t, spb, g.tune || g.kit.tune?.sound, snd.doOf(snd.grooveNow()?.key));
+  else snd.call(p, 'neutral', t, spb);
+  onsets(p).forEach((o, i) => later(ctx, t + o.b * spb, () => bench.api?.onCall(i, null, tonal ? { tone: o.tone, up: toneHeight(o.tone) } : null)));
 }
+
+/* Which runs a game is tried and tested in: its only one, or the one picked in Test play. */
+const runOf = (g) => (g.modes.length > 1 ? (test.mode === 'tonal' ? 'tonal' : 'rhythm') : g.modes[0]);
 
 async function tap() {
   const ctx = await ready();
@@ -226,6 +234,9 @@ function optionsCard() {
   const playIt = async () => { const ctx = await ready(); snd.hit(g.play, ctx.currentTime, 0.9); };
   const playSel = h('select', { 'aria-label': 'Instrument sound', onchange: (e) => { o.play = e.target.value; changed(); playIt(); } },
     ...snd.HITS.map((n) => h('option', { value: n, selected: n === o.play }, `${labels[n] || n}${n === g.basePlay ? ' (its own)' : ''}`)));
+  const tuneIt = async () => { const ctx = await ready(); [0, 2, 4].forEach((k, i) => snd.note(o.tune, 60 + k, ctx.currentTime + i * 0.3, 0.5, 0.5)); };
+  const tuneSel = g.kit.tune ? h('select', { 'aria-label': 'Tuned instrument sound', onchange: (e) => { o.tune = e.target.value; changed(); tuneIt(); } },
+    ...snd.TUNED.map((n) => h('option', { value: n, selected: n === o.tune }, `${labels[n] || n}${n === g.baseTune ? ' (its own)' : ''}`))) : null;
   return h('section', { class: 'card' },
     h('div', { class: 'bar' },
       h('h2', { class: 'grow' }, 'Options'),
@@ -240,8 +251,10 @@ function optionsCard() {
     gagChips(g, o, 'fail'),
     h('h3', {}, `Tap It: ${g.kit.object.icon} ${g.kit.object.name}`),
     h('div', { class: 'try' }, tapSel, h('button', { onclick: tap }, '▶')),
-    h('h3', {}, `Play It: ${g.kit.instrument.icon} ${g.kit.instrument.name}`),
-    h('div', { class: 'try' }, playSel, h('button', { onclick: playIt }, '▶')));
+    g.modes.includes('rhythm') ? h('h3', {}, `Play It: ${g.kit.instrument.icon} ${g.kit.instrument.name}`) : null,
+    g.modes.includes('rhythm') ? h('div', { class: 'try' }, playSel, h('button', { onclick: playIt }, '▶')) : null,
+    tuneSel ? h('h3', {}, `Play It, melodic: ${g.kit.tune.icon} ${g.kit.tune.name}`) : null,
+    tuneSel ? h('div', { class: 'try' }, tuneSel, h('button', { onclick: tuneIt }, '▶')) : null);
 }
 
 /* ---------- test play ---------- */
@@ -255,6 +268,7 @@ function testUrl() {
   if (test.pace === 'mookie') q.set('pace', 'mookie');
   if (test.intros === 'all') q.set('intros', 'all');
   if (test.input === 'mic') q.set('input', 'mic');
+  if (runOf(game()) === 'tonal' && game().modes.length > 1) q.set('mode', 'tonal');
   q.set('groove', test.groove);
   return `/musician-maker/?${q}`;
 }
@@ -266,17 +280,20 @@ function testCard() {
   const grooveSel = h('select', { onchange: (e) => set('groove')(e.target.value) },
     h('option', { value: 'mix', selected: test.groove === 'mix' }, 'Mix: a new one each lap'),
     ...snd.grooveList('2/4').map((x) => h('option', { value: x.id, selected: x.id === test.groove }, x.name)));
+  const kind = runOf(g);
+  const top = kind === 'tonal' ? MAX_TONAL_STEP : 12;
   return h('section', { class: 'card' },
     h('h2', {}, 'Test play'),
     h('div', { class: 'test-grid' },
+      g.modes.length > 1 ? h('label', {}, 'Run', seg({ rhythm: 'Rhythm', tonal: 'Melodic' }, kind, (v) => { test.task = ''; if (v === 'tonal' && Number(test.step) > MAX_TONAL_STEP) test.step = ''; set('mode')(v); drawBench(); })) : null,
       h('label', {}, 'Steps',
         h('select', { onchange: (e) => set('step')(e.target.value) },
           h('option', { value: '', selected: !test.step }, 'From my progress'),
-          ...STEPS.slice(1).map((s) => h('option', { value: String(s.n), selected: String(s.n) === String(test.step) }, `${s.n}. ${s.name}`)))),
+          ...STEPS.slice(1, top + 1).map((s) => h('option', { value: String(s.n), selected: String(s.n) === String(test.step) }, `${s.n}. ${s.name}`)))),
       h('label', {}, 'Task',
         h('select', { onchange: (e) => set('task')(e.target.value) },
           h('option', { value: '', selected: !test.task }, 'Any the step uses'),
-          ...TASKS.map((t) => h('option', { value: t.id, selected: t.id === test.task }, t.name)))),
+          ...TASKS.filter((t) => t.kind === kind).map((t) => h('option', { value: t.id, selected: t.id === test.task }, t.name)))),
       h('label', {}, 'Tempo', seg({ climb: '92 → 126', 92: '92', 108: '108', 126: '126' }, test.tempo, set('tempo'))),
       g.bossName ? h('label', {}, 'Start with', seg({ games: 'Games', boss: g.bossName }, test.start, set('start'))) : null,
       h('label', {}, 'Pace', seg({ normal: 'Normal', mookie: 'Mookie mode' }, test.pace, set('pace'))),
@@ -290,7 +307,7 @@ function testCard() {
 /* ---------- task intros (musician-maker/intro.js), shared by every game ---------- */
 
 function introsCard() {
-  const keys = allTaskKeys();
+  const keys = [...allTaskKeys(), ...allTaskKeys('tonal')];
   let key = keys.includes(test.intro) ? test.intro : keys[0];
   const url = () => `/musician-maker/?intro=${key}&game=${gameId}`;
   const link = h('a', { class: 'button primary', href: url() }, 'Preview');
@@ -305,7 +322,7 @@ function introsCard() {
     h('h2', {}, 'Task intros'),
     h('div', { class: 'try' },
       h('select', { 'aria-label': 'Task and step', onchange: (e) => { key = e.target.value; test.intro = key; keep(); draw(); } },
-        ...keys.map((k) => { const it = introFor(k); return h('option', { value: k, selected: k === key }, `${it.task.name} · ${it.step.n}. ${it.step.name}`); })),
+        ...keys.map((k) => { const it = introFor(k); return h('option', { value: k, selected: k === key }, `${it.task.name}${it.task.kind === 'tonal' ? ' (melodic)' : ''} · ${it.step.n}. ${it.step.name}`); })),
       link),
     about);
 }

@@ -4,7 +4,7 @@
 
 Checks the file the workshop's "Save for site" downloads (each game a known id, with stream
 and boss on or off, lists of win and fail gags, a tap sound the game loads, and optionally
-an instrument sound for Play It) and writes it
+an instrument sound for Play It and a tuned one for melodic runs) and writes it
 to musician-maker/games.json, one game per line. At least one game must stay in the stream.
 """
 
@@ -44,6 +44,7 @@ def main():
     known = known_games()
     src = open(os.path.join(MM, 'sound.js'), encoding='utf-8').read()
     taps = set(re.findall(r"'([a-z0-9-]+)'", re.search(r'export const HITS = \[(.*?)\];', src, re.S).group(1)))
+    tuned = set(re.findall(r"'([a-z0-9-]+)'", re.search(r'export const TUNED = \[(.*?)\];', src, re.S).group(1)))
     for gid, o in games.items():
         if gid not in known:
             raise SystemExit(f'{gid}: no game with that id')
@@ -60,6 +61,8 @@ def main():
             raise SystemExit(f'{gid}: no tap sound "{o.get("tap")}"')
         if 'play' in o and o['play'] not in taps:
             raise SystemExit(f'{gid}: no instrument sound "{o["play"]}"')
+        if o.get('tune') is not None and o['tune'] not in tuned:
+            raise SystemExit(f'{gid}: no tuned instrument sound "{o["tune"]}"')
     if not any(o['stream'] for o in games.values()):
         raise SystemExit('At least one game has to stay in the stream')
     lines = ',\n'.join(f'  {json.dumps(gid)}: {json.dumps(o, ensure_ascii=False)}' for gid, o in games.items())

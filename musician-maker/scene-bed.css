@@ -1,0 +1,186 @@
+/* Bedtime (scene-bed.js): a bedroom at night. Shares the comic lettering, bubbles, cutaways,
+   googly eyes and sticker photos of the other scenes (scenes.css, the ms- classes).
+   --u is 1% of the stage height, or less on a tall narrow stage, so the room still fits. */
+
+.scene-bd { container-type: size; overflow: hidden; isolation: isolate; --u: min(1cqh, .9cqw);
+  --wall: #2c3566; --wall2: #36407a; --dot: rgba(255, 241, 184, .18); --floor: #6b4a3a; --floor2: #5b3e31;
+  --wood: #b07a4a; --wood-dark: #7d532e; --blanket: #5e9de0; --band: #fff; --dots: #fff;
+  --pillow: #f4f1ea; --frame: #e9dcc0; --hall: #0d0d14; --sky: #16204a; --rug: #c4626b;
+  background: var(--wall); }
+.bd-cam { position: absolute; inset: 0; }
+.bd-wall { position: absolute; inset: 0 -40% 0 0;
+  background: radial-gradient(circle, var(--dot) 2px, transparent 3px) 0 0 / 34px 34px,
+    linear-gradient(180deg, var(--wall2), var(--wall)); }
+.bd-floor { position: absolute; left: 0; right: -40%; bottom: 0; height: 22%;
+  background: repeating-linear-gradient(90deg, var(--floor) 0 14%, var(--floor2) 14% 14.6%); box-shadow: inset 0 6px 0 rgba(0, 0, 0, .25); }
+.bd-rug { position: absolute; left: 30%; bottom: 3%; width: 36%; height: 9%; border-radius: 50%; background: var(--rug);
+  box-shadow: inset 0 0 0 calc(1.2 * var(--u)) rgba(255, 255, 255, .25); }
+
+/* ---------- the window, the mobile, the night light ---------- */
+.bd-window { position: absolute; left: 3.5%; top: 5%; height: 29%; aspect-ratio: 100 / 120; }
+.bd-window svg { width: 100%; height: 100%; display: block; }
+.bd-sky { fill: var(--sky); }
+.bd-mull { stroke: var(--frame); stroke-width: 4; }
+.bd-sash { fill: none; stroke: var(--frame); stroke-width: 6; }
+.bd-twinkle circle { animation: twinkle 2.4s ease-in-out infinite alternate; }
+.bd-twinkle circle:nth-child(2n) { animation-delay: -1.2s; }
+@keyframes twinkle { to { opacity: .2; } }
+.scene-bd[data-tier="4"] .bd-aurora { opacity: .7; transition: opacity .6s; animation: aurora 3s ease-in-out infinite alternate; }
+@keyframes aurora { to { transform: translateY(-6px) skewX(6deg); } }
+.bd-mobile { position: absolute; left: 21%; top: 0; height: 20%; aspect-ratio: 120 / 90; transform-origin: 50% 0; }
+.bd-mobile svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.bd-mobile .mb-a, .bd-mobile .mb-b, .bd-mobile .mb-c { transform-box: view-box; animation: dangle 1.6s ease-in-out infinite alternate; }
+.bd-mobile .mb-a { transform-origin: 20px 22px; } .bd-mobile .mb-b { transform-origin: 60px 18px; animation-delay: -.5s; } .bd-mobile .mb-c { transform-origin: 100px 22px; animation-delay: -1s; }
+.bd-nightlight { position: absolute; left: 69%; bottom: 27%; width: calc(4 * var(--u)); aspect-ratio: 1; border-radius: 50% 50% 20% 20%; background: #fff6c8;
+  box-shadow: 0 0 calc(6 * var(--u)) calc(2 * var(--u)) rgba(255, 230, 140, .45); --g: rgba(255, 230, 140, .45); }
+.bd-nightlight.glow { animation: nl-glow .5s ease-out; }
+@keyframes nl-glow { 30% { box-shadow: 0 0 calc(10 * var(--u)) calc(4 * var(--u)) rgba(255, 230, 140, .7); } }
+.bd-nightlight[data-hue="1"] { background: #ffc8e6; } .bd-nightlight[data-hue="2"] { background: #c8e6ff; } .bd-nightlight[data-hue="3"] { background: #d8ffc8; }
+.bd-glowstars { position: absolute; inset: 0 0 60% 0; pointer-events: none; }
+.bd-glowstars i { position: absolute; width: calc(2.4 * var(--u)); aspect-ratio: 1; background: #d8ff9a; opacity: 0; transition: opacity .3s;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); filter: drop-shadow(0 0 4px #d8ff9a); }
+.bd-glowstars i.on { opacity: .9; }
+.bd-glowstars i:nth-child(1) { left: 28%; top: 10%; } .bd-glowstars i:nth-child(2) { left: 52%; top: 6%; } .bd-glowstars i:nth-child(3) { left: 63%; top: 18%; }
+.bd-glowstars i:nth-child(4) { left: 31%; top: 30%; } .bd-glowstars i:nth-child(5) { left: 58%; top: 34%; } .bd-glowstars i:nth-child(6) { left: 70%; top: 8%; }
+.bd-glowstars i:nth-child(7) { left: 25%; top: 50%; } .bd-glowstars i:nth-child(8) { left: 47%; top: 44%; } .bd-glowstars i:nth-child(9) { left: 66%; top: 46%; }
+
+/* ---------- the doorway and the hall ---------- */
+.bd-hall { position: absolute; left: 75%; bottom: 22%; width: 18%; height: 62%; background: var(--hall); overflow: hidden; }
+.bd-hall-light { position: absolute; right: 10%; top: 20%; width: 30%; height: 60%; background: radial-gradient(ellipse, rgba(255, 220, 150, .18), transparent 70%);
+  transition: opacity .3s; }
+.scene-bd[data-come="2"] .bd-hall-light, .scene-bd[data-come="3"] .bd-hall-light { opacity: 1.6; filter: brightness(1.5); }
+.bd-wall-r { position: absolute; left: 93%; right: -40%; bottom: 22%; top: 0; background: inherit;
+  background: radial-gradient(circle, var(--dot) 2px, transparent 3px) 0 0 / 34px 34px, linear-gradient(180deg, var(--wall2), var(--wall)); z-index: 1; }
+.bd-frame { position: absolute; left: calc(75% - 1.6 * var(--u)); bottom: 22%; width: calc(18% + 3.2 * var(--u)); height: calc(62% + 1.6 * var(--u));
+  border: calc(1.6 * var(--u)) solid var(--frame); border-bottom: 0; box-sizing: border-box; z-index: 2; pointer-events: none;
+  box-shadow: inset 0 0 0 calc(.5 * var(--u)) rgba(0, 0, 0, .25); }
+.bd-dustbunny { position: absolute; left: 110%; bottom: 4%; width: 22%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #bdb6a6, #8c8577 70%); box-shadow: 0 0 0 3px rgba(200, 190, 170, .4); animation: bunny 1.6s linear forwards; }
+@keyframes bunny { to { left: -30%; transform: rotate(-720deg); } }
+.bd-tail { position: absolute; right: -20%; bottom: 10%; width: 55%; height: 8%; border-radius: 999px 0 0 999px; background: #000;
+  box-shadow: 0 0 0 2px #2a2a33; transform-origin: 100% 50%; animation: tail-past 1.2s ease-in-out forwards; }
+@keyframes tail-past { 0% { transform: translateX(0) rotate(0); } 40% { transform: translateX(-40%) rotate(-20deg); } 60% { transform: translateX(-40%) rotate(10deg); } 100% { transform: translateX(10%) rotate(-10deg); } }
+
+/* ---------- Nanny Hoo on the nightstand ---------- */
+.bd-stand { position: absolute; left: 5%; bottom: 14%; width: 13%; height: 18%; background: var(--wood); border-radius: calc(1 * var(--u));
+  box-shadow: inset 0 calc(2 * var(--u)) 0 var(--wood-dark), inset 0 calc(-1.5 * var(--u)) 0 rgba(0, 0, 0, .2); }
+.bd-stand::after { content: ''; position: absolute; left: 40%; top: 45%; width: 20%; height: 8%; border-radius: 99px; background: var(--wood-dark); }
+.bd-owl { position: absolute; left: 5.5%; bottom: 31.5%; height: 28%; aspect-ratio: 235 / 320; z-index: 1; }
+.bd-owl .o-in { position: absolute; inset: 0; transform-origin: 50% 100%; }
+.bd-owl .ms-photo { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.bd-owl .o-body { clip-path: inset(36% 0 0 0); }
+.bd-owl .o-head { clip-path: inset(0 0 63% 0); transition: transform .08s; transform-origin: 30% 36%; }
+.bd-owl .googly { transition: transform .08s; }
+.bd-owl.talk .o-head, .bd-owl.talk .googly { transform: translateY(-9%) rotate(-6deg); }
+.bd-owl.talk .googly { transform: translate(-50%, -50%) translateY(-55%); }
+.bd-owl.sing .o-in { animation: sing .4s ease-in-out; }
+.bd-owl.bob .o-in { animation: owl-bob .4s ease-out; }
+@keyframes owl-bob { 40% { transform: scaleY(.96) rotate(-2deg); } }
+
+/* ---------- the bed and the learner in it ---------- */
+.bd-bed { position: absolute; left: 20%; bottom: 10%; width: 50%; height: 36%; }
+.bd-bed svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.bd-bed-front { z-index: 3; }
+.bd-wood { fill: var(--wood); stroke: var(--wood-dark); stroke-width: 2; }
+.bd-mattress { fill: #f4f1ea; }
+.bd-pillow { fill: var(--pillow); stroke: rgba(0, 0, 0, .15); stroke-width: 2; }
+.bd-blanket { fill: var(--blanket); stroke: rgba(0, 0, 0, .25); stroke-width: 2; }
+.bd-blanket-band { fill: var(--band); opacity: .85; }
+.bd-blanket-dots { fill: var(--dots); opacity: .55; }
+.bd-bed-front.squish { animation: squish .3s ease-out; }
+@keyframes squish { 40% { transform: scaleY(.95) translateY(2%); } }
+.bd-bed-front.knead { animation: knead .16s ease-out; }
+@keyframes knead { 50% { transform: translateY(1%); } }
+.bd-bed.sag { transform: translateY(4%) scaleY(.94); transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+.bd-kid { position: absolute; left: 25%; bottom: 25%; height: 34%; aspect-ratio: 200 / 220; z-index: 2; transform-origin: 50% 100%; }
+.bd-kid svg { width: 100%; height: 100%; display: block; }
+.bd-kid.hug { animation: hug .5s ease-out; }
+.bd-kid.squash { animation: kid-squash .4s ease-out; }
+.bd-kid.sleepy { transform: rotate(-12deg) translateX(-8%); transition: transform .8s ease-in-out; }
+@keyframes hug { 40% { transform: scale(1.06) rotate(4deg); } }
+@keyframes kid-squash { 30% { transform: scaleY(.85); } }
+
+/* ---------- Mookie ---------- */
+.bd-mookie { left: 130%; bottom: 21%; height: 40%; transition: left .26s cubic-bezier(.3, 1.3, .5, 1); z-index: 0; }
+.scene-bd:not(.boss) .bd-mookie:not(.onbed) { z-index: 0; }
+.bd-mookie.onbed { height: 30%; z-index: 4; transition: none; }
+.bd-mookie.hat { transform-origin: 50% 100%; }
+.bd-mookie.balk { animation: balk .4s ease-out; }
+@keyframes balk { 30% { transform: translateX(6%) rotate(4deg); } }
+.bd-mookie.ear { animation: ear .25s ease-out; }
+@keyframes ear { 50% { transform: translateY(-2%); } }
+.bd-mookie.floor { left: 55%; bottom: 3%; height: 30%; z-index: 4; }
+.bd-sock { position: absolute; left: 4%; top: 46%; width: 30%; transform: rotate(-20deg); }
+.bd-sock.dropped { width: calc(9 * var(--u)); transform: translate(-50%, -50%) rotate(30deg); animation: drop .3s ease-in; }
+@keyframes drop { from { transform: translate(-50%, -120%) rotate(-20deg); } }
+.bd-sock svg { width: 100%; height: auto; display: block; }
+.bd-zzz { position: absolute; left: 44%; top: 28%; z-index: 5; display: flex; gap: 4px; font-weight: 700; color: #cfe2ff; font-size: clamp(14px, 5 * var(--u), 26px);
+  pointer-events: none; opacity: 0; transition: opacity .4s; }
+.bd-zzz.on { opacity: 1; }
+.bd-zzz i { font-style: normal; display: inline-block; opacity: .3; animation: zpop2 1.6s ease-out infinite; }
+.bd-zzz i:nth-child(2) { font-size: 1.3em; animation-delay: .4s; } .bd-zzz i:nth-child(3) { font-size: 1.6em; animation-delay: .8s; }
+.bd-heart { position: absolute; font-style: normal; color: #ff6b8a; font-size: clamp(16px, 6 * var(--u), 30px); transform: translate(-50%, -50%); animation: heart 1.2s ease-out forwards; text-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+@keyframes heart { 0% { opacity: 0; transform: translate(-50%, 0) scale(.4); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -260%) scale(1.2); } }
+
+/* The cat pile and the wrong cat. */
+.bd-piler { left: 34%; bottom: 120%; height: 28%; z-index: 4; transition: bottom .35s cubic-bezier(.5, 0, .7, 1.4); }
+.bd-piler.p1 { left: 50%; }
+.bd-piler.in { bottom: 34%; }
+.bd-piler.p1.in { bottom: 31%; }
+.bd-impostor { left: 130%; bottom: 21%; height: 38%; z-index: 0; transition: left .5s cubic-bezier(.3, 1.2, .5, 1); }
+.bd-impostor.in { left: 76%; }
+
+/* The laundry basket cutaway. */
+.bd-cut { background: #2c3566; }
+.bd-basket { position: absolute; left: 50%; bottom: 4%; width: min(62%, 100cqh); transform: translateX(-50%); }
+.bd-basket svg { width: 100%; height: auto; display: block; }
+.bd-basket-cat { left: 50%; bottom: 26%; height: 58%; transform: translateX(-50%); }
+
+/* ---------- the tune in stars over the bed ---------- */
+.bd-ladder { position: absolute; left: 36%; top: 5%; width: 34%; height: 36%; z-index: 5; pointer-events: none; }
+.bd-star { position: absolute; left: calc(var(--col) * 28% + 4%); bottom: calc(var(--up) * 70%); width: calc(9 * var(--u)); aspect-ratio: 1;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); animation: star-in .25s cubic-bezier(.2, 1.6, .5, 1); }
+.bd-star.call { background: #fff1b8; opacity: .9; filter: drop-shadow(0 0 5px rgba(255, 241, 184, .8)); }
+.bd-star.call::after { content: ''; position: absolute; inset: 22%; background: var(--wall); clip-path: inherit; }
+.bd-star.mine { transform: translate(18%, 8%) scale(.8); background: #f2c94c; filter: drop-shadow(0 0 6px #f2c94c); }
+.bd-star.mine.close { background: #d6dde6; filter: drop-shadow(0 0 4px #d6dde6); }
+.bd-star.mine.off { background: #e5484d; filter: none; }
+@keyframes star-in { from { transform: scale(0) rotate(-40deg); } }
+
+/* ---------- The Bed Hog ---------- */
+.bd-hog { left: 30%; bottom: 26%; height: 44%; z-index: 2; transform-origin: 50% 100%; transition: transform .4s; }
+.bd-hog.lounge { transform: rotate(-8deg) scale(1.15, 1); }
+.bd-hog[data-droop="1"] { transform: rotate(-14deg) scale(1.15, .96); }
+.bd-hog[data-droop="2"] { transform: rotate(-22deg) scale(1.15, .9) translateY(4%); }
+.bd-hog[data-droop="3"], .bd-hog[data-droop="4"] { transform: rotate(-70deg) scale(1.1, .9) translate(-10%, 18%); }
+.bd-hog.rolled { left: 68%; bottom: 3%; height: 28%; transform-origin: 50% 50%; transform: rotate(170deg); transition: left .6s cubic-bezier(.4, 0, .6, 1), bottom .6s cubic-bezier(.5, -0.6, .7, 1), transform .6s, height .6s; z-index: 4; }
+.bd-hog.situp { animation: situp .5s ease-out; }
+@keyframes situp { 30% { transform: rotate(0) scale(1.2) translateY(-8%); } }
+.scene-bd.boss .bd-kid { left: 21%; height: 28%; }
+.scene-bd.boss .bd-zzz { left: 36%; top: 30%; }
+.bd-dogbed { position: absolute; left: 70%; bottom: 2%; width: 20%; z-index: 3; }
+.bd-dogbed svg { width: 100%; height: auto; display: block; }
+.bd-pot { position: absolute; width: calc(10 * var(--u)); transform: translate(-50%, -50%); animation: pot .18s ease-in-out 4 alternate; z-index: 6; }
+.bd-pot svg { width: 100%; height: auto; display: block; }
+@keyframes pot { from { transform: translate(-50%, -50%) rotate(-14deg); } to { transform: translate(-50%, -60%) rotate(14deg); } }
+
+/* ---------- the bedrooms ---------- */
+.scene-bd[data-theme="castle"] { --wall: #4c4f5a; --wall2: #5d606b; --dot: rgba(0, 0, 0, .18); --wood: #8b5a2b; --wood-dark: #5a3818; --blanket: #b3261e; --band: #f2c94c; --dots: #f2c94c; --frame: #9b9fa8; --rug: #2f5d8a; --sky: #1b2240; }
+.scene-bd[data-theme="castle"] .bd-wall { background: linear-gradient(rgba(0, 0, 0, .18) 2px, transparent 2px) 0 0 / 60px 30px, linear-gradient(90deg, rgba(0, 0, 0, .18) 2px, transparent 2px) 0 0 / 60px 60px, linear-gradient(var(--wall2), var(--wall)); }
+.scene-bd[data-theme="castle"] .bd-hall, .scene-bd[data-theme="castle"] .bd-frame { border-radius: 50% 50% 0 0 / 22% 22% 0 0; }
+.scene-bd[data-theme="tent"] { --wall: #5f7a3c; --wall2: #6f8c48; --dot: rgba(255, 255, 255, .08); --floor: #4f6a2c; --floor2: #445e24; --wood: #8a8f98; --wood-dark: #5d6168; --blanket: #e07b2a; --band: #2f5d8a; --dots: #fff; --frame: #3f5226; --rug: #c9a36a; --sky: #0f1838; }
+.scene-bd[data-theme="tent"] .bd-wall { background: linear-gradient(100deg, transparent 49.6%, rgba(0, 0, 0, .2) 50%, transparent 50.4%), linear-gradient(var(--wall2), var(--wall)); }
+.scene-bd[data-theme="tent"] .bd-hall, .scene-bd[data-theme="tent"] .bd-frame { clip-path: polygon(50% 0, 100% 100%, 0 100%); border: 0; }
+.scene-bd[data-theme="tent"] .bd-hall { background: #0a1030; }
+.scene-bd[data-theme="tent"] .bd-window { border-radius: 50%; overflow: hidden; }
+.scene-bd[data-theme="space"] { --wall: #3b4250; --wall2: #4a5262; --dot: rgba(120, 220, 255, .12); --floor: #2a2f3a; --floor2: #232833; --wood: #9aa3ad; --wood-dark: #5f6873; --blanket: #4b3ea8; --band: #7ae0ff; --dots: #7ae0ff; --frame: #c0c8d2; --rug: #1f7a8c; --sky: #05060f; --hall: #06070c; }
+.scene-bd[data-theme="space"] .bd-wall { background: linear-gradient(rgba(0, 0, 0, .25) 2px, transparent 2px) 0 0 / 80px 80px, linear-gradient(90deg, rgba(0, 0, 0, .25) 2px, transparent 2px) 0 0 / 80px 80px, linear-gradient(var(--wall2), var(--wall)); }
+.scene-bd[data-theme="space"] .bd-window { border-radius: 50%; overflow: hidden; aspect-ratio: 1; height: 34%; box-shadow: 0 0 0 calc(1.4 * var(--u)) #c0c8d2; }
+.scene-bd[data-theme="space"] .bd-hall, .scene-bd[data-theme="space"] .bd-frame { border-radius: 30% 30% 12% 12% / 18% 18% 6% 6%; }
+.scene-bd[data-theme="tree"] { --wall: #7a5232; --wall2: #8a6040; --dot: rgba(0, 0, 0, .1); --wood: #5e3c1f; --wood-dark: #3e2610; --blanket: #3f8f4f; --band: #f2e4a6; --dots: #f2e4a6; --frame: #4e3218; --rug: #a8c66c; --sky: #1a2a44; }
+.scene-bd[data-theme="tree"] .bd-wall { background: repeating-linear-gradient(180deg, var(--wall) 0 34px, var(--wall2) 34px 36px); }
+.scene-bd[data-theme="tree"] .bd-window { border-radius: 40% 40% 10% 10%; overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bd-mobile .mb-a, .bd-mobile .mb-b, .bd-mobile .mb-c, .bd-twinkle circle, .bd-zzz i { animation: none; }
+}

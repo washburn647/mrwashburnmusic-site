@@ -4,7 +4,8 @@
    or failing to load falls back to a sampled or synthesized stand-in, so the stream always plays. */
 
 import * as samples from '/assets/sounds/samples.js';
-import { onsets, ALL } from './steps.js';
+import { onsets, ALL, MALL } from './steps.js';
+import { TONES } from '/assets/patterns/patterns.js';
 
 let ctx = null;
 let master = null;
@@ -19,7 +20,9 @@ let G = null; // the groove playing
 
 export const HITS = ['claves', 'log-drum-low', 'log-drum-high', 'bass-drum', 'snare', 'shaker', 'tambourine',
   'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low', 'conga', 'finger-cymbals', 'sleigh-bells'];
-const PITCHED = { bass: [36, 52], horn: [60, 74], marimba: [60, 88], trombone: [40, 55] };
+const PITCHED = { bass: [36, 52], horn: [60, 74], marimba: [60, 88], trombone: [40, 55], harp: [52, 84], xylophone: [60, 89] };
+/* The tuned instruments melodic runs play on (Play It, task 'tune'). 'bowl' is synthesized. */
+export const TUNED = ['harp', 'xylophone', 'marimba', 'bowl'];
 
 export function ac() {
   if (!ctx) {
@@ -52,7 +55,7 @@ export function load() {
       kyle = await samples.takes('kyle');
       // Ahead of time: only the unit's patterns and the cue words. Other units' takes and the
       // narration (line/…) load when they're first played.
-      const unit = new Set(ALL.map((p) => p.id));
+      const unit = new Set([...ALL, ...MALL].map((p) => p.id));
       await Promise.allSettled([kyle.prepare(kyle.patterns.filter((id) => unit.has(id))),
         kyle.prepareCues(kyle.cues.filter((id) => !id.startsWith('line/')))]);
     })(),
@@ -673,6 +676,7 @@ export function hit(name, t, vol = 0.8, dest = fxBus) {
 export function note(name, midi, t, dur, vol = 0.25, dest = fxBus) {
   if (!ctx) return;
   t = Math.max(t, ctx.currentTime);
+  if (name === 'bowl') { bowl(midi, t, vol, dest); return; }
   if (inst[name]?.note) inst[name].note(midi, t, dur, { vol, dest });
   else synth(t, 440 * 2 ** ((midi - 69) / 12), Math.max(dur, 0.1), vol * 0.5, dest);
 }
@@ -702,6 +706,87 @@ export function call(p, kind, t, spb, inst = 'conga') {
   }
 }
 
+/* A gong bowl, struck: a few inharmonic partials that ring on and beat a little. */
+function bowl(midi, t, vol, dest) {
+  const f = 440 * 2 ** ((midi - 69) / 12);
+  [[1, 1, 2.4], [2.71, 0.35, 1.4], [5.15, 0.14, 0.8], [1.004, 0.5, 2.2]].forEach(([k, v, len]) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = f * k;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol * v * 0.9, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + len);
+    o.connect(g).connect(dest || master);
+    o.start(t);
+    o.stop(t + len + 0.05);
+  });
+}
+
+/* A sung note, until Kyle's tonal takes are on the site: a soft voice (buzzy source through
+   two vowel formants, a little vibrato) on "bum" (a b at the start, an m to close) or "oo". */
+function sing(midi, t, dur, vol = 0.5, { bum = false } = {}) {
+  const f = 440 * 2 ** ((midi - 69) / 12);
+  const o = ctx.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(f * (bum ? 0.97 : 0.985), t);
+  o.frequency.exponentialRampToValueAtTime(f, t + 0.06);
+  const vib = ctx.createOscillator();
+  const vg = ctx.createGain();
+  vib.frequency.value = 5.2;
+  vg.gain.setValueAtTime(0, t);
+  vg.gain.linearRampToValueAtTime(f * 0.012, t + dur * 0.6);
+  vib.connect(vg).connect(o.frequency);
+  const out = ctx.createGain();
+  [[bum ? 600 : 420, 8, 1], [bum ? 1050 : 900, 10, 0.45], [2600, 12, 0.12]].forEach(([fq, q, g0]) => {
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = fq;
+    bp.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.value = g0;
+    o.connect(bp).connect(g).connect(out);
+  });
+  // The "m" of "bum": the vowel closes to a hum.
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(bum ? 900 : 3000, t);
+  lp.frequency.linearRampToValueAtTime(bum ? 4000 : 3000, t + 0.03);
+  if (bum) lp.frequency.setTargetAtTime(500, t + dur * 0.55, 0.05);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0, t);
+  env.gain.linearRampToValueAtTime(vol * 4, t + (bum ? 0.02 : 0.05));
+  env.gain.setValueAtTime(vol * 4, t + dur * 0.7);
+  env.gain.linearRampToValueAtTime(0, t + dur);
+  out.connect(lp).connect(env).connect(master);
+  o.start(t);
+  vib.start(t);
+  o.stop(t + dur + 0.05);
+  vib.stop(t + dur + 0.05);
+}
+
+/* Sounding do for melodic runs, from a groove's key (0 = C ... 11 = B): somewhere from A3 to
+   G#4, where kids and grown-ups can both sing do re mi. */
+export const doOf = (key = 0) => 57 + ((((key ?? 0) % 12) + 15) % 12);
+
+/* A tonal call: the pattern sung on "bum" (neutral) or in syllables (Kyle's take moved to the
+   key, or the sung stand-in), on the game's tuned instrument, or syllables with it. Each note
+   is a beat. doMidi: the key (sounding do). */
+export function callTonal(p, kind, t, spb, tuneSound = 'harp', doMidi = 60) {
+  const mid = (tone) => doMidi + TONES[tone];
+  if (kind === 'instrument' || kind === 'syllables+inst') {
+    p.tones.forEach((tone, i) => note(tuneSound, mid(tone), t + i * spb, spb * 0.9, kind === 'instrument' ? 0.6 : 0.3, master));
+    if (kind === 'instrument') return;
+    kind = 'syllables';
+  }
+  const as = kind === 'neutral' ? 'bum' : 'syllables';
+  if (kyle?.has(p.id, as)) {
+    kyle.say(p.id, t, { key: doMidi, as, dest: master });
+    return;
+  }
+  p.tones.forEach((tone, i) => sing(mid(tone), t + i * spb, spb * 0.8, 0.5, { bum: kind === 'neutral' }));
+}
+
 /* Keep a call clear: from `from` to `to` (audio times), every sound but the call and the groove
    (scene effects, gags, wins and misses, transitions, taps) drops almost to silence. The
    groove thins to its pulse at the same time (main.js duck). */
@@ -713,7 +798,11 @@ export function clear(from, to) {
 }
 
 /* A learner's own pattern played back (compose). */
-export function playBack(p, t, spb) {
+export function playBack(p, t, spb, doMidi = 60, tuneSound = 'harp') {
+  if (p.kind === 'tonal') {
+    p.tones.forEach((tone, i) => note(tuneSound, doMidi + TONES[tone], t + i * spb, spb * 0.9, 0.5));
+    return;
+  }
   for (const o of onsets(p)) note('marimba', o.syl === 'du' ? 72 : 76, t + o.b * spb, spb * 0.45, 0.35);
 }
 

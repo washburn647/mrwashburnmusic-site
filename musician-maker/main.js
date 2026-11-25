@@ -9,8 +9,8 @@
 import * as snd from './sound.js';
 import { makeClock } from './clock.js';
 import * as mic from './mic.js';
-import { STEPS, BANDS, UNIT, onsets, sylText, loadMarks, isCreate, shows, bumText } from './steps.js';
-import { TASKS, taskById, taskKey, howTo, tasksAt, stepsOf, allTaskKeys, beatsOf, XP_NO_NOTES, repeatFactor } from './tasks.js';
+import { STEPS, BANDS, UNIT, onsets, sylText, loadMarks, isCreate, shows, bumText, toneHeight, MAX_TONAL_STEP } from './steps.js';
+import { TASKS, taskById, taskKey, howTo, tasksAt, stepsOf, allTaskKeys, beatsOf, XP_NO_NOTES, repeatFactor, usesMic } from './tasks.js';
 import { makeTurn, WHY, NOTE_SVG } from './turn.js';
 import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
@@ -24,6 +24,8 @@ import * as TX from './transitions.js';
 import * as FX from './effects.js';
 import { cueId, PRAISE } from './cues.js';
 import { notation } from '/assets/patterns/notation.js';
+import { toneLabel, TONES } from '/assets/patterns/patterns.js';
+import { toneColor } from './tune.js';
 import * as store from './store.js';
 import * as markup from './markup.js';
 
@@ -41,7 +43,13 @@ const TEST = GAMES.some((g) => g.id === Q.get('test')) ? {
   mookie: Q.get('pace') === 'mookie',
   intros: Q.get('intros') === 'all', // show every task intro again
   mic: Q.get('input') === 'mic',
+  // Melodic: a game that only plays melodic (Bedtime), or &mode=tonal for one that plays both.
+  kind: (() => {
+    const g = GAMES.find((x) => x.id === Q.get('test'));
+    return g.modes.includes('tonal') && (Q.get('mode') === 'tonal' || !g.modes.includes('rhythm')) ? 'tonal' : 'rhythm';
+  })(),
 } : null;
+if (TEST && TEST.kind === 'tonal' && TEST.step > MAX_TONAL_STEP) TEST.step = MAX_TONAL_STEP;
 const WORKSHOP = '/studio/games/';
 let st = store.load();
 if (TEST) {
@@ -52,6 +60,8 @@ if (TEST) {
 }
 st.intro ||= {};
 let dir = makeDirector(st);
+let mdir = makeDirector(st, 'tonal'); // melodic runs
+const remake = () => { dir = makeDirector(st); mdir = makeDirector(st, 'tonal'); };
 let R = null; // the run being played
 loadMarks();
 // Which games play, and their options: games.json for learners, the workshop's draft in a test.
@@ -90,6 +100,16 @@ function h(tag, props = {}, ...kids) {
 /* Syllables with iconic notation above them: a stem over each note, and a beam joining the
    two eighths of a du-de. */
 function sylIcons(p, cls = '') {
+  // A tune: its syllables on a little ladder, each as high as its note, in its colour.
+  if (p.kind === 'tonal') {
+    return h('span', { class: `syl-ic tonal ${cls}`, 'aria-label': sylText(p) },
+      ...p.tones.map((t) => {
+        const b = h('b', { class: 'ic-tone' }, toneLabel(t));
+        b.style.setProperty('--up', toneHeight(t).toFixed(3));
+        b.style.setProperty('--c', toneColor(t));
+        return b;
+      }));
+  }
   return h('span', { class: `syl-ic ${cls}`, 'aria-label': sylText(p) },
     ...p.cells.map((c) => h('span', { class: `ic-beat ${c}` },
       ...(c === 'ee' ? ['du', 'de'] : ['du']).map((w) => h('span', { class: 'ic-note' }, h('i', {}), h('b', {}, w))))));
@@ -97,7 +117,8 @@ function sylIcons(p, cls = '') {
 
 function notes(p) {
   const el = h('div', { class: 'notation' });
-  el.innerHTML = notation(p);
+  // A tune is written in the key it's heard in (do = the run's do), C major otherwise.
+  el.innerHTML = notation(p, p.kind === 'tonal' ? 48 + ((R?.doMidi ?? 60) % 12) : undefined);
   return el;
 }
 
@@ -192,6 +213,7 @@ function title() {
         h('button', { class: 'hero-av', 'aria-label': 'Dress up', onclick: openCloset }, avatar(lookOf(st))),
         h('div', { class: 'rug' })),
       h('button', { class: 'play big-play', onclick: () => startRun() }, h('span', { class: 'tri' }), 'Play'),
+      h('button', { class: 'play melodic-play', onclick: () => startRun({ kind: 'tonal' }) }, h('span', { class: 'mel-ic', 'aria-hidden': 'true' }, '🎵'), 'Melodic'),
       h('button', { class: 'link', onclick: howToPlay }, 'How to play')),
     h('div', { class: 'side' },
       h('div', { class: 'pass' },
@@ -207,7 +229,7 @@ function title() {
           h('span', {}, h('b', {}, String(st.days)), st.days === 1 ? ' day played' : ' days played')),
         st.stickers.length ? h('p', { class: 'stickers' }, st.stickers.join(' ')) : null),
       h('div', { class: 'switches' },
-        toggle('Mookie mode', 'An easier pace', st.mookie, (v) => { st.mookie = v; dir = makeDirector(st); save(); }),
+        toggle('Mookie mode', 'An easier pace', st.mookie, (v) => { st.mookie = v; remake(); save(); }),
         groovePick()),
       h('div', { class: 'to-row' },
         h('button', { class: 'to-closet', 'aria-label': `Dress up: ${st.tokens} music notes`, onclick: openCloset },
@@ -299,7 +321,8 @@ function stepInfo() {
    open while its step is, locked after. */
 function taskState(id, n) {
   if (st.intro[taskKey(id, n)]) return 'met';
-  return n <= st.frontier ? 'open' : 'locked';
+  const tonal = taskById(id).kind === 'tonal';
+  return n <= (tonal ? mdir.frontier() : st.frontier) ? 'open' : 'locked';
 }
 
 const TASK_STATE = { met: '', open: 'Coming up', locked: 'Locked' };
@@ -330,7 +353,7 @@ function progress(view = progressView) {
       st.test ? h('label', {}, 'Record the mic in runs (saves a file for Claude)', seg({ off: 'Off', on: 'On' }, st.recMic ? 'on' : 'off', (v) => { st.recMic = v === 'on'; save(); })) : null,
       st.test ? h('label', {}, 'Mic echo cancelling', seg({ on: 'On', off: 'Off' }, st.echo === false ? 'off' : 'on', (v) => { st.echo = v === 'on'; save(); })) : null,
       st.test ? h('button', { class: 'mini', onclick: lab }, 'Transitions lab') : null,
-      st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); dir = makeDirector(st); progress(); } }, 'Reset all progress') : null),
+      st.test ? h('button', { class: 'mini danger', onclick: () => { st = store.reset(); remake(); progress(); } }, 'Reset all progress') : null),
     sheet));
   if (view === 'tasks') return;
   drawMap(map, info, sheet);
@@ -343,7 +366,7 @@ function taskGrid(sheet) {
     const ns = stepsOf(t.id);
     const met = ns.filter((n) => taskState(t.id, n) === 'met').length;
     return h('div', { class: 'tcard' },
-      h('div', { class: 'tcard-top' }, taskIcon(t), h('b', {}, t.name), h('small', {}, `${met} of ${ns.length}`)),
+      h('div', { class: 'tcard-top' }, taskIcon(t), h('b', {}, t.name, t.kind === 'tonal' ? h('small', { class: 'mel' }, ' · melodic') : null), h('small', {}, `${met} of ${ns.length}`)),
       h('div', { class: 'tsteps' }, ...STEPS.slice(1).map((s) => {
         if (!t.steps[s.n]) return h('span', { class: 'tstep na' });
         const state = taskState(t.id, s.n);
@@ -357,7 +380,7 @@ function taskGrid(sheet) {
 function showTask(sheet, t, n) {
   const s = STEPS[n];
   const state = taskState(t.id, n);
-  const p = dir.task(t.id, n);
+  const p = (t.kind === 'tonal' ? mdir : dir).task(t.id, n);
   const can = state === 'met' || st.test;
   sheet.replaceChildren(...[
     h('button', { class: 'close', 'aria-label': 'Close', onclick: () => sheet.classList.remove('show') }, '×'),
@@ -377,7 +400,8 @@ function showTask(sheet, t, n) {
 async function practise(t, n, intro) {
   scene('progress');
   const key = taskKey(t.id, n);
-  const pool = LINEUP.stream.length ? LINEUP.stream : GAMES;
+  const mine = (list) => list.filter((g) => g.modes.includes(t.kind));
+  const pool = mine(LINEUP.stream).length ? mine(LINEUP.stream) : mine(GAMES);
   const game = pool[Math.floor(Math.random() * pool.length)];
   const card = h('div', { class: 'intro-preview' });
   let micOn = false;
@@ -390,12 +414,12 @@ async function practise(t, n, intro) {
   };
   app.replaceChildren(h('div', { class: 'progress' },
     h('button', { class: 'back', 'aria-label': 'Back', onclick: back }, '‹'), card));
-  if (t.id === 'say') {
+  if (usesMic(t.id)) {
     mic.setEcho(st.echo !== false);
     try { await mic.start(snd.ac()); micOn = true; } catch { micOn = false; }
   }
   if (!card.isConnected) { if (micOn) mic.stop(); return; }
-  const it = showIntro(card, key, { h, notes, sylIcons, mic: micOn }, back, { game, practice: !intro });
+  const it = showIntro(card, key, { h, notes, sylIcons, mic: micOn, pitches: mic.pitches }, back, { game, practice: !intro });
   if (micOn) {
     mic.setTempo(84);
     mic.listen((time) => it.mic(time));
@@ -605,7 +629,9 @@ async function startRun(opts = {}) {
   }
   const recording = micOn && st.test && st.recMic;
   if (recording) mic.recordStart();
+  const kind = TEST ? TEST.kind : opts.kind === 'tonal' ? 'tonal' : 'rhythm';
   R = {
+    kind, dir: kind === 'tonal' ? mdir : dir, doMidi: 60,
     ctx, clock: makeClock(ctx), force: opts.force || TEST?.step || null, lap: 0, plan: [], idx: 0,
     combo: 0, runCombo: 0, runXP: 0, setXP: 0, runTokens: 0, setTokens: 0, setMisses: 0, setGames: 0, tempo: LADDER()[0],
     lastGame: null, micOn, paused: false, ended: false, win: null, api: null,
@@ -632,8 +658,15 @@ async function startRun(opts = {}) {
   beginLap();
 }
 
+/* The games and bosses of this run's kind: rhythm runs or melodic ones (game.modes). */
+const streamGames = () => {
+  const list = LINEUP.stream.filter((g) => g.modes.includes(R.kind));
+  return list.length ? list : GAMES.filter((g) => g.modes.includes(R.kind));
+};
+const bossGames = () => LINEUP.bosses.filter((g) => g.modes.includes(R.kind));
+
 function lapPlan() {
-  const boss = LINEUP.bosses.length ? [{ type: 'boss' }] : [];
+  const boss = bossGames().length ? [{ type: 'boss' }] : [];
   // A workshop test can go straight to the boss.
   if (TEST?.boss && boss.length) return [...boss, { type: 'intermission' }];
   const per = st.mookie ? 3 : 4;
@@ -647,7 +680,7 @@ function lapPlan() {
 }
 
 /* Every step's strength now, to show what a set or lap added. */
-const strengths = () => Object.fromEntries(STEPS.slice(1).map((s) => [s.n, dir.step(s.n).s]));
+const strengths = () => Object.fromEntries(STEPS.slice(1, R.dir.top + 1).map((s) => [s.n, R.dir.step(s.n).s]));
 
 function beginLap() {
   R.plan = lapPlan();
@@ -658,6 +691,8 @@ function beginLap() {
   R.setSteps = new Set();
   const g = pickGroove();
   if (g && snd.grooveList(UNIT.meter).length > 1) R.news.push(`Groove: ${g.name}`);
+  // Melodic runs sing in the groove's key.
+  R.doMidi = snd.doOf(snd.grooveNow()?.key);
   countIn();
 }
 
@@ -690,7 +725,7 @@ function next(B) {
 function setTempo(set, B) {
   let bpm = LADDER()[set];
   // Struggling: hold the rung instead of climbing.
-  if (set > 0 && dir.flow() < 0.65) bpm = Math.min(bpm, R.tempo);
+  if (set > 0 && R.dir.flow() < 0.65) bpm = Math.min(bpm, R.tempo);
   R.tempo = bpm;
   R.clock.setBpm(bpm, B);
   later(R.clock.timeOf(B), () => mic.setTempo(bpm));
@@ -787,8 +822,9 @@ function addTokens(n) {
 }
 
 function pickGame() {
-  const others = LINEUP.stream.filter((g) => g !== R.lastGame);
-  const list = others.length ? others : LINEUP.stream;
+  const games = streamGames();
+  const others = games.filter((g) => g !== R.lastGame);
+  const list = others.length ? others : games;
   const g = list[Math.floor(Math.random() * list.length)];
   R.lastGame = g;
   return g;
@@ -803,7 +839,7 @@ function gameSeg(B, seg) {
   const warm = R.lap === 0 && seg.set === 0 && !R.force;
   const pend = R.pending;
   R.pending = null;
-  const item = pend?.item || dir.next({ warm, force: R.force, forceTask: TEST?.task, noSay: !R.micOn });
+  const item = pend?.item || R.dir.next({ warm, force: R.force, forceTask: TEST?.task, noSay: !R.micOn });
   const game = pend?.game || pickGame();
   // A task's first game at a step: the stream stops for its intro, then this game comes next.
   if (!st.intro[taskKey(item.task, item.step)]) { introBreak(B, item, game); return; }
@@ -828,7 +864,7 @@ function gameSeg(B, seg) {
   });
   R.groove.duckFrom = T(c0);
   // Only Say It listens: while the mic is on, the groove stays soft through the turn.
-  R.groove.duckUntil = R.micOn && item.task === 'say' ? T(p0) : T(r0);
+  R.groove.duckUntil = R.micOn && usesMic(item.task) ? T(p0) : T(r0);
   // Nothing but the call (and a soft pulse) while it plays: no gags, scene sounds or taps.
   snd.clear(T(c0), R.groove.duckUntil);
   R.groove.micFrom = T(r0) - 0.3 * spb;
@@ -848,6 +884,7 @@ function gameSeg(B, seg) {
     result(item, res, { onWin: () => R.api.win(), onFail: () => R.api.fail(), t: T(p0) });
     if (create && res.right && res.got) {
       if (item.task === 'note') snd.playBack(res.got, T(p0 + 2), spb);
+      if (res.got.kind === 'tonal' && item.task === 'sing') snd.playBack(res.got, T(p0 + 0.5), spb, R.doMidi, game.tune || game.kit.tune?.sound);
       R.dom.prompt.replaceChildren(h('div', { class: 'answer' }, h('span', {}, 'Your pattern'), ...answerOf(res.got, item.step)));
     }
   });
@@ -859,9 +896,12 @@ function gameSeg(B, seg) {
 function callOut(item, game, t, spb) {
   const hear = item.stim.hear;
   if (!hear) return;
-  snd.call(item.pattern, hear, t, spb, game.play);
+  const tonal = item.pattern.kind === 'tonal';
+  if (tonal) snd.callTonal(item.pattern, hear, t, spb, game.tune || game.kit.tune?.sound, R.doMidi);
+  else snd.call(item.pattern, hear, t, spb, game.play);
   const syl = hear.startsWith('syllables');
-  onsets(item.pattern).forEach((o, i) => later(t + o.b * spb, () => R.api.onCall(i, syl ? o.syl : null)));
+  // A tune's notes tell the scene how high each one is (0 lowest to 1 highest of the unit).
+  onsets(item.pattern).forEach((o, i) => later(t + o.b * spb, () => R.api.onCall(i, syl ? o.syl : null, tonal ? { tone: o.tone, up: toneHeight(o.tone) } : null)));
   if (item.task === 'du' && item.step === 2) fingerShows(item.pattern, t, spb);
 }
 
@@ -896,11 +936,13 @@ function fingerShows(pattern, t, spb) {
    controls and the beat lane. */
 function turnUi(tResp, spb) {
   return {
-    h, mic: R.micOn, tResp, spb,
+    h, mic: R.micOn, tResp, spb, doMidi: R.doMidi,
     now: () => R.ctx.currentTime,
+    note: (name, tone, vol) => snd.note(name, R.doMidi + TONES[tone], R.ctx.currentTime, 1.2 * spb, vol * 0.6),
+    pitches: (a, b) => mic.pitches(a, b),
     latency: () => snd.latency(),
     hit: (name, vol) => snd.hit(name, R.ctx.currentTime, vol),
-    onPress: (fb) => R.api?.onTap(fb),
+    onPress: (fb) => R.api?.onTap(fb?.tone ? { ...fb, up: toneHeight(fb.tone) } : fb),
     // Tap feedback: a ripple where the finger landed, coloured by timing when the answer is
     // known (on time, close, off), and a tick on the beat lane where the tap fell.
     feel: ({ el, ev, b, open, cls, word }) => {
@@ -945,7 +987,7 @@ function introBreak(B, item, game) {
     clearDots();
     const card = h('div', {});
     overlay(card);
-    const intro = showIntro(card, key, { h, notes, sylIcons, mic: R.micOn }, () => {
+    const intro = showIntro(card, key, { h, notes, sylIcons, mic: R.micOn, doMidi: R.doMidi, pitches: mic.pitches }, () => {
       st.intro[key] = 1;
       save();
       R.keys = null;
@@ -1054,11 +1096,11 @@ function showGame(item, game, turn, tx, spb) {
   const d = R.dom;
   overlay(null);
   // The new scene goes in once the transition has hidden the old one (transitions.js).
-  R.api = game.make(h('div'), {});
+  R.api = game.make(h('div'), { me: lookOf(st) });
   TX.play(d.stage.parentElement, tx, spb, () => {
     if (!R || R.dom !== d) return;
     d.stage.replaceChildren();
-    R.api = game.make(d.stage, {});
+    R.api = game.make(d.stage, { me: lookOf(st) });
   });
   d.cue.textContent = taskById(item.task).cue;
   bump(d.cue, 'slam');
@@ -1100,7 +1142,7 @@ function grade(item, turn) {
   const res = turn.grade();
   turn.reveal(res);
   R.log?.push({
-    step: item.step, task: item.task, stim: item.stim, cells: item.pattern.cells, bpm: R.tempo,
+    step: item.step, task: item.task, stim: item.stim, cells: item.pattern.cells || item.pattern.tones, bpm: R.tempo,
     spb: R.clock.spb(), tResp: turn.tResp, inputs: turn.inputs(), right: res.right, why: res.why || '',
   });
   return res;
@@ -1116,7 +1158,7 @@ function nextPraise() {
 /* XP for a right answer: 10 (+5 perfect) × tempo × the mic (×1.5) × the task (Speak/Sing It
    ×1.5) × no notes to look at in Note It (×1.5) × a create answer's freshness × the combo. */
 function result(item, res, { onWin, onFail, t, quiet = false }) {
-  const rec = dir.record({ item, right: res.right, bpm: R.tempo });
+  const rec = R.dir.record({ item, right: res.right, bpm: R.tempo });
   if (rec.mastered) R.news.push(`★ Step ${rec.mastered} mastered: ${STEPS[rec.mastered].name}`);
   R.setGames++;
   R.setSteps?.add(item.step);
@@ -1206,12 +1248,13 @@ function breather(B, seg) {
   const lv = levelOf(st.xp);
   if (lv.n > lvBefore) chips.push(['⬆️', `Level ${lv.n}`]);
   if (!R.force) {
-    const opened = dir.advance();
+    const opened = R.dir.advance();
     if (opened) {
       chips.push(['🆕', `Step ${opened}`]);
       snd.speak('new-step', T(B));
     }
-    if (dir.step(12).mastered && !st.unitDone) { st.unitDone = true; chips.push(['🏆', 'Unit 1']); }
+    if (R.kind === 'rhythm' && dir.step(12).mastered && !st.unitDone) { st.unitDone = true; chips.push(['🏆', 'Unit 1']); }
+    if (R.kind === 'tonal' && mdir.step(mdir.top).mastered && !st.mel.unitDone) { st.mel.unitDone = true; chips.push(['🏆', 'do re mi']); }
   }
   const news = R.news.splice(0);
   const setXP = R.setXP;
@@ -1269,7 +1312,7 @@ function growth(ns, before, spb) {
   const rows = ns.map((n, i) => {
     const s = STEPS[n];
     const was = Math.round(before?.[n] ?? 0);
-    const now = Math.round(dir.step(n).s);
+    const now = Math.round(R.dir.step(n).s);
     const add = h('i', { class: 'add' });
     const lost = h('i', { class: 'lost' });
     const base = h('i', { class: 'was' });
@@ -1280,7 +1323,7 @@ function growth(ns, before, spb) {
       lost.style.width = `${Math.max(0, was - now)}%`;
     }));
     return h('div', { class: `sg ${s.band}` },
-      h('span', { class: 'sg-n' }, String(n), dir.step(n).mastered ? h('b', {}, '★') : null),
+      h('span', { class: 'sg-n' }, String(n), R.dir.step(n).mastered ? h('b', {}, '★') : null),
       h('span', { class: 'sg-mid' }, h('small', {}, s.name), h('span', { class: 'sg-bar' }, base, add, lost)),
       h('b', { class: 'sg-plus' }, now > was ? `+${now - was}` : ''));
   });
@@ -1294,7 +1337,7 @@ function growth(ns, before, spb) {
 function bossItem() {
   let item = null;
   for (let k = 0; k < 8; k++) {
-    item = dir.next({ force: R.force, forceTask: TEST?.task, noSay: !R.micOn });
+    item = R.dir.next({ force: R.force, forceTask: TEST?.task, noSay: !R.micOn });
     if (st.intro[taskKey(item.task, item.step)]) break;
   }
   return item;
@@ -1305,7 +1348,8 @@ function bossItem() {
    rounds of call, turn and payoff (4 beats, so the hit or miss is over before the next
    call), each any task; three hits beat him. */
 function boss(B) {
-  const game = LINEUP.bosses[R.lap % LINEUP.bosses.length];
+  const bosses = bossGames();
+  const game = bosses[R.lap % bosses.length];
   const T = (i) => R.clock.timeOf(i);
   const spb = R.clock.spb();
   const rounds = 4;
@@ -1317,11 +1361,11 @@ function boss(B) {
     hud();
     overlay(null);
     const d = R.dom;
-    R.api = game.make(h('div'), { boss: true });
+    R.api = game.make(h('div'), { boss: true, me: lookOf(st) });
     TX.play(d.stage.parentElement, TX.BOSS_TX, spb, () => {
       if (!R || R.dom !== d) return;
       d.stage.replaceChildren();
-      R.api = game.make(d.stage, { boss: true });
+      R.api = game.make(d.stage, { boss: true, me: lookOf(st) });
     });
     R.dom.cue.textContent = 'BOSS!';
     bump(R.dom.cue, 'slam');
@@ -1340,7 +1384,7 @@ function boss(B) {
     // with the mic), and bar 1 on the call, whatever the turn before it took.
     const groove = () => {
       R.groove.duckFrom = T(call);
-      R.groove.duckUntil = T(R.micOn && item.task === 'say' ? p0 : r0);
+      R.groove.duckUntil = T(R.micOn && usesMic(item.task) ? p0 : r0);
       snd.clear(T(call), R.groove.duckUntil);
       R.groove.micFrom = T(r0) - 0.3 * spb;
       snd.setGroovePhase(call);
@@ -1413,7 +1457,7 @@ function intermission() {
   snd.grooveStop();
   const lv = levelOf(st.xp);
   const tile = (ic, big, small) => h('div', { class: 'win-tile' }, h('span', { class: 'ic', 'aria-hidden': 'true' }, ic), h('b', {}, big), h('small', {}, small));
-  const nextN = R.force || st.frontier;
+  const nextN = Math.min(R.force || R.dir.frontier(), R.dir.top);
   overlay(h('div', { class: 'card intermission win' },
     h('div', { class: 'win-head' }, h('div', { class: 'cue-word small' }, `Lap ${R.lap + 1} ✓`)),
     h('div', { class: 'win-tiles' },
@@ -1509,6 +1553,7 @@ function testTitle() {
     TEST.task ? taskById(TEST.task).name : null,
     TEST.tempo ? `${TEST.tempo} bpm` : `${LADDER().join(' · ')} bpm`,
     TEST.boss && LINEUP.bosses.length ? `straight to ${g.bossName}` : null,
+    TEST.kind === 'tonal' ? 'Melodic' : null,
     TEST.mookie ? 'Mookie mode' : null,
   ].filter(Boolean);
   app.replaceChildren(h('div', { class: 'progress howto test-title' },
@@ -1529,17 +1574,18 @@ if (Q.has('debug')) window.mmDebug = () => R;
    instrument). */
 function introPreview(key) {
   scene('progress');
-  const game = GAMES.find((g) => g.id === Q.get('game')) || LINEUP.stream[0] || GAMES[0];
+  const kind = taskById(key.split('-')[0])?.kind || 'rhythm';
+  const game = [GAMES.find((g) => g.id === Q.get('game')), ...LINEUP.stream, ...GAMES].find((g) => g?.modes.includes(kind));
   const card = h('div', { class: 'intro-preview' });
   app.replaceChildren(h('div', { class: 'progress' },
     h('a', { class: 'back', 'aria-label': 'Back to the workshop', href: WORKSHOP }, '‹'), card));
   const show = (micOn) => {
-    const intro = showIntro(card, key, { h, notes, sylIcons, mic: micOn }, () => { location.href = WORKSHOP; }, { game });
+    const intro = showIntro(card, key, { h, notes, sylIcons, mic: micOn, pitches: mic.pitches }, () => { location.href = WORKSHOP; }, { game });
     if (micOn) { mic.setTempo(84); mic.listen((time) => intro.mic(time)); }
     document.onkeydown = (e) => { if (!e.repeat && intro.keys(e)) e.preventDefault(); };
   };
   // Speak/Sing It needs the mic, here too.
-  if (key.startsWith('say-')) mic.start(snd.ac()).then(() => show(true), () => show(false));
+  if (usesMic(key.split('-')[0])) mic.start(snd.ac()).then(() => show(true), () => show(false));
   else show(false);
 }
 
@@ -1556,6 +1602,6 @@ markup.setup({
 });
 
 if (TEST) testTitle();
-else if (allTaskKeys().includes(Q.get('intro'))) introPreview(Q.get('intro'));
+else if ([...allTaskKeys(), ...allTaskKeys('tonal')].includes(Q.get('intro'))) introPreview(Q.get('intro'));
 else if (Q.has('lab')) lab();
 else title();
