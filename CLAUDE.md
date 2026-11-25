@@ -2,7 +2,10 @@
 
 Static site on Cloudflare Workers (static assets). No build step for the site itself:
 every file is served as is, except what `.assetsignore` lists. A push to `main` deploys.
-Pull requests get a Cloudflare preview build (`npx wrangler preview`).
+Pull requests get a Cloudflare preview build (`npx wrangler preview`). Each branch's Preview gets its
+own copy of the Worker's three Durable Object namespaces, and the free plan allows 100, so
+`.github/workflows/preview-cleanup.yml` deletes a branch's Preview when its PR closes. If previews
+fail with "limit of 100 Durable Object namespaces", run that workflow by hand to clear old ones.
 
 ## Rules for the whole site
 
