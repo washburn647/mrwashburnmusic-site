@@ -13,6 +13,7 @@ const KEY = 'musician-maker-workshop-1';
 for (const g of GAMES) {
   g.baseTap ??= g.tap;
   g.basePlay ??= g.kit.instrument.sound;
+  g.baseTune ??= g.kit.tune?.sound || null;
 }
 
 export function defaults(g) {
@@ -23,6 +24,7 @@ export function defaults(g) {
     fail: Object.keys(g.gags?.fail || {}),
     tap: g.baseTap,
     play: g.basePlay,
+    tune: g.baseTune,
   };
 }
 
@@ -40,6 +42,7 @@ export function complete(raw = {}) {
       fail: pick('fail'),
       tap: typeof o.tap === 'string' && o.tap ? o.tap : d.tap,
       play: typeof o.play === 'string' && o.play ? o.play : d.play,
+      tune: d.tune && typeof o.tune === 'string' && o.tune ? o.tune : d.tune,
     };
   }
   return out;
@@ -77,6 +80,7 @@ export function apply(opts, only = null) {
     const o = opts[g.id];
     g.tap = o.tap;
     g.play = o.play;
+    g.tune = o.tune;
     g.gagsOn = { win: o.win, fail: o.fail };
   }
   if (only) {

@@ -17,7 +17,8 @@
      tries   practice rounds before "Let's play" lights up (default 1; 0 to skip practice) */
 
 import * as snd from './sound.js';
-import { STEPS, ALL, patternsFor, byId, sayAs, isCreate, onsets } from './steps.js';
+import { STEPS, ALL, MALL, patternsFor, byId, sayAs, isCreate, onsets, MTONES } from './steps.js';
+import { TONES } from '/assets/patterns/patterns.js';
 import { taskById, parseKey, cellOf, introLines, howTo, look, beatsOf } from './tasks.js';
 import { makeTurn, WHY, NOTE_SVG } from './turn.js';
 
@@ -107,7 +108,7 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
       el.innerHTML = NOTE_SVG.q + NOTE_SVG.ee; // fixed markup
       return el;
     }
-    const icon = { say: '🎤', tap: kit.object?.icon || '👆', play: kit.instrument?.icon || '🥁' }[task.id];
+    const icon = { say: '🎤', sing: '🎤', tap: kit.object?.icon || '👆', play: kit.instrument?.icon || '🥁', tune: kit.tune?.icon || '🎵' }[task.id];
     return h('span', { class: 'pic-ic' }, icon);
   };
   const story = h('div', { class: 'intro-story' },
@@ -161,9 +162,12 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
     area.classList.remove('over');
     ghost.classList.remove('on', 'tap');
     await snd.load();
-    const ids = patternsFor(step.set);
-    const list = (ids.length ? ids : ALL.map((x) => x.id)).map(byId).filter(Boolean);
-    const pattern = list[Math.floor(Math.random() * list.length)] || ALL[0];
+    const tonal = task.kind === 'tonal';
+    const doMidi = ui.doMidi ?? 60;
+    const ids = patternsFor(step.set, task.kind);
+    const fallback = tonal ? MALL : ALL;
+    const list = (ids.length ? ids : fallback.map((x) => x.id)).map(byId).filter(Boolean);
+    const pattern = list[Math.floor(Math.random() * list.length)] || fallback[0];
     const others = list.filter((x) => x.id !== pattern.id);
     const answer = create ? others[Math.floor(Math.random() * others.length)] || pattern : pattern;
     const stim = cell[Math.floor(Math.random() * cell.length)];
@@ -181,9 +185,11 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
     }
     const l = look(stim);
     at(t0, () => { said.textContent = `${demo ? '👀 Watch! ' : ''}${l === 'read' ? '👀' : l === 'both' ? '👂👀' : '👂'}`; });
-    if (stim.hear) snd.call(pattern, stim.hear, c0, spb, game?.play || kit.instrument?.sound);
+    if (stim.hear && tonal) snd.callTonal(pattern, stim.hear, c0, spb, game?.tune || kit.tune?.sound, doMidi);
+    else if (stim.hear) snd.call(pattern, stim.hear, c0, spb, game?.play || kit.instrument?.sound);
     turn = makeTurn(item, game, {
-      h, mic: ui.mic || demo, tResp: r0, spb,
+      h, mic: ui.mic || demo, tResp: r0, spb, doMidi, pitches: ui.pitches,
+      note: (name, tone, vol) => snd.note(name, doMidi + TONES[tone], ctx().currentTime, 1.2 * spb, vol * 0.6),
       now: () => ctx().currentTime, latency: () => snd.latency(), hit: (name, vol) => snd.hit(name, ctx().currentTime, vol),
     });
     area.classList.remove('live');
@@ -221,6 +227,7 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
       if (res.right) snd.fx.win(ctx().currentTime + 0.02);
       else snd.fx.fail(ctx().currentTime + 0.02);
       if (create && res.got && task.id === 'note') snd.playBack(res.got, ctx().currentTime + 0.3, spb);
+      if (create && res.got && tonal) snd.playBack(res.got, ctx().currentTime + 0.3, spb, doMidi, game?.tune || kit.tune?.sound);
       tryBtn.textContent = '✋ Again';
       ready();
     });
@@ -240,6 +247,25 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
       return;
     }
     const ons = onsets(answer);
+    if (task.id === 'tune') {
+      // The ghost hand plays each note on its key.
+      ons.forEach((o) => {
+        const key = el.querySelector(`[data-tone="${o.tone}"]`);
+        at(r0 + (o.b - 0.35) * spb, () => point(key));
+        at(r0 + o.b * spb, () => { tap(); turn?.keys(fake(String(MTONES.indexOf(o.tone) + 1))); });
+      });
+      return;
+    }
+    if (task.id === 'sing') {
+      snd.callTonal(answer, step.n === 1 ? 'neutral' : 'syllables', r0, spb, 'harp', ui.doMidi ?? 60);
+      const words = [];
+      ons.forEach((o) => at(r0 + o.b * spb, () => {
+        el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit');
+        words.push(step.n === 1 ? 'bum' : o.syl);
+        said.textContent = `🎤 ${words.join(' ')}`;
+      }));
+      return;
+    }
     if (task.id === 'say') {
       snd.call(answer, step.n === 1 ? 'neutral' : 'syllables', r0, spb);
       const words = [];

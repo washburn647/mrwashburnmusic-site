@@ -143,11 +143,72 @@ class SyllableDetector {
   }
 }
 
+/* How high a sung note is: YIN (de Cheveigné and Kawahara, 2002) on the voice, at half the
+   sample rate, over the last 25 ms, about every 20 ms while there's a voice. Gives the
+   pitch in Hz and how clearly it's one pitch (0 to 1), or null for noise and "s" sounds. */
+class PitchTracker {
+  constructor(rate) {
+    this.rate = rate / 2;
+    this.W = Math.round(this.rate * 0.025);
+    this.tmin = Math.floor(this.rate / 1100);
+    this.tmax = Math.ceil(this.rate / 70);
+    this.buf = new Float32Array(this.W + this.tmax + 2);
+    this.n = 0;
+    this.half = 0; // the odd sample left over when halving
+    this.odd = false;
+    this.d = new Float32Array(this.tmax + 1);
+  }
+
+  push(samples) {
+    const b = this.buf;
+    const add = [];
+    for (let i = 0; i < samples.length; i++) {
+      if (!this.odd) { this.half = samples[i]; this.odd = true; continue; }
+      this.odd = false;
+      add.push((this.half + samples[i]) / 2);
+    }
+    const k = add.length;
+    if (this.n + k > b.length) {
+      const drop = this.n + k - b.length;
+      b.copyWithin(0, drop, this.n);
+      this.n -= drop;
+    }
+    for (let i = 0; i < k; i++) b[this.n++] = add[i];
+  }
+
+  find() {
+    const { buf: x, W, tmin, tmax, d } = this;
+    if (this.n < x.length) return null;
+    const start = x.length - W - tmax;
+    let sum = 0;
+    let best = -1;
+    d[0] = 1;
+    for (let tau = 1; tau <= tmax; tau++) {
+      let acc = 0;
+      for (let j = 0; j < W; j++) {
+        const diff = x[start + j] - x[start + j + tau];
+        acc += diff * diff;
+      }
+      sum += acc;
+      d[tau] = sum > 0 ? (acc * tau) / sum : 1;
+      if (best < 0 && tau > tmin + 1 && d[tau - 1] < 0.18 && d[tau - 1] <= d[tau] && d[tau - 1] <= d[tau - 2]) best = tau - 1;
+    }
+    if (best < 0) return null;
+    const a = d[best - 1];
+    const c = d[best + 1];
+    const den = a - 2 * d[best] + c;
+    const shift = den ? Math.max(-1, Math.min(1, (a - c) / (2 * den))) : 0;
+    return { hz: this.rate / (best + shift), clarity: 1 - d[best] };
+  }
+}
+
 if (typeof registerProcessor === 'function') {
   registerProcessor('syllables', class extends AudioWorkletProcessor {
     constructor() {
       super();
       this.d = new SyllableDetector(sampleRate);
+      this.p = new PitchTracker(sampleRate);
+      this.pitchAt = 0;
       this.sent = 0;
       this.rec = null; // Test mode: the mic's samples, sent in chunks with their start time
       this.port.onmessage = (e) => {
@@ -177,6 +238,13 @@ if (typeof registerProcessor === 'function') {
           if (r.n + ch.length > r.buf.length) this.flush();
         }
         if (onset != null) this.port.postMessage({ onset });
+        this.p.push(ch);
+        if (this.d.state !== 'quiet' && t - this.pitchAt >= 0.02) {
+          this.pitchAt = t;
+          const f = this.p.find();
+          // Dated to the middle of the window it looked at.
+          if (f) this.port.postMessage({ pitch: f.hz, clarity: f.clarity, t: t + ch.length / sampleRate - 0.0125 - this.p.tmax / this.p.rate });
+        }
         if (t - this.sent > 0.03) { this.sent = t; this.port.postMessage({ level: this.d.level }); }
       }
       return true;
@@ -184,4 +252,4 @@ if (typeof registerProcessor === 'function') {
   });
 }
 
-if (typeof module === 'object') module.exports = { SyllableDetector };
+if (typeof module === 'object') module.exports = { SyllableDetector, PitchTracker };

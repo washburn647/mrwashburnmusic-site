@@ -12,6 +12,7 @@ let users = 0; // the mic check and the run each hold the mic; it stops when nei
 let opening = null;
 let echo = true; // echo cancelling; Test mode can turn it off
 let rec = null; // Test mode recording: { rate, chunks, onsets }
+let heard = []; // the last few seconds of sung pitch: { t (audio time, said), midi, clarity }
 
 /* Test mode: record what the mic hears, and every syllable it finds, until recordStop(). */
 export function recordStart() {
@@ -71,6 +72,11 @@ async function open(ctx) {
   node = new AudioWorkletNode(ctx, 'syllables', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
   node.port.onmessage = (e) => {
     if (e.data.level != null) level = e.data.level;
+    if (e.data.pitch) {
+      const t = e.data.t - lag;
+      heard.push({ t, midi: 69 + 12 * Math.log2(e.data.pitch / 440), clarity: e.data.clarity });
+      while (heard.length && heard[0].t < t - 8) heard.shift();
+    }
     if (e.data.pcm) rec?.chunks.push(e.data);
     if (e.data.onset != null) {
       rec?.onsets.push(e.data.onset);
@@ -84,6 +90,9 @@ async function open(ctx) {
 }
 
 export function listen(fn) { listener = fn; }
+
+/* The pitches the mic heard between two audio times (when they were sung): [{ t, midi, clarity }]. */
+export const pitches = (from, to) => heard.filter((p) => p.t >= from && p.t <= to);
 
 /* Two syllables can't be closer than about half an eighth note at this tempo. */
 export function setTempo(bpm) {
@@ -102,4 +111,5 @@ export function stop() {
   src = null;
   listener = null;
   level = 0;
+  heard = [];
 }

@@ -1,8 +1,10 @@
 /* The micro-games. A game is a silly world and a gesture; the engine hands it a question
    and grades the answer. Each game draws its scene into the stage and returns:
-     onCall(i, syl)  a note of the call sounds (syl is set when the call is in syllables)
+     onCall(i, syl, tone)  a note of the call sounds (syl is set when the call is in
+                     syllables; in melodic runs tone is { tone, up }: up 0 lowest to 1 highest)
      onTap(fb)       the learner tapped (or spoke) a note; fb.cls is its timing when known
-                     (on, close, off, idle outside the turn, tap with nothing to time it by)
+                     (on, close, off, idle outside the turn, tap with nothing to time it by);
+                     a note played on the tuned instrument also has fb.tone and fb.up
      win(), fail()   the payoff gag
      onBeat(down, spb, tier)  every beat of the groove (down: beat 1 of the 2/4 bar; tier:
                      the combo tier), so the scene shows the pulse and parties with the band
@@ -19,8 +21,9 @@ import { brushingTime } from './scene-brush.js';
 import { pettingTime } from './scene-pet.js';
 import { litterbox } from './scene-litter.js';
 import { dancingTime } from './scene-dance.js';
+import { bedtime } from './scene-bed.js';
 
-export { mouseCatcher, supperTime, brushingTime, pettingTime, litterbox, dancingTime };
+export { mouseCatcher, supperTime, brushingTime, pettingTime, litterbox, dancingTime, bedtime };
 
 /* Restart a CSS animation class. */
 export function bump(el, cls) {
@@ -29,7 +32,7 @@ export function bump(el, cls) {
   el.classList.add(cls);
 }
 
-export const GAMES = [mouseCatcher, supperTime, brushingTime, pettingTime, litterbox, dancingTime];
+export const GAMES = [mouseCatcher, supperTime, brushingTime, pettingTime, litterbox, dancingTime, bedtime];
 
 export const KITS = {
   'mouse-catcher': { object: { name: 'the mouse', icon: '🐭' }, instrument: { name: 'the bongos', icon: '🪘', sound: 'bongo-high' } },
@@ -38,6 +41,19 @@ export const KITS = {
   'petting-time': { object: { name: 'Mookie', icon: '🐈‍⬛' }, instrument: { name: 'the guiro', icon: '🪵', sound: 'guiro' } },
   litterbox: { object: { name: 'Mookie\'s paw', icon: '🐾' }, instrument: { name: 'the litter tub', icon: '🥁', sound: 'log-drum-low' } },
   'dancing-time': { object: { name: 'the disco ball', icon: '🪩' }, instrument: { name: 'the tambourine', icon: '🥁', sound: 'tambourine' } },
+  bedtime: { object: { name: 'the pillow', icon: '🛏️' }, instrument: { name: 'the harp', icon: '🎵', sound: 'harp' } },
 };
+/* Melodic runs' tuned instruments (Play It, task 'tune'), for the games that play them. */
+const TUNES = {
+  'supper-time': { name: 'the gong bowls', icon: '🥣', sound: 'bowl', look: 'bowls' },
+  'dancing-time': { name: 'the xylophone', icon: '🎶', sound: 'xylophone', look: 'xylophone' },
+  bedtime: { name: 'the harp', icon: '🎵', sound: 'harp', look: 'harp' },
+};
+/* Which runs each game plays in: rhythm (Unit 1), melodic (tonal), or both. */
+const MODES = { 'supper-time': ['rhythm', 'tonal'], 'dancing-time': ['rhythm', 'tonal'], bedtime: ['tonal'] };
 const DEFAULT_KIT = { object: { name: 'the pad', icon: '👆' }, instrument: { name: 'the drum', icon: '🥁', sound: 'conga' } };
-for (const g of GAMES) g.kit ||= KITS[g.id] || DEFAULT_KIT;
+for (const g of GAMES) {
+  g.kit ||= KITS[g.id] || DEFAULT_KIT;
+  if (TUNES[g.id]) g.kit.tune ||= TUNES[g.id];
+  g.modes ||= MODES[g.id] || ['rhythm'];
+}
