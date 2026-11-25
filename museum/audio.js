@@ -8,6 +8,7 @@
    built by tools/build_sounds.py --layers). Until those load, the usual samples play. */
 
 import * as samples from '../assets/sounds/samples.js';
+import { HALL, url } from './media.js';
 
 let ac = null;
 let master = null;
@@ -25,9 +26,10 @@ export function context() {
     comp.ratio.value = 4;
     comp.attack.value = 0.004;
     comp.release.value = 0.2;
-    // A little room, so dry samples sound like they are in a hall.
+    // A hall round every note, so dry samples sound as if played on a stage: the echo of a real
+    // concert hall when the museum has its recording (media.js), and till then a made-up one.
     const verb = ac.createConvolver();
-    verb.buffer = room(ac, 1.8);
+    verb.buffer = room(ac, 2.2);
     const send = ac.createGain();
     send.gain.value = 0.16;
     master.connect(comp);
@@ -35,6 +37,7 @@ export function context() {
     send.connect(verb);
     verb.connect(comp);
     comp.connect(ac.destination);
+    if (HALL) realHall(send, verb, comp);
     samples.setup(ac, master);
   }
   if (ac.state === 'suspended') ac.resume();
@@ -44,17 +47,48 @@ export function context() {
 export const now = () => context().currentTime;
 export const out = () => (context(), master);
 
-function room(c, seconds) {
-  const len = Math.floor(c.sampleRate * seconds);
-  const b = c.createBuffer(2, len, c.sampleRate);
+/* A made-up hall: a moment's quiet while the sound crosses the stage, a few early echoes off
+   the nearest walls (different in each ear), then a tail that dies away over about two
+   seconds, losing its treble faster than its bass, as the air and the seats soak it up. */
+export function room(c, seconds) {
+  const sr = c.sampleRate;
+  const len = Math.floor(sr * seconds);
+  const b = c.createBuffer(2, len, sr);
+  const pre = 0.014;
   for (let ch = 0; ch < 2; ch++) {
     const d = b.getChannelData(ch);
-    for (let i = 0; i < len; i++) {
-      const t = i / c.sampleRate;
-      d[i] = (Math.random() * 2 - 1) * Math.exp(-t * 3.2) * (t < 0.012 ? t / 0.012 : 1);
+    let seed = 1 + ch * 7919;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 * 2 - 1; };
+    for (const [t, g] of [[0.019, 0.5], [0.027, 0.36], [0.034, 0.3], [0.046, 0.24], [0.058, 0.2], [0.071, 0.15]]) {
+      const i = Math.floor(sr * (t + (ch ? 0.0037 : 0) + pre * 0.2));
+      for (let j = 0; j < 3 && i + j < len; j++) d[i + j] += 5 * g * (ch ? -1 : 1) * (1 - j / 3) * (0.8 + 0.2 * Math.abs(rnd()));
+    }
+    let lp = 0;
+    for (let i = Math.floor(sr * pre); i < len; i++) {
+      const t = i / sr - pre;
+      const k = 0.9 * Math.exp(-t * 1.6) + 0.08;   // how bright the tail still is
+      lp += k * (rnd() - lp);
+      d[i] += lp * 0.55 * Math.exp(-t * 3.1) * (t < 0.03 ? t / 0.03 : 1);
     }
   }
   return b;
+}
+
+/* The real hall's echo, in place of the made-up one once it has loaded. */
+async function realHall(send, verb, comp) {
+  try {
+    const r = await fetch(url(HALL.file));
+    if (!r.ok) return;
+    const buf = await ac.decodeAudioData(await r.arrayBuffer());
+    const real = ac.createConvolver();
+    real.buffer = buf;
+    real.connect(comp);
+    send.connect(real);
+    send.disconnect(verb);
+    verb.disconnect();
+    if (HALL.send != null) send.gain.value = HALL.send;
+    ac.museumHall = HALL.file;
+  } catch { /* the made-up hall stays */ }
 }
 
 // Browsers start sound only after a tap or key press.

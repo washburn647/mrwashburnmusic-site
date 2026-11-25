@@ -9,7 +9,7 @@ import { hit } from '../audio.js';
 import { layer, put, metal, rand, bar, pool, wood, TAU } from '../paint.js';
 import { camera, bounds, drum, face, flange, ripple, cymbal, stand, stick, planks, spot, shade, backdrop, sprite, shellPath, finish, roundness } from '../drums.js';
 
-const SPECS = {
+export const SPECS = {
   snare: { sound: 'snare', roll: 'snare-roll' },
   bassdrum: { sound: 'bass-drum', damp: true },
   cymbals: { sound: 'cymbal', choke: true, alt: { sound: 'sus-cymbal', roll: 'sus-cymbal-roll' } },

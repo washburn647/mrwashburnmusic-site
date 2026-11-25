@@ -1,7 +1,9 @@
 /* A stand-in for the website while testing Song Burner in a browser: serves the repo's files
    as they are, and answers /api/songburner/ and /api/live/ the way worker/index.js does, with
    one library per signed-in email kept in memory. The sign-in check itself (songBurnerGate)
-   is tested against the real Worker in worker.test.mjs. */
+   is tested against the real Worker in worker.test.mjs.
+   startMock({ headers: true }) also sends each file with the headers _headers gives it, as the
+   site does (its Content-Security-Policy among them). */
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,9 +12,35 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json',
-  '.webp': 'image/webp', '.jpg': 'image/jpeg', '.mp3': 'audio/mpeg' };
+  '.webp': 'image/webp', '.jpg': 'image/jpeg', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' };
 
-export function startMock() {
+/* The headers _headers gives a path, the way Cloudflare reads it: every rule whose path
+   matches (* for anything, :name for one part), in order; a header two rules set gets both
+   values, and "! Name" takes away what the rules before gave. */
+export function headersFor(pathname, text = fs.readFileSync(path.join(ROOT, '_headers'), 'utf8')) {
+  const out = {};
+  let on = false;
+  for (const raw of text.split('\n')) {
+    const line = raw.trimEnd();
+    if (!line.trim() || line.trim().startsWith('#')) continue;
+    if (!/^\s/.test(line)) {
+      const re = line.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/:\w+/g, '[^/]+');
+      on = new RegExp(`^${re}$`).test(pathname);
+      continue;
+    }
+    if (!on) continue;
+    const l = line.trim();
+    if (l.startsWith('!')) { delete out[l.slice(1).trim().toLowerCase()]; continue; }
+    const i = l.indexOf(':');
+    const name = l.slice(0, i).trim().toLowerCase();
+    const value = l.slice(i + 1).trim();
+    out[name] = out[name] ? `${out[name]}, ${value}` : value;
+  }
+  return out;
+}
+
+export function startMock({ headers = false } = {}) {
+  const rules = headers ? fs.readFileSync(path.join(ROOT, '_headers'), 'utf8') : null;
   const state = { libs: {}, who: 't@example.com', log: [], delay: 0, dashOn: false };
   const server = http.createServer((q, s) => {
     const u = new URL(q.url, 'http://x');
@@ -47,7 +75,7 @@ export function startMock() {
     if (p.endsWith(path.sep)) p += 'index.html';
     fs.readFile(p, (e, d) => {
       if (e) { s.writeHead(404); s.end('not found'); return; }
-      s.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' });
+      s.writeHead(200, { ...(rules ? headersFor(u.pathname, rules) : {}), 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' });
       s.end(d);
     });
   });

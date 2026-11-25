@@ -1,7 +1,7 @@
 /* The lobby: the audio tour's ticket, the visitor's passport, and the floor plan (plan.js),
    drawn again for the width it has when the window changes size. */
 
-import { ROOMS, EXHIBITS } from './data.js';
+import { ROOMS, EXHIBITS, GROUPS } from './data.js';
 import { art } from './art.js';
 import { plan } from './plan.js';
 import * as passport from './passport.js';
@@ -18,6 +18,7 @@ let ro = null;
 export function mount() {
   ticket();
   stamps();
+  families();
   draw();
   if (!ro) {
     ro = new ResizeObserver(() => draw());
@@ -58,6 +59,17 @@ function ticket() {
     go = `<a class="tool go" href="#tour/1">${b.quiz ? 'Take the tour again' : 'Start the tour'}</a>${b.quiz ? '<a class="tool" href="#quiz">Quiz again</a>' : ''}`;
   }
   $('ticket').innerHTML = `<div class="stub">${HEADPHONES}</div><div class="body"><h2>Audio tour</h2><p>${words}</p><div class="acts">${go}</div></div>`;
+}
+
+/* The families, each to see side by side (compare.js), with one of its instruments. */
+const FACE = { violins: 'cello', plucked: 'guitar', woodwinds: 'clarinet', brass: 'horn', keys: 'xylophone', drums: 'congas', bells: 'tambourine' };
+
+function families() {
+  const box = $('families');
+  if (box.childElementCount) return;
+  box.innerHTML = '<h2>Side by side</h2><div class="fam-row">'
+    + GROUPS.map((g) => `<a class="fam" href="#compare/${g.id}"><span class="pic" aria-hidden="true">${art(FACE[g.id])}</span><span>${esc(g.short)}</span></a>`).join('')
+    + '</div>';
 }
 
 /* Each room's stamp shows one of its instruments. */
