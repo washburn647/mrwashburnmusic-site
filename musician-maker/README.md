@@ -5,15 +5,24 @@ Press play and it never stops: a stream of quick, silly micro-games on one groov
 speeds up as you go. The stream engine design doc in the Musician Maker project explains why
 it works this way; this file says where things are.
 
-**Status: first playable loop, Unit 1 only (du, du-de in 2/4).** Not linked from the site.
+**Status: first playable loop: Unit 1 (du, du-de in 2/4), and melodic runs on Unit 4's do re mi.**
+Not linked from the site.
 Served at `/musician-maker/`; try it with any static server from the repo root.
 
 ## A run
 
 - **Lap:** three sets of 4 micro-games (3 in Mookie mode) at 92, 108 and 126 bpm, each
-  followed by an 8-beat breather, then a boss (The Big Cheese, The Big Fluff, The Mane Event, The Belly, The Big Stink or Saturday Night Fur, by turns) and an intermission where the
+  followed by an 8-beat breather, then a boss (The Big Cheese, The Big Fluff, The Mane Event, The Belly, The Big Stink, Saturday Night Fur or The Bed Hog, by turns, from the run's games) and an intermission where the
   learner can stop. The next lap starts back at 92. A rung is held when the learner is
   struggling.
+- **Melodic runs:** the title's Melodic button starts a run of tonal patterns (Unit 4: do, re,
+  mi) on a track of its own: steps 1 to 8 (`MAX_TONAL_STEP`, no reading on the staff yet), its
+  own progress (`st.mel`), the same laps and speeds, and only the games that play melodic
+  (Bedtime, Supper Time, Dancing Time) and their bosses. Each note of a call is one beat, sung
+  in the groove's key (do from A3 to G#4, `doOf`). The tasks are Sing It (into the mic, graded
+  by pitch) and Play It on the game's tuned instrument (a harp, gong bowls or a xylophone): a
+  key per note, low to high, in the note's colour (do red, re orange, mi yellow), with its
+  syllable on it from step 2.
 - **Micro-game:** cue (4 beats) · call (4) · the learner's turn (4; Note It 8) · payoff (4;
   Writing Create 8, to play the pattern back). Every part is whole bars, and the groove loop restarts
   at bar 1 on each call, so a game never lands mid-loop. Each game rolls a step and a task:
@@ -39,9 +48,11 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   (the game's instrument), Du It (two tiles, du and du-de, tapped in rhythm: a du-de is two
   taps on its tile; steps 2–8) and Note It (♩ and ♫ tiles out of rhythm within 8 beats, steps
   9–12; ×1.5 XP without the notes to look at). At the create steps (5, 12) the answer is the
-  learner's own pattern; the same one again soon earns less.
+  learner's own pattern; the same one again soon earns less. Melodic runs have two of their
+  own (`kind: 'tonal'`): Sing It (steps 1–8, mic only; ×1.5 XP) and Play It on the tuned
+  instrument (steps 1–8).
 - **Mic:** the first Play of a visit opens a mic screen (test it, help when the browser blocks
-  it). "Play without the mic" plays the visit with no Speak/Sing It.
+  it). "Play without the mic" plays the visit with no Speak/Sing It (melodic runs: Play It only).
 - **Combo:** 3, 6, 10 and 15 in a row add bass, drums, horns and the full band to the groove
   and multiply XP ×2 to ×5. A miss resets it (Mookie mode: drops one tier). XP is never lost.
 - **XP:** 10 a right answer, +5 for perfect timing, × tempo (1, 1.5, 2), × 1.5 by mic,
@@ -60,33 +71,49 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 
 ## Files
 
-- `main.js`: title, My progress (Steps: the map; Tasks: each task's steps, with a practice
+- `main.js`: title (Play, and Melodic for a melodic run), My progress (Steps: the map; Tasks: each task's steps, with a practice
   round and the intro again for each one met), the run (laps, games, breathers, boss,
   intermission), scoring.
 - `director.js`: picks every next game's step (60% newest step, 25% weak steps, 15% review),
   then a task the step uses (Speak/Sing It twice as often, weak ones more), a stimulus from
   that task's cell, and a pattern. Tracks strength per step, task at a step, pattern and
   pattern feature, re-queues misses (same task and pattern, a fresh stimulus), keeps success
-  near 80%, and decides mastery (strength 80+, 10+ items, 3 right at 108+).
-- `tasks.js`: the five tasks: which steps each is used at and what the learner hears or sees
+  near 80%, and decides mastery (strength 80+, 10+ items, 3 right at 108+). Melodic runs have
+  a director of their own (`makeDirector(st, 'tonal')`), with its progress in `st.mel` and
+  note-to-note features (do to re, mi to do, starting on re).
+- `tasks.js`: the tasks (five for rhythm, Sing It and Play It for melodic runs): which steps each is used at and what the learner hears or sees
   there, cue words, XP, the what-to-do line (`howTo`) and an intro's default lines.
 - `turn.js`: one turn of a task: its controls (a pad, the du/de tiles, or the note tiles and
-  slots), what the learner did, and the grade. The run and the intros both use it.
-- `steps.js`: the 12 steps (names, familiar/unfamiliar set) and Unit 1's patterns
+  slots), what the learner did, and the grade. The run and the intros both use it. Melodic
+  turns: Play It's tuned keys (or the keys 1 to 7, or A S D F G H J) say higher or lower on a
+  wrong note. Sing It finds the notes (the mic's onsets, or where the pitch moves when they
+  run together), the pitch of each, and grades the tune by its shape from its first note: any
+  key, any octave, within 1.3 semitones. A made-up tune is read against the run's do.
+- `steps.js`: the 12 steps (names, familiar/unfamiliar set), Unit 1's patterns, and Unit 4's
+  do re mi patterns for melodic runs (`MTONES`, `MALL`),
   from `/assets/patterns/patterns.js`. Kyle's familiar marks from the recorder
   (`/assets/patterns/units.json`) replace the built-in set once published.
 - `games.js`: the micro-games. A game is a scene and a gesture; it never knows the step or the
   task. Each has a kit (`KITS`): the object Tap It taps and the instrument Play It plays.
-  Mouse Catcher, Supper Time, Brushing Time, Petting Time, Litterbox and Dancing Time are in their own files. A game with a `bossName` can host
-  the boss; `main.js` takes turns between them by lap.
+  Mouse Catcher, Supper Time, Brushing Time, Petting Time, Litterbox, Dancing Time and Bedtime are in their own files. A game with a `bossName` can host
+  the boss; `main.js` takes turns between them by lap. `MODES` says which runs each game plays
+  in (rhythm, melodic or both) and `TUNES` its tuned instrument for melodic runs (Supper Time:
+  gong bowls, Dancing Time: xylophone, Bedtime: harp). A melodic call reaches the scene as
+  `onCall(i, syl, { tone, up })`, `up` from 0 (lowest note) to 1 (highest).
 - `sound.js`: the groove, calls, cue words, effects. Uses Kyle's recordings where they're on
   the site (takes on "bum" and in syllables, cue words, groove loops per layer and tempo) and
   the site's sampled instruments for anything missing. Busses: the call on `master`, the
-  groove on its own, everything else on `fxBus`, which `clear(from, to)` turns down.
+  groove on its own, everything else on `fxBus`, which `clear(from, to)` turns down. Melodic
+  calls (`callTonal`) use Kyle's sung takes moved to the run's key, or a synthesized voice until
+  there are some, and the tuned instruments (`TUNED`: harp, xylophone, marimba, and a
+  synthesized gong bowl).
 - `cues.js`: the cue words Kyle records at `/studio/record/` (Cue words).
 - `instruments.js`: the big drawn instruments Play It is played right on (bongos, a bell,
   maracas, a guiro, a drum, picked from the kit's sound or its `look`), and Speak/Sing It's big mic,
   which glows with the voice. Each tap strikes the other side or hand.
+- `tune.js`: the tuned instruments of melodic runs' Play It: one key per note of the unit, low
+  on the left, in the note's colour. Looks: a harp (strings shorter as they go up), gong bowls
+  (smaller) and a xylophone (shorter bars).
 - `narration.js`: the words behind every 🔊 button (the intros, the mic screen), which Kyle
   records at `/studio/record/` (Narration: free length, one take each). They publish with the
   cues as `line/<id>`; `sound.js` `narrate()` plays Kyle's take, or the device's voice until
@@ -100,11 +127,12 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   Mix: a different groove each lap, from the grooves in the unit's meter.
 - `options.js`, `games.json`: game options from the studio's Musician Maker game workshop
   (`/studio/games/`): per game, whether it's in the stream, whether it hosts the boss, which win
-  and fail gags can come up, its tap sound (Tap It) and its instrument's sound (Play It). The workshop keeps drafts on Kyle's device;
+  and fail gags can come up, its tap sound (Tap It), its instrument's sound (Play It) and, for a
+  melodic game, its tuned instrument. The workshop keeps drafts on Kyle's device;
   "Publish to site" puts them in the game straight away (`/api/live/games.json`, played ahead of
   this file); "Download" saves `games.json`, which `tools/add_games.py` checks and puts here.
   Learners get `games.json`; a workshop test run (`?test=<game id>`, plus `step`, `task`, `tempo`,
-  `start=boss`, `pace=mookie`, `groove`) plays only that game, with the drafts, and saves nothing.
+  `start=boss`, `pace=mookie`, `groove`, `mode=tonal`) plays only that game, with the drafts, and saves nothing.
 - `gags.js`: picks a game's win and fail gags from the ones that are on. Each game lists its gags
   with names (`gags`), and `win(gag)` / `fail(gag)` can force one (the workshop's Try it).
 - `intro.js`: task intros. The first time a task comes up at a step (`say-1`, `du-2`, …), the
@@ -126,8 +154,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - `speech.js`: the call in syllables, built up in one speech bubble a syllable at a time and left
   up a moment so the whole pattern shows. Every game's singer uses it.
 - `clock.js`: the beat clock everything is scheduled on.
-- `mic.js`, `mic-worklet.js`: syllable onsets from the mic, found on the audio thread, analysed
-  live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.
+- `mic.js`, `mic-worklet.js`: syllable onsets from the mic, and its pitch for Sing It (a YIN
+  pitch tracker), found on the audio thread, analysed live and never kept. Only counted on the learner's turn; a tap and a syllable together count once.
 - `transitions.js`: the transitions between games (cover on the beat, swap the scene, uncover).
   Test mode → Transitions lab plays each one and picks which the stream uses.
 - Beat cues: a bouncing ball lands on each beat's dot, the HUD pulse lights beat 1 or 2 of the
@@ -158,7 +186,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   bowl, a royal Sevres tureen lands with a fanfare, a porcelain hen tureen squawks the thieves
   away, a bronze lobster pinches Rusty. Misses: the masked heist, Bindi's yowl, Rusty flops on
   the bowl, the stone-fish swap. The boss is Rusty, The Big Fluff, on a silver tureen: each hit
-  blows his fur up, the last blasts him off.
+  blows his fur up, the last blasts him off. In melodic runs each note of the call drops a stack
+  of crates as high as the note and the thieves climb them, so the stairs are the tune.
 - `scene-brush.js`: Brushing Time (styles in `scene-brush.css`): Salon Mookie, a grooming salon
   (barber pole that turns a stripe a beat, a mirror whose bulbs chase with the band, a price
   list, tiles) in one of five looks that take turns (`THEMES`: pink salon, barber shop, day spa,
@@ -200,7 +229,7 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   faints, the screen peels off, a fly in a tuxedo conducts the stinklets, Mookie strolls off.
   Combo: the box floats, stinklets in shades, disco sand, Bindi and Rusty peer in like gods. The
   boss is The Big Stink, with four arms: each hit buries one, and at the end Mookie sits on it.
-- `scene-dance.js`: Dancing Time (styles in `scene-dance.css`), rhythm only: Mookie on a
+- `scene-dance.js`: Dancing Time (styles in `scene-dance.css`), rhythm and melodic: Mookie on a
   light-up dance floor under a mirror ball (drawn facet by facet on a canvas, throwing specks of
   light round the room). Grammy, a gramophone with googly eyes, sings the call, and each note
   sets a dotted paw print in a row of four counts at Mookie's feet (a du-de is two prints in one
@@ -215,7 +244,21 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   a yawn and a nightcap, the record runs down and so does he, he sleepwalks off the stage, the
   curtain comes down (his tail sticks out), he dreams he can dance. The boss is Saturday Night
   Fur, Rusty in a white disco suit: a dance-off where each hit sends a piece of the suit
-  flying, and at the end the mirror ball comes down on him.
+  flying, and at the end the mirror ball comes down on him. In melodic runs the diagram has a
+  row per note, low at the front, and each print lands on its note's row (red on the wrong one).
+- `scene-bed.js`: Bedtime (styles in `scene-bed.css`), melodic only: the learner's avatar sits
+  up in bed and calls Mookie to bed with a tune. Nanny Hoo (a German stoneware owl jug from
+  1540, googly eyes, her lid lifting on every note) sings the call from the nightstand, and
+  each note lights a star over the bed as high as the note, so the stars are the tune. Each
+  note the learner sings or plays fills a star (gold on time, silver close, red way off) and
+  Mookie comes a step closer from the dark hall: his eyes, his head round the door, all of him.
+  Bedrooms take turns (`THEMES`: a kid's room, a castle, a camping tent, a spaceship bunk, a
+  treehouse). Wins: he hops up and snuggles, makes biscuits, curls up on the learner's head, brings
+  a sock first, or Bindi and Rusty pile on too. Misses: the camera zooms in on the doorway and
+  he doesn't come: crickets, a dust bunny, two eyes that close, his tail flicks away, he's
+  asleep in the laundry basket, or Rusty comes instead. The boss is Rusty, The Bed Hog, sprawled
+  across the bed: each hit is a lullaby that makes him droop and snore, a miss and he sits up
+  wide awake, and at the end he rolls off onto the dog bed and Mookie takes his spot.
 - `cats.js`: Bindi and Rusty, rigged like Mookie (springs, moods, tiptoe steps, rubber-hose
   reach, fur that poofs, bandit masks). Drawn from Kyle's photos of them, which aren't kept here.
 - `props/`: the photo props, CC0 museum objects and photos cut out with a sticker edge
@@ -264,11 +307,13 @@ cancelling too, to compare.
 **Game workshop** (`/studio/games/`, private): each game's scene on the groove at any combo
 tier, with its call, taps, every gag and its boss; its options; and Test play, which opens the
 game with only that game in it (any step and task). "Answer with: Taps and the mic" starts the test with the mic on
-(the test screen has the same switch). `?lab` opens the Transitions lab. A new game goes in `GAMES`
+(the test screen has the same switch). For a game that plays both kinds of run, Run: Rhythm or
+Melodic picks which the test plays (`&mode=tonal`). `?lab` opens the Transitions lab. A new game goes in `GAMES`
 (`games.js`) with an `id`, `gags` and `win(gag)`/`fail(gag)`, and its stylesheet goes in
 `studio/games/index.html` as well as `index.html`.
 
 ## Next
 
 Kyle's recordings ("bum" takes, cue words, groove loops), more of Kyle's games, the progress backup
-file, Gauntlet mode (4 lives), and Unit 4 (tonal, sung into the mic).
+file, Gauntlet mode (4 lives), and the rest of the tonal track (more tonal units, minor, the
+staff steps 9 to 12).

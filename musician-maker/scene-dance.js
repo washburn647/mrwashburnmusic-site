@@ -15,10 +15,12 @@
    he can dance.
    The room parties as the combo grows: the mirror ball turns faster and throws more light,
    the crowd waves light sticks, a flamingo struts by, fog, lasers, confetti.
+   In melodic runs the diagram has a row for each note, low at the front and high at the back,
+   and each print lands on its note's row; a step on the wrong row is red.
    Boss: Saturday Night Fur. Rusty (cats.js) in a white disco suit, in a dance-off. Each hit
    and a piece of his suit flies off; the last one and the mirror ball comes down on him.
    Real photos are CC0 or public domain (props/CREDITS.txt, bg/CREDITS.txt).
-   Fixed markup only: nothing a learner types goes in here (call syllables are du/de). */
+   Fixed markup only: nothing a learner types goes in here (call syllables are du/de, or do re mi). */
 
 import { rigMookie } from './rig.js';
 import { rigCat } from './cats.js';
@@ -500,6 +502,7 @@ export const dancingTime = {
     let side = 1;
     let restT = 0;
     let noteK = 0;
+    let tonal = false; // a melodic run: each print sits on the floor row of its note
     let strutted = false;
     let hits = 0;
     let suitAt = 0;
@@ -764,16 +767,22 @@ export const dancingTime = {
       }
       return (now - tapT0) / spbMs();
     }
-    function stepPrint(cls) {
+    function stepPrint(cls, up = null) {
       const b = stepBeat(cls);
       if (b == null || b < -0.6 || b > 4.4) return null;
-      const kind = cls || 'tap';
+      let kind = cls || 'tap';
       taps.push({ b, cls: kind });
       // On (or close to) one of the call's steps: fill it in.
       let near = null;
       prints.forEach((p) => {
         if (p.call && !p.done && Math.abs(p.b - b) < 0.3 && (!near || Math.abs(p.b - b) < Math.abs(near.b - b))) near = p;
       });
+      // A melodic run: a note played on another row is a step in the wrong place.
+      if (near && up != null && near.up != null && Math.abs(near.up - up) > 0.01) {
+        kind = 'off';
+        near = null;
+      }
+      if (!near && up == null && tonal) up = prints.filter((p) => p.call)[taps.length - 1]?.up ?? 0.5;
       if (near && kind !== 'off') {
         near.done = true;
         near.el.classList.remove('call');
@@ -782,6 +791,7 @@ export const dancingTime = {
         return near;
       }
       const p = addPrint(b, kind, prints.length % 2 ? 'r' : 'l');
+      if (up != null) { p.up = up; p.el.style.setProperty('--up', up.toFixed(3)); }
       bump(p.el, 'land');
       return p;
     }
@@ -875,9 +885,10 @@ export const dancingTime = {
     }
 
     return {
-      onCall(i, syl) {
+      onCall(i, syl, tone) {
         if (busy) return;
         const now = performance.now();
+        if (tone && !tonal) { tonal = true; steps.classList.add('tonal'); }
         if (i === 0 || callT0 == null) {
           callT0 = now;
           tapT0 = null;
@@ -889,6 +900,7 @@ export const dancingTime = {
         const b = Math.round(((now - callT0) / spbMs()) * 2) / 2;
         callBeats.push(b);
         const p = addPrint(b, 'call', i % 2 ? 'r' : 'l');
+        if (tone) { p.up = tone.up; p.el.style.setProperty('--up', tone.up.toFixed(3)); }
         bump(p.el, 'land');
         if (boss) {
           // Rusty sings it, and points at the sky.
@@ -915,7 +927,7 @@ export const dancingTime = {
           cat.stomp((side = -side), 0.4);
           return;
         }
-        stepPrint(cls);
+        stepPrint(cls, fb?.up ?? null);
         move(cls || 'tap');
         cat.look(0, -0.3);
       },

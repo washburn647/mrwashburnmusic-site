@@ -329,3 +329,12 @@
 .scene-sp[data-theme="space"] .sp-menu { filter: drop-shadow(0 0 6px rgba(79, 227, 255, .7)); }
 .scene-sp[data-theme="space"] .sp-cone { filter: hue-rotate(160deg); }
 .scene-sp[data-theme="space"] .sp-floor::after { background: linear-gradient(180deg, rgba(0, 0, 0, .45), transparent 45%); }
+
+/* Melodic runs: the crate staircase the thieves climb, one stack per note of the call. */
+.sp-crates { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.sp-crate { position: absolute; bottom: 6%; width: calc(12 * var(--u)); height: calc((4 + var(--up) * 8) * var(--u)); translate: -50% 0;
+  background: repeating-linear-gradient(180deg, #c48a4a 0 calc(4 * var(--u)), #8a5a2a calc(4 * var(--u)) calc(4.4 * var(--u)));
+  box-shadow: inset 0 0 0 calc(.5 * var(--u)) #6e431c; border-radius: 3px; }
+.sp-crate.drop { animation: crate-drop .25s cubic-bezier(.3, 1.5, .5, 1); }
+@keyframes crate-drop { from { transform: translateY(-40%); opacity: 0; } }
+.scene-sp:not(.boss) .sp-bindi { translate: 0 calc(var(--lift, 0) * -8 * var(--u)); transition: left .18s ease-out, translate .18s ease-out; }

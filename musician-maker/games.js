@@ -41,7 +41,7 @@ export const KITS = {
   'petting-time': { object: { name: 'Mookie', icon: '🐈‍⬛' }, instrument: { name: 'the guiro', icon: '🪵', sound: 'guiro' } },
   litterbox: { object: { name: 'Mookie\'s paw', icon: '🐾' }, instrument: { name: 'the litter tub', icon: '🥁', sound: 'log-drum-low' } },
   'dancing-time': { object: { name: 'the disco ball', icon: '🪩' }, instrument: { name: 'the tambourine', icon: '🥁', sound: 'tambourine' } },
-  bedtime: { object: { name: 'the pillow', icon: '🛏️' }, instrument: { name: 'the harp', icon: '🎵', sound: 'harp' } },
+  bedtime: { object: { name: 'the pillow', icon: '🛏️' }, instrument: { name: 'the triangle', icon: '🔺', sound: 'triangle' } }, // melodic only: Play It is the harp (TUNES)
 };
 /* Melodic runs' tuned instruments (Play It, task 'tune'), for the games that play them. */
 const TUNES = {

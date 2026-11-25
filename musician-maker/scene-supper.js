@@ -13,10 +13,12 @@
    Mookie out of bed; Rusty flops belly-up on the bowl; or the cats swap supper for a stone fish.
    The kitchen parties as the combo grows: the menu bops, the lamp goes disco and a fish
    garland drops, spotlights swing and the cats dance, the floor lights up, Mookie wears shades.
+   In melodic runs each note of the call drops a stack of crates as high as the note, and the
+   thieves climb them: the stairs are the tune.
    Boss: Rusty, The Big Fluff, sprawled on a silver tureen. Each hit rings a shockwave that
    blows his fur up; four and he's blasted off the tureen and lands as a rug.
    Real photos are CC0 museum objects and one CC0 herring (props/CREDITS.txt).
-   Fixed markup only: nothing a learner types goes in here (call syllables are du/de). */
+   Fixed markup only: nothing a learner types goes in here (call syllables are du/de, or do re mi). */
 
 import { rigMookie } from './rig.js';
 import { rigCat } from './cats.js';
@@ -398,6 +400,21 @@ export const supperTime = {
       bindi.el.style.left = `${START.bindi + s * STEP}%`;
       rusty.el.style.left = `${START.rusty + s * STEP * 0.9}%`;
     }
+    /* Melodic runs: the thieves sneak up a staircase of crates, one crate stack per note, as
+       high as the note, so the stairs are the tune. */
+    let tonal = false;
+    const crates = h('div', 'sp-crates');
+    cam.insertBefore(crates, rusty.el);
+    function crate(i, up) {
+      if (i === 0) crates.replaceChildren();
+      const c = h('i', 'sp-crate');
+      c.style.left = `calc(${START.bindi + Math.min(steps, MAX_STEPS) * STEP}% + 13.5 * var(--u))`;
+      c.style.setProperty('--up', up.toFixed(3));
+      crates.append(c);
+      bump(c, 'drop');
+      bindi.el.style.setProperty('--lift', (0.5 + up).toFixed(3));
+      tonal = true;
+    }
     function snot() {
       cat.svg.style.setProperty('--snot', (1.05 - wake * 0.55).toFixed(2));
     }
@@ -422,7 +439,7 @@ export const supperTime = {
     }
 
     return {
-      onCall(i, syl) {
+      onCall(i, syl, tone) {
         if (busy) return;
         if (boss) {
           rusty.say(200, 'open');
@@ -439,6 +456,7 @@ export const supperTime = {
         bindi.step();
         later(60, () => rusty.step());
         place();
+        if (tone) crate(i, tone.up);
         toon('tiptoe', undefined, { vol: 0.5, rate: 1 + (steps % 2) * 0.2 });
       },
       onTap() {
@@ -454,8 +472,11 @@ export const supperTime = {
         // Clang: the thieves freeze mid-sneak and slide back a little; Mookie stirs.
         bindi.mood('freeze');
         rusty.mood('freeze');
-        steps = Math.max(0, steps - 0.5);
-        place(120);
+        // (In a melodic run the crates are stairs: they stay where they climbed to.)
+        if (!tonal) {
+          steps = Math.max(0, steps - 0.5);
+          place(120);
+        }
         clearTimeout(unfreeze);
         unfreeze = later(380, () => { if (!busy) { bindi.mood('sneak'); rusty.mood('sneak'); } });
         wake = Math.min(1, wake + 0.22);
