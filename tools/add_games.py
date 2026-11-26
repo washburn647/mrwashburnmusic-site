@@ -6,6 +6,7 @@ Checks the file the workshop's "Save for site" downloads (each game a known id, 
 and boss on or off, lists of win and fail gags, a tap sound the game loads, and optionally
 an instrument sound for Play It and a tuned one for melodic runs) and writes it
 to musician-maker/games.json, one game per line. At least one game must stay in the stream.
+The file's "path" (when each unit opens, musician-maker/path.js) is kept too.
 """
 
 import json
@@ -65,9 +66,16 @@ def main():
             raise SystemExit(f'{gid}: no tuned instrument sound "{o["tune"]}"')
     if not any(o['stream'] for o in games.values()):
         raise SystemExit('At least one game has to stay in the stream')
+    path = data.get('path') or {}
+    opens = path.get('opensAt') or {}
+    if not isinstance(opens, dict):
+        raise SystemExit('path: opensAt must be a map of unit to step')
+    for uid, n in opens.items():
+        if not re.fullmatch(r'unit-\d+', uid) or not isinstance(n, int) or not 1 <= n <= 13:
+            raise SystemExit(f'path: {uid} must open at a step from 1 to 13')
     lines = ',\n'.join(f'  {json.dumps(gid)}: {json.dumps(o, ensure_ascii=False)}' for gid, o in games.items())
     with open(OUT, 'w', encoding='utf-8') as f:
-        f.write('{"games": {\n' + lines + '\n}}\n')
+        f.write('{"games": {\n' + lines + '\n},\n"path": ' + json.dumps({'opensAt': opens}) + '}\n')
     print(f'Wrote {len(games)} game(s) to musician-maker/games.json')
 
 

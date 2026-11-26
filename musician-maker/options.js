@@ -48,24 +48,35 @@ export function complete(raw = {}) {
   return out;
 }
 
-let siteLoading = null;
-export function siteOptions() {
+let rawLoading = null;
+function siteRaw() {
   // What the workshop last published (worker/index.js), otherwise the repo's copy.
   const get = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  siteLoading ||= get('/api/live/games.json')
+  rawLoading ||= get('/api/live/games.json')
     .then(async (live) => (live?.games ? live : (await get(new URL('games.json', import.meta.url))) || {}))
-    .then((data) => complete(data.games))
-    .catch(() => complete());
-  return siteLoading;
+    .catch(() => ({}));
+  return rawLoading;
 }
+export const siteOptions = () => siteRaw().then((data) => complete(data?.games)).catch(() => complete());
 
-/* The workshop's copy: { games, test } (test: the last test-run settings). */
+/* The path's settings (path.js): when each unit opens, as { opensAt: { unitId: step } }. */
+export function completePath(raw = {}) {
+  const opensAt = {};
+  for (const [id, n] of Object.entries(raw?.opensAt || {})) {
+    const k = Math.round(Number(n));
+    if (/^unit-\d+$/.test(id) && k >= 1 && k <= 13) opensAt[id] = k;
+  }
+  return { opensAt };
+}
+export const sitePath = () => siteRaw().then((data) => completePath(data?.path)).catch(() => completePath());
+
+/* The workshop's copy: { games, path, test } (test: the last test-run settings). */
 export function loadDraft() {
   try {
     const kept = JSON.parse(localStorage.getItem(KEY)) || {};
-    return { games: kept.games ? complete(kept.games) : null, test: kept.test || {} };
+    return { games: kept.games ? complete(kept.games) : null, path: kept.path ? completePath(kept.path) : null, test: kept.test || {} };
   } catch {
-    return { games: null, test: {} };
+    return { games: null, path: null, test: {} };
   }
 }
 
