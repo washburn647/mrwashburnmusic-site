@@ -18,7 +18,10 @@ const DEFAULTS = {
   tokens: 0, // music notes (♪) earned in runs, spent in the closet (avatar.js)
   toNote: 0, // right answers since the last note earned
   look: {}, // the avatar: slot -> item id (avatar.js ITEMS)
-  owned: [], // items bought: 'slot:id'
+  owned: [], // items bought or won and worn: 'slot:id' (shop.js)
+  bosses: {}, // game id: bosses beaten in it (the boss trophies, shop.js)
+  gifts: [], // prizes already announced: 'slot:id'
+  fresh: [], // prizes won and not tried on yet (✨ in the closet)
   goal: null, // the item or groove saved up for ('slot:id', 'groove:id'), shown on the title and lap screens
   outfits: [], // up to three kept looks (closet.js)
   tips: {}, // one-time pointers already shown (outfits: the closet's first outfit)

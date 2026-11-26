@@ -4,7 +4,8 @@
 
 Checks the file Groove Lab's "Save for site" downloads (every groove has an id and a 2/4 and/or
 6/8 version, each with whole beats, known layers, and notes inside the loop on sounds in assets/sounds/index.json;
-variations of a layer each with a chance from 0 to 1; layer names and icons) and writes it to
+variations of a layer each with a chance from 0 to 1; layer names and icons; a record-shop price
+and hidden) and writes it to
 musician-maker/grooves.json, one groove per line. It replaces the grooves there: the Lab keeps
 them all and saves them all.
 """
@@ -31,6 +32,10 @@ def main():
         if not isinstance(g.get('id'), str) or g['id'] in ids:
             raise SystemExit(f'{name}: missing or repeated id')
         ids.add(g['id'])
+        if 'price' in g and not (isinstance(g['price'], int) and not isinstance(g['price'], bool) and 0 <= g['price'] <= 999):
+            raise SystemExit(f'{name}: price must be a whole number of notes from 0 to 999')
+        if 'hidden' in g and g['hidden'] is not True:
+            raise SystemExit(f'{name}: hidden is true or left out')
         info = g.get('layerInfo', {})
         if not isinstance(info, dict) or set(info) - set(LAYERS):
             raise SystemExit(f'{name}: layerInfo names an unknown layer')

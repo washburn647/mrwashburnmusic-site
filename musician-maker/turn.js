@@ -216,7 +216,7 @@ export function makeTurn(item, game, ui) {
       return false;
     };
   } else if (task === 'tune') {
-    // Play It in melodic runs: the game's tuned instrument, a key per tone, low to high.
+    // Play It on do re mi: the game's tuned instrument, a key per tone, low to high.
     const sound = game?.tune || kit.tune?.sound || 'harp';
     const pad = tunePad(h, { look: kit.tune?.look || 'harp', tones: MTONES, labels: step >= 2, onPress: (tone, ev, key) => press(tone, ev, key) });
     el = h('div', { class: 'tune-pad' }, h('b', { class: 'wait' }, waitText), pad.el);
@@ -318,7 +318,7 @@ export function makeTurn(item, game, ui) {
     };
   }
 
-  /* Melodic runs: the notes in time, and the right ones (played), or the tune's shape (sung). */
+  /* Do re mi: the notes in time, and the right ones (played), or the tune's shape (sung). */
   function gradeTonal() {
     const n = pattern.tones.length;
     if (task === 'tune') {

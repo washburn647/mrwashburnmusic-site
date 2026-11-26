@@ -58,7 +58,7 @@ export const TASKS = [
     about: 'Pick the notes on the note tiles before the 8 beats run out.',
     steps: { 9: ROTE_READ, 10: WRITE, 11: WRITE, 12: WRITE },
   },
-  // Melodic runs (kind 'tonal'): sung, or played on the game's tuned instrument (a harp, the
+  // Do re mi (kind 'tonal'): sung, or played on the game's tuned instrument (a harp, the
   // gong bowls, a xylophone: KITS' `tune`). Syllables are do re mi.
   {
     id: 'sing', kind: 'tonal', name: 'Sing It', cue: 'SING IT!', icon: '🎤', xp: 1.5, mic: true,

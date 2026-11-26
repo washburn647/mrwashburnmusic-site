@@ -1,4 +1,4 @@
-/* Bedtime, melodic only: the learner sits up in bed (their own avatar) and calls Mookie to bed
+/* Bedtime, do re mi only: the learner sits up in bed (their own avatar) and calls Mookie to bed
    with a tune. One of five bedrooms takes turns (THEMES): a kid's room, a castle, a camping
    tent, a spaceship bunk, a treehouse. A mobile turns over the bed on the beat, a night light
    glows, the moon is in the window, and on the right a doorway opens onto the dark hall.
@@ -24,7 +24,7 @@ import { rigMookie } from './rig.js';
 import { rigCat } from './cats.js';
 import { toon } from './sound.js';
 import { gagDeck } from './gags.js';
-import { avatar } from './avatar.js';
+import { avatar, setMood } from './avatar.js';
 import { callBubble } from './speech.js';
 
 function h(tag, cls, text) {
@@ -441,6 +441,7 @@ export const bedtime = {
         zzz.classList.add('on', 'cat');
         toon('snore', undefined, { vol: 0.5 });
         kid.classList.add('sleepy');
+        setMood(kid, 'sleep');
       });
     }
     function winSnuggle() {
@@ -449,6 +450,7 @@ export const bedtime = {
         toon('purr');
         hearts(centre(cat.el, 0.5, 0.2));
         bump(kid, 'hug');
+        setMood(kid, 'happy', { for: 900 });
         bubble('purrrr', centre(cat.el, 0.5, 0.1), 1000);
         settle(900);
       });
@@ -469,6 +471,7 @@ export const bedtime = {
       hopToBed(spot, 700).then(() => {
         cat.el.classList.add('hat');
         bump(kid, 'squash');
+        setMood(kid, 'wow', { for: 700 });
         comic('NEW HAT!', centre(cat.el, 0.5, 0), 'hit');
         toon('boing');
         settle(700);
@@ -489,6 +492,7 @@ export const bedtime = {
         bubble('a present!', centre(cat.el, 0.4, 0), 1000);
         toon('meow', undefined, { rate: 1.1 });
         bump(kid, 'hug');
+        setMood(kid, 'happy', { for: 1000 });
         later(500, () => { cat.mood('purr'); toon('purr'); });
         settle(1100);
       });

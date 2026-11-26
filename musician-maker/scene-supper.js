@@ -13,7 +13,7 @@
    Mookie out of bed; Rusty flops belly-up on the bowl; or the cats swap supper for a stone fish.
    The kitchen parties as the combo grows: the menu bops, the lamp goes disco and a fish
    garland drops, spotlights swing and the cats dance, the floor lights up, Mookie wears shades.
-   In melodic runs each note of the call drops a stack of crates as high as the note, and the
+   In do re mi games each note of the call drops a stack of crates as high as the note, and the
    thieves climb them: the stairs are the tune.
    Boss: Rusty, The Big Fluff, sprawled on a silver tureen. Each hit rings a shockwave that
    blows his fur up; four and he's blasted off the tureen and lands as a rug.
@@ -400,7 +400,7 @@ export const supperTime = {
       bindi.el.style.left = `${START.bindi + s * STEP}%`;
       rusty.el.style.left = `${START.rusty + s * STEP * 0.9}%`;
     }
-    /* Melodic runs: the thieves sneak up a staircase of crates, one crate stack per note, as
+    /* Do re mi: the thieves sneak up a staircase of crates, one crate stack per note, as
        high as the note, so the stairs are the tune. */
     let tonal = false;
     const crates = h('div', 'sp-crates');
@@ -472,7 +472,7 @@ export const supperTime = {
         // Clang: the thieves freeze mid-sneak and slide back a little; Mookie stirs.
         bindi.mood('freeze');
         rusty.mood('freeze');
-        // (In a melodic run the crates are stairs: they stay where they climbed to.)
+        // (In a do re mi game the crates are stairs: they stay where they climbed to.)
         if (!tonal) {
           steps = Math.max(0, steps - 0.5);
           place(120);

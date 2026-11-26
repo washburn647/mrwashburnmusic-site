@@ -181,7 +181,7 @@
 .dt-print.shine svg { animation: dt-shine .45s ease-out; }
 @keyframes dt-shine { 30% { scale: 1.35; filter: drop-shadow(0 0 10px #fff) brightness(1.5); } }
 .dt-print.gone { opacity: 0; transition: opacity .35s; }
-/* Melodic runs: three rows of floor, low to high (back is high), and each print on its note's row. */
+/* Do re mi: three rows of floor, low to high (back is high), and each print on its note's row. */
 .dt-steps.tonal { height: calc(22 * var(--u)); background: repeating-linear-gradient(180deg, transparent 0 calc(33.3% - 2px), rgba(255, 255, 255, .22) calc(33.3% - 2px) 33.3%); border-radius: 8px; }
 .dt-steps.tonal .dt-print, .dt-steps.tonal .dt-print.r { top: calc((1 - var(--up, .5)) * 66%); }
 

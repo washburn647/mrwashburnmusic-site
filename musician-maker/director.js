@@ -28,7 +28,7 @@ const features = (p) => (p.kind === 'tonal'
   : [...p.cells.flatMap((c, i) => (c === 'ee' ? [`ee${i}`] : [])), `n${p.cells.filter((c) => c === 'ee').length}`]);
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
-/* kind: 'rhythm' (Unit 1) or 'tonal' (melodic runs, Unit 4): each keeps its own progress,
+/* kind: 'rhythm' (Unit 1) or 'tonal' (do re mi, Unit 4): each keeps its own progress,
    the tonal one in st.mel, with the same fields. */
 export function makeDirector(root, kind = 'rhythm') {
   const tonal = kind === 'tonal';

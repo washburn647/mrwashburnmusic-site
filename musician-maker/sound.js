@@ -21,7 +21,7 @@ let G = null; // the groove playing
 export const HITS = ['claves', 'log-drum-low', 'log-drum-high', 'bass-drum', 'snare', 'shaker', 'tambourine',
   'cymbal', 'triangle', 'cowbell', 'agogo', 'guiro', 'bongo-high', 'bongo-low', 'conga', 'finger-cymbals', 'sleigh-bells'];
 const PITCHED = { bass: [36, 52], horn: [60, 74], marimba: [60, 88], trombone: [40, 55], harp: [52, 84], xylophone: [60, 89] };
-/* The tuned instruments melodic runs play on (Play It, task 'tune'). 'bowl' is synthesized. */
+/* The tuned instruments do re mi is played on (Play It, task 'tune'). 'bowl' is synthesized. */
 export const TUNED = ['harp', 'xylophone', 'marimba', 'bowl'];
 
 export function ac() {
@@ -787,7 +787,7 @@ function sing(midi, t, dur, vol = 0.5, { bum = false } = {}) {
   vib.stop(t + dur + 0.05);
 }
 
-/* Sounding do for melodic runs, from a groove's key (0 = C ... 11 = B): somewhere from A3 to
+/* Sounding do for do re mi, from a groove's key (0 = C ... 11 = B): somewhere from A3 to
    G#4, where kids and grown-ups can both sing do re mi. */
 export const doOf = (key = 0) => 57 + ((((key ?? 0) % 12) + 15) % 12);
 
@@ -973,7 +973,8 @@ export function checkGrooves(list) {
     }
     const layerInfo2 = info(g.layerInfo);
     return { id: g.id, name: String(g.name || g.id), key: Number.isInteger(g.key) ? g.key : 0, ...(layerInfo2 ? { layerInfo: layerInfo2 } : {}),
-      ...(Number.isInteger(g.price) && g.price >= 0 ? { price: g.price } : {}), versions }; // price: music notes, in the closet
+      ...(Number.isInteger(g.price) && g.price >= 0 ? { price: g.price } : {}), ...(g.hidden === true ? { hidden: true } : {}),
+      versions }; // price: music notes, in the closet; hidden: not sold or played (shop.js ownsGroove)
   }).filter((g) => Object.keys(g.versions).length);
 }
 

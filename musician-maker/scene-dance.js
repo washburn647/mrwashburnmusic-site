@@ -15,7 +15,7 @@
    he can dance.
    The room parties as the combo grows: the mirror ball turns faster and throws more light,
    the crowd waves light sticks, a flamingo struts by, fog, lasers, confetti.
-   In melodic runs the diagram has a row for each note, low at the front and high at the back,
+   In do re mi games the diagram has a row for each note, low at the front and high at the back,
    and each print lands on its note's row; a step on the wrong row is red.
    Boss: Saturday Night Fur. Rusty (cats.js) in a white disco suit, in a dance-off. Each hit
    and a piece of his suit flies off; the last one and the mirror ball comes down on him.
@@ -502,7 +502,7 @@ export const dancingTime = {
     let side = 1;
     let restT = 0;
     let noteK = 0;
-    let tonal = false; // a melodic run: each print sits on the floor row of its note
+    let tonal = false; // a do re mi game: each print sits on the floor row of its note
     let strutted = false;
     let hits = 0;
     let suitAt = 0;
@@ -777,7 +777,7 @@ export const dancingTime = {
       prints.forEach((p) => {
         if (p.call && !p.done && Math.abs(p.b - b) < 0.3 && (!near || Math.abs(p.b - b) < Math.abs(near.b - b))) near = p;
       });
-      // A melodic run: a note played on another row is a step in the wrong place.
+      // Do re mi: a note played on another row is a step in the wrong place.
       if (near && up != null && near.up != null && Math.abs(near.up - up) > 0.01) {
         kind = 'off';
         near = null;

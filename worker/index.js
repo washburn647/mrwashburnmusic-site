@@ -517,6 +517,8 @@ async function boxApi(request, env, [, studio, id, results]) {
                                             origin may read it (Kyle's dashboard does)
                                             (radio/stations.json's shape)
    GET  /api/live/home.json                 the homepage's words, menu and photos (home/home.json's shape)
+   GET  /api/live/shop.json                 the avatar shop: items, prices, prizes, what runs pay
+                                            (musician-maker/shop.json's shape)
    GET  /api/live/voice/:voice.json         a voice's takes (index.json "voices" entry's shape)
    GET  /api/live/voice/:voice/:take.mp3    one take
    PUT  /studio/api/live/grooves            publish the grooves                       (Kyle)
@@ -524,6 +526,7 @@ async function boxApi(request, env, [, studio, id, results]) {
    PUT  /studio/api/live/songburner         publish Song Burner's default settings    (Kyle)
    PUT  /studio/api/live/radio              publish the radio's stations              (Kyle)
    PUT  /studio/api/live/home               publish the homepage                      (Kyle)
+   PUT  /studio/api/live/shop               publish the avatar shop                   (Kyle)
    GET  /studio/api/live/voice/:voice       ids of the takes already uploaded         (Kyle)
    PUT  /studio/api/live/voice/:voice/:take.mp3   upload a take                       (Kyle)
    PUT  /studio/api/live/voice/:voice       publish the take list and units; takes it
@@ -553,6 +556,7 @@ async function liveApi(request, env, studio, path) {
     if (path === 'games.json') return live.text('games');
     if (path === 'songburner.json') return live.text('songburner');
     if (path === 'home.json') return live.text('home');
+    if (path === 'shop.json') return live.text('shop');
     if (path === 'radio.json') {
       // Kyle's desktop dashboard reads the station list too, so any page may fetch it (it's public).
       const r = await live.text('radio');
@@ -609,6 +613,15 @@ async function liveApi(request, env, studio, path) {
     const clean = homeContent(data);
     if (typeof clean === 'string') return reply({ error: clean }, 400);
     return live.putText('home', JSON.stringify(clean));
+  }
+  if (path === 'shop' && method === 'PUT') {
+    const text = await request.text();
+    if (text.length > 256 * 1024) return reply({ error: 'too big' }, 413);
+    let data;
+    try { data = JSON.parse(text); } catch { return reply({ error: 'not JSON' }, 400); }
+    const clean = shopFile(data);
+    if (typeof clean === 'string') return reply({ error: clean }, 400);
+    return live.putText('shop', JSON.stringify(clean));
   }
   if ((m = /^voice\/([^/]+)$/.exec(path)) && VOICE.test(m[1])) {
     if (method === 'GET') return live.takeIds(m[1]);
@@ -722,8 +735,56 @@ function homeContent(data) {
   };
 }
 
+/* The avatar shop from the studio's shop editor (musician-maker/shop.js completeShop reads
+   it): each slot's items in order, with a name, a price in notes, hidden, and how a prize is
+   won; what runs pay; a groove's price. Only those fields, in range, go through; the game
+   ignores ids it has no drawing for. */
+const SHOP_SLOTS = ['kind', 'color', 'pattern', 'face', 'hat', 'glasses', 'neck', 'shoes', 'hold', 'bg'];
+const SHOP_ID = /^[a-z0-9-]{1,40}$/;
+const SHOP_EARN = { every: [1, 50], clean: [0, 50], boss: [0, 50], bossTry: [0, 50], daily: [0, 50] };
+export function shopFile(data) {
+  if (!data || typeof data !== 'object' || !data.items || typeof data.items !== 'object' || Array.isArray(data.items)) return 'no items';
+  const int = (v, lo, hi) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
+  };
+  const items = {};
+  for (const slot of SHOP_SLOTS) {
+    const list = data.items[slot];
+    if (list === undefined) continue;
+    if (!Array.isArray(list) || list.length > 300) return `bad ${slot} list`;
+    const seen = new Set();
+    items[slot] = [];
+    for (const o of list) {
+      if (!o || typeof o.id !== 'string' || !SHOP_ID.test(o.id) || seen.has(o.id)) return `bad item in ${slot}`;
+      seen.add(o.id);
+      const it = { id: o.id };
+      if (typeof o.name === 'string' && o.name.trim()) it.name = o.name.trim().slice(0, 40);
+      const price = int(o.price, 0, 999);
+      if (price !== null) it.price = price;
+      if (o.hidden === true) it.hidden = true;
+      const u = o.unlock;
+      if (u && typeof u === 'object') {
+        if (typeof u.boss === 'string' && SHOP_ID.test(u.boss)) it.unlock = { boss: u.boss };
+        else if (typeof u.step === 'string' && /^unit-\d{1,2}:\d{1,2}$/.test(u.step)) it.unlock = { step: u.step };
+        else if (int(u.level, 2, 50) !== null) it.unlock = { level: int(u.level, 2, 50) };
+      } else if ('unlock' in o) it.unlock = null;
+      items[slot].push(it);
+    }
+  }
+  const earn = {};
+  for (const [k, [lo, hi]] of Object.entries(SHOP_EARN)) {
+    const n = int(data.earn?.[k], lo, hi);
+    if (n !== null) earn[k] = n;
+  }
+  const out = { items, earn };
+  const g = int(data.groovePrice, 0, 999);
+  if (g !== null) out.groovePrice = g;
+  return out;
+}
+
 export class Live extends DurableObject {
-  // text:<name> → { chunks, at }, text:<name>:<i> → a piece of it (names: grooves, games, units, songburner, radio, home, voice:<voice>)
+  // text:<name> → { chunks, at }, text:<name>:<i> → a piece of it (names: grooves, games, units, songburner, radio, home, shop, voice:<voice>)
   // takes:<voice> → [take ids], take:<voice>:<id> → the mp3's bytes
   async text(name) {
     const meta = await this.ctx.storage.get(`text:${name}`);
