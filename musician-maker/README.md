@@ -61,11 +61,16 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
 - **Music notes (♪) and the avatar:** runs also pay music notes, a gold note coin: 1 every 3
   right answers, +1 for a set with no misses, +3 for beating the boss (+1 when he gets away), +2
   for the first run of the day (`EARN` in `avatar.js`; a full lap pays about 10 at most). They're spent in the closet (title screen: the avatar beside Mookie,
-  or the note count) on the learner's own avatar: an animal (cat, bunny, bear, dog), its color,
-  face, hat, glasses, what it holds and its background. Everything is a picture with a price; a
-  tap tries it on, ✓ buys it, and short of notes a bar shows how far there is to go. The avatar
-  dances with Mookie on the set and lap screens.
-  Grooves are bought there too (the 🎵 tab): the first groove is free, every other costs
+  or the note count) on the learner's own avatar: one of 21 animals (cat to dragon, each drawn
+  around one shared body and head, so every item fits all of them), its color ("natural" is the
+  animal's own), face, hat, glasses, what it holds and its background. The closet has two rooms
+  (👕 Closet, 💿 Record Shop) and three groups (Me, Wear, Stage); only the items scroll, so the
+  avatar stays in view. Every item is a picture of it alone with a price, owned first; a tap tries
+  it on and the avatar reacts, ✓ buys it, and short of notes a bar shows how far there is to go
+  and 🎯 makes it the goal (`st.goal`), shown on the title and filling on the lap screen as the
+  run's notes count into the wallet. Three outfits (`st.outfits`) keep looks; 🎲 shuffles what the
+  learner has. The avatar dances with Mookie on the set and lap screens.
+  Grooves are bought in the Record Shop: the first groove is free, every other costs
   `GROOVE_PRICE` notes (`avatar.js`; a groove in `grooves.json` can carry its own `price`). A tap
   plays two bars of it. The title's Groove button and Mix only use grooves the learner has.
 
