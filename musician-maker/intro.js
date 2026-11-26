@@ -2,8 +2,9 @@
    step 2, and so on: the key is taskKey, e.g. 'say-1'), the stream stops for a short
    introduction before that game: what the task is, what to do at this step, Kyle's recorded
    message when there is one (audio or video), and a practice round to try it, slowly, with
-   no score. "Let's play" goes back to the stream with a count-in, and the game it was about
-   comes next. Once seen it isn't shown again (store: st.intro). My progress can play any
+   no score. Trying it is up to the learner: "Let's play" works from the start (and stops a
+   demo or practice round that's still going), goes back to the stream with a count-in, and
+   the game it was about comes next. Once seen it isn't shown again (store: st.intro). My progress can play any
    unlocked one again, or just the practice round; the game workshop previews them all
    (?intro=<key>).
 
@@ -14,7 +15,7 @@
      lines   what to do, one short sentence each
      media   { video: 'intros/say-1.mp4' } or { audio: 'intros/say-1.mp3' } (files in
              musician-maker/intros/), shown above the practice
-     tries   practice rounds before "Let's play" lights up (default 1; 0 to skip practice) */
+     tries   0 to leave out the practice round (Try it); default 1 */
 
 import * as snd from './sound.js';
 import { STEPS, ALL, MALL, patternsFor, byId, sayAs, isCreate, onsets, MTONES } from './steps.js';
@@ -88,9 +89,21 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
   const tryBox = h('div', { class: 'intro-try' }, shown, dots, area, said, ghost);
   const watchBtn = h('button', { class: 'mini', onclick: () => round(true) }, '▶ Watch');
   const tryBtn = h('button', { class: 'mini', onclick: () => round(false) }, '✋ Try it');
-  const go = h('button', { class: 'play', onclick: () => { stopVoice(); media?.pause?.(); done(); } }, practice ? 'Done' : 'Let\'s play');
-  const ready = () => { go.disabled = !practice && tries < it.tries; };
-  ready();
+  // Sounds a round schedules ahead go through a bus of their own, and its timers are kept,
+  // so leaving mid-round (Let's play) silences what was still to come.
+  let out = null;
+  const timers = new Set();
+  const stopRound = () => {
+    timers.forEach(clearTimeout);
+    timers.clear();
+    snd.fadeBus(out);
+    out = null;
+    turn = null;
+    busy = false;
+    ghost.classList.remove('on', 'tap');
+  };
+  const go = h('button', { class: 'play', onclick: () => { stopRound(); stopVoice(); media?.pause?.(); done(); } }, practice ? 'Done' : 'Let\'s play');
+  const ready = () => {};
 
   // 🔊: Kyle's narration of this intro (narration.js), or the device's voice until it's recorded.
   const voice = true;
@@ -130,7 +143,10 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
 
   const ctx = () => snd.ac();
   const spb = 60 / PRACTICE_BPM;
-  const at = (t, fn) => setTimeout(fn, Math.max(0, (t - ctx().currentTime + snd.latency()) * 1000));
+  const at = (t, fn) => {
+    const id = setTimeout(() => { timers.delete(id); fn(); }, Math.max(0, (t - ctx().currentTime + snd.latency()) * 1000));
+    timers.add(id);
+  };
   const beatDots = (k, n, kind) => {
     dots.className = `dots ${kind}${n > 4 ? ' long' : ''}`;
     dots.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < k ? 'past' : i === k ? 'now' : '' })));
@@ -162,6 +178,13 @@ export function showIntro(host, key, ui, done, { game = null, practice = false }
     area.classList.remove('over');
     ghost.classList.remove('on', 'tap');
     await snd.load();
+    if (!host.isConnected) { busy = false; return; }
+    snd.fadeBus(out);
+    out = snd.bus();
+    snd.into(out, () => schedule(demo));
+  }
+
+  function schedule(demo) {
     const tonal = task.kind === 'tonal';
     const doMidi = ui.doMidi ?? 60;
     const ids = patternsFor(step.set, task.kind);

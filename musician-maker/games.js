@@ -1,7 +1,7 @@
 /* The micro-games. A game is a silly world and a gesture; the engine hands it a question
    and grades the answer. Each game draws its scene into the stage and returns:
      onCall(i, syl, tone)  a note of the call sounds (syl is set when the call is in
-                     syllables; in melodic runs tone is { tone, up }: up 0 lowest to 1 highest)
+                     syllables; in a do re mi game tone is { tone, up }: up 0 lowest to 1 highest)
      onTap(fb)       the learner tapped (or spoke) a note; fb.cls is its timing when known
                      (on, close, off, idle outside the turn, tap with nothing to time it by);
                      a note played on the tuned instrument also has fb.tone and fb.up
@@ -41,15 +41,15 @@ export const KITS = {
   'petting-time': { object: { name: 'Mookie', icon: '🐈‍⬛' }, instrument: { name: 'the guiro', icon: '🪵', sound: 'guiro' } },
   litterbox: { object: { name: 'Mookie\'s paw', icon: '🐾' }, instrument: { name: 'the litter tub', icon: '🥁', sound: 'log-drum-low' } },
   'dancing-time': { object: { name: 'the disco ball', icon: '🪩' }, instrument: { name: 'the tambourine', icon: '🥁', sound: 'tambourine' } },
-  bedtime: { object: { name: 'the pillow', icon: '🛏️' }, instrument: { name: 'the triangle', icon: '🔺', sound: 'triangle' } }, // melodic only: Play It is the harp (TUNES)
+  bedtime: { object: { name: 'the pillow', icon: '🛏️' }, instrument: { name: 'the triangle', icon: '🔺', sound: 'triangle' } }, // do re mi only: Play It is the harp (TUNES)
 };
-/* Melodic runs' tuned instruments (Play It, task 'tune'), for the games that play them. */
+/* The tuned instruments for do re mi (Play It, task 'tune'), for the games that play it. */
 const TUNES = {
   'supper-time': { name: 'the gong bowls', icon: '🥣', sound: 'bowl', look: 'bowls' },
   'dancing-time': { name: 'the xylophone', icon: '🎶', sound: 'xylophone', look: 'xylophone' },
   bedtime: { name: 'the harp', icon: '🎵', sound: 'harp', look: 'harp' },
 };
-/* Which runs each game plays in: rhythm (Unit 1), melodic (tonal), or both. */
+/* Which kinds of pattern each game plays: rhythm (Unit 1), tonal (do re mi, Unit 4), or both. */
 const MODES = { 'supper-time': ['rhythm', 'tonal'], 'dancing-time': ['rhythm', 'tonal'], bedtime: ['tonal'] };
 const DEFAULT_KIT = { object: { name: 'the pad', icon: '👆' }, instrument: { name: 'the drum', icon: '🥁', sound: 'conga' } };
 for (const g of GAMES) {

@@ -16,7 +16,7 @@ import { encodeLesson, safeLink, formatDate, cleanDeck, cleanSetup } from '/less
 import { readPieceFile, slimXML, pieceInfo } from '/lesson/score.js';
 import { openPlayer, PIECE_MODES, KEYBOARD_MODES } from '/lesson/player.js';
 import { openPractice } from '/lesson/practice.js';
-import { LESSON_PAGE, LOCAL_PAGE, STUDIO_HOME, API } from '/lesson/paths.js';
+import { LESSON_PAGE, LOCAL_PAGE, API } from '/lesson/paths.js';
 import { newCode, cleanCode, publish, results, unpublish, secretFor, PICKS, CODE_WORDS } from '/lesson/locked.js';
 import { cardLabel, KINDS } from '/lesson/cards.js';
 import { editDeck, deckSummary, newDeck } from './decks.js';
@@ -97,7 +97,6 @@ async function showList() {
   groups.sort((a, b) => ((DAYS.indexOf(a[0]) - todayDay + 7) % 7) - ((DAYS.indexOf(b[0]) - todayDay + 7) % 7));
 
   app.replaceChildren(
-    ...(STUDIO_HOME ? [h('div', { class: 'bar' }, h('a', { class: 'back', href: STUDIO_HOME }, '‹ Studio'))] : []),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Lesson pages'),
       syncMark(),

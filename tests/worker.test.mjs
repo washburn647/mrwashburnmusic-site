@@ -219,3 +219,48 @@ test('roster counts never include a title or a score', async () => {
   assert.equal(st.runs, 2);
   assert.doesNotMatch(JSON.stringify(st), /Secret|99/);
 });
+
+test('the avatar shop: only its own fields go live, in range, and anyone can read it', async () => {
+  assert.equal(W.shopFile({}), 'no items');
+  assert.equal(W.shopFile({ items: { hat: [{ id: 'crown' }, { id: 'crown' }] } }), 'bad item in hat');
+  assert.equal(W.shopFile({ items: { hat: [{ id: '<b>' }] } }), 'bad item in hat');
+  const clean = W.shopFile({
+    items: {
+      hat: [
+        { id: 'crown', name: '  Big crown ', price: 99, hidden: true, extra: 'x' },
+        { id: 'cheese', price: 0, unlock: { boss: 'mouse-catcher' } },
+        { id: 'beret', unlock: { step: 'unit-1:5' } },
+        { id: 'party', price: 5000, unlock: { level: 99 } },
+        { id: 'bow', unlock: null },
+      ],
+      secrets: [{ id: 'x' }],
+    },
+    earn: { every: 0, boss: 9, daily: '4' },
+    groovePrice: 70,
+    owner: 'someone',
+  });
+  assert.deepEqual(clean, {
+    items: {
+      hat: [
+        { id: 'crown', name: 'Big crown', price: 99, hidden: true },
+        { id: 'cheese', price: 0, unlock: { boss: 'mouse-catcher' } },
+        { id: 'beret', unlock: { step: 'unit-1:5' } },
+        { id: 'party' },
+        { id: 'bow', unlock: null },
+      ],
+    },
+    earn: { boss: 9, daily: 4 },
+    groovePrice: 70,
+  });
+
+  const live = new W.Live({ storage: memStorage() }, {});
+  const env = { ...makeEnv(), LIVE: { idFromName: (n) => n, get: () => live } };
+  assert.equal((await get(env, '/api/live/shop.json')).status, 404);
+  await live.putText('shop', JSON.stringify(clean));
+  const r = await get(env, '/api/live/shop.json');
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), clean);
+  // Publishing needs Kyle's sign-in.
+  const put = await get(env, '/studio/api/live/shop', null, { method: 'PUT', body: JSON.stringify(clean) });
+  assert.equal(put.status, 401);
+});

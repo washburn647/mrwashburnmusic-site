@@ -1,0 +1,525 @@
+{
+ "units": [
+  {
+   "removed": [],
+   "marks": {
+    "rhythm/2-4/q-ee-q-q": "familiar",
+    "rhythm/2-4/q-ee-ee-q": "familiar",
+    "rhythm/2-4/ee-ee-q-q": "familiar",
+    "rhythm/2-4/ee-q-ee-ee": "familiar",
+    "rhythm/2-4/ee-ee-ee-q": "familiar",
+    "rhythm/2-4/ee-q-q-q": "familiar",
+    "rhythm/2-4/q-q-ee-q": "familiar",
+    "rhythm/2-4/ee-q-ee-q": "familiar",
+    "rhythm/2-4/q-q-q-q": "unfamiliar",
+    "rhythm/2-4/q-q-q-ee": "unfamiliar",
+    "rhythm/2-4/q-q-ee-ee": "unfamiliar",
+    "rhythm/2-4/q-ee-q-ee": "unfamiliar",
+    "rhythm/2-4/q-ee-ee-ee": "unfamiliar",
+    "rhythm/2-4/ee-q-q-ee": "unfamiliar",
+    "rhythm/2-4/ee-ee-q-ee": "unfamiliar",
+    "rhythm/2-4/ee-ee-ee-ee": "unfamiliar"
+   },
+   "id": "unit-1",
+   "name": "Unit 1",
+   "kind": "rhythm",
+   "meter": "2/4",
+   "concepts": [
+    "q",
+    "ee"
+   ],
+   "require": [],
+   "bars": 2,
+   "patterns": [
+    {
+     "id": "rhythm/2-4/q-q-q-q",
+     "mark": "unfamiliar"
+    },
+    {
+     "id": "rhythm/2-4/q-q-q-ee",
+     "mark": "unfamiliar"
+    },
+    {
+     "id": "rhythm/2-4/q-q-ee-q",
+     "mark": "familiar"
+    },
+    {
+     "id": "rhythm/2-4/q-q-ee-ee",
+     "mark": "unfamiliar"
+    },
+    {
+     "id": "rhythm/2-4/q-ee-q-q",
+     "mark": "familiar"
+    },
+    {
+     "id": "rhythm/2-4/q-ee-q-ee",
+     "mark": "unfamiliar"
+    },
+    {
+     "id": "rhythm/2-4/q-ee-ee-q",
+     "mark": "familiar"
+    },
+    {
+     "id": "rhythm/2-4/q-ee-ee-ee",
+     "mark": "unfamiliar"
+    },
+    {
+     "id": "rhythm/2-4/ee-q-q-q",
+     "mark": "familiar"
+    },
+    {
+     "id": "rhythm/2-4/ee-q-q-ee",
+     "mark": "unfamiliar"
+    },
+    {
+     "id": "rhythm/2-4/ee-q-ee-q",
+     "mark": "familiar"
+    },
+    {
+     "id": "rhythm/2-4/ee-q-ee-ee",
+     "mark": "familiar"
+    },
+    {
+     "id": "rhythm/2-4/ee-ee-q-q",
+     "mark": "familiar"
+    },
+    {
+     "id": "rhythm/2-4/ee-ee-q-ee",
+     "mark": "unfamiliar"
+    },
+    {
+     "id": "rhythm/2-4/ee-ee-ee-q",
+     "mark": "familiar"
+    },
+    {
+     "id": "rhythm/2-4/ee-ee-ee-ee",
+     "mark": "unfamiliar"
+    }
+   ]
+  },
+  {
+   "removed": [],
+   "marks": {},
+   "id": "unit-2",
+   "name": "Unit 2",
+   "kind": "rhythm",
+   "meter": "6/8",
+   "concepts": [
+    "dq",
+    "eee"
+   ],
+   "require": [],
+   "bars": 2,
+   "patterns": [
+    {
+     "id": "rhythm/6-8/dq-dq-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-dq-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-dq-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-dq-eee-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-eee-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-eee-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-eee-eee",
+     "mark": null
+    }
+   ]
+  },
+  {
+   "removed": [],
+   "marks": {},
+   "id": "unit-3",
+   "name": "Unit 3",
+   "kind": "rhythm",
+   "meter": "6/8",
+   "concepts": [
+    "dq",
+    "eee",
+    "qe"
+   ],
+   "require": [
+    "qe"
+   ],
+   "bars": 2,
+   "patterns": [
+    {
+     "id": "rhythm/6-8/dq-dq-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-dq-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-dq-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-dq-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-dq-qe-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-eee-qe-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-eee-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/dq-qe-qe-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-dq-qe-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-eee-qe-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-eee-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/eee-qe-qe-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-eee-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-dq-qe-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-eee-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-eee-qe-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-dq-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-dq-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-dq-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-eee-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-eee-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-eee-qe",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-qe-dq",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-qe-eee",
+     "mark": null
+    },
+    {
+     "id": "rhythm/6-8/qe-qe-qe-qe",
+     "mark": null
+    }
+   ]
+  },
+  {
+   "removed": [],
+   "marks": {},
+   "id": "unit-4",
+   "name": "Unit 4",
+   "kind": "tonal",
+   "tonality": "major",
+   "concepts": [
+    "do",
+    "re",
+    "mi"
+   ],
+   "require": [],
+   "length": 3,
+   "patterns": [
+    {
+     "id": "tonal/major/do-re-do",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/do-re-mi",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/do-mi-do",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/do-mi-re",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/re-do-re",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/re-do-mi",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/re-mi-do",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/re-mi-re",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/mi-do-re",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/mi-do-mi",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/mi-re-do",
+     "mark": null
+    },
+    {
+     "id": "tonal/major/mi-re-mi",
+     "mark": null
+    }
+   ]
+  }
+ ]
+}

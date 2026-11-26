@@ -12,12 +12,14 @@ import * as mic from './mic.js';
 import { STEPS, BANDS, UNIT, onsets, sylText, loadMarks, isCreate, shows, bumText, toneHeight, MAX_TONAL_STEP } from './steps.js';
 import { TASKS, taskById, taskKey, howTo, tasksAt, stepsOf, allTaskKeys, beatsOf, XP_NO_NOTES, repeatFactor, usesMic } from './tasks.js';
 import { makeTurn, WHY, NOTE_SVG } from './turn.js';
-import { makeDirector, tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
+import { tierOf, TIERS, TIER_NAMES, levelOf } from './director.js';
+import { makePath, UNITS, unitById, unitOfKind, stepKey, parseStepKey } from './path.js';
 import { GAMES, mouseCatcher, bump } from './games.js';
 import * as OPT from './options.js';
 import { showIntro } from './intro.js';
 import { mookie } from './mookie.js';
-import { avatar, lookOf, token, EARN, ownsGroove } from './avatar.js';
+import { avatar, lookOf, cleanLook, keepLook, token, EARN, ownsGroove, setMood, restIn, beat as avBeat, itemSvg, fitItems } from './avatar.js';
+import { siteShop, applyShop, newlyWon } from './shop.js';
 import { closet, goalChip } from './closet.js';
 import { MIC_SPEECH } from './narration.js';
 import * as TX from './transitions.js';
@@ -43,7 +45,7 @@ const TEST = GAMES.some((g) => g.id === Q.get('test')) ? {
   mookie: Q.get('pace') === 'mookie',
   intros: Q.get('intros') === 'all', // show every task intro again
   mic: Q.get('input') === 'mic',
-  // Melodic: a game that only plays melodic (Bedtime), or &mode=tonal for one that plays both.
+  // Do re mi: a game that only plays it (Bedtime), or &mode=tonal for one that plays both.
   kind: (() => {
     const g = GAMES.find((x) => x.id === Q.get('test'));
     return g.modes.includes('tonal') && (Q.get('mode') === 'tonal' || !g.modes.includes('rhythm')) ? 'tonal' : 'rhythm';
@@ -59,14 +61,29 @@ if (TEST) {
   st.input = TEST.mic ? 'mic' : 'tap';
 }
 st.intro ||= {};
-let dir = makeDirector(st);
-let mdir = makeDirector(st, 'tonal'); // melodic runs
-const remake = () => { dir = makeDirector(st); mdir = makeDirector(st, 'tonal'); };
+// What the learner wears (and keeps in outfits) stays theirs, whatever the shop editor does
+// to its price later (shop.js keepLook). Then the shop as published.
+if (!TEST) {
+  keepLook(st, lookOf(st));
+  for (const o of st.outfits || []) if (o) keepLook(st, cleanLook(st, o));
+}
+siteShop().then((shop) => {
+  applyShop(shop);
+  if (document.body.dataset.screen === 'title') title();
+});
+/* The path through the units (path.js): Unit 1's rhythm, then do re mi, in one stream. A
+   workshop test of one game keeps to the kind it's testing. */
+let PATH_OPTS = {};
+let path = makePath(st, { only: TEST?.kind || null });
+const remake = () => { path = makePath(st, { only: TEST?.kind || null, opensAt: PATH_OPTS }); };
+const dirOf = (kind) => path.dirOf(kind);
 let R = null; // the run being played
 loadMarks();
 // Which games play, and their options: games.json for learners, the workshop's draft in a test.
 let LINEUP = OPT.apply(TEST ? OPT.loadDraft().games || OPT.complete() : OPT.complete(), TEST?.game.id);
 if (!TEST) OPT.siteOptions().then((o) => { LINEUP = OPT.apply(o); });
+// When each unit opens (the workshop's Path; its draft in a test).
+(TEST ? Promise.resolve(OPT.loadDraft().path || OPT.completePath()) : OPT.sitePath()).then((p) => { PATH_OPTS = p.opensAt; remake(); });
 
 const save = () => { if (!TEST) store.save(st); };
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -151,7 +168,9 @@ function scene(name) {
    free one). A workshop test run plays any. */
 function myGrooves() {
   const list = snd.grooveList(UNIT.meter);
-  return TEST ? list : list.filter((g) => ownsGroove(st, g, list));
+  if (TEST) return list;
+  const mine = list.filter((g) => ownsGroove(st, g, list));
+  return mine.length ? mine : list.slice(0, 1);
 }
 
 /* Which groove plays: Mix (a different one each lap) or one the learner picks. Each tap
@@ -205,15 +224,14 @@ function title() {
       h('header', { class: 'marquee' }, h('div', { class: 'marquee-in' },
         h('small', {}, 'Mookie presents'),
         h('h1', {}, 'Musician', h('br'), 'Maker'))),
-      h('p', { class: 'unit-tag' }, h('span', {}, 'Unit 1'), ' du · du-de'),
+      unitTags(),
       h('div', { class: 'hero' },
         h('div', { class: 'beam' }),
         ...['q', 'ee', 'q', 'ee', 'q'].map(floatNote),
         mookie('happy'),
-        h('button', { class: 'hero-av', 'aria-label': 'Dress up', onclick: openCloset }, avatar(lookOf(st))),
+        h('button', { class: `hero-av ${st.fresh?.length ? 'has-fresh' : ''}`, 'aria-label': 'Dress up', onclick: openCloset }, avatar(lookOf(st))),
         h('div', { class: 'rug' })),
       h('button', { class: 'play big-play', onclick: () => startRun() }, h('span', { class: 'tri' }), 'Play'),
-      h('button', { class: 'play melodic-play', onclick: () => startRun({ kind: 'tonal' }) }, h('span', { class: 'mel-ic', 'aria-hidden': 'true' }, '🎵'), 'Melodic'),
       h('button', { class: 'link', onclick: howToPlay }, 'How to play')),
     h('div', { class: 'side' },
       h('div', { class: 'pass' },
@@ -233,10 +251,18 @@ function title() {
         groovePick()),
       h('div', { class: 'to-row' },
         h('button', { class: 'to-closet', 'aria-label': `Dress up: ${st.tokens} music notes`, onclick: openCloset },
-          avatar(lookOf(st), { cls: 'mini' }), token(), h('b', {}, String(st.tokens))),
-        h('button', { class: 'to-map', onclick: progress },
+          avatar(lookOf(st), { cls: 'mini' }), token(), h('b', {}, String(st.tokens)),
+          st.fresh?.length ? h('span', { class: 'fresh', 'aria-hidden': 'true' }, '✨') : null),
+        h('button', { class: 'to-map', onclick: () => progress() },
           h('span', { class: 'staff-ico' }), 'My progress')),
       titleGoal())));
+}
+
+/* The units on the path so far (path.js), each with what it's about: Unit 1 · du · du-de,
+   then do re mi once it opens. */
+function unitTags() {
+  return h('p', { class: 'unit-tag' }, ...path.open().map((u) => h('span', { class: `ut ${u.kind}` },
+    h('span', { class: 'ut-n' }, u.kind === 'tonal' ? u.icon : u.name), ` ${u.label}`)));
 }
 
 /* The learner's goal (🎯 in the closet), under the closet button. A groove goal shows once
@@ -316,15 +342,19 @@ function micProblem(e) {
   return `The mic didn't start (${e?.message || e}).`;
 }
 
-/* Progress: Unit 1 as one long staff that winds down the page. Each step is a note on it:
-   hollow while locked, filled once open, gold when mastered. Mookie sits on the current one. */
+/* Progress: a unit as one long staff that winds down the page (a tab for each unit on the
+   path). Each step is a note on it: hollow while locked, filled once open, gold when mastered.
+   Mookie sits on the current one. */
 const STATE_TEXT = { mastered: '★ Mastered', now: 'Learning now', open: 'Practising', locked: 'Locked' };
+let progressUnit = null; // the unit the Steps view shows (path.js unit id)
 
-function stepInfo() {
-  return STEPS.slice(1).map((s) => {
-    const p = dir.step(s.n);
-    const state = p.mastered ? 'mastered' : s.n === st.frontier ? 'now' : s.n < st.frontier ? 'open' : 'locked';
-    return { s, p, state };
+function stepInfo(u = path.unit(progressUnit) || path.units[0]) {
+  const open = path.isOpen(u);
+  const frontier = u.dir.frontier();
+  return STEPS.slice(1, u.top + 1).map((s) => {
+    const p = u.dir.step(s.n);
+    const state = !open ? 'locked' : p.mastered ? 'mastered' : s.n === frontier ? 'now' : s.n < frontier ? 'open' : 'locked';
+    return { s, p, state, unit: u };
   });
 }
 
@@ -332,8 +362,8 @@ function stepInfo() {
    open while its step is, locked after. */
 function taskState(id, n) {
   if (st.intro[taskKey(id, n)]) return 'met';
-  const tonal = taskById(id).kind === 'tonal';
-  return n <= (tonal ? mdir.frontier() : st.frontier) ? 'open' : 'locked';
+  const u = path.units.find((x) => x.kind === taskById(id).kind);
+  return u && path.isOpen(u) && n <= u.dir.frontier() ? 'open' : 'locked';
 }
 
 const TASK_STATE = { met: '', open: 'Coming up', locked: 'Locked' };
@@ -348,17 +378,27 @@ let progressView = 'steps';
 function progress(view = progressView) {
   progressView = view;
   scene('progress');
-  const info = stepInfo();
+  // The newest open unit first time in.
+  if (!path.unit(progressUnit)) progressUnit = path.open().at(-1).id;
+  const u = path.unit(progressUnit);
+  const info = stepInfo(u);
   const done = info.filter((i) => i.state === 'mastered').length;
-  const map = h('div', { class: 'map' });
+  const map = h('div', { class: `map ${u.kind}` });
   const sheet = h('div', { class: 'psheet', role: 'dialog' });
+  const units = path.units.length > 1 && view === 'steps'
+    ? h('div', { class: 'punits', role: 'tablist' }, ...path.units.map((x) => h('button', {
+      class: `punit ${x.kind} ${x.id === u.id ? 'on' : ''} ${path.isOpen(x) ? '' : 'locked'}`, role: 'tab', 'aria-selected': String(x.id === u.id),
+      onclick: () => { progressUnit = x.id; progress('steps'); },
+    }, h('b', {}, x.kind === 'tonal' ? x.icon : x.name), h('span', {}, x.label), path.isOpen(x) ? null : h('i', { 'aria-hidden': 'true' }, '🔒'))))
+    : null;
   app.replaceChildren(h('div', { class: 'progress' },
     h('header', { class: 'phead' },
       h('button', { class: 'back', 'aria-label': 'Back', onclick: () => { title(); } }, '‹'),
-      h('div', {}, h('h2', {}, 'My progress'), h('p', {}, `Unit 1 · ${done} of 12 steps mastered`))),
+      h('div', {}, h('h2', {}, 'My progress'), h('p', {}, `${u.name} · ${u.label} · ${done} of ${u.top} steps mastered`))),
     h('div', { class: 'pviews' }, seg({ steps: 'Steps', tasks: 'Tasks' }, view, (v) => progress(v))),
+    units,
     view === 'tasks' ? taskGrid(sheet) : map,
-    view === 'steps' ? h('p', { class: 'note' }, 'Master a step to open the next one. The music picks what you play.') : null,
+    view === 'steps' ? h('p', { class: 'note' }, path.isOpen(u) ? 'Master a step to open the next one. The music picks what you play.' : opensText(u)) : null,
     h('div', { class: 'testbox' },
       h('label', {}, 'Test mode (for Kyle): drill any step, markup ✏️', seg({ off: 'Off', on: 'On' }, st.test ? 'on' : 'off', (v) => { st.test = v === 'on'; save(); progress(); })),
       st.test ? h('label', {}, 'Record the mic in runs (saves a file for Claude)', seg({ off: 'Off', on: 'On' }, st.recMic ? 'on' : 'off', (v) => { st.recMic = v === 'on'; save(); })) : null,
@@ -391,7 +431,7 @@ function taskGrid(sheet) {
 function showTask(sheet, t, n) {
   const s = STEPS[n];
   const state = taskState(t.id, n);
-  const p = (t.kind === 'tonal' ? mdir : dir).task(t.id, n);
+  const p = dirOf(t.kind).task(t.id, n);
   const can = state === 'met' || st.test;
   sheet.replaceChildren(...[
     h('button', { class: 'close', 'aria-label': 'Close', onclick: () => sheet.classList.remove('show') }, '×'),
@@ -475,12 +515,14 @@ function drawMap(map, info, sheet) {
     .map(([w, c]) => `<path d="${d}" class="st-${c}" stroke-width="${w}"/>`).join('');
   const bars = `<rect x="${W - 26}" y="${end - 17}" width="2" height="34" class="st-fill"/><rect x="${W - 21}" y="${end - 17}" width="5" height="34" class="st-fill"/>`;
   const clef = `<rect x="22" y="${top - 8}" width="4" height="16" class="st-fill"/><rect x="30" y="${top - 8}" width="4" height="16" class="st-fill"/>`;
-  const time = `<text x="52" y="${top - 1}" class="st-time">2</text><text x="52" y="${top + 16}" class="st-time">4</text>`;
+  const u = info[0].unit;
+  const time = u.kind === 'tonal' ? '' : `<text x="52" y="${top - 1}" class="st-time">2</text><text x="52" y="${top + 16}" class="st-time">4</text>`;
 
   // Soft colour behind each band, with a boxed rehearsal mark.
   const regions = [];
   for (const b of Object.keys(BANDS)) {
     const ys = info.map((it, i) => (it.s.band === b ? pos[i][1] : null)).filter((v) => v != null);
+    if (!ys.length) continue;
     regions.push(h('div', { class: `region ${b}`, style: `top:${ys[0] - 76}px;height:${ys.at(-1) - ys[0] + 128}px` },
       h('span', { class: 'rmark' }, BANDS[b])));
   }
@@ -503,7 +545,7 @@ function drawMap(map, info, sheet) {
       style: `top:${ny}px;${left ? `left:${x + 46}px` : `right:${W - x + 46}px`};max-width:${room}px` },
     h('b', {}, it.s.name),
     h('small', {}, STATE_TEXT[it.state]),
-    h('span', { class: 'ptasks' }, ...tasksAt(it.s.n).map((t) => taskIcon(t, taskState(t.id, it.s.n)))),
+    h('span', { class: 'ptasks' }, ...tasksAt(it.s.n, it.unit.kind).map((t) => taskIcon(t, taskState(t.id, it.s.n)))),
     it.state !== 'locked' ? h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(it.p.s)}%` })) : null);
     return [node, label];
   });
@@ -518,20 +560,35 @@ function drawMap(map, info, sheet) {
   }
 
   map.replaceChildren(...regions, svg, ...nodes.flat(), cat,
-    h('div', { class: 'next-unit', style: `top:${end + 26}px` }, 'Unit 2 · coming soon'));
+    h('div', { class: 'next-unit', style: `top:${end + 26}px` }, nextUnitText(u)));
 }
 
-function showStep(sheet, { s, p, state }) {
+/* Under a unit's map: the unit after it on the path. */
+function nextUnitText(u) {
+  const next = path.units[path.units.indexOf(u) + 1];
+  if (!next) return 'More units · coming soon';
+  return `Next: ${next.kind === 'tonal' ? `${next.icon} ` : `${next.name} · `}${next.label}${path.isOpen(next) ? '' : ' 🔒'}`;
+}
+
+/* When a locked unit opens (path.js opensAt). */
+function opensText(u) {
+  const before = path.units[path.units.indexOf(u) - 1];
+  if (!before) return '';
+  const at = PATH_OPTS[u.id] ?? u.opensAt ?? 1;
+  return at === 6 ? `Opens once ${before.name}'s ear steps (1 to 5) are mastered.` : `Opens once ${before.name} reaches step ${at}.`;
+}
+
+function showStep(sheet, { s, p, state, unit }) {
   sheet.replaceChildren(...[
     h('button', { class: 'close', 'aria-label': 'Close', onclick: () => sheet.classList.remove('show') }, '×'),
     h('span', { class: `band ${s.band}` }, BANDS[s.band]),
     h('h3', {}, `${s.n}. ${s.name}`),
-    h('p', {}, state === 'locked' ? 'Master the step before this one to open it.' : s.about),
+    h('p', {}, state === 'locked' ? (path.isOpen(unit) ? 'Master the step before this one to open it.' : opensText(unit)) : s.about),
     state !== 'locked' ? h('div', { class: 'sheet-bar' }, h('span', { class: 'pbar' }, h('span', { style: `width:${Math.round(p.s)}%` })), h('small', {}, `${Math.round(p.s)}% strong`)) : null,
     h('p', { class: `sheet-state ${state}` }, STATE_TEXT[state]),
-    h('div', { class: 'sheet-tasks' }, ...tasksAt(s.n).map((t) => h('button', { class: `tchip ${taskState(t.id, s.n)}`, onclick: () => showTask(sheet, t, s.n) },
+    h('div', { class: 'sheet-tasks' }, ...tasksAt(s.n, unit.kind).map((t) => h('button', { class: `tchip ${taskState(t.id, s.n)}`, onclick: () => showTask(sheet, t, s.n) },
       taskIcon(t), h('span', {}, t.name)))),
-    st.test ? h('button', { class: 'mini', onclick: () => startRun({ force: s.n }) }, 'Drill this step') : null].filter(Boolean));
+    st.test ? h('button', { class: 'mini', onclick: () => startRun({ force: s.n, unit: unit.id }) }, 'Drill this step') : null].filter(Boolean));
   sheet.classList.add('show');
 }
 
@@ -640,10 +697,10 @@ async function startRun(opts = {}) {
   }
   const recording = micOn && st.test && st.recMic;
   if (recording) mic.recordStart();
-  const kind = TEST ? TEST.kind : opts.kind === 'tonal' ? 'tonal' : 'rhythm';
   R = {
-    kind, dir: kind === 'tonal' ? mdir : dir, doMidi: 60,
-    ctx, clock: makeClock(ctx), force: opts.force || TEST?.step || null, lap: 0, plan: [], idx: 0,
+    path, doMidi: 60,
+    ctx, clock: makeClock(ctx), force: opts.force || TEST?.step || null,
+    forceUnit: opts.unit || (TEST?.step ? unitOfKind(TEST.kind).id : null), lap: 0, plan: [], idx: 0,
     combo: 0, runCombo: 0, runXP: 0, setXP: 0, runTokens: 0, setTokens: 0, setMisses: 0, setGames: 0, tempo: LADDER()[0],
     lastGame: null, micOn, paused: false, ended: false, win: null, api: null,
     groove: { mode: 'play', duckFrom: 0, duckUntil: 0, micFrom: Infinity },
@@ -669,12 +726,16 @@ async function startRun(opts = {}) {
   beginLap();
 }
 
-/* The games and bosses of this run's kind: rhythm runs or melodic ones (game.modes). */
-const streamGames = () => {
-  const list = LINEUP.stream.filter((g) => g.modes.includes(R.kind));
-  return list.length ? list : GAMES.filter((g) => g.modes.includes(R.kind));
+/* The games that can play an item of this kind (game.modes: rhythm, tonal or both). */
+const streamGames = (kind) => {
+  const list = LINEUP.stream.filter((g) => g.modes.includes(kind));
+  return list.length ? list : GAMES.filter((g) => g.modes.includes(kind));
 };
-const bossGames = () => LINEUP.bosses.filter((g) => g.modes.includes(R.kind));
+/* The bosses that can play what the path has open (a melodic-only boss waits for do re mi). */
+const bossGames = () => {
+  const kinds = new Set(R.path.open().map((u) => u.kind));
+  return LINEUP.bosses.filter((g) => g.modes.some((m) => kinds.has(m)));
+};
 
 function lapPlan() {
   const boss = bossGames().length ? [{ type: 'boss' }] : [];
@@ -690,8 +751,8 @@ function lapPlan() {
   return plan;
 }
 
-/* Every step's strength now, to show what a set or lap added. */
-const strengths = () => Object.fromEntries(STEPS.slice(1, R.dir.top + 1).map((s) => [s.n, R.dir.step(s.n).s]));
+/* Every open step's strength now (keyed unit:step), to show what a set or lap added. */
+const strengths = () => R.path.strengths();
 
 function beginLap() {
   R.plan = lapPlan();
@@ -702,7 +763,7 @@ function beginLap() {
   R.setSteps = new Set();
   const g = pickGroove();
   if (g && snd.grooveList(UNIT.meter).length > 1) R.news.push(`Groove: ${g.name}`);
-  // Melodic runs sing in the groove's key.
+  // Do re mi is sung in the groove's key.
   R.doMidi = snd.doOf(snd.grooveNow()?.key);
   countIn();
 }
@@ -736,7 +797,7 @@ function next(B) {
 function setTempo(set, B) {
   let bpm = LADDER()[set];
   // Struggling: hold the rung instead of climbing.
-  if (set > 0 && R.dir.flow() < 0.65) bpm = Math.min(bpm, R.tempo);
+  if (set > 0 && R.path.flow() < 0.65) bpm = Math.min(bpm, R.tempo);
   R.tempo = bpm;
   R.clock.setBpm(bpm, B);
   later(R.clock.timeOf(B), () => mic.setTempo(bpm));
@@ -761,6 +822,9 @@ function buildRunDom() {
   d.dots = h('div', { class: 'dots' });
   d.ball = h('div', { class: 'ball' });
   d.seats = SEATS.map(([layer, tier]) => h('span', { class: 'seat', title: seatInfo(layer).name, 'data-tier': tier, 'data-layer': layer }, seatInfo(layer).icon));
+  // The learner's avatar with the band: bounces on the beat, cheers a right answer, droops at a
+  // miss, and plays what it holds once the drums are in.
+  d.me = avatar(lookOf(st), { cls: 'me', bg: false });
   d.bandTier = -1;
   d.controls = h('div', { class: 'controls' });
   d.overlay = h('div', { class: 'overlay' });
@@ -770,7 +834,7 @@ function buildRunDom() {
     d.sets,
     h('div', { class: 'stage-wrap' }, d.stage, d.cue, d.flash),
     d.prompt, h('div', { class: 'lane' },
-      h('div', { class: 'seats l' }, d.seats[0], d.seats[1]), d.dots, d.ball, h('div', { class: 'seats r' }, d.seats[2], d.seats[3])), d.controls, d.overlay));
+      d.me, h('div', { class: 'seats l' }, d.seats[0], d.seats[1]), d.dots, d.ball, h('div', { class: 'seats r' }, d.seats[2], d.seats[3])), d.controls, d.overlay));
   R.dom = d;
   hud();
   document.onkeydown = (e) => {
@@ -832,8 +896,8 @@ function addTokens(n) {
   return n;
 }
 
-function pickGame() {
-  const games = streamGames();
+function pickGame(kind = 'rhythm') {
+  const games = streamGames(kind);
   const others = games.filter((g) => g !== R.lastGame);
   const list = others.length ? others : games;
   const g = list[Math.floor(Math.random() * list.length)];
@@ -850,8 +914,8 @@ function gameSeg(B, seg) {
   const warm = R.lap === 0 && seg.set === 0 && !R.force;
   const pend = R.pending;
   R.pending = null;
-  const item = pend?.item || R.dir.next({ warm, force: R.force, forceTask: TEST?.task, noSay: !R.micOn });
-  const game = pend?.game || pickGame();
+  const item = pend?.item || R.path.next({ set: seg.set, lap: R.lap, warm, force: R.force, forceUnit: R.forceUnit, forceTask: TEST?.task, noSay: !R.micOn });
+  const game = pend?.game || pickGame(item.kind);
   // A task's first game at a step: the stream stops for its intro, then this game comes next.
   if (!st.intro[taskKey(item.task, item.step)]) { introBreak(B, item, game); return; }
   const task = taskById(item.task);
@@ -1029,6 +1093,10 @@ function beat(i, spb) {
   bump(d.pulse.children[down ? 0 : 1], 'beat');
   R.api?.onBeat?.(down, spb, tierOf(R.combo));
   seats(down);
+  // The avatar: a bounce on every beat (a bigger one on beat 1), playing along from the drums on.
+  d.me.style.setProperty('--av-beat', `${spb}s`);
+  if (R.groove.mode === 'play') restIn(d.me, tierOf(R.combo) >= 2 ? 'play' : 'idle');
+  avBeat(d.me, down);
   if (down && R.groove.mode === 'play') {
     const wrap = d.stage.parentElement;
     wrap.dataset.tier = tierOf(R.combo);
@@ -1169,11 +1237,11 @@ function nextPraise() {
 /* XP for a right answer: 10 (+5 perfect) × tempo × the mic (×1.5) × the task (Speak/Sing It
    ×1.5) × no notes to look at in Note It (×1.5) × a create answer's freshness × the combo. */
 function result(item, res, { onWin, onFail, t, quiet = false }) {
-  const rec = R.dir.record({ item, right: res.right, bpm: R.tempo });
-  if (rec.mastered) R.news.push(`★ Step ${rec.mastered} mastered: ${STEPS[rec.mastered].name}`);
+  const rec = R.path.record({ item, right: res.right, bpm: R.tempo });
+  if (rec.mastered) R.news.push(`★ ${unitPrefix(item.unit)}Step ${rec.mastered} mastered: ${STEPS[rec.mastered].name}`);
   R.setGames++;
-  R.setSteps?.add(item.step);
-  R.lapSteps?.add(item.step);
+  R.setSteps?.add(stepKey(item.unit, item.step));
+  R.lapSteps?.add(stepKey(item.unit, item.step));
   if (res.right) {
     const before = tierOf(R.combo);
     R.combo++;
@@ -1194,6 +1262,7 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     if (st.toNote >= EARN.every) { st.toNote = 0; addTokens(1); }
     onWin();
     snd.fx.win(t);
+    setMood(R.dom.me, 'cheer', { for: 1300 });
     // Right: confetti (stars when perfect) that grows with the combo, and the XP flies to the counter.
     const wrap = R.dom.stage.parentElement;
     FX.burst(wrap, { kind: res.perfect ? 'stars' : 'confetti', y: 0.45, count: 14 + tier * 6, spread: 1 + tier * 0.25 });
@@ -1219,6 +1288,7 @@ function result(item, res, { onWin, onFail, t, quiet = false }) {
     R.combo = st.mookie && tier > 0 ? TIERS[tier - 1] : 0;
     R.setMisses++;
     onFail();
+    setMood(R.dom.me, 'sad', { for: 1600 });
     if (was >= 3) snd.fx.scratch(t);
     else snd.fx.fail(t);
     // Miss: the stage wobbles, and a lost combo falls off the counter.
@@ -1259,17 +1329,24 @@ function breather(B, seg) {
   const lv = levelOf(st.xp);
   if (lv.n > lvBefore) chips.push(['⬆️', `Level ${lv.n}`]);
   if (!R.force) {
-    const opened = R.dir.advance();
-    if (opened) {
-      chips.push(['🆕', `Step ${opened}`]);
-      snd.speak('new-step', T(B));
+    const { steps: opened, units: newUnits } = R.path.advance();
+    for (const o of opened) chips.push(['🆕', `${unitPrefix(o.unit.id)}Step ${o.n}`]);
+    // A new unit on the path: do re mi joins the runs from the next set on.
+    for (const u of newUnits) {
+      chips.push([u.icon, `${u.label}!`]);
+      R.news.push(`New: ${u.label}! It joins the music from now on.`);
     }
-    if (R.kind === 'rhythm' && dir.step(12).mastered && !st.unitDone) { st.unitDone = true; chips.push(['🏆', 'Unit 1']); }
-    if (R.kind === 'tonal' && mdir.step(mdir.top).mastered && !st.mel.unitDone) { st.mel.unitDone = true; chips.push(['🏆', 'do re mi']); }
+    if (opened.length || newUnits.length) snd.speak('new-step', T(B));
+    for (const u of R.path.open()) {
+      const kept = u.kind === 'tonal' ? (st.mel ||= {}) : st;
+      if (u.dir.step(u.top).mastered && !kept.unitDone) { kept.unitDone = true; chips.push(['🏆', u.kind === 'tonal' ? u.label : u.name]); }
+    }
   }
+  const won = prizes();
+  if (won.length) chips.push(['🎁', won.length > 1 ? `${won.length} prizes` : won[0].item.name]);
   const news = R.news.splice(0);
   const setXP = R.setXP;
-  const played = [...R.setSteps].sort((a, b) => a - b);
+  const played = byPath(R.setSteps);
   const before = R.setBefore;
   R.setXP = 0;
   R.setMisses = 0;
@@ -1288,6 +1365,7 @@ function breather(B, seg) {
         h('div', { class: 'cue-word small' }, `Set ${seg.set + 1} ✓`)),
       h('div', { class: 'big-xp' }, h('span', { class: 'star' }, '⭐'), count),
       chips.length ? h('div', { class: 'win-chips' }, ...chips.map(([ic, t]) => chip(ic, t))) : null,
+      prizeRow(won),
       growth(played, before, spb),
       ...news.map((l) => h('p', { class: 'news' }, l)),
       dancer(spb)));
@@ -1309,21 +1387,73 @@ function dancer(spb) {
   const m = mookie('happy');
   m.classList.add('dance');
   m.style.animationDuration = `${2 * spb}s`;
-  // The learner's avatar dances with him, half a bar behind.
+  // The learner's avatar dances with him.
   const a = avatar(lookOf(st), { cls: 'dance' });
-  a.style.animationDuration = `${2 * spb}s`;
-  a.style.animationDelay = `${-spb}s`;
+  setMood(a, 'dance', { beat: spb });
   return h('div', { class: 'dancers' }, m, a);
 }
 
-/* The steps played, each with its strength before (filled) and what was added (growing in),
-   a ★ when it's mastered. */
-function growth(ns, before, spb) {
-  if (!ns.length) return null;
-  const rows = ns.map((n, i) => {
+/* Prizes just won (shop.js: a boss beaten, a step mastered, a level reached): announced once,
+   then ✨ in the closet until they're tried on. */
+function prizes() {
+  if (TEST) return [];
+  const list = newlyWon(st);
+  if (!list.length) return list;
+  st.gifts = [...new Set([...(st.gifts || []), ...list.map((x) => x.key)])];
+  st.fresh = [...new Set([...(st.fresh || []), ...list.map((x) => x.key)])];
+  save();
+  try { snd.toon('twinkle'); } catch { /* no sound */ }
+  return list;
+}
+
+/* Prizes as pictures, for the set and lap screens. */
+function prizeRow(list) {
+  if (!list.length) return null;
+  const look = lookOf(st);
+  const row = h('div', { class: 'prize-row' },
+    h('b', { class: 'pr-head' }, '🎁 New in your closet!'),
+    h('div', { class: 'pr-items' }, ...list.map(({ slot, item }) => {
+      const art = h('span', { class: 'pr-art', 'aria-hidden': 'true' });
+      art.innerHTML = itemSvg(slot, item.id, look); // fixed markup (avatar.js)
+      return h('span', { class: 'pr-item' }, art, h('small', {}, item.name));
+    })));
+  requestAnimationFrame(() => fitItems(row));
+  return row;
+}
+
+/* A boss beaten: the learner's avatar jumps onto the stage and dances with Mookie until the
+   lap screen. */
+function victory() {
+  const a = avatar(lookOf(st), { cls: 'victory', bg: false });
+  setMood(a, 'dance', { beat: R.clock.spb() });
+  R.dom.stage.parentElement.append(a);
+  R.dom.me.classList.add('away');
+  FX.burst(a, { kind: 'stars', y: 0.3, count: 16, spread: 1.2 });
+}
+
+/* A step's unit, shown before it once more than one unit is open ("🎵 Step 2"). */
+function unitPrefix(unitId) {
+  if (!R || R.path.open().length < 2) return '';
+  const u = unitById(unitId);
+  return u?.kind === 'tonal' ? `${u.icon} ` : '';
+}
+
+/* Step keys (unit:step) in path order: Unit 1's steps, then do re mi's. */
+const byPath = (keys) => [...keys].sort((a, b) => {
+  const x = parseStepKey(a);
+  const y = parseStepKey(b);
+  return UNITS.indexOf(x.unit) - UNITS.indexOf(y.unit) || x.n - y.n;
+});
+
+/* The steps played (unit:step keys), each with its strength before (filled) and what was
+   added (growing in), a ★ when it's mastered. */
+function growth(keys, before, spb) {
+  if (!keys.length) return null;
+  const rows = keys.map((key, i) => {
+    const { unit, n } = parseStepKey(key);
     const s = STEPS[n];
-    const was = Math.round(before?.[n] ?? 0);
-    const now = Math.round(R.dir.step(n).s);
+    const was = Math.round(before?.[key] ?? 0);
+    const now = Math.round(R.path.step(key).s);
     const add = h('i', { class: 'add' });
     const lost = h('i', { class: 'lost' });
     const base = h('i', { class: 'was' });
@@ -1333,9 +1463,9 @@ function growth(ns, before, spb) {
       add.style.width = `${Math.max(0, now - was)}%`;
       lost.style.width = `${Math.max(0, was - now)}%`;
     }));
-    return h('div', { class: `sg ${s.band}` },
-      h('span', { class: 'sg-n' }, String(n), R.dir.step(n).mastered ? h('b', {}, '★') : null),
-      h('span', { class: 'sg-mid' }, h('small', {}, s.name), h('span', { class: 'sg-bar' }, base, add, lost)),
+    return h('div', { class: `sg ${s.band} ${unit?.kind || ''}` },
+      h('span', { class: 'sg-n' }, String(n), R.path.step(key).mastered ? h('b', {}, '★') : null),
+      h('span', { class: 'sg-mid' }, h('small', {}, `${unitPrefix(unit?.id)}${s.name}`), h('span', { class: 'sg-bar' }, base, add, lost)),
       h('b', { class: 'sg-plus' }, now > was ? `+${now - was}` : ''));
   });
   return h('div', { class: 'sgrow' }, ...rows);
@@ -1344,11 +1474,11 @@ function growth(ns, before, spb) {
 /* ---------------- boss ---------------- */
 
 /* A boss round's item: any task the learner has met (its intro seen), so the boss never
-   springs a task on them that they haven't been shown. */
-function bossItem() {
+   springs a task on them that they haven't been shown, of a kind the boss's game can play. */
+function bossItem(game, round) {
   let item = null;
   for (let k = 0; k < 8; k++) {
-    item = R.dir.next({ force: R.force, forceTask: TEST?.task, noSay: !R.micOn });
+    item = R.path.next({ set: round, lap: R.lap, kinds: game.modes, force: R.force, forceUnit: R.forceUnit, forceTask: TEST?.task, noSay: !R.micOn });
     if (st.intro[taskKey(item.task, item.step)]) break;
   }
   return item;
@@ -1385,7 +1515,7 @@ function boss(B) {
   let c0 = B + 4;
   for (let r = 0; r < rounds; r++) {
     const r0 = c0 + 4;
-    const item = bossItem();
+    const item = bossItem(game, r);
     const task = taskById(item.task);
     const n = beatsOf(item.task);
     const p0 = r0 + n;
@@ -1439,6 +1569,8 @@ function boss(B) {
   later(T(done), () => {
     if (hits >= 3) {
       R.api.win();
+      st.bosses = { ...st.bosses, [game.id]: (st.bosses?.[game.id] || 0) + 1 };
+      victory();
       const gained = addXP(100);
       addTokens(EARN.boss);
       const sticker = STICKERS.find((s) => !st.stickers.includes(s));
@@ -1466,9 +1598,15 @@ function intermission() {
   R.clock.stop();
   R.groove.mode = 'off';
   snd.grooveStop();
+  R.dom.stage.parentElement.querySelector('.victory')?.remove();
+  R.dom.me.classList.remove('away');
+  const won = prizes();
   const lv = levelOf(st.xp);
   const tile = (ic, big, small) => h('div', { class: 'win-tile' }, h('span', { class: 'ic', 'aria-hidden': 'true' }, ic), h('b', {}, big), h('small', {}, small));
-  const nextN = Math.min(R.force || R.dir.frontier(), R.dir.top);
+  // What's next: each open unit's next step (the drilled one in a drill).
+  const nextUp = R.force
+    ? [{ unit: unitById(R.forceUnit) || UNITS[0], n: R.force, step: STEPS[R.force] }]
+    : R.path.frontiers();
   // The run's notes tick into the wallet, and the goal's bar fills toward it.
   const notes = tile(token('big'), '+0', `notes · ${st.tokens - R.runTokens}`);
   countUp(notes, R.runTokens, st.tokens - R.runTokens);
@@ -1480,8 +1618,10 @@ function intermission() {
       tile('🔥', String(R.runCombo), 'best in a row'),
       tile('🏅', `Level ${lv.n}`, lv.title)),
     ...R.news.splice(0).map((n) => h('p', { class: 'news' }, n)),
-    growth([...R.lapSteps].sort((a, b) => a - b), R.lapBefore, 0.5),
-    h('div', { class: 'win-next' }, h('small', {}, 'Next'), h('span', { class: `sg-n ${STEPS[nextN].band}` }, String(nextN)), h('b', {}, STEPS[nextN].name)),
+    prizeRow(won),
+    growth(byPath(R.lapSteps), R.lapBefore, 0.5),
+    ...nextUp.map((f) => h('div', { class: `win-next ${f.unit.kind}` }, h('small', {}, 'Next'), unitPrefix(f.unit.id) ? h('span', { class: 'wn-unit', 'aria-hidden': 'true' }, f.unit.icon) : null,
+      h('span', { class: `sg-n ${f.step.band}` }, String(f.n)), h('b', {}, f.step.name))),
     goalChip(st, snd.grooveList(UNIT.meter), { from: st.tokens - R.runTokens }),
     dancer(0.6),
     h('div', { class: 'row' },

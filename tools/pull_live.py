@@ -2,14 +2,14 @@
 
   python tools/pull_live.py [https://mrwashburnmusic.com]
 
-Groove Lab's, the game workshop's, the voice recorder's, the radio editor's and the homepage
-editor's "Publish to site" put grooves, game options, voice takes, units, radio stations and
-the homepage
-on the live site (/api/live/, see worker/index.js), and the site plays those ahead of the
+Groove Lab's, the game workshop's, the shop editor's, the voice recorder's, the radio editor's
+and the homepage editor's "Publish to site" put grooves, game options, the avatar shop, voice
+takes, units, radio stations and the homepage on the live site (/api/live/, see worker/index.js), and the site plays those ahead of the
 repo's files. This brings the repo up to date with them, so a later change starts from what
 is live and the repo stays a full copy:
   - grooves → musician-maker/grooves.json (checked by tools/add_grooves.py)
   - game options → musician-maker/games.json (checked by tools/add_games.py)
+  - the avatar shop → musician-maker/shop.json (checked by tools/add_shop.py)
   - each voice's takes → assets/sounds/voice/<voice>/<take id>.mp3, listed in index.json
   - units → assets/patterns/units.json
   - radio stations → radio/stations.json
@@ -47,7 +47,7 @@ def get(base, path):
 def main():
     base = (sys.argv[1] if len(sys.argv) > 1 else 'https://mrwashburnmusic.com').rstrip('/')
 
-    for name, tool in (('grooves', 'add_grooves.py'), ('games', 'add_games.py')):
+    for name, tool in (('grooves', 'add_grooves.py'), ('games', 'add_games.py'), ('shop', 'add_shop.py')):
         data = get(base, f'/api/live/{name}.json')
         if not data:
             print(f'{name}: none published')

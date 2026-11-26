@@ -294,7 +294,7 @@ function questionTab() {
 
 function render() {
   const focus = document.activeElement && document.activeElement.getAttribute('aria-label');
-  const top = [h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '← Studio'), h('h1', {}, 'Homepage'),
+  const top = [h('div', { class: 'bar' }, h('h1', {}, 'Homepage'),
     h('span', { class: 'grow' }), h('a', { class: 'back', href: '/home/', target: '_blank', rel: 'noopener' }, 'Open the homepage ↗'))];
   if (!draft) { app.replaceChildren(...top, h('p', { class: 'status' }, 'Loading…')); return; }
 

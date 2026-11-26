@@ -1,0 +1,23 @@
+/* The studio's hub (hub.js): a card for each section, its apps first. */
+@font-face { font-family: "Fredoka"; src: url("/assets/fonts/fredoka-latin.woff2") format("woff2"); font-weight: 400 600; }
+body { margin: 0; min-height: 100vh; background: #F6F1E4; color: #2F4A3A; font-family: "Fredoka", system-ui, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+.hub-head { display: flex; align-items: center; gap: 14px; margin-bottom: 26px; }
+.hub-head img { width: 56px; height: 56px; }
+h1 { font-weight: 600; font-size: 34px; margin: 0; }
+
+.sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+.sec { --tint: #5E7D4F; background: #fff; border-radius: 22px; border-top: 6px solid var(--tint); padding: 16px 12px 12px;
+  box-shadow: 0 2px 0 rgba(47,74,58,.08); scroll-margin-top: 16px; }
+.sec h2 { font-weight: 600; font-size: 21px; margin: 0 8px 12px; }
+.sec ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sec a { display: flex; align-items: center; gap: 12px; min-height: 50px; box-sizing: border-box; padding: 6px 10px; border-radius: 14px;
+  color: inherit; text-decoration: none; font-size: 18px; font-weight: 500; }
+.sec a:hover, .sec a:focus-visible { background: color-mix(in srgb, var(--tint) 9%, #fff); box-shadow: inset 0 0 0 2px var(--tint); outline: none; }
+.sec .glyph { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; font-size: 20px;
+  background: color-mix(in srgb, var(--tint) 14%, #fff); }
+.sec .name { flex: 1; }
+.sec a.app { background: color-mix(in srgb, var(--tint) 11%, #fff); margin-bottom: 2px; }
+.sec a.app img { flex: none; width: 36px; height: 36px; border-radius: 10px; }
+.sec a.app .glyph { background: #fff; }
+.sec .go { color: var(--tint); font-weight: 600; }

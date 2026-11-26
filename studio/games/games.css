@@ -54,3 +54,9 @@ h3 { font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacin
 .test-grid label { display: flex; flex-direction: column; gap: 4px; color: #5B6B5F; font-size: 14px; }
 .test-grid select { width: 100%; }
 .play-test { display: block; text-align: center; font-size: 20px; padding: 12px; margin-top: 14px; }
+
+/* Path */
+.path-units { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.path-units li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.path-units b { min-width: 150px; }
+.path-units small { color: #8A968C; }

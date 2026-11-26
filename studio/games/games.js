@@ -7,7 +7,9 @@
      "Download" saves games.json, a backup tools/add_games.py puts in musician-maker/games.json.
    - Test play: the real game with only this game in it, the draft options and a step, task,
      tempo, pace and groove picked here. Progress isn't saved in a test run.
-   - Task intros: any task's intro at any step, with this game's object and instrument. */
+   - Task intros: any task's intro at any step, with this game's object and instrument.
+   - Path: when each unit after the first opens in the stream (musician-maker/path.js), saved
+     and published with the options. */
 
 import * as snd from '/musician-maker/sound.js';
 import { makeClock } from '/musician-maker/clock.js';
@@ -17,14 +19,17 @@ import { STEPS, ALL, MALL, onsets, toneHeight, MAX_TONAL_STEP } from '/musician-
 import { TIER_NAMES } from '/musician-maker/director.js';
 import { TASKS, allTaskKeys } from '/musician-maker/tasks.js';
 import { introFor } from '/musician-maker/intro.js';
+import { UNITS } from '/musician-maker/path.js';
 import { h } from '../dom.js';
 
 const app = document.getElementById('app');
 const TIER_LABELS = ['Combo 0', ...TIER_NAMES.slice(1)];
 
 let site = OPT.complete();
+let sitePath = OPT.completePath();
 const draft = OPT.loadDraft();
 let opts = draft.games || site;
+let pathOpts = draft.path || sitePath;
 const test = { step: '', task: '', tempo: 'climb', start: 'games', pace: 'normal', groove: 'mix', intros: 'mine', input: 'tap', ...draft.test };
 let gameId = (GAMES.find((g) => g.id === test.game) || GAMES[0]).id;
 let labels = {}; // sound names, from the samples index
@@ -33,11 +38,13 @@ let status = '';
 const game = () => GAMES.find((g) => g.id === gameId);
 const keep = () => {
   draft.games = opts;
+  draft.path = pathOpts;
   draft.test = { ...test, game: gameId };
   OPT.saveDraft(draft);
   OPT.apply(opts);
 };
-const same = () => JSON.stringify(OPT.complete(opts)) === JSON.stringify(site);
+const same = () => JSON.stringify(OPT.complete(opts)) === JSON.stringify(site)
+  && JSON.stringify(OPT.completePath(pathOpts)) === JSON.stringify(sitePath);
 
 /* ---------- the scene ---------- */
 
@@ -102,7 +109,7 @@ async function call() {
     if (i % 2) i++;
     t = c.timeOf(i);
   }
-  // A melodic game (or a melodic run picked below) hears a do re mi tune on its tuned instrument.
+  // A do re mi game (or Run: Melodic picked below) hears a do re mi tune on its tuned instrument.
   const g = game();
   const tonal = runOf(g) === 'tonal';
   const list = tonal ? MALL : ALL;
@@ -327,6 +334,28 @@ function introsCard() {
     about);
 }
 
+/* ---------- the path (musician-maker/path.js) ---------- */
+
+/* Each unit in order, and when it opens: the step the unit before it has to reach. */
+function pathCard() {
+  return h('section', { class: 'card path-card' },
+    h('h2', {}, 'Path'),
+    h('ol', { class: 'path-units' }, ...UNITS.map((u, i) => {
+      const before = UNITS[i - 1];
+      const at = pathOpts.opensAt[u.id] ?? u.opensAt ?? 1;
+      const label = (k) => (k === 1 ? 'From the start' : `After ${before.name} step ${k - 1}: ${STEPS[k - 1].name}`);
+      return h('li', {},
+        h('b', {}, `${u.kind === 'tonal' ? u.icon : u.name} ${u.label}`),
+        before ? h('select', { 'aria-label': `When ${u.label} opens`, onchange: (e) => {
+          const k = Number(e.target.value);
+          const { [u.id]: _, ...rest } = pathOpts.opensAt;
+          pathOpts = { opensAt: k === (u.opensAt ?? 1) ? rest : { ...rest, [u.id]: k } };
+          changed();
+        } }, ...Array.from({ length: before.top + 1 }, (_, j) => j + 1).map((k) => h('option', { value: String(k), selected: k === at },
+          `${label(k)}${k === (u.opensAt ?? 1) ? ' (default)' : ''}`))) : h('small', {}, 'From the start'));
+    })));
+}
+
 /* ---------- page ---------- */
 
 const statusEl = h('p', { class: 'status' });
@@ -360,7 +389,8 @@ function drawBench() {
 
 function siteText() {
   const all = OPT.complete(opts);
-  return `{"games": {\n${GAMES.map((g) => `  ${JSON.stringify(g.id)}: ${JSON.stringify(all[g.id])}`).join(',\n')}\n}}\n`;
+  const games = GAMES.map((g) => `  ${JSON.stringify(g.id)}: ${JSON.stringify(all[g.id])}`).join(',\n');
+  return `{"games": {\n${games}\n},\n"path": ${JSON.stringify(OPT.completePath(pathOpts))}}\n`;
 }
 
 /* Straight to the game: learners get these options the next time they open it. */
@@ -373,6 +403,7 @@ async function publish(e) {
     if (r.status === 401) throw new Error('your sign-in ran out. Reload the page and try again');
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `the site said ${r.status}`);
     site = structuredClone(OPT.complete(opts));
+    sitePath = OPT.completePath(pathOpts);
     setStatus('Published. Learners get these options the next time they open the game.');
   } catch (err) {
     setStatus(`Couldn't publish: ${err.message}`);
@@ -392,21 +423,21 @@ function download() {
 }
 
 async function start() {
-  [site] = await Promise.all([OPT.siteOptions(), snd.loadGrooves(),
+  [site, sitePath] = await Promise.all([OPT.siteOptions(), OPT.sitePath(), snd.loadGrooves(),
     fetch('/assets/sounds/index.json').then((r) => r.json()).then((d) => {
       labels = Object.fromEntries(Object.entries(d.instruments || {}).map(([k, v]) => [k, v.label || k]));
     }).catch(() => {})]);
   if (!draft.games) opts = structuredClone(site);
+  if (!draft.path) pathOpts = sitePath;
   OPT.apply(opts);
   app.replaceChildren(
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Musician Maker game workshop'),
       h('a', { class: 'button', href: '/musician-maker/?lab' }, 'Transitions lab'),
       h('a', { class: 'button', href: '/musician-maker/' }, 'Open the game'),
       h('button', { onclick: download }, 'Download'),
       h('button', { class: 'primary', onclick: publish }, 'Publish to site')),
-    statusEl, tabs, benchEl);
+    statusEl, tabs, benchEl, pathCard());
   drawStatus();
   drawTabs();
   drawBench();

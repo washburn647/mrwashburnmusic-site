@@ -1,4 +1,4 @@
-/* The tuned instruments of melodic runs (Play It, task 'tune'): one key per tone of the unit,
+/* The tuned instruments for do re mi (Play It, task 'tune'): one key per tone of the unit,
    low on the left, high on the right, in the tone's colour (do red, re orange, mi yellow...).
    Looks: a harp (strings that get shorter as they get higher), gong bowls (smaller as they get
    higher) and a xylophone (shorter bars). A key's syllable shows on it once the step uses

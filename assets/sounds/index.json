@@ -4025,7 +4025,1978 @@
    "credit": "karoryfer-cello"
   }
  },
- "voices": {},
+ "voices": {
+  "kyle": {
+   "label": "Mr. Washburn",
+   "patterns": {
+    "rhythm/2-4/ee-ee-ee-ee": [
+     {
+      "file": "voice/kyle/9188e29e-51a6-4152-afd2-9f36a2cfb98a.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/010af1e8-dd0e-4b16-ae44-29c0c3d9bae9.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/c4f93fb5-bd69-4d2c-992a-508f5342d61f.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/cf464c2e-05f3-4147-8bcf-6b6385200d42.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f67d4346-c2f3-4dfe-a57f-b619ca2359f9.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/0b93ed59-889c-4247-98c4-b27db663cb7a.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/1cb7eff1-bf7d-4ce2-b253-fe14bcfd7c25.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f5aa047a-313d-4967-ade3-428af946b7f5.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/bbead15c-10d7-4868-a503-4883c74c18c0.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/d74d58ef-84f3-4a12-99e3-2808a41cc141.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/7095b21a-f949-4228-86de-50a661b54acf.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/69af8c33-29e8-478e-960d-cc8ff41d949c.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/e073a098-2fe6-44e2-8a1b-246851a1ec47.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/5e198205-d4e8-4e09-bd42-0d52127feeca.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/b88e0463-785c-4a4c-bdf2-45af5c2c65c0.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/610be337-7e68-41a4-86f2-064df66a65f9.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/6cf09d13-b8e0-4447-94fa-4952a2d9a741.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/732f2ac3-cd6a-4887-9948-0eac91f1cdbc.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/ee-ee-ee-q": [
+     {
+      "file": "voice/kyle/658f4988-0f8e-4f90-a178-c0608b4e4397.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f488b8aa-4386-4da4-8a28-0bbb6ecbd865.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/a67f1ee0-f5ee-4782-9661-c3cba6d01d13.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/8146a4c8-b269-467d-9d6f-27cf1525443f.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/5545af76-9037-4afb-afde-aa0c8ca8e653.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/ca521550-fb7c-42ea-96ec-74cedf6e66c3.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/264667d3-6ef6-44ca-8504-e9a8d9024171.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/73e33550-10d7-412e-96f3-fb9bb91c6a87.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/d25c77bb-0501-4c12-b65b-1ce2a0ccac7d.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/804a0270-172c-4e62-b3b4-7f4fb6c967c2.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/e22bf621-8505-490b-9895-1e78c8b60da0.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/40f06cf9-4473-4d0e-80d1-eee51e08add4.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/fe2387c8-d8b5-41d7-9614-b2b7e09f1959.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/152dd952-f24c-4bad-be2e-e25d4e92d2ba.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/78cd7a4c-ff35-4418-9e88-3a5501aefdfa.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/8f8d09d5-553d-45b1-9727-8bcac9c3bd74.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/997d8fdc-96ce-46c8-8947-1f9b1bbfc08e.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/c96a180a-d554-4a8c-bb71-a7bd5cd08439.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/ee-ee-q-ee": [
+     {
+      "file": "voice/kyle/66f9fc3b-0fdb-408d-a0ec-49f67bfcc60c.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/2c288dff-60fa-40de-8bec-a622d943e059.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/cb4d7a46-b5fc-48b5-aea1-b6644671963a.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/2e939576-250e-411a-9f95-cd2c5b03983d.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/d01eeb30-f8a9-4e4a-a74e-900eb73a53fa.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/9e8a5097-57af-46b2-bef7-2df4703483e7.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/571db915-15c6-4c04-a5c7-f66649bf34d5.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/01001380-99d3-4c14-9c86-80f6b647d51e.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/9dad9571-084c-41f0-a12b-647139c9ad37.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/5c594483-fb8b-4743-a13c-24b1cd3817c8.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/6ed6a9cd-7c4e-490c-a5ca-a1e681131363.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/83af5679-6aa5-4c49-a19b-e851d54308d4.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/7813b0ff-efd2-4ac7-bb27-16fb1a049683.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/e6a577c8-33be-4fca-9fef-d3ae3319d946.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/e1e4d345-543b-4d3b-bd77-9bc56fb0d306.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/599b5dda-94d5-4d50-a6f2-46b187dada43.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/371fe4d7-b52e-4296-b54a-7c758c29ec41.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/642822e9-c89d-49cb-aa26-77dd25cebef8.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/ee-ee-q-q": [
+     {
+      "file": "voice/kyle/cd5590d1-db29-4e00-9e6b-02d56a9e1dc8.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/445cea77-b6aa-49d4-8905-f0e4a93c9980.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/3bfcfec9-23b0-4f81-9bd5-5b046c94de88.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/986be748-7254-49c8-a38e-8542e09204ff.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/da5883d8-c385-44c8-ab24-cb46fa19261a.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/85fd7529-5ceb-4955-a0ad-41c7886083c5.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/a4c34642-e73a-4ac8-8d1c-791a248ca974.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/2517510e-8a9d-453d-bd94-18de737bf72b.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/3217a09f-851c-4fa3-abec-62b0bceffd78.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/2e74efcc-8675-46cd-8f68-b86b0d58fd3c.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/fc54c191-0aee-4cce-8404-2bde36cc863b.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/d2138d2b-f199-4ec1-83cd-9a58868d7d55.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/eb52c325-c2ff-475b-b38a-6358dfc6d2bb.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/b7794d06-d8d8-4ba9-b77b-20db4a2f4e72.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/f95839b5-ccc0-4683-ad41-182f2ec1ec9d.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/679ba524-2d2a-4a81-b092-c1f6532be4a3.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/7b30b0b6-5f9c-47c8-99d4-005b9b638e0e.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/a954c39d-9161-4c55-ae27-fdc9583988f8.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/ee-q-ee-ee": [
+     {
+      "file": "voice/kyle/6ec52759-428d-4ebe-a6bc-df3e4284f5e6.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/9f36cdd6-c4f6-4efd-9c1c-382df642fa04.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/0252c061-bb95-4dbe-b5cb-151836cdfccf.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/a5c6faaa-6ce6-4ad3-a4de-5d006cea28f8.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/03291ab9-1aa1-49f8-8cde-fda4e6547c28.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/36b3bc5d-bee5-4df7-9333-76895c874cd3.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/416c66dd-d6a8-4add-9304-0752daa6e567.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/41094f5c-82e9-443c-b12a-a3aafa82b235.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/92777d96-fcf8-470a-b192-07f0d8d6d265.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/773ec581-038d-4193-a8ce-8a2f72084ff4.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/2ab0aab2-ce61-4b1c-995d-5483590045f1.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/ae668680-f3d3-48c9-8ed2-0633729b81fb.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/82d78c34-3f37-4f69-8ccc-3855bcb1314b.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/55239308-2d00-496f-b944-bd571cc6ddeb.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/218144da-9cb3-4b51-9d31-5f4f71e44b71.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9ababf0b-f3b3-49ad-a659-cc9fbf7ef6a4.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/87aa2d80-4597-479b-8f20-823082ddd746.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/e89e7607-6085-4138-ba7a-d4f4e70c571d.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/ee-q-ee-q": [
+     {
+      "file": "voice/kyle/30ba34e6-9041-4360-b44c-c0c2ef294130.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/7bf024df-0c50-4885-8876-6b27769b791e.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/8e5deff0-c917-402f-8614-73662ea41e1f.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/32a65463-391d-4b29-9b6b-abe1130a3393.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/44788207-d27e-4192-a787-e4e05f1c908a.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f56aff38-4631-41ba-99fa-024c59b9747f.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/56cb722e-7b17-4963-93c4-dcfb31101e5b.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/9c8f8a71-9ede-4d36-bf5c-0dd3f2da26e9.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/47c1ada8-626e-4e62-92de-d20b11d93b41.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/a720f601-343c-408e-8aa5-9ec3f24fba20.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/729283a9-5b67-47ff-8e3b-44b8460ebe18.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/42687deb-1f99-4550-8dbc-b27f66186453.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/35d2f5ac-a6e5-4f45-ab07-295f9947b151.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9137e114-448a-4f03-84f0-c6c8db19ec7c.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/1a8a0217-7055-4164-ad04-2268f42d9545.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9c02ffeb-589c-422d-9101-67d5169c53d8.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/677e9399-6fcd-4dcb-bc2f-1e42381384ac.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/038dedda-7144-43d7-9387-c226b101c2e5.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/ee-q-q-ee": [
+     {
+      "file": "voice/kyle/213c9bd3-7850-4b38-955c-b132d4da1af7.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/e27dc028-e4ee-4989-92dc-464c8e4f75e9.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/b015dd32-cf03-4781-8d00-27ddd7e9c251.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/d0cb5f42-d530-4f89-8f8e-9886981b75a1.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/ec1664cf-7537-49a1-8898-0a830513f97b.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/18874ea0-2f7b-4ce6-bc15-58694f8cb949.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/a5fa32f1-b2c0-4db1-a791-ed43dcb03f33.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/c10c9631-a1a3-4e9d-9701-330bc58789b2.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/68b3a384-dace-405f-961d-77d0c042515b.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/48dad794-d61f-4ed0-b7d7-bab702f212f1.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/e95fc001-31c6-4681-871e-25205c67ad30.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/1f13684f-0cb4-4056-bd8a-c9dfe47204b6.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/a073ee5c-c97c-4143-9beb-655c45a10957.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/1179b508-1f31-4833-ab73-d24940558dba.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/623c2d4f-d486-4e26-b054-2a8d95ba4982.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/178304b7-ad9f-4a64-ae52-78bf043b87fb.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/c02dbc0c-73b7-48bd-a499-3f73d9dce039.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/d907d0f1-a64e-481a-8428-5126ae21dd6d.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/ee-q-q-q": [
+     {
+      "file": "voice/kyle/b4abbd32-8641-47cb-8e92-8033f2458e98.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/542feee6-ad38-444f-a517-3f5a65e623f0.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/2e46e130-33e2-4f51-9e9b-931edf731327.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/0008322e-5700-40b2-858d-ba86e22f48ef.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/dad8b62c-b910-4583-8a6f-82ca17a6098b.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/27458832-db31-4e06-9083-39f7bc2c9f18.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/eb18e429-cb6c-4fb2-9866-aa23ad68f882.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/bc34f786-74b3-486d-aefb-b719c5d75f65.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/68a0e79e-eba7-43c0-9780-d1f5fca17f70.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/09d0453f-1c09-4e5e-880c-21517e39bde8.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/954f63f2-82ee-4edd-ab97-976ec7e911a6.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/519aa25e-347d-4ffe-8afe-1a0ef63da445.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/4b659fd3-56c2-4938-8af8-fede3410cdd5.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/6762da58-009d-4816-b9d4-9c604ac60187.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9a4edfd5-fd36-4ca1-ac4b-a6eefcd65d0b.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/fb780a43-1875-42c3-9bd3-72dd3663e807.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/fc8c1a2e-9abc-487d-8972-a9ef69667c8b.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/0cc9dc2d-ab21-48a7-961a-925caf9e9c26.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/q-ee-ee-ee": [
+     {
+      "file": "voice/kyle/788b59e8-652b-461a-97ec-64c4efba912b.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/29cdc94d-9d8f-43b7-a8cd-4991bd34acda.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/90a0f55a-7194-4fdb-a232-85dcd07e0f22.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/ca471f6e-4d60-45ee-ad52-b09df18295c6.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/8b7098ff-7787-43cb-8bea-520ddffa1a5d.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/b56744f4-fe33-4323-a930-0ca6dfd49d3a.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/c7f4de3c-84ec-4543-97b8-fa3bceadf38f.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/9a3ab954-a5f1-4994-aa83-ed7ec030686d.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/c3386b3e-eb3c-4d59-9826-2ff23afba4c4.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f4da9e6f-bbb4-489b-b816-236414129ec7.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/383e565b-9baf-40ce-8511-a28c1c7932c0.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/9241ec9d-470b-4512-85c2-4548d18903f6.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/2e3aa7ac-5333-4ebb-89b0-162a31dd3508.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/98f7e206-6d4a-4b12-a190-4cbbf4ce2f35.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/18846786-b6ea-4c50-94b3-6bfb7f0b27d7.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/598507f0-7e5f-4b2f-9e80-e3d07ab6f77e.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/faf6afc2-aac3-4581-99f0-7dc636eb55d8.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/b185c0f1-5acb-4176-96eb-e642da698a9e.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/q-ee-ee-q": [
+     {
+      "file": "voice/kyle/b7e09a52-e432-4621-8b8a-b1b94e1d760c.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/41c98a45-bd1f-40f8-a9c6-f8d0849702a3.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/060e7f0e-ee75-4a63-8ff7-d59eed37e858.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/7c3967d9-0269-43d4-8363-e3bf8b762c2f.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/21ad7b0b-2920-4522-8f5d-cf7b6af0c320.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/490bc80a-9f12-493a-bb36-f7187893cd2d.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/52edbe05-7f5b-4dc5-9f81-d913c85df5f9.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/d48af1ef-a979-421f-bd99-86d9bc44be4b.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/686b8bca-55e5-4139-8e58-ac5d264bb1dc.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/7653f3de-66f5-4eca-8824-580b9c6aee08.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/a1a6fd32-bbe3-4bb7-8109-584093485915.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/c7f477a2-40c8-4ae1-b603-120bb8856f67.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/2c6d91fe-a146-4047-b8ea-33f56beb975e.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/930b8dde-8279-4f6e-bca2-e7a3a0effec6.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/915a8fb4-9229-4256-93f0-0eb79a7fb3cc.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/efc700dc-847d-4c72-b0e7-01e7cdc03a65.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/33a5f9bb-f174-4219-8153-e45f5af1f97f.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/510f7730-16d2-4535-a259-ac9c35e40aea.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/q-ee-q-ee": [
+     {
+      "file": "voice/kyle/3dfd483e-0782-4641-846f-9a144d312d8f.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f78402e4-aab4-4501-bee0-f44a0b4ae589.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/3ba09ccb-6c53-47f9-ae16-e51259c24bbe.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/ec1e89cc-7f43-42cd-9a8f-8a51bd2a009d.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/a1388428-0c01-4f28-b30d-5db233e0a8ac.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/4c131309-233e-4293-8a2a-f23ddb04a0b8.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f3a631c6-a8d0-4349-98a3-99ede68d8416.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/61be75dc-2d71-446e-819e-d15f6630e35c.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/1ccd2b18-e67f-4e54-9338-302a776cf93c.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/bb388467-0853-462f-a98b-3794d968913d.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/c16f5d70-d6e4-4ca5-b468-b319b601a43d.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/0626924c-1007-4a63-8ce0-cb94e8ff8e79.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/9223d3db-8531-4494-8c9b-99486f08ed97.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/a85a31a3-d66d-49df-b349-ae010c4762c2.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/5367a6aa-04c6-411f-9bbe-f43e3172632f.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/5e17e625-56f7-41fc-a69a-0dd2d2768cc3.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/a2ca6d31-edcb-4fa4-b484-41c8cac16042.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/0eba25a6-f940-40d9-a0e3-b07b586a447b.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/q-ee-q-q": [
+     {
+      "file": "voice/kyle/f56bf113-12c3-4a06-a717-b39eeedfdd77.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/2d76c279-fe63-4459-9186-f19c128fee80.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f74eb172-d6f5-42cc-a8db-cb4b3722029d.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/ea4047a6-1307-4058-83f8-97aee849760f.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/2a03740b-9379-41f5-af60-3de61376433c.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/4c6855f7-5688-4239-a1e7-a58678dfcbab.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/7889878a-d643-4912-9b2b-2e0cfa3edcc9.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/eecc32e0-333d-4c9b-b5d6-21387f536680.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/d1d29d16-d2d2-44cf-9d1a-b2c82a2ea532.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/27c0434e-9290-4e09-866f-1ec0b2ee6ea6.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/4d8c83d5-8f5f-49f9-84f7-9bd4d6dbbe12.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/99570669-f4b5-4978-a63f-3d12e07674d8.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/2392019a-84df-4345-a448-58321fae2311.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9181c1a8-b3ea-44fa-8f06-4b26821bef1a.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/4df46762-ec60-49fc-bd9b-bb5c3e0c27a6.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/2ba7ff22-9a1c-4c6f-b3fe-d5f8ce0f3957.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/f0db0ef1-a93c-4103-ad02-97b15f90c1cb.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/e09c64a2-7652-4671-a261-034c5d3fb5ac.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/q-q-ee-ee": [
+     {
+      "file": "voice/kyle/b5c85998-7424-440e-9a01-14585de56dc5.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/12a47784-3139-442a-af5b-87de0267966e.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/38b559ae-b335-44b2-9b8a-86b9f711ad52.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/dc4a623f-d66d-4dc3-bfd7-4613e806df1a.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/4c95cbd7-baab-4494-b15f-4d7176c525cc.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/0a069a16-c99c-4859-89c9-523afe2f1474.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/c8fe9947-7833-4dde-8109-7954efd1b163.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/a556d1b6-660f-48ab-a0ab-3278a7b90750.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/019b7c99-d1f4-4818-812d-3ce023190f4e.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f6c33057-67e9-4514-ac1b-dd75f93d78e2.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/31d79f40-cb3d-4d29-a0a3-9c62b12e6a7b.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/a42336c1-a6c9-4595-ae89-716140f304fa.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/56306f10-97c2-4827-a29b-60e82c2ad7c3.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/48f132f8-3245-4ec8-97c1-d930c180d064.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/b4bc210a-e494-4ed2-b71b-60208df4567f.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/2a17c18d-beb0-4309-a509-d58974d4e109.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/209aa749-2226-4fe5-b2c4-0f8a9b6d7def.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/7808bae8-e753-4b52-b084-ee7c21893308.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/q-q-ee-q": [
+     {
+      "file": "voice/kyle/42fd17d4-a838-4ba4-8e22-cfddc3fd829b.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/fc0e30d1-ca41-47fb-8e74-985ad77dcb0c.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/c92b1bf9-565f-4782-bfaf-f41831d35476.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/018f2dcb-2957-4800-95a3-fd8860a0b55c.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/b631005a-34a7-4f4e-b10c-e7a8ac5b4491.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/d0ebec87-7f39-462b-9149-7b93c2c8eb39.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/711bc416-1ce3-468a-80da-76e3ef7904ad.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/7d81d435-cf0b-4a30-8bc5-8626eeed25c4.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/431c7b7b-a086-415e-b10a-09afbf6ab18f.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/5a11844f-4c2f-44b6-bfd4-dfbe67703e33.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/9dbac55d-0aaa-4110-9cbb-207f62398a86.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/ca3b2cb6-c2d2-4ab1-932f-973e795260f7.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/91c3daf8-e8d2-4a4c-8a0a-49d7a6c6a91e.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/f9ea2574-14ec-4153-baf2-864487b5350f.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/3c5c006e-cac6-4580-bb47-940a22505fde.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/749df241-b5b1-4eec-984b-dd4eee40cc4e.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/fced1c84-e43c-478d-bce7-aa77157ae55c.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/d4580665-8fa4-4b83-8cc3-d66622050c06.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/q-q-q-ee": [
+     {
+      "file": "voice/kyle/a60a1670-d8b5-4643-afe2-da1b6682d023.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/cbb5324c-b9bc-452f-ab04-b0a29446a1f8.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/ec43ee67-399f-4225-8603-b4ff04b2b29a.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/77b46c38-fe17-472e-acf8-47a8017f4a8d.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/41eda20b-8748-4d5b-81c5-0211b2d37d99.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/566f8385-20e0-4ec5-9121-d284731fa730.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/c0360923-1fdf-440b-a515-f4cac8493cc7.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/5196c493-4d12-44b9-a027-0836e3d28b7d.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/4bb72b62-26ae-44e7-9e20-d39665cda733.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/014fcf02-e359-45bb-a26e-bdfa29bec1ea.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/e7f42652-9ca6-4350-9469-9d4735a2241b.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/bb4cf702-e55a-42e8-98ac-acdd2edd8a70.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/bfba3887-d158-4e5a-9144-031a5c0b652b.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/bcfda239-ca64-40cc-ba5a-fedf9521501a.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/837f21ea-3276-47db-83c8-d4a3f0313165.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9d894567-b0a1-489f-a40f-d2341900ed2a.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/99573d8a-b1c9-4239-ab7b-2823514543f3.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/6495dc7d-21ca-4779-b1b2-a14c3f0a137f.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ],
+    "rhythm/2-4/q-q-q-q": [
+     {
+      "file": "voice/kyle/e91a711f-8edd-481f-838c-9a1d892cc664.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/0602bf05-7194-4d8e-ad55-88f8407dee2d.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/f75ac95e-6320-49eb-b3b6-8a8509566b4e.mp3",
+      "speed": "slow",
+      "bpm": 92,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/bca0bb28-15dd-466f-ade0-42eeec84ef41.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/dcf0ee10-d482-4f59-8f66-fc74de80a614.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/399df955-559b-4f09-87c7-b855da1dd6bb.mp3",
+      "speed": "medium",
+      "bpm": 108,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/68372384-a13d-4070-9e45-bdf57a755931.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/a51576af-24c9-4564-b645-92b1e7b260d9.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/d0d398da-d288-469a-9db8-33957d97870a.mp3",
+      "speed": "fast",
+      "bpm": 126,
+      "as": "bum"
+     },
+     {
+      "file": "voice/kyle/41292b33-d0dc-4aeb-98f1-c55850665c0d.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/80e4f898-838a-4dfe-b64f-aa62ebc7270d.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/d22c388d-2783-4b6e-aa63-f8ba997b6396.mp3",
+      "speed": "slow",
+      "bpm": 92
+     },
+     {
+      "file": "voice/kyle/6759f210-23ce-45ae-9977-dbd9d9807220.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/c457a67c-d6f3-4e03-a9dc-4b0fab4fddd3.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/05a9fa56-e527-42bb-bd85-b6e89d9d7c78.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/05b352d7-75b7-431f-b594-7b4291592141.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/04149981-1dc2-432e-8abc-06dea80a03b4.mp3",
+      "speed": "fast",
+      "bpm": 126
+     },
+     {
+      "file": "voice/kyle/771d0278-c6e8-4389-8c50-ed73985711d5.mp3",
+      "speed": "fast",
+      "bpm": 126
+     }
+    ]
+   },
+   "cues": {
+    "answer": [
+     {
+      "file": "voice/kyle/bd7814c8-62ff-48cd-bd2c-6a45d1b8f58a.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/20d35556-3392-4c08-a75a-19ce25c125a9.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/8e2c2331-d2de-487e-9e40-5fabdccb96e4.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "boss": [
+     {
+      "file": "voice/kyle/e1a4f7e6-8985-4a58-b933-6297952601b0.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/5872b2a1-de5e-4205-8ebb-27cf218a686d.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/a91ec864-9a86-4a1c-8e23-8cd3a2db8acd.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "build": [
+     {
+      "file": "voice/kyle/b3cd3dad-7175-4bf4-b05b-68a05c01892c.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/628b5a0e-824e-4c98-b131-98d66db0498d.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9ca6dec4-56b2-46e3-b6db-f8adcd9d3623.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "compose": [
+     {
+      "file": "voice/kyle/d4cecf9d-7568-4093-b323-92ad5fd1bb50.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/b5498e53-f033-45c6-8190-f12a1b0e23d2.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/596cfa20-e08b-4862-a297-8af995e1b23f.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "du-it": [
+     {
+      "file": "voice/kyle/2c0c3b49-6d9a-4b79-a0ac-1d290a9bd1d4.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/cd674250-a4a8-4b4b-8b83-8f4955716895.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/ea7085b9-98e3-4b94-ba07-fcb90ad2a028.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "echo": [
+     {
+      "file": "voice/kyle/99fd3710-d908-4c3c-aaf9-8a7ca47f9679.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/29ee15fb-9515-4175-b64d-12243119c2e6.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9dee9fcf-f06e-46d8-b6b8-45d78ea2bc07.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "groovy": [
+     {
+      "file": "voice/kyle/9cdeb20d-a858-499e-8906-ac60e6279f28.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/e8c70ca7-9b0b-49a6-92bc-cdf4cdcf73a5.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/a4b74272-613d-483b-9e75-c51557389075.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "hot": [
+     {
+      "file": "voice/kyle/e4be4e88-f1ba-48dc-b088-755cd103404e.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/356a03c7-8e63-4a0d-9a80-56e4f916c817.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/018ddd95-fc71-4011-8ab2-89dd1cca5f39.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "legendary": [
+     {
+      "file": "voice/kyle/c995b98c-b74f-44c9-930f-bf5a026c55c9.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/ed33b3c7-c076-4429-892a-ec99858d655c.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/a5dfda00-1b70-49bb-906f-cf9f00721333.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "line/mic": [
+     {
+      "file": "voice/kyle/91559154-eba5-4f07-8ff0-531e1b81dfb1.mp3",
+      "speed": "medium",
+      "bpm": 0
+     }
+    ],
+    "match": [
+     {
+      "file": "voice/kyle/769ce20e-a20c-4ba5-972a-a835193bf228.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/f5c298a1-7963-4800-b68c-b4a1f004d2a8.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/530f8eba-6f6a-4bff-ab69-7e016c95adff.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "name-it": [
+     {
+      "file": "voice/kyle/bc0ce916-2627-431e-8c66-ac74c84e6a86.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/8e2c1273-2d57-4ef8-8656-1163c280c329.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/4c556a71-cfe2-49a7-a115-b49fb0854ce5.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "new-step": [
+     {
+      "file": "voice/kyle/b447b64c-983a-4799-b808-0b158f5812c5.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/f0c10e02-1633-4410-8654-429a2c883ad6.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9e0a31c8-58b2-4f54-8695-30c689f763f1.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "note-it": [
+     {
+      "file": "voice/kyle/0a219227-3f2b-4a2e-8e27-c5864866bb89.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/758d92e8-ba7a-4ffd-b044-2527eea8449f.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/b078d5c0-db80-490d-91d6-470326b85442.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "on-fire": [
+     {
+      "file": "voice/kyle/23ccd255-e1e6-4db2-81c9-1b55f0a0dfef.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/07e8a8b0-a5b8-41b9-90e2-c6bf10e48261.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/759d5788-e36e-4c21-99d1-806e3e34231a.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "perfect": [
+     {
+      "file": "voice/kyle/5dc4ef73-0b02-4efb-a7a3-7b2b978d3501.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/ee177ce6-f2c5-44cc-aa8d-2f00e60d6ef8.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/663386f1-9095-4f3b-ae38-1b3f2118fdaf.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "play-it": [
+     {
+      "file": "voice/kyle/a07ec57a-0ce2-48ba-a68a-173c2220a43d.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/a3df3ef8-edf3-41a5-93d4-cf9faef8839e.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/2e5dd011-ac72-4bc0-9ad9-c7c3639e5a3c.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "read": [
+     {
+      "file": "voice/kyle/423e5086-3992-4db4-b2a2-2d0baadd154a.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/a0f8f534-e764-4d4e-aa2f-f1740754822e.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/202f83c9-66fe-4b62-806b-1bde24e49e03.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "say-it": [
+     {
+      "file": "voice/kyle/e84f8ab9-a011-4f49-8b2d-ff1a2eb298f5.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/a596be32-4a4c-4cde-b5c1-d4b7b40d9a3f.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/a010af10-6a81-4655-833e-9d42e451535a.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "tap-it": [
+     {
+      "file": "voice/kyle/0735dda5-10da-4be4-af4e-9f4f9fc1e096.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/98e4ba31-63c3-4475-ba5e-c96a73ad639b.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/2f29baff-c46c-444d-a61d-4609f5a086a8.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ],
+    "write": [
+     {
+      "file": "voice/kyle/7873fb89-56fd-4b14-845a-c470e93c2bd5.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/533c565c-c64c-41e9-928f-9826584afd0f.mp3",
+      "speed": "medium",
+      "bpm": 108
+     },
+     {
+      "file": "voice/kyle/9a76e192-e038-4da7-94fa-021f7fa201ad.mp3",
+      "speed": "medium",
+      "bpm": 108
+     }
+    ]
+   }
+  }
+ },
  "credits": {
   "salamander": "Salamander Grand Piano V3 by Alexander Holm, CC BY 3.0",
   "vsco": "VSCO 2: Community Edition by Versilian Studios (Sam Gossner) and Ivy Audio (Simon Dalzell), CC0",

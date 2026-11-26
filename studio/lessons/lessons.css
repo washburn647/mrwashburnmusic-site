@@ -1,4 +1,4 @@
-main { max-width: 760px; }
+main, .studio-nav { max-width: 760px; }
 .who { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
 .who .title { flex: 1 1 200px; }
 .who .instrument { font-size: 18px; border: 0; background: transparent; padding: 6px; border-radius: 8px; color: #5B6B5F; flex: 1 1 140px; }

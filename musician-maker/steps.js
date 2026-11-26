@@ -38,7 +38,7 @@ let pool = ALL.map((p) => p.id);
 let fam = new Set(['q-ee-q-q', 'ee-q-ee-q', 'ee-ee-ee-q', 'q-q-ee-q', 'ee-q-q-q', 'q-ee-ee-q', 'ee-ee-q-q', 'q-ee-q-ee']
   .map((b) => `rhythm/2-4/${b}`));
 
-/* Melodic runs: Unit 4's tonal patterns (do re mi, three notes, one a beat), in major. They
+/* Do re mi: Unit 4's tonal patterns (do re mi, three notes, one a beat), in major. They
    use steps 1 to 8 (there's no writing on the staff yet). MTONES: the unit's tones, low to
    high, which are the strings of the harp and the rungs the scenes draw notes on. */
 export const MUNIT = DEFAULT_UNITS.find((u) => u.id === 'unit-4');

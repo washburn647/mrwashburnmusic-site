@@ -19,8 +19,16 @@
   "vprclassical",
   "classichits",
   "wxgr",
-  "bbc",
-  "vprnews"
+  "vprnews",
+  "wbgo",
+  "wwoz",
+  "fipworld",
+  "swing",
+  "wqxr",
+  "wfmt",
+  "wbur",
+  "wnyc",
+  "kmw9apbcz"
  ],
  "stations": [
   {
@@ -183,7 +191,7 @@
   {
    "id": "lyric",
    "name": "RTÉ lyric fm",
-   "freq": 96.0,
+   "freq": 96,
    "where": "Ireland",
    "genre": "Classical",
    "url": "https://icecast.rte.ie/lyric"
@@ -454,6 +462,14 @@
    "where": "SomaFM",
    "genre": "Jazz",
    "url": "https://ice2.somafm.com/sonicuniverse-128-mp3"
+  },
+  {
+   "id": "kmw9apbcz",
+   "name": "WEQX",
+   "freq": 102.7,
+   "where": "Manchester",
+   "genre": "Eclectic",
+   "url": "https://stream.surfernetwork.com/cc6a319f460vv"
   }
  ]
 }
