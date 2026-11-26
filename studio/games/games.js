@@ -109,7 +109,7 @@ async function call() {
     if (i % 2) i++;
     t = c.timeOf(i);
   }
-  // A melodic game (or a melodic run picked below) hears a do re mi tune on its tuned instrument.
+  // A do re mi game (or Run: Melodic picked below) hears a do re mi tune on its tuned instrument.
   const g = game();
   const tonal = runOf(g) === 'tonal';
   const list = tonal ? MALL : ALL;
@@ -431,7 +431,6 @@ async function start() {
   if (!draft.path) pathOpts = sitePath;
   OPT.apply(opts);
   app.replaceChildren(
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Musician Maker game workshop'),
       h('a', { class: 'button', href: '/musician-maker/?lab' }, 'Transitions lab'),

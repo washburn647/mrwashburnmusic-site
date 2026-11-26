@@ -539,7 +539,6 @@ function top(u) {
   const restore = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true, onchange: () => { restoreZip(restore.files[0]); restore.value = ''; } });
   const pickUnit = (id) => { if (recording || slideAudio.busy()) return; settings.unit = id; showRemoved = false; current = null; save(); render(); };
   return [
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
     h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Voice recorder'),
       ...(slidesShown() ? [] : [

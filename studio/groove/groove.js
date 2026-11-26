@@ -9,11 +9,15 @@
    (musician-maker/sound.js), so what you hear is what the kids hear, at any tempo.
    Grooves are kept on this device (localStorage) with undo. "Publish to site" puts them in the
    game right away (/api/live/grooves.json, see worker/index.js); "Download" saves grooves.json,
-   a backup that Restore reads and tools/add_grooves.py puts in musician-maker/grooves.json. */
+   a backup that Restore reads and tools/add_grooves.py puts in musician-maker/grooves.json.
+   "In the game" lists them against what the game plays now: what's live, changed here or new,
+   their order, record-shop price and whether the shop sells them, and anything live that this
+   device doesn't have (to bring back). */
 
 import * as samples from '/assets/sounds/samples.js';
 import * as snd from '/musician-maker/sound.js';
 import { makeClock } from '/musician-maker/clock.js';
+import { siteShop } from '/musician-maker/shop.js';
 import { h, confirmButton } from '../dom.js';
 
 const app = document.getElementById('app');
@@ -42,7 +46,7 @@ const DEFAULT_TRACKS = { pulse: ['claves'], bass: ['bass'], drums: ['bass-drum',
 
 let grooves = [];
 let index = null; // samples index.json: instruments and their ranges
-const settings = { groove: 'basic', layer: 'pulse', variant: -1, roll: false, bpm: 108, hear: 'band', len: 1, vel: 'normal', zoomX: 1, zoomY: 1 };
+const settings = { view: 'edit', groove: 'basic', layer: 'pulse', variant: -1, roll: false, bpm: 108, hear: 'band', len: 1, vel: 'normal', zoomX: 1, zoomY: 1 };
 const vel = () => VEL[settings.vel] || 0.8;
 let past = [];
 let future = [];
@@ -100,6 +104,8 @@ async function start() {
     grooves = structuredClone(grooves);
   }
   if (!grooves.length) grooves = [blank('My groove')];
+  render();
+  await loadLive();
   render();
 }
 
@@ -196,7 +202,20 @@ function seg(options, value, onpick, titles = {}) {
 
 const canvases = [];
 
+/* The title, the two views, and saving: on both views. */
+function header(restore) {
+  return h('div', { class: 'bar' },
+    h('h1', {}, 'Groove Lab', h('small', {}, ' Musician Maker')),
+    seg({ edit: 'Editor', game: `In the game${live ? ` · ${gameCount()}` : ''}` }, settings.view, (v) => { settings.view = v; store(); render(); }),
+    h('span', { class: 'grow' }),
+    h('button', { onclick: () => restore.click() }, 'Restore'),
+    restore,
+    h('button', { onclick: download }, 'Download'),
+    h('button', { class: 'primary', disabled: publishing, onclick: publish }, publishing ? 'Publishing…' : 'Publish to site'));
+}
+
 function render() {
+  if (settings.view === 'game') { renderGame(); return; }
   const G = whole();
   if (!G) return;
   const g = now();
@@ -213,14 +232,7 @@ function render() {
   const count = (l) => g.layers[l].reduce((n, tr) => n + tr.notes.length, 0);
 
   app.replaceChildren(...[
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
-    h('div', { class: 'bar' },
-      h('h1', { class: 'grow' }, 'Groove Lab', h('small', {}, ' Musician Maker')),
-      h('button', { onclick: () => restore.click() }, 'Restore'),
-      restore,
-      h('button', { onclick: download }, 'Download'),
-      h('button', { class: 'primary', disabled: publishing, onclick: publish }, publishing ? 'Publishing…' : 'Publish to site'),
-    ),
+    header(restore),
     h('div', { class: 'bar' },
       h('select', { class: 'pick', onchange: (e) => { settings.groove = e.target.value; store(); render(); } },
         grooves.map((x) => h('option', { value: x.id, selected: x.id === G.id }, `${x.name} · ${Object.keys(x.versions).join(' + ')}`))),
@@ -871,7 +883,6 @@ function renderMissing(G) {
   const meter = settings.meter || '2/4';
   const other = Object.values(G.versions)[0];
   app.replaceChildren(
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
     h('div', { class: 'bar' }, h('h1', { class: 'grow' }, 'Groove Lab', h('small', {}, ' Musician Maker'))),
     h('div', { class: 'bar' },
       h('select', { class: 'pick', onchange: (e) => { settings.groove = e.target.value; store(); render(); } },
@@ -909,6 +920,112 @@ function setLength(g, beats) {
   changed();
 }
 
+/* ---------- the grooves in the game ---------- */
+
+let live = null; // what the game plays now: { list, at, from: 'live' | 'repo' }
+let shopPrice = 60; // a groove's price in the record shop when it has none (the avatar shop editor's)
+async function loadLive() {
+  const get = async (url) => {
+    const r = await fetch(url, { cache: 'no-store' });
+    return r.ok ? { data: await r.json(), at: r.headers.get('Last-Modified') } : null;
+  };
+  shopPrice = (await siteShop()).groovePrice;
+  try {
+    const got = await get('/api/live/grooves.json').catch(() => null);
+    if (got?.data?.grooves?.length) live = { list: snd.checkGrooves(got.data.grooves), at: got.at, from: 'live' };
+    else live = { list: snd.checkGrooves((await get('/musician-maker/grooves.json'))?.data?.grooves || []), at: null, from: 'repo' };
+  } catch {
+    live = { list: [], at: null, from: 'repo' };
+  }
+}
+const gameCount = () => (live?.list || []).filter((g) => !g.hidden).length;
+const sameGroove = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// The free one: the first with a 2/4 version (the game's Unit 1 meter), or Basic.
+const freeGroove = (list) => list.find((g) => g.versions['2/4']) || list[0];
+
+/* Each groove of this device's list in the game's order: hear it, rename it, move it, price
+   it, take it out of the record shop, edit it, remove it. Below them, any the game has that
+   this device doesn't. */
+let hearing = null;
+function renderGame() {
+  canvases.length = 0;
+  const restore = h('input', { type: 'file', accept: '.json,application/json', hidden: true, onchange: () => { restoreFile(restore.files[0]); restore.value = ''; } });
+  const liveById = new Map((live?.list || []).map((g) => [g.id, g]));
+  const checked = snd.checkGrooves(grooves);
+  const free = freeGroove(checked);
+  const defaultPrice = shopPrice;
+  const move = (i, d) => { snapshot(); const [g] = grooves.splice(i, 1); grooves.splice(i + d, 0, g); changed(); };
+  const row = (G, i) => {
+    const g = checked.find((x) => x.id === G.id);
+    const was = liveById.get(G.id);
+    const state = !was ? ['new', 'Not in the game yet'] : g && sameGroove(was, g) ? ['live', 'In the game'] : ['changed', 'Changed here'];
+    const isFree = g === free || G.id === 'basic';
+    const on = hearing === G.id && playing;
+    return h('li', { class: `gg-row ${state[0]} ${G.hidden ? 'hidden' : ''}` },
+      h('span', { class: 'gg-move' },
+        h('button', { class: 'icon', title: 'Earlier', 'aria-label': `Move ${G.name} up`, disabled: i === 0, onclick: () => move(i, -1) }, '▲'),
+        h('button', { class: 'icon', title: 'Later', 'aria-label': `Move ${G.name} down`, disabled: i === grooves.length - 1, onclick: () => move(i, 1) }, '▼')),
+      h('button', { class: `gg-play ${on ? 'on' : ''}`, 'aria-label': on ? 'Stop' : `Hear ${G.name}`, onclick: () => hear(G) }, on ? '■' : '▶'),
+      h('span', { class: 'gg-name' },
+        h('input', { class: 'name small', value: G.name, 'aria-label': 'Name', onchange: (e) => { snapshot(); G.name = e.target.value.trim() || G.name; changed(); } }),
+        h('small', {}, `${Object.keys(G.versions).join(' · ')}  ${['bass', 'drums', 'horns', 'band'].map((l) => snd.layerInfo(G, l).icon).join('')}`)),
+      h('span', { class: `gg-state ${state[0]}` }, state[1]),
+      isFree ? h('span', { class: 'gg-price free' }, 'Free')
+        : h('label', { class: 'gg-price', title: `Music notes in the record shop (empty: ${defaultPrice})` }, '♪',
+          h('input', { type: 'number', min: 0, max: 999, step: 1, value: G.price ?? '', placeholder: String(defaultPrice), 'aria-label': `${G.name} price`,
+            onchange: (e) => {
+              snapshot();
+              const n = Math.round(Number(e.target.value));
+              if (e.target.value === '' || !Number.isFinite(n)) delete G.price; else G.price = Math.max(0, Math.min(999, n));
+              changed();
+            } })),
+      h('label', { class: 'gg-shop', title: 'Off: out of the record shop and the music. Anyone who bought it keeps it.' },
+        h('input', { type: 'checkbox', checked: !G.hidden, onchange: (e) => { snapshot(); if (e.target.checked) delete G.hidden; else G.hidden = true; changed(); } }), 'In the shop'),
+      h('button', { onclick: () => { settings.groove = G.id; settings.view = 'edit'; stop(); store(); render(); } }, 'Edit'),
+      grooves.length > 1 ? confirmButton('Remove', 'Remove?', () => { snapshot(); grooves = grooves.filter((x) => x !== G); if (settings.groove === G.id) settings.groove = grooves[0].id; changed(); }) : null);
+  };
+  const gone = (live?.list || []).filter((g) => !grooves.some((x) => x.id === g.id));
+  const when = live?.at ? new Date(live.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
+  const differs = live && (gone.length || checked.some((g) => !liveById.has(g.id) || !sameGroove(liveById.get(g.id), g)) || checked.map((g) => g.id).join() !== live.list.map((g) => g.id).join());
+  app.replaceChildren(...[
+    header(restore),
+    h('div', { class: 'bar gg-summary' },
+      h('span', { class: 'total' }, !live ? 'Checking the game…'
+        : live.from === 'live' ? `Live: ${live.list.length} groove${live.list.length === 1 ? '' : 's'}${when ? `, published ${when}` : ''}`
+          : `Nothing published: the game plays the repo's ${live.list.length}`),
+      differs ? h('span', { class: 'gg-state changed' }, 'Publish to put this list in the game') : live ? h('span', { class: 'gg-state live' }, 'Same as the game') : null,
+      h('span', { class: 'grow' }),
+      h('span', { class: 'label' }, 'Tempo'),
+      seg({ 92: '92', 108: '108', 126: '126' }, settings.bpm, (v) => { settings.bpm = Number(v); store(); if (playing) play(); else render(); }),
+      live?.list.length ? confirmButton('Load what\'s in the game', 'Replace this list?', () => {
+        snapshot();
+        grooves = structuredClone(live.list);
+        settings.groove = grooves[0]?.id;
+        status = 'Loaded the game\'s grooves.';
+        changed();
+      }) : null),
+    h('ol', { class: 'gg-list' }, grooves.map(row)),
+    gone.length ? h('h2', { class: 'gg-gone-head' }, 'In the game, not on this device') : null,
+    gone.length ? h('ul', { class: 'gg-list gone' }, gone.map((g) => h('li', { class: 'gg-row gone' },
+      h('span', { class: 'gg-name' }, h('b', {}, g.name), h('small', {}, Object.keys(g.versions).join(' · '))),
+      h('span', { class: 'gg-state gone' }, 'Leaves the game when you publish'),
+      h('button', { onclick: () => { snapshot(); grooves.push(structuredClone(g)); changed(); } }, 'Bring it back')))) : null,
+    status ? h('p', { class: 'status' }, status) : null,
+  ].filter(Boolean));
+}
+
+/* Hear a groove from the list: the whole band, at the tempo picked. */
+function hear(G) {
+  if (playing && hearing === G.id) { stop(); hearing = null; return; }
+  settings.groove = G.id;
+  settings.meter = G.versions['2/4'] ? '2/4' : Object.keys(G.versions)[0];
+  settings.hear = 'band';
+  settings.variant = -1;
+  hearing = G.id;
+  store();
+  play();
+}
+
 /* ---------- save for site, restore ---------- */
 
 const siteText = () => `{"grooves":[\n${snd.checkGrooves(grooves).map((g) => JSON.stringify(g)).join(',\n')}\n]}\n`;
@@ -924,6 +1041,7 @@ async function publish() {
     if (r.status === 401) throw new Error('your sign-in ran out. Reload the page and try again');
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `the site said ${r.status}`);
     status = `Published ${plural(grooves.length)}. They're in Musician Maker now (reload the game if it's open).`;
+    await loadLive();
   } catch (e) {
     status = `Couldn't publish: ${e.message}`;
   }

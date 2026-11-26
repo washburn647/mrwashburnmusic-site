@@ -167,7 +167,7 @@ function rowFor(s) {
 
 function render() {
   const focus = document.activeElement && document.activeElement.getAttribute('aria-label');
-  const top = [h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '← Studio'), h('h1', {}, 'Radio stations'),
+  const top = [h('div', { class: 'bar' }, h('h1', {}, 'Radio stations'),
     h('span', { class: 'grow' }), h('a', { class: 'back', href: '/radio/', target: '_blank', rel: 'noopener' }, 'Open the radio ↗'))];
   if (!draft) { app.replaceChildren(...top, h('p', { class: 'status' }, 'Loading…')); return; }
 

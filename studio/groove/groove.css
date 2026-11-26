@@ -71,3 +71,28 @@ details.add summary:hover, details.add summary:focus-visible, details.add[open] 
   .pick-group.wide .pick-grid { grid-template-columns: repeat(2, 1fr); }
 }
 .zoom { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+
+/* In the game: this device's grooves against what the game plays. */
+.gg-summary { gap: 12px; }
+.gg-list { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 8px; }
+.gg-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border-radius: 16px; padding: 8px 12px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.gg-row.hidden { background: #F3EEE2; }
+.gg-row.hidden .gg-name input { color: #8A968C; }
+.gg-move { display: inline-flex; flex-direction: column; }
+.gg-move button { padding: 0 6px; font-size: 11px; line-height: 1.4; }
+.gg-play { width: 40px; height: 40px; border-radius: 50%; padding: 0; background: #2F4A3A; color: #F6F1E4; }
+.gg-play.on { background: #A33B2B; }
+.gg-name { display: grid; gap: 1px; flex: 1; min-width: 180px; }
+.gg-name small { color: #8A968C; font-size: 13px; padding-left: 10px; }
+.gg-name b { font-weight: 500; padding-left: 10px; }
+.gg-state { font-size: 13px; border-radius: 999px; padding: 3px 10px; background: #EFE8D6; color: #5B6B5F; white-space: nowrap; }
+.gg-state.live { background: #E3EEDB; color: #3F5A34; }
+.gg-state.changed { background: #FBEBC8; color: #8A5A12; }
+.gg-state.new { background: #DCE8F6; color: #2B5A8C; }
+.gg-state.gone { background: #F6DEDA; color: #A33B2B; }
+.gg-price { display: inline-flex; align-items: center; gap: 4px; color: #8A5A12; font-weight: 600; }
+.gg-price input { width: 64px; border: 0; border-radius: 10px; padding: 6px 8px; background: #F6F1E4; }
+.gg-price.free { color: #3F5A34; font-size: 14px; padding: 0 8px; }
+.gg-shop { font-size: 14px; }
+.gg-gone-head { margin: 8px 0 10px; color: #A33B2B; }
+.gg-row.gone { background: #FBF3F1; }

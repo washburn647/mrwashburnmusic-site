@@ -93,7 +93,6 @@ async function show() {
   });
 
   app.replaceChildren(
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '‹ Studio')),
     h('div', { class: 'bar' }, h('h1', { class: 'grow' }, 'Sounds')),
     h('h2', {}, 'Instruments'),
     h('div', { class: 'bar' }, pick, lower, where, higher, h('button', { onclick: scale }, 'Scale')),

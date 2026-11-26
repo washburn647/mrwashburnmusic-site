@@ -324,7 +324,7 @@ function render() {
   const focus = document.activeElement && document.activeElement.getAttribute('aria-label');
   const pick = (id, name) => h('button', { class: tab === id ? 'on' : '', onclick: () => { tab = id; save(TAB_KEY, id); render(); } }, name);
   app.replaceChildren(
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '← Studio'), h('h1', {}, 'Song Burner')),
+    h('div', { class: 'bar' }, h('h1', {}, 'Song Burner')),
     h('div', { class: 'seg' }, pick('users', 'Testers'), pick('defaults', 'Defaults'), pick('book', 'Songbook')),
     ...[tab === 'users' ? usersView() : tab === 'book' ? bookView() : defaultsView()].flat(2).filter((x) => x != null));
   if (focus) {

@@ -23,7 +23,6 @@ export const QR_SRC = 'vendor/qrcode.js';
 export const LOGO = 'logo.svg';
 export const LESSON_PAGE = 'https://mrwashburnmusic.com/lesson/';
 export const LOCAL_PAGE = 'lesson.html';
-export const STUDIO_HOME = '';
 export const VEXFLOW_SRC = 'vendor/vexflow-bravura.js';
 export const API = null;
 """

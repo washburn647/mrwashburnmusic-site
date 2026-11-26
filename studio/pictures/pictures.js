@@ -312,7 +312,7 @@ document.addEventListener('keydown', (e) => {
 
 async function start() {
   app.replaceChildren(
-    h('div', { class: 'bar' }, h('a', { class: 'back', href: '/studio/' }, '← Studio'), h('h1', { class: 'grow' }, 'Picture library'),
+    h('div', { class: 'bar' }, h('h1', { class: 'grow' }, 'Picture library'),
       findBox,
       h('button', { onclick: () => {
         const name = window.prompt('Group name');

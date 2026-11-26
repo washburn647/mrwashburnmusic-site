@@ -96,9 +96,6 @@ async function showList() {
   const restore = h('input', { type: 'file', accept: '.json,application/json', hidden: true, onchange: () => restoreBackup(restore.files[0]) });
   app.replaceChildren(
     h('div', { class: 'bar' },
-      h('a', { class: 'back', href: '/studio/' }, '‹ Studio'),
-    ),
-    h('div', { class: 'bar' },
       h('h1', { class: 'grow' }, 'Cue sheets'),
       h('button', { onclick: () => downloadBackup(sheets), disabled: !sheets.length }, 'Backup'),
       h('button', { onclick: () => restore.click() }, 'Restore'),

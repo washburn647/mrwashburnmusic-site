@@ -1,0 +1,99 @@
+/* Avatar shop editor. Tiles and the avatar look as in the game's closet. */
+select, input { font: inherit; color: inherit; }
+select, input.name { border: 0; border-radius: 12px; padding: 8px 10px; background: #fff; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+input.name.small { font-size: 16px; min-width: 0; width: 100%; box-sizing: border-box; padding: 6px 10px; background: transparent; box-shadow: none; }
+input.name.small:hover { background: #FBF8F0; }
+input.name.small:focus { background: #F6F1E4; outline: none; }
+input[type=number] { box-sizing: border-box; border: 0; border-radius: 10px; padding: 6px 4px 6px 8px; background: #F6F1E4; width: 68px; font-variant-numeric: tabular-nums; }
+input[type=number]:focus, select:focus-visible { outline: 2px solid #2F4A3A; outline-offset: 1px; }
+label { display: inline-flex; align-items: center; gap: 6px; color: #5B6B5F; }
+h1 small { font-size: 15px; font-weight: 400; color: #8A968C; }
+h2 { font-weight: 600; font-size: 18px; margin: 0 0 6px; }
+button:disabled { opacity: .4; cursor: default; }
+.bar { margin-bottom: 14px; }
+.status { color: #5B6B5F; }
+.chip { font-size: 13px; border-radius: 999px; padding: 3px 10px; background: #EFE8D6; color: #5B6B5F; white-space: nowrap; }
+.chip.live { background: #E3EEDB; color: #3F5A34; }
+.chip.changed { background: #FBEBC8; color: #8A5A12; }
+.card { background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+
+/* Slots */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.tabs button { display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; }
+.tabs button small { color: #8A968C; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tabs button.on { background: #2F4A3A; color: #F6F1E4; }
+.tabs button.on small { color: #B9C9B4; }
+
+/* The list beside the avatar */
+.split-view { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
+.it-tools { display: flex; align-items: center; gap: 10px; margin: 0 4px 8px; min-height: 32px; }
+.it-tools .grow { flex: 1; }
+.it-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.it-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border-radius: 16px; padding: 8px 12px 8px 6px;
+  box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.it-row.on { box-shadow: 0 0 0 3px #2F4A3A; }
+.it-row.hidden { background: #F3EEE2; }
+.it-row.hidden .tile .art { opacity: .4; filter: grayscale(.7); }
+.it-row.hidden .it-name input { color: #8A968C; }
+.gg-move { display: inline-flex; flex-direction: column; }
+.gg-move button { padding: 0 6px; font-size: 11px; line-height: 1.4; }
+.it-row.first .gg-move { visibility: hidden; }
+
+.tile { position: relative; flex: none; width: 60px; height: 60px; padding: 0; border-radius: 14px; overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #fff 0, #FFFDF7 55%, #F2E3C4 100%); box-shadow: 0 2px 0 rgba(47,74,58,.12); }
+.tile .art, .tile .art svg { display: block; width: 100%; height: 100%; }
+.tile:is(.cl-hat, .cl-glasses, .cl-hold, .cl-neck, .cl-shoes) .art { padding: 8%; box-sizing: border-box; }
+.it-row.prize .tile { box-shadow: inset 0 0 0 3px #f2c94c, 0 2px 0 rgba(47,74,58,.12); }
+
+.it-name { display: grid; gap: 0; flex: 1 1 150px; min-width: 130px; }
+.it-name small { color: #8A968C; font-size: 12px; padding-left: 10px; }
+.it-first { color: #3F5A34; font-size: 14px; padding-right: 6px; }
+.it-price { color: #8A5A12; font-weight: 600; gap: 4px; }
+select.won { max-width: 230px; padding: 6px 8px; font-size: 14px; background: #F6F1E4; box-shadow: none; }
+.it-row.prize select.won { background: #3b2f5c; color: #ffe7a3; }
+.it-shop { font-size: 14px; white-space: nowrap; }
+.it-reset { font-size: 18px; }
+
+/* The avatar */
+.pv { position: sticky; top: 16px; display: grid; gap: 12px; background: #fff; border-radius: 18px; padding: 14px; box-shadow: 0 2px 0 rgba(47,74,58,.08); }
+.pv .avatar svg { display: block; width: 100%; height: 100%; }
+.pv-av { width: 100%; aspect-ratio: 200 / 220; border-radius: 16px; overflow: hidden; background: #FFFDF7; }
+.pv-side { display: grid; gap: 10px; min-width: 0; }
+.pv-name { margin: 0; display: grid; gap: 2px; justify-items: start; }
+.pv-name b { font-size: 20px; font-weight: 600; }
+.pv-name span { color: #5B6B5F; font-size: 15px; }
+.pv-name .chip { margin-top: 4px; }
+.pv-moods { display: flex; flex-wrap: wrap; gap: 4px; }
+.pv-moods button { padding: 3px 7px; font-size: 19px; line-height: 1.3; background: #F6F1E4; box-shadow: none; }
+.pv-moods button.on { background: #fff; box-shadow: inset 0 0 0 2px #2F4A3A; }
+.pv-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pv-tools select { padding: 6px 8px; font-size: 14px; background: #F6F1E4; box-shadow: none; }
+.pv-tools button { padding: 6px 10px; font-size: 14px; }
+
+/* Earning */
+.earn { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.earn-rows { list-style: none; margin: 0; padding: 0; }
+.earn-rows li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #F0EADB; }
+.earn-rows li:last-child { border-bottom: 0; }
+.earn-rows li > span { flex: 1; }
+.earn-rows small { color: #8A968C; font-size: 13px; width: 120px; }
+
+@media (max-width: 760px) {
+  .tabs { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px 14px; padding: 3px 16px; scrollbar-width: none; }
+  .tabs button { flex: none; }
+  .split-view { grid-template-columns: 1fr; }
+  .pv { order: -1; top: 0; z-index: 5; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 12px; margin: 0 -16px;
+    border-radius: 0 0 18px 18px; padding: 10px 16px; box-shadow: 0 6px 14px rgba(47,74,58,.12); }
+  .pv-av { width: 104px; border-radius: 12px; }
+  .pv-side { gap: 6px; }
+  .pv-name b { font-size: 17px; }
+  .pv-name span { font-size: 13px; }
+  .pv-moods button { font-size: 15px; padding: 1px 4px; }
+  .pv-tools button, .pv-tools select { font-size: 13px; padding: 4px 8px; }
+  .it-row { gap: 8px; }
+  .it-name { flex-basis: calc(100% - 120px); }
+  .it-price { margin-left: 30px; }
+  .it-price input { width: 60px; }
+  select.won { max-width: none; min-width: 0; flex: 1 1 90px; }
+  .earn-rows small { width: auto; }
+}

@@ -12,14 +12,16 @@ fail with "limit of 100 Durable Object namespaces", run that workflow by hand to
 - Never put passwords, API keys or personal data in this repo. It is public, and so is the site.
 - `_headers` sets a strict Content-Security-Policy: no inline `<script>`, no external scripts,
   fonts or stylesheets. Self-host anything a page needs.
-- `/studio/` is private (Cloudflare Access). Don't link to it from public pages.
+- `/studio/` is private (Cloudflare Access). Don't link to it from public pages. A new studio
+  tool goes in `studio/sections.js` (the hub and each tool's section bar read it), and its page
+  loads `../nav.js`.
 
 ## Publishing from the studio
 
-Groove Lab, the game workshop, the voice recorder, the radio stations page and the homepage editor
-have "Publish to site": Kyle's grooves, game options, voice takes, units, radio stations and homepage go straight to the live
+Groove Lab, the game workshop, the avatar shop editor, the voice recorder, the radio stations page and the homepage editor
+have "Publish to site": Kyle's grooves, game options, shop, voice takes, units, radio stations and homepage go straight to the live
 site (`/api/live/`, a Durable Object in `worker/index.js`), and the site reads them ahead of the
-repo's files. So the repo's `musician-maker/grooves.json`, `games.json`,
+repo's files. So the repo's `musician-maker/grooves.json`, `games.json`, `shop.json`,
 `assets/patterns/units.json`, `radio/stations.json`, `home/home.json` and voice takes can be behind: run `python tools/pull_live.py` first when a change touches them, and commit what it
 pulls.
 
