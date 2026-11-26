@@ -11,7 +11,9 @@ export const MIC_SPEECH = 'Sing with the mic! Tap Test the mic, and say du, du-d
 
 export const CLOSET_SPEECH = 'Dress up your buddy! Tap a picture to try it on. '
   + 'Play to earn music notes. When you have enough notes, tap the check to get it. '
-  + 'You can get new grooves too. Tap one to hear it.';
+  + 'Saving up? Tap the target to make it your goal. '
+  + 'Tap a circle to keep your look, and the dice for a surprise. '
+  + 'Tap the record for new grooves. Tap one to hear it.';
 
 // The intros as narrated: no game in particular, so the words fit every game.
 const ANY_GAME = { kit: { object: { name: 'the picture' }, instrument: { name: 'the instrument' } } };

@@ -18,7 +18,7 @@ import * as OPT from './options.js';
 import { showIntro } from './intro.js';
 import { mookie } from './mookie.js';
 import { avatar, lookOf, token, EARN, ownsGroove } from './avatar.js';
-import { closet } from './closet.js';
+import { closet, goalChip } from './closet.js';
 import { MIC_SPEECH } from './narration.js';
 import * as TX from './transitions.js';
 import * as FX from './effects.js';
@@ -235,7 +235,18 @@ function title() {
         h('button', { class: 'to-closet', 'aria-label': `Dress up: ${st.tokens} music notes`, onclick: openCloset },
           avatar(lookOf(st), { cls: 'mini' }), token(), h('b', {}, String(st.tokens))),
         h('button', { class: 'to-map', onclick: progress },
-          h('span', { class: 'staff-ico' }), 'My progress')))));
+          h('span', { class: 'staff-ico' }), 'My progress')),
+      titleGoal())));
+}
+
+/* The learner's goal (🎯 in the closet), under the closet button. A groove goal shows once
+   the grooves have loaded. */
+function titleGoal() {
+  const slot = h('div', { class: 'to-goal' });
+  const fill = () => slot.replaceChildren(goalChip(st, snd.grooveList(UNIT.meter), { onclick: openCloset }) || '');
+  fill();
+  if (st.goal?.startsWith('groove:')) snd.loadGrooves().then(fill);
+  return slot;
 }
 
 /* The closet: dress up the avatar with music notes (closet.js). */
@@ -1458,21 +1469,44 @@ function intermission() {
   const lv = levelOf(st.xp);
   const tile = (ic, big, small) => h('div', { class: 'win-tile' }, h('span', { class: 'ic', 'aria-hidden': 'true' }, ic), h('b', {}, big), h('small', {}, small));
   const nextN = Math.min(R.force || R.dir.frontier(), R.dir.top);
+  // The run's notes tick into the wallet, and the goal's bar fills toward it.
+  const notes = tile(token('big'), '+0', `notes · ${st.tokens - R.runTokens}`);
+  countUp(notes, R.runTokens, st.tokens - R.runTokens);
   overlay(h('div', { class: 'card intermission win' },
     h('div', { class: 'win-head' }, h('div', { class: 'cue-word small' }, `Lap ${R.lap + 1} ✓`)),
     h('div', { class: 'win-tiles' },
       tile('⭐', `+${R.runXP}`, 'XP'),
-      tile(token('big'), `+${R.runTokens}`, 'notes'),
+      notes,
       tile('🔥', String(R.runCombo), 'best in a row'),
       tile('🏅', `Level ${lv.n}`, lv.title)),
     ...R.news.splice(0).map((n) => h('p', { class: 'news' }, n)),
     growth([...R.lapSteps].sort((a, b) => a - b), R.lapBefore, 0.5),
     h('div', { class: 'win-next' }, h('small', {}, 'Next'), h('span', { class: `sg-n ${STEPS[nextN].band}` }, String(nextN)), h('b', {}, STEPS[nextN].name)),
+    goalChip(st, snd.grooveList(UNIT.meter), { from: st.tokens - R.runTokens }),
     dancer(0.6),
     h('div', { class: 'row' },
       h('button', { class: 'play', onclick: () => { overlay(null); R.lap++; beginLap(); } }, 'Keep going'),
       h('button', { class: 'link', onclick: endRun }, 'Done for today'))));
   FX.burst(R.dom.overlay.querySelector('.card'), { y: 0.15, count: 36, spread: 1.8 });
+}
+
+/* A notes tile counting up: +0 to +n, and the wallet under it from was to was + n. */
+function countUp(el, n, was) {
+  const big = el.querySelector('b');
+  const small = el.querySelector('small');
+  if (!n) { big.textContent = '+0'; small.textContent = `notes · ${was}`; return; }
+  const per = Math.max(60, Math.min(160, 1400 / n));
+  let k = 0;
+  const step = () => {
+    if (!el.isConnected && k) return;
+    k++;
+    big.textContent = `+${k}`;
+    small.textContent = `notes · ${was + k}`;
+    try { snd.toon('pop', undefined, { vol: 0.4, rate: 1 + k * 0.03 }); } catch { /* no sound */ }
+    if (k < n) setTimeout(step, per);
+    else bump(el, 'fx-got');
+  };
+  setTimeout(step, 500);
 }
 
 function askPause() {
