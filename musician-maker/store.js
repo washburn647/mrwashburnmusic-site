@@ -21,6 +21,7 @@ const DEFAULTS = {
   owned: [], // items bought: 'slot:id'
   goal: null, // the item or groove saved up for ('slot:id', 'groove:id'), shown on the title and lap screens
   outfits: [], // up to three kept looks (closet.js)
+  tips: {}, // one-time pointers already shown (outfits: the closet's first outfit)
   seen: {}, // task-step: 1 once it has been played (its instruction stops saying NEW)
   intro: {}, // task-step: 1 once its task intro has been shown (intro.js)
   made: [], // the learner's last 12 create answers (pattern ids): repeats earn less

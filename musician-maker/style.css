@@ -1037,19 +1037,38 @@ body[data-screen="closet"] {
 @keyframes re-strum { 0%, 100% { transform: none; } 25% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } 75% { transform: rotate(-3deg); } }
 @keyframes re-bg { 0% { opacity: .2; transform: scale(1.08); } 100% { opacity: 1; transform: none; } }
 @keyframes re-groove { 0%, 100% { transform: none; } 30% { transform: rotate(-5deg) translateY(-3%); } 70% { transform: rotate(5deg) translateY(-3%); } }
-/* Outfits: three kept looks under the stage. */
-.cl-outfits { display: flex; flex-direction: column; gap: 10px; }
-.cl-outfits:empty { display: none; }
+/* Outfits: three kept looks beside the stage, numbered, under a hanger. */
+.cl-outfits { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.cl-hanger { display: block; width: 40px; height: 27px; color: var(--muted); margin-bottom: -4px; }
+.cl-hanger svg { display: block; width: 100%; height: 100%; }
 .cl-outfit { position: relative; }
-.cl-outfit-wear { width: 52px; height: 52px; padding: 0; border-radius: 50%; overflow: hidden; background: var(--paper);
+.cl-outfit-wear { width: 54px; height: 54px; padding: 0; border-radius: 50%; overflow: hidden; background: var(--paper);
   box-shadow: 0 0 0 3px var(--paper), 0 4px 0 3px rgba(47, 74, 58, .15); display: grid; place-items: center; }
-.cl-outfit.empty .cl-outfit-wear { background: transparent; box-shadow: inset 0 0 0 3px rgba(47, 74, 58, .25); border: 0; }
-.cl-outfit .plus { font-size: 28px; color: var(--muted); font-weight: 700; }
+.cl-outfit.empty .cl-outfit-wear { background: rgba(255, 253, 247, .5); box-shadow: inset 0 0 0 3px rgba(47, 74, 58, .2); color: rgba(47, 74, 58, .3); }
 .cl-outfit .art, .cl-outfit .art svg { display: block; width: 100%; height: 100%; }
+.cl-outfit .empty-art { width: 62%; height: auto; }
 .cl-outfit.on .cl-outfit-wear { box-shadow: 0 0 0 4px var(--moss), 0 4px 0 4px #3f5a34; }
+.cl-outfit-n { position: absolute; left: -7px; top: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--forest);
+  color: var(--paper); font-size: 13px; font-weight: 700; display: grid; place-items: center; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--cream); }
+.cl-outfit.empty .cl-outfit-n { background: var(--sage); }
+.cl-outfit-plus { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: var(--moss);
+  color: var(--paper); font-size: 18px; font-weight: 700; line-height: 1; display: grid; place-items: center; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--cream); }
+.cl-outfit-tick { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: var(--moss);
+  color: var(--paper); font-size: 13px; font-weight: 700; display: grid; place-items: center; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--cream); }
+.cl-outfit-keep { position: absolute; right: -10px; bottom: -8px; width: 30px; height: 30px; padding: 0; border-radius: 50%;
+  background: var(--paper); font-size: 16px; line-height: 1; box-shadow: 0 0 0 2px var(--wheat), 0 2px 0 2px #8a6630; }
+.cl-outfit.hint .cl-outfit-wear { animation: cl-hint 1.3s ease-in-out infinite; }
+@keyframes cl-hint { 50% { box-shadow: inset 0 0 0 3px var(--moss), 0 0 0 6px rgba(94, 125, 79, .25); } }
+.cl-outfit-finger { position: absolute; right: 100%; top: 50%; margin: -14px 4px 0 0; font-size: 22px; pointer-events: none;
+  animation: cl-point 1.3s ease-in-out infinite; }
+@keyframes cl-point { 50% { transform: translateX(6px); } }
 .cl-outfit.fx-got { animation: fx-got .45s ease-out; }
-.cl-outfit-keep { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 50%; background: var(--wheat);
-  color: var(--forest); font-size: 15px; font-weight: 700; line-height: 1; box-shadow: 0 2px 0 #8a6630; }
+.cl-outfit.fx-snap .cl-outfit-wear { animation: cl-snap .5s ease-out; }
+@keyframes cl-snap { 0% { filter: brightness(3); transform: scale(1.18); } 100% { filter: none; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cl-outfit.hint .cl-outfit-wear, .cl-outfit-finger { animation: none; } }
 /* Groups (Me, Wear, Stage) and the slots in each. */
 .cl-groups { display: flex; gap: 8px; justify-content: center; }
 .cl-groups:empty, .cl-tabs:empty { display: none; }

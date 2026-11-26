@@ -35,6 +35,9 @@ const svgEl = (cls, markup) => {
 };
 
 const price = (n) => h('span', { class: 'price' }, token(), String(n));
+const same = (a, b) => Object.keys(ITEMS).every((s) => a[s] === b[s]);
+// A coat hanger, over the outfits.
+const HANGER = '<svg viewBox="0 0 48 32" aria-hidden="true"><path d="M24 11 V8 a4 4 0 1 1 4 -4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M24 11 L4 25 Q2 27 5 27 H43 Q46 27 44 25 Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg>';
 const BAND = ['bass', 'drums', 'horns', 'band'];
 
 /* The learner's goal: the item or groove they pinned with 🎯, while they don't have it yet. */
@@ -185,28 +188,45 @@ export function closet(app, st, { save, back, grooves = () => [] }) {
     drawBar();
   }
 
-  /* Three outfits: tap an empty one to keep the look, a kept one to put it on, ⤓ to keep the
-     look over it. */
+  /* Three outfits, numbered, under a hanger. An empty one (a hanger and +) keeps the look you
+     have on; a kept one puts its look back on (the one you're wearing has a ✓); 📸 on a kept
+     one snaps the look you have on over it. The same look is never kept twice. Until the
+     first one is kept, the first empty one pulses with a finger pointing at it. */
   function drawOutfits() {
-    const same = (a, b) => Object.keys(ITEMS).every((s) => a[s] === b[s]);
-    outfits.replaceChildren(...st.outfits.map((o, i) => {
-      const kept = o && cleanLook(st, o);
-      const wearing = kept && same(kept, look) && !trying;
-      return h('div', { class: `cl-outfit ${wearing ? 'on' : ''} ${kept ? '' : 'empty'}` },
+    const kept = st.outfits.map((o) => o && cleanLook(st, o));
+    const wornAt = trying ? -1 : kept.findIndex((k) => k && same(k, look));
+    const savedAt = kept.findIndex((k) => k && same(k, look));
+    const firstEmpty = kept.findIndex((k) => !k);
+    const hint = !st.tips?.outfits && kept.every((k) => !k);
+    outfits.replaceChildren(
+      svgEl('cl-hanger', HANGER),
+      ...kept.map((k, i) => h('div', { class: `cl-outfit ${i === wornAt ? 'on' : ''} ${k ? '' : 'empty'} ${hint && i === firstEmpty ? 'hint' : ''}` },
         h('button', {
           class: 'cl-outfit-wear',
-          'aria-label': kept ? `Outfit ${i + 1}` : `Keep this look as outfit ${i + 1}`,
-          onclick: () => (kept ? wearOutfit(kept) : keepOutfit(i)),
-        }, kept ? svgEl('art', avatarSvg(kept, { view: '6 -6 188 156', bg: true })) : h('span', { class: 'plus', 'aria-hidden': 'true' }, '+')),
-        kept && !wearing ? h('button', { class: 'cl-outfit-keep', 'aria-label': `Keep this look as outfit ${i + 1}`, onclick: () => keepOutfit(i) }, '⤓') : null);
-    }));
+          'aria-label': k ? `Outfit ${i + 1}${i === wornAt ? ', wearing it' : ''}` : `Keep this look as outfit ${i + 1}`,
+          onclick: () => (k ? wearOutfit(k) : keepOutfit(i)),
+        }, k ? svgEl('art', avatarSvg(k, { view: '6 -6 188 156', bg: true })) : svgEl('art empty-art', HANGER)),
+        h('span', { class: 'cl-outfit-n', 'aria-hidden': 'true' }, String(i + 1)),
+        k ? null : h('span', { class: 'cl-outfit-plus', 'aria-hidden': 'true' }, '+'),
+        i === wornAt ? h('span', { class: 'cl-outfit-tick', 'aria-hidden': 'true' }, '✓') : null,
+        k && i !== wornAt && savedAt < 0 ? h('button', { class: 'cl-outfit-keep', 'aria-label': `Snap this look into outfit ${i + 1}`, onclick: () => keepOutfit(i) }, '📸') : null,
+        hint && i === firstEmpty ? h('span', { class: 'cl-outfit-finger', 'aria-hidden': 'true' }, '👉') : null)));
   }
   function keepOutfit(i) {
+    // Already kept: point at it instead of keeping it twice.
+    const at = st.outfits.findIndex((o) => o && same(cleanLook(st, o), look));
+    if (at >= 0 && at !== i) {
+      FX.bump(outfits.querySelectorAll('.cl-outfit')[at], 'fx-got');
+      sound((t) => snd.toon('squeak', t));
+      return;
+    }
     st.outfits[i] = { ...look };
+    st.tips = { ...st.tips, outfits: 1 };
     save();
-    sound((t) => snd.toon('pop', t));
+    sound((t) => { snd.toon('clink', t); snd.toon('pop', t + 0.08); });
     draw();
-    FX.bump(outfits.children[i], 'fx-got');
+    const el = outfits.querySelectorAll('.cl-outfit')[i];
+    FX.bump(el, 'fx-snap');
   }
   function wearOutfit(o) {
     look = { ...o };

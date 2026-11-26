@@ -43,6 +43,26 @@ export function ac() {
   return ctx;
 }
 
+/* A bus of its own for a screen that schedules sounds ahead (a task intro's practice round):
+   everything made inside into(bus, fn) goes through it, so fading the bus out silences what
+   is still to come when the learner moves on. */
+let route = null;
+export function bus() {
+  const g = ac().createGain();
+  g.connect(master);
+  return g;
+}
+export function into(b, fn) {
+  const was = route;
+  route = b;
+  try { return fn(); } finally { route = was; }
+}
+export function fadeBus(b) {
+  if (!ctx || !b) return;
+  b.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+  setTimeout(() => b.disconnect(), 400);
+}
+
 /* Output delay: what the learner hears lags the audio clock by this much. */
 export const latency = () => (ctx ? (ctx.outputLatency || 0) + (ctx.baseLatency || 0) : 0);
 
@@ -666,6 +686,7 @@ const FALLBACK = {
 export function hit(name, t, vol = 0.8, dest = fxBus) {
   if (!ctx) return;
   t = Math.max(t, ctx.currentTime);
+  dest = route || dest;
   if (inst[name]?.hit) return inst[name].hit(t, { vol, dest });
   else {
     const [f, d] = FALLBACK[name] || [600, 0.1];
@@ -676,6 +697,7 @@ export function hit(name, t, vol = 0.8, dest = fxBus) {
 export function note(name, midi, t, dur, vol = 0.25, dest = fxBus) {
   if (!ctx) return;
   t = Math.max(t, ctx.currentTime);
+  dest = route || dest;
   if (name === 'bowl') { bowl(midi, t, vol, dest); return; }
   if (inst[name]?.note) inst[name].note(midi, t, dur, { vol, dest });
   else synth(t, 440 * 2 ** ((midi - 69) / 12), Math.max(dur, 0.1), vol * 0.5, dest);
@@ -692,11 +714,11 @@ export function call(p, kind, t, spb, inst = 'conga') {
     kind = 'syllables';
   }
   if (kind === 'syllables' && kyle?.has(p.id)) {
-    kyle.say(p.id, t, { bpm: 60 / spb });
+    kyle.say(p.id, t, { bpm: 60 / spb, dest: route || undefined });
     return;
   }
   if (kind === 'neutral' && kyle?.has(p.id, 'bum')) {
-    kyle.say(p.id, t, { bpm: 60 / spb, as: 'bum' });
+    kyle.say(p.id, t, { bpm: 60 / spb, as: 'bum', dest: route || undefined });
     return;
   }
   // Stand-ins until the takes exist: a low thump for "bum", a bright one for syllables.
@@ -758,7 +780,7 @@ function sing(midi, t, dur, vol = 0.5, { bum = false } = {}) {
   env.gain.linearRampToValueAtTime(vol * 4, t + (bum ? 0.02 : 0.05));
   env.gain.setValueAtTime(vol * 4, t + dur * 0.7);
   env.gain.linearRampToValueAtTime(0, t + dur);
-  out.connect(lp).connect(env).connect(master);
+  out.connect(lp).connect(env).connect(route || master);
   o.start(t);
   vib.start(t);
   o.stop(t + dur + 0.05);
@@ -781,7 +803,7 @@ export function callTonal(p, kind, t, spb, tuneSound = 'harp', doMidi = 60) {
   }
   const as = kind === 'neutral' ? 'bum' : 'syllables';
   if (kyle?.has(p.id, as)) {
-    kyle.say(p.id, t, { key: doMidi, as, dest: master });
+    kyle.say(p.id, t, { key: doMidi, as, dest: route || master });
     return;
   }
   p.tones.forEach((tone, i) => sing(mid(tone), t + i * spb, spb * 0.8, 0.5, { bum: kind === 'neutral' }));
