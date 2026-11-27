@@ -174,97 +174,250 @@ export const PATTERNS = {
 };
 
 /* ---------- held things ----------
-   paw: drawn in the raised right paw (it moves with the arm). front: across the belly, under
-   the paw (a guitar, a keytar, a xylophone). play: how the avatar plays it when it plays along
-   (avatar.css): shake, strum, drum, blow, conduct, sing or ring. */
+   Each is held the way a player holds it. l and r: the arms (left and right as you look at
+   the avatar, so l is the animal's right paw: it strums, conducts and strikes), posed from the
+   shoulder (s) through the elbow (e) to the paw (p), on a layer: 'back' (behind the body),
+   'front' (over the body and what is on it, the default) or 'top' (over the head: something at
+   the mouth). held: drawn in that paw, under it (it moves with the arm and turns at the wrist);
+   k: which way the paw's fingers point (deg; false: none); moves: the arm's own angles for the
+   moods (avatar.js handMoves); still: it doesn't let go in any mood; hangs: what it holds hangs
+   straight down whatever the arm does. An arm not given hangs or waves as usual; lead: 'l'
+   draws the left arm over the right. front: on the body (a ukulele across the belly, a
+   xylophone on the lap); top: at the mouth, over the head (a trumpet); extra: there only while
+   playing (a drum for the sticks); tile: how it looks in the closet, when not as held. play:
+   how it plays along (avatar.css: data-play, and data-hold for each thing's own moves). */
+const at = (x, y, a, inner, s = 1) => `<g transform="translate(${x} ${y})${a ? ` rotate(${a})` : ''}${s !== 1 ? ` scale(${s})` : ''}">${inner}</g>`;
+const BRASS = 'fill="#e5b93a" stroke="#a8800f" stroke-width="1.6" stroke-linejoin="round"';
+const flip = (inner) => `<g transform="scale(-1 1)">${inner}</g>`;
+
+// A ukulele, upright: the sound hole at 0,0, the neck up.
+const UKE = '<rect x="-5.5" y="-72" width="11" height="52" fill="#5e3a24"/><rect x="-4.4" y="-72" width="8.8" height="52" fill="#3a2416"/>'
+  + '<path d="M-4.4 -63 H4.4 M-4.4 -55 H4.4 M-4.4 -48 H4.4 M-4.4 -41.5 H4.4 M-4.4 -35.5 H4.4 M-4.4 -30 H4.4" stroke="#cfc6b4" stroke-width="1"/>'
+  + '<path d="M-7 -72 L-9 -89 Q0 -94 9 -89 L7 -72 Z" fill="#4a2c1a"/>'
+  + '<path d="M-7.4 -77 H-11 M-8 -84 H-11.6 M7.4 -77 H11 M8 -84 H11.6" stroke="#8d929c" stroke-width="1.6"/>'
+  + [[-11.6, -77], [-12.2, -84], [11.6, -77], [12.2, -84]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2.4" ry="2.8" fill="#f3efe6" stroke="#8d929c" stroke-width=".9"/>`).join('')
+  + '<rect x="-5.5" y="-73.6" width="11" height="2.6" fill="#f3e6c4"/>'
+  + '<path d="M0 -24 C10 -24 18 -16 18 -6 C18 1 15 4 15 8 C15 10 24 13 24 22 C24 36 13 46 0 46 C-13 46 -24 36 -24 22 C-24 13 -15 10 -15 8 C-15 4 -18 1 -18 -6 C-18 -16 -10 -24 0 -24 Z" fill="#df8f3c" stroke="#8f4f1f" stroke-width="2.6"/>'
+  + '<path d="M-19 16 Q-21 33 -8 40" stroke="#fff" stroke-width="3" fill="none" opacity=".28" stroke-linecap="round"/>'
+  + '<rect x="-4.4" y="-25" width="8.8" height="12" fill="#3a2416"/><path d="M-4.4 -24 H4.4" stroke="#cfc6b4" stroke-width="1"/>'
+  + '<circle cy="-2" r="9.6" fill="none" stroke="#f3e6c4" stroke-width="1.6"/><circle cy="-2" r="7.4" fill="#3b2414"/>'
+  + '<rect x="-11" y="26" width="22" height="6" rx="2.5" fill="#4a2c1a"/><path d="M-8 28 H8" stroke="#f3e6c4" stroke-width="1.2"/>'
+  + '<path d="M-3.3 28 V-73 M-1.1 28 V-73 M1.1 28 V-73 M3.3 28 V-73" stroke="#fff7e0" stroke-width=".7"/>';
+// A pick, held at 0,0.
+const PICK = '<path d="M-1 -3 Q5 -6 8 -2 Q6 3 0 6 Q-3 1 -1 -3 Z" fill="#5ad1e6" stroke="#2b8a9a" stroke-width=".8"/>';
+
+// A keytar, level: the keys' middle at 0,0, the neck to the right.
+const KEYTAR = '<path d="M30 -5 H74 Q80 -5 80 -.5 Q80 4 74 4 H30 Z" fill="#9a6ad6" stroke="#6a42a3" stroke-width="2"/>'
+  + '<rect x="42" y="-3.2" width="26" height="3.4" rx="1.7" fill="#5ad1e6"/><circle cx="74.5" cy="-.5" r="2" fill="#f2c94c"/>'
+  + '<rect x="-50" y="-13" width="86" height="26" rx="11" fill="#ee6fa0" stroke="#a83a6a" stroke-width="2.4"/>'
+  + '<rect x="-46" y="-9.5" width="5" height="10" rx="2" fill="#5ad1e6"/><circle cx="-43.5" cy="5" r="2" fill="#f2c94c"/>'
+  + Array.from({ length: 11 }, (_, i) => `<rect x="${-38 + i * 6.2}" y="-8" width="5.6" height="16" rx="1.5" fill="#fff"/>`).join('')
+  + [0, 1, 3, 4, 5, 7, 8].map((i) => `<rect x="${-34.2 + i * 6.2}" y="-8" width="3.6" height="9.6" rx="1" fill="#22222a"/>`).join('')
+  + '<path d="M-48 -10 Q-30 -13 20 -12" stroke="#fff" stroke-width="1.6" fill="none" opacity=".35" stroke-linecap="round"/>';
+
+// One maraca, held at 0,0, its head up.
+const MARACA = (col, band) => '<rect x="-2.8" y="-14" width="5.6" height="28" rx="2.8" fill="#8c5a32"/>'
+  + `<ellipse cy="-26" rx="11" ry="13.5" fill="${col}" stroke="rgba(0,0,0,.22)" stroke-width="1.4"/>`
+  + `<path d="M-10 -30 Q0 -24 10 -30 M-10.8 -21 Q0 -15 10.8 -21" stroke="${band}" stroke-width="2.6" fill="none"/>`
+  + '<ellipse cx="-4" cy="-31" rx="3" ry="4.6" fill="#fff" opacity=".4"/>';
+
+// A drumstick, held at 0,0, its tip up.
+const STICK = '<path d="M0 9 V-36" stroke="#9c7040" stroke-width="6.4" stroke-linecap="round"/><path d="M0 9 V-36" stroke="#e0b878" stroke-width="4.4" stroke-linecap="round"/>'
+  + '<path d="M0 -36 V-44" stroke="#9c7040" stroke-width="4" stroke-linecap="round"/><path d="M0 -36 V-44" stroke="#e0b878" stroke-width="2.2" stroke-linecap="round"/>'
+  + '<ellipse cy="-46" rx="3" ry="3.6" fill="#f1dcb0" stroke="#9c7040" stroke-width="1.2"/><path d="M-1 6 V-32" stroke="#fff" stroke-width="1" opacity=".45"/>';
+// A snare drum on the floor in front, for the sticks.
+const SNARE = '<path d="M69 192 V208 Q100 220 131 208 V192 Z" fill="#d9534f"/><path d="M69 198 Q100 208 131 198" stroke="#fff" stroke-width="2" fill="none" opacity=".35"/>'
+  + [77, 88.5, 100, 111.5, 123].map((x) => `<rect x="${x - 1.6}" y="${196 + (x - 100) ** 2 / 300}" width="3.2" height="11" rx="1.2" fill="#d8d2c6" stroke="#8d929c" stroke-width=".8"/>`).join('')
+  + '<path d="M69 208 Q100 220 131 208" stroke="#8d929c" stroke-width="3.2" fill="none"/>'
+  + '<ellipse cx="100" cy="192" rx="31" ry="8.5" fill="#f6f2ea" stroke="#8d929c" stroke-width="3.2"/><ellipse cx="94" cy="191" rx="14" ry="3" fill="#fff" opacity=".7"/>';
+
+// A tambourine, its middle at 0,0, held at its edge (right).
+const TAMBOURINE = '<circle r="21" fill="#f7e7c4"/><circle r="21" fill="none" stroke="#a0683c" stroke-width="7"/><circle r="17.4" fill="none" stroke="#6a4129" stroke-width="1" opacity=".35"/>'
+  + [-160, -115, -70, -25, 160, 115].map((a) => {
+    const r = (a * Math.PI) / 180;
+    return `<g transform="translate(${(21 * Math.cos(r)).toFixed(1)} ${(21 * Math.sin(r)).toFixed(1)}) rotate(${a + 90})"><rect x="-5" y="-2.6" width="10" height="5.2" rx="1" fill="#5e3a24"/><ellipse rx="4.2" ry="2.4" fill="#eef0f4" stroke="#8d929c" stroke-width="1"/></g>`;
+  }).join('')
+  + '<path d="M-11 -10 Q-4 -15 3 -14" stroke="#fff" stroke-width="2.4" fill="none" opacity=".6" stroke-linecap="round"/>';
+
+// A microphone, held at 0,0, pointing up; its cord hangs from the end.
+const MIC = '<path d="M0 12 Q4 24 -2 30 Q-8 38 0 46 Q6 52 2 62" stroke="#2c2c34" stroke-width="2.2" fill="none" stroke-linecap="round"/>'
+  + '<path d="M-4.5 -16 L4.5 -16 L3 12 L-3 12 Z" fill="#2c2c34"/><rect x="-5" y="-19" width="10" height="4" rx="1" fill="#55555f"/>'
+  + '<circle cy="-27" r="9.5" fill="#b8bcc6"/><path d="M-6.6 -33.8 L6.6 -20.2 M-6.6 -20.2 L6.6 -33.8 M-9.4 -27 H9.4 M0 -36.4 V-17.6" stroke="#7d828d" stroke-width="1.2"/>'
+  + '<circle cy="-27" r="9.5" fill="none" stroke="#6f7480" stroke-width="1.4"/><ellipse cx="-3.4" cy="-31" rx="2.6" ry="2" fill="#fff" opacity=".6"/>';
+
+// A trumpet, pointing right: the mouthpiece at 0,0.
+const TRUMPET = '<path d="M27 7 V13 Q27 17 31 17 H44 Q48 17 48 13 V4" stroke="#a8800f" stroke-width="4.8" fill="none"/><path d="M27 7 V13 Q27 17 31 17 H44 Q48 17 48 13 V4" stroke="#e5b93a" stroke-width="2.8" fill="none"/>'
+  + `<path d="M0 -2.6 L5 -1.6 H50 L61 -6 Q65 -11 68 -12.5 V12.5 Q65 11 61 6 L50 1.6 H5 L0 2.6 Z" ${BRASS}/>`
+  + '<ellipse cx="68" rx="2.6" ry="12.5" fill="#f2c94c" stroke="#a8800f" stroke-width="1.6"/><ellipse cx="68.6" rx="1.2" ry="9.6" fill="#a8800f" opacity=".5"/>'
+  + [26, 32.5, 39].map((x) => `<rect x="${x - 2.6}" y="-8" width="5.2" height="15" rx="1.2" ${BRASS}/><rect x="${x - 1}" y="-13" width="2" height="5" fill="#a8800f"/><ellipse cx="${x}" cy="-13.5" rx="3" ry="1.6" fill="#fff3c4" stroke="#a8800f" stroke-width="1"/>`).join('')
+  + '<path d="M8 -.4 H48 M53 -2 L62 -5" stroke="#fff" stroke-width="1.2" opacity=".55" stroke-linecap="round"/>'
+  + '<path d="M0 -3.4 V3.4" stroke="#a8800f" stroke-width="2" stroke-linecap="round"/>';
+
+// A conductor's baton, held at 0,0, pointing up.
+const BATON = '<path d="M0 6 V-46" stroke="#5a3b1e" stroke-width="4.4" stroke-linecap="round"/><path d="M0 4 V-46" stroke="#fffdf7" stroke-width="2.6" stroke-linecap="round"/>'
+  + '<path d="M0 10 V0" stroke="#8c5a32" stroke-width="7.5" stroke-linecap="round"/>';
+
+// A handbell, its handle held at 0,0, hanging down.
+const BELL = '<rect x="-3.2" y="-8" width="6.4" height="16" rx="3" fill="#5e3a24"/><rect x="-4.4" y="7" width="8.8" height="3" rx="1" fill="#a8800f"/>'
+  + '<path d="M-10 13 Q-12 10 0 10 Q12 10 10 13 Q11 26 18 32 H-18 Q-11 26 -10 13 Z" fill="#e5b93a" stroke="#a8800f" stroke-width="2" stroke-linejoin="round"/>'
+  + '<path d="M-18 32 Q0 37 18 32" stroke="#a8800f" stroke-width="2" fill="#c99a1f"/><path d="M-6 15 Q-8 24 -12 29" stroke="#fff" stroke-width="2.2" fill="none" opacity=".5" stroke-linecap="round"/>'
+  + '<g class="av-clap" style="transform-origin:0px 24px"><path d="M0 24 V35" stroke="#7a5a10" stroke-width="1.6"/><circle cy="36" r="3.2" fill="#7a5a10"/></g>';
+
+// A triangle on its loop of string, hanging from 0,0; and its beater, held at 0,0.
+const TRIANGLE = '<path d="M0 0 L-2.4 11 M0 0 L2.4 11" stroke="#8d929c" stroke-width="1.4"/>'
+  + '<path d="M-19 46 L0 12 L21 49 H-15.5" fill="none" stroke="#7d8494" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/>'
+  + '<path d="M-19 46 L0 12 L21 49 H-15.5" fill="none" stroke="#dfe2e8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'
+  + '<path d="M2.4 18 L16 42" stroke="#fff" stroke-width="1.2" opacity=".9"/>';
+const BEATER = '<path d="M0 6 V-36" stroke="#8d929c" stroke-width="2.6" stroke-linecap="round"/><path d="M0 6 V-4" stroke="#2c2c34" stroke-width="4.4" stroke-linecap="round"/>';
+
+// A cowbell, its handle held at 0,0, its mouth to the right.
+const COWBELL = '<rect x="-9" y="-3.4" width="18" height="6.8" rx="3.4" fill="#55555f"/>'
+  + '<path d="M6 -9 L38 -15 L38 15 L6 9 Z" fill="#b8bcc6" stroke="#55555f" stroke-width="2.2" stroke-linejoin="round"/>'
+  + '<path d="M6 -9 L38 -15 L42 -12 L10 -6.5 Z" fill="#dfe2e8" stroke="#55555f" stroke-width="1.6" stroke-linejoin="round"/>'
+  + '<path d="M38 -15 L42 -12 V17 L38 15 Z" fill="#6f7480" stroke="#55555f" stroke-width="1.6" stroke-linejoin="round"/><ellipse cx="40" cy="1.5" rx="1.6" ry="13" fill="#2c2c34"/>'
+  + '<path d="M11 -3 L33 -7.6" stroke="#fff" stroke-width="2.2" opacity=".55" stroke-linecap="round"/>';
+const STICK_THIN = '<path d="M0 8 V-34" stroke="#b5874e" stroke-width="4.4" stroke-linecap="round"/><path d="M0 8 V-34" stroke="#e0b878" stroke-width="2.8" stroke-linecap="round"/>';
+
+// A guiro, held at its left end (0,0), lying to the right; its scraper, held at 0,0.
+const GUIRO = '<path d="M-8 0 Q-8 -9 6 -10 Q30 -13 50 -12 Q66 -10 66 0 Q66 10 50 12 Q30 13 6 10 Q-8 9 -8 0 Z" fill="#d2a05e" stroke="#8c5a32" stroke-width="2.2"/>'
+  + '<path d="M4 -8.6 Q30 -12 52 -10.6" stroke="#f0cf96" stroke-width="3" fill="none" opacity=".8"/>'
+  + Array.from({ length: 11 }, (_, i) => `<path d="M${10 + i * 4.2} ${-10.6 - (i > 4 ? 0.4 : 0)} q-1.4 5 0 9" stroke="#7a4c2a" stroke-width="1.7" fill="none"/>`).join('')
+  + '<ellipse cx="26" cy="6.4" rx="3.2" ry="2.2" fill="#4a2c1a"/><ellipse cx="40" cy="6.4" rx="3.2" ry="2.2" fill="#4a2c1a"/>'
+  + '<path d="M66 0 Q70 -1 71 2" stroke="#8c5a32" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
+const SCRAPER = '<path d="M0 8 V-30" stroke="#4a2c1a" stroke-width="3.4" stroke-linecap="round"/><path d="M0 8 V-30" stroke="#8c5a32" stroke-width="1.6" stroke-linecap="round"/>'
+  + '<path d="M-2.6 -27 L-2.6 -33 M0 -27 V-34 M2.6 -27 V-33" stroke="#4a2c1a" stroke-width="1.4" stroke-linecap="round"/>';
+
+// A gong on its cord, hanging from 0,0; its mallet, held at 0,0.
+const GONG = '<path d="M0 0 L-9 12 M0 0 L9 12" stroke="#8d929c" stroke-width="1.4"/>'
+  + '<circle cy="28" r="17.5" fill="#e5b93a" stroke="#a8800f" stroke-width="3"/><circle cy="28" r="12" fill="none" stroke="#a8800f" stroke-width="1" opacity=".5"/>'
+  + '<circle cy="28" r="6.5" fill="#f2c94c" stroke="#a8800f" stroke-width="1.6"/><path d="M-10 20 Q-6 15 0 14" stroke="#fff" stroke-width="2" fill="none" opacity=".6" stroke-linecap="round"/>';
+const MALLET = '<path d="M0 6 V-28" stroke="#8c5a32" stroke-width="3.6" stroke-linecap="round"/><ellipse cy="-31" rx="6.4" ry="7.4" fill="#d9534f" stroke="#9e2f2b" stroke-width="1.6"/><ellipse cx="-2" cy="-34" rx="1.8" ry="2.4" fill="#fff" opacity=".45"/>';
+const XY_MALLET = (col) => `<path d="M0 6 V-28" stroke="#c99a5c" stroke-width="3.4" stroke-linecap="round"/><circle cy="-31" r="5.4" fill="${col}" stroke="rgba(0,0,0,.3)" stroke-width="1.2"/><circle cx="-1.6" cy="-32.6" r="1.4" fill="#fff" opacity=".6"/>`;
+
+// A lap harp on the lap, beside the belly: its column up the left, the soundbox slanting up to
+// the right, the neck curling between them; the strings (every C red) run down from the neck.
+const HARP = '<path d="M110 206 L152 154" stroke="#6a4129" stroke-width="11" stroke-linecap="round"/><path d="M110 206 L152 154" stroke="#a0683c" stroke-width="7.5" stroke-linecap="round"/>'
+  + '<path d="M112.5 197 L147.5 161" stroke="#c99a5c" stroke-width="2" opacity=".7"/>'
+  + '<path d="M112 141.9 V201.5" stroke="#e05a5a" stroke-width="1.3"/><path d="M117 140.2 V195.3" stroke="#fff3c4" stroke-width="1.3"/><path d="M122 140.1 V189.1" stroke="#fff3c4" stroke-width="1.3"/><path d="M127 141.6 V183.0" stroke="#e05a5a" stroke-width="1.3"/><path d="M132 144.5 V176.8" stroke="#fff3c4" stroke-width="1.3"/><path d="M137 148.0 V170.6" stroke="#fff3c4" stroke-width="1.3"/><path d="M142 150.1 V164.4" stroke="#e05a5a" stroke-width="1.3"/><path d="M147 150.7 V158.2" stroke="#fff3c4" stroke-width="1.3"/>'
+  + '<path d="M106 144 Q118 132 132 142 Q144 152 154 146" stroke="#a8800f" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M106 144 Q118 132 132 142 Q144 152 154 146" stroke="#f2c94c" stroke-width="4" fill="none" stroke-linecap="round"/>'
+  + '<path d="M106 208 V142" stroke="#a8800f" stroke-width="8" stroke-linecap="round"/><path d="M106 206 V144" stroke="#f2c94c" stroke-width="4.6" stroke-linecap="round"/>'
+  + '<circle cx="106" cy="138" r="5" fill="#f2c94c" stroke="#a8800f" stroke-width="1.8"/><path d="M98 209 H116" stroke="#a8800f" stroke-width="5" stroke-linecap="round"/>';
+
+// A xylophone on the lap; bongos on the floor in front.
+const XYLOPHONE = '<path d="M58 182 H142 M60 202 H140" stroke="#8c5a32" stroke-width="5" stroke-linecap="round"/>'
+  + ['#e05a5a', '#f29a3c', '#f2c94c', '#6cbf6a', '#5b8fd9', '#9a6ad6', '#ee6fa0'].map((col, i) => `<rect x="${63 + i * 11}" y="${176 + i}" width="9" height="${32 - 2 * i}" rx="2.5" fill="${col}" stroke="rgba(0,0,0,.25)" stroke-width="1"/><circle cx="${67.5 + i * 11}" cy="${180 + i}" r="1.3" fill="#fff" opacity=".8"/>`).join('');
+const BONGOS = '<rect x="70" y="190" width="30" height="26" rx="5" fill="#a0683c" stroke="#6a4129" stroke-width="2"/><rect x="104" y="194" width="24" height="22" rx="5" fill="#a0683c" stroke="#6a4129" stroke-width="2"/>'
+  + '<rect x="98" y="198" width="8" height="8" fill="#b8bcc6"/><ellipse cx="85" cy="190" rx="16" ry="5.5" fill="#f3e6c4" stroke="#6a4129" stroke-width="2"/><ellipse cx="116" cy="194" rx="13" ry="4.6" fill="#f3e6c4" stroke="#6a4129" stroke-width="2"/>'
+  + '<path d="M74 200 H96 M108 203 H124" stroke="#6a4129" stroke-width="2" opacity=".5"/>';
+
+// The golden brush (a boss trophy), held at 0,0, pointing up.
+const BRUSH = '<rect x="-3.5" y="-10" width="7" height="22" rx="3" fill="#e5b93a" stroke="#a8800f" stroke-width="1.6"/><ellipse cy="-26" rx="12" ry="16.5" fill="#f2c94c" stroke="#a8800f" stroke-width="2"/>'
+  + '<ellipse cy="-26" rx="8.4" ry="12.4" fill="#fff3c4"/>' + dots([[-3.6, -33, 1.3], [0, -35, 1.3], [3.6, -33, 1.3], [-4.6, -27, 1.3], [0, -28, 1.3], [4.6, -27, 1.3], [-3.6, -21, 1.3], [0, -20, 1.3], [3.6, -21, 1.3], [0, -15, 1.3]], '#a8800f');
+// The feather wand (a boss trophy), held at 0,0, pointing up; the feathers swing from its tip.
+const WAND = (a) => '<path d="M0 6 Q2.4 -24 0 -52" stroke="#5e3a24" stroke-width="4.4" fill="none" stroke-linecap="round"/><path d="M0 6 Q2.4 -24 0 -52" stroke="#a0683c" stroke-width="2.6" fill="none" stroke-linecap="round"/>'
+  + `<g class="av-dangle" style="transform-origin:0px -52px"><g transform="translate(0 -52) rotate(${-a})"><path d="M0 0 Q-4 10 0 20" stroke="#8d929c" stroke-width="1.2" fill="none"/>`
+  + '<path d="M0 20 Q-12 26 -10 40 Q-2 32 0 20 Z" fill="#ee6fa0"/><path d="M0 20 Q12 26 10 40 Q2 32 0 20 Z" fill="#5ad1e6"/><path d="M0 20 Q-5 30 -3 44" stroke="#9a6ad6" stroke-width="3.4" fill="none" stroke-linecap="round"/>'
+  + '<path d="M0 20 Q3 32 1 46" stroke="#f2c94c" stroke-width="3.4" fill="none" stroke-linecap="round"/><circle cy="20" r="2.4" fill="#c9961a"/></g></g>';
+
+// A hand on its hip, for the arm with nothing to do.
+const HIP_L = { s: [62, 158], e: [42, 178], p: [60, 194], layer: 'back', k: 20 };
+
 export const HOLDS = {
-  none: { paw: '', play: 'none' },
-  maracas: { play: 'shake', paw: '<g transform="translate(158 136) rotate(18)"><rect x="-3" y="-4" width="6" height="26" rx="3" fill="#8c5a32"/><ellipse cx="0" cy="-16" rx="12" ry="15" fill="#d9534f"/><path d="M-8 -20 Q0 -14 8 -20 M-9 -11 Q0 -5 9 -11" stroke="#f2c94c" stroke-width="2.5" fill="none"/><ellipse cx="-4" cy="-22" rx="3" ry="4.5" fill="#fff" opacity=".4"/></g>' },
-  sticks: { play: 'drum', paw: '<g stroke="#c99a5c" stroke-width="5" stroke-linecap="round"><path d="M154 148 L176 96"/><path d="M162 146 L190 108"/></g><circle cx="176" cy="96" r="4" fill="#e9cf9f"/><circle cx="190" cy="108" r="4" fill="#e9cf9f"/>' },
-  mic: { play: 'sing', paw: '<g transform="translate(158 136) rotate(16)"><path d="M-5 -8 L5 -8 L3 24 L-3 24 Z" fill="#2c2c34"/><circle cx="0" cy="-18" r="12" fill="#b8bcc6"/><path d="M-8 -24 L8 -12 M-8 -12 L8 -24 M-11 -18 H11" stroke="#7d828d" stroke-width="1.6"/></g>' },
-  tambourine: {
-    play: 'shake',
-    paw: '<g transform="translate(166 122)"><circle r="22" fill="#f7e7c4" stroke="#a0683c" stroke-width="7"/>'
-      + [0, 1, 2, 3, 4, 5].map((i) => `<circle cx="${(22 * Math.cos(i * Math.PI / 3)).toFixed(1)}" cy="${(22 * Math.sin(i * Math.PI / 3)).toFixed(1)}" r="4.5" fill="#d8d2c6" stroke="#8d929c" stroke-width="1.4"/>`).join('')
-      + '</g>',
+  none: { play: 'none' },
+  maracas: {
+    play: 'shake', tile: at(90, 120, -22, MARACA('#d9534f', '#f2c94c')) + at(110, 122, 22, MARACA('#d9534f', '#f2c94c')),
+    l: { s: [64, 158], e: [44, 178], p: [42, 148], held: at(42, 148, -14, MARACA('#d9534f', '#f2c94c')), moves: { dn: -16, dnf: -6, dng: -142 } },
+    r: { s: [136, 158], e: [156, 178], p: [158, 148], held: at(158, 148, 14, MARACA('#d9534f', '#f2c94c')), moves: { dn: 16, dnf: 6, dng: 142 } },
   },
-  baton: { play: 'conduct', paw: `<path d="M156 140 L188 84" stroke="#5a3b1e" stroke-width="7" stroke-linecap="round"/><path d="M156 140 L188 84" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M154 144 L160 134" stroke="#8c5a32" stroke-width="8" stroke-linecap="round"/>${star(190, 80, 8, '#f2c94c')}` },
-  trumpet: { play: 'blow', paw: '<g transform="translate(150 132) rotate(-28)"><rect x="0" y="-5" width="38" height="10" rx="4" fill="#e5b93a"/><path d="M36 -5 L54 -16 L54 16 L36 5 Z" fill="#f2c94c" stroke="#b88d1c" stroke-width="2"/><rect x="10" y="-14" width="5" height="10" fill="#b88d1c"/><rect x="19" y="-14" width="5" height="10" fill="#b88d1c"/><rect x="28" y="-14" width="5" height="10" fill="#b88d1c"/></g>' },
-  // A ukulele across the belly, its neck up to the paw.
+  sticks: {
+    play: 'drum', extra: SNARE,
+    l: { s: [64, 158], e: [48, 182], p: [70, 178], held: at(70, 178, 28, STICK) },
+    r: { s: [136, 158], e: [152, 182], p: [130, 178], held: at(130, 178, -28, STICK) },
+  },
+  mic: {
+    play: 'sing',
+    l: { ...HIP_L, moves: { up: 150, upf: -20 } },
+    r: { s: [136, 158], e: [154, 176], p: [126, 150], layer: 'top', held: at(126, 150, -30, MIC), moves: { up: 0, upf: 0, wo: 0, wof: 0 } },
+  },
+  tambourine: {
+    play: 'shake', lead: 'l',
+    l: { s: [66, 158], e: [76, 182], p: [104, 158] },
+    r: { s: [134, 158], e: [156, 176], p: [142, 158], held: at(124, 150, 0, TAMBOURINE) },
+  },
+  baton: {
+    play: 'conduct',
+    l: { s: [64, 158], e: [44, 168], p: [44, 140], held: at(44, 140, -40, BATON), moves: { dnf: 26 } },
+    r: { s: [136, 158], e: [156, 170], p: [152, 140], k: -80 },
+  },
+  trumpet: {
+    play: 'blow', top: at(102, 114, -12, TRUMPET),
+    l: { s: [70, 156], e: [90, 170], p: [113, 120], layer: 'top', k: -40, still: true },
+    r: { s: [134, 156], e: [158, 150], p: [133, 113], layer: 'top', k: -100, still: true },
+  },
   guitar: {
-    play: 'strum',
-    front: '<g transform="rotate(43 110 184)"><rect x="106" y="112" width="8" height="70" rx="3" fill="#6a4129"/><rect x="103" y="104" width="14" height="13" rx="3" fill="#4a2c1a"/>'
-      + '<path d="M110 158 C96 158 92 170 98 177 C88 184 92 206 110 206 C128 206 132 184 122 177 C128 170 124 158 110 158 Z" fill="#e3893b" stroke="#a0582a" stroke-width="2.5"/>'
-      + '<circle cx="110" cy="178" r="6.5" fill="#4a2c1a"/><rect x="101" y="193" width="18" height="5" rx="2" fill="#4a2c1a"/>'
-      + '<path d="M108 116 V195 M112 116 V195" stroke="#fff3c4" stroke-width=".9"/></g>',
-    paw: '',
+    play: 'strum', front: at(92, 184, 58, UKE, 0.86),
+    l: { s: [66, 160], e: [52, 180], p: [96, 192], held: at(96, 192, 20, PICK), moves: { up: -6, upf: -75 } },
+    r: { s: [134, 158], e: [162, 174], p: [148, 150], k: -150, still: true },
   },
   keytar: {
-    play: 'strum',
-    front: '<g transform="rotate(-24 104 184)"><rect x="58" y="172" width="86" height="26" rx="12" fill="#ee6fa0" stroke="#a83a6a" stroke-width="2.4"/>'
-      + Array.from({ length: 9 }, (_, i) => `<rect x="${66 + i * 7}" y="178" width="6" height="15" rx="1.5" fill="#fff"/>`).join('')
-      + [0, 1, 3, 4, 5, 7].map((i) => `<rect x="${70.5 + i * 7}" y="178" width="3.6" height="9" rx="1" fill="#22222a"/>`).join('')
-      + '<rect x="138" y="176" width="34" height="9" rx="4" fill="#9a6ad6" stroke="#6a42a3" stroke-width="2"/><circle cx="132" cy="186" r="2.6" fill="#5ad1e6"/></g>',
-    paw: '',
+    play: 'strum', front: at(98, 188, -26, KEYTAR),
+    l: { s: [64, 158], e: [56, 186], p: [84, 194], k: 60 },
+    r: { s: [136, 158], e: [154, 182], p: [158, 156], k: -150, still: true },
   },
   harp: {
-    play: 'strum',
-    paw: '<g transform="translate(146 82)"><path d="M10 6 L36 18 Q42 36 26 46 Q14 54 10 66 Z" fill="none" stroke="#c9961a" stroke-width="5" stroke-linejoin="round"/>'
-      + '<path d="M10 4 V70" stroke="#a8800f" stroke-width="6" stroke-linecap="round"/><path d="M15 9 V61 M20 11 V55 M25 14 V50 M30 16 V44" stroke="#fff3c4" stroke-width="1.3"/>'
-      + '<circle cx="10" cy="4" r="5" fill="#f2c94c" stroke="#a8800f" stroke-width="2"/></g>',
+    play: 'strum', front: HARP,
+    l: { s: [66, 158], e: [80, 188], p: [116, 178], k: -20 },
+    r: { s: [134, 158], e: [160, 176], p: [140, 160], k: 200 },
   },
   xylophone: {
-    play: 'drum',
-    front: '<g transform="rotate(-6 100 190)"><path d="M58 180 H142 M60 200 H140" stroke="#8c5a32" stroke-width="5" stroke-linecap="round"/>'
-      + ['#e05a5a', '#f29a3c', '#f2c94c', '#6cbf6a', '#5b8fd9', '#9a6ad6', '#ee6fa0'].map((col, i) => `<rect x="${63 + i * 11}" y="${174 + i}" width="9" height="${32 - 2 * i}" rx="2.5" fill="${col}" stroke="rgba(0,0,0,.25)" stroke-width="1"/><circle cx="${67.5 + i * 11}" cy="${178 + i}" r="1.3" fill="#fff" opacity=".8"/>`).join('')
-      + '</g>',
-    paw: '<path d="M158 140 L138 174" stroke="#c99a5c" stroke-width="4" stroke-linecap="round"/><circle cx="137" cy="176" r="5.5" fill="#f2f2f2" stroke="#8d929c" stroke-width="1.6"/>',
+    play: 'drum', front: `<g transform="rotate(-4 100 192)">${XYLOPHONE}</g>`,
+    l: { s: [64, 158], e: [48, 178], p: [72, 168], held: at(72, 168, 142, XY_MALLET('#f2f2f2')) },
+    r: { s: [136, 158], e: [152, 178], p: [128, 168], held: at(128, 168, -142, XY_MALLET('#f2f2f2')) },
   },
   gong: {
-    play: 'drum',
-    paw: '<path d="M158 140 L170 98" stroke="#8c5a32" stroke-width="4" stroke-linecap="round"/><ellipse cx="172" cy="94" rx="7" ry="8" fill="#d9534f" stroke="#9e2f2b" stroke-width="1.6"/>'
-      + '<path d="M146 112 Q164 98 182 112" stroke="#8d929c" stroke-width="1.6" fill="none"/><circle cx="164" cy="126" r="17" fill="#e5b93a" stroke="#a8800f" stroke-width="3"/><circle cx="164" cy="126" r="7" fill="#f2c94c" stroke="#a8800f" stroke-width="1.6"/><path d="M154 118 Q158 114 164 113" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>',
+    play: 'drum', lead: 'l',
+    l: { s: [66, 158], e: [76, 184], p: [108, 168], held: at(108, 168, 66, MALLET) },
+    r: { s: [134, 158], e: [158, 162], p: [152, 126], held: at(152, 126, 0, GONG), k: -90, hangs: true },
   },
   bongos: {
-    play: 'drum',
-    front: '<g><rect x="70" y="186" width="30" height="26" rx="5" fill="#a0683c" stroke="#6a4129" stroke-width="2"/><rect x="104" y="190" width="24" height="22" rx="5" fill="#a0683c" stroke="#6a4129" stroke-width="2"/>'
-      + '<rect x="98" y="194" width="8" height="8" fill="#b8bcc6"/><ellipse cx="85" cy="186" rx="16" ry="5.5" fill="#f3e6c4" stroke="#6a4129" stroke-width="2"/><ellipse cx="116" cy="190" rx="13" ry="4.6" fill="#f3e6c4" stroke="#6a4129" stroke-width="2"/>'
-      + '<path d="M74 196 H96 M108 199 H124" stroke="#6a4129" stroke-width="2" opacity=".5"/></g>',
-    paw: '',
+    play: 'drum', front: BONGOS,
+    l: { s: [64, 158], e: [52, 184], p: [84, 184], k: 90 },
+    r: { s: [136, 158], e: [148, 186], p: [116, 188], k: 90 },
   },
   guiro: {
-    play: 'strum',
-    paw: '<g transform="translate(164 120) rotate(-32)"><ellipse rx="26" ry="10" fill="#c99a5c" stroke="#8c5a32" stroke-width="2"/><path d="M-16 -7 V7 M-11 -9 V9 M-6 -10 V10 M-1 -10 V10 M4 -10 V10 M9 -9 V9 M14 -7 V7" stroke="#8c5a32" stroke-width="1.6"/><ellipse cx="-18" cy="0" rx="3" ry="4" fill="#6a4129"/></g>'
-      + '<path d="M150 104 L190 142" stroke="#5e3a24" stroke-width="3" stroke-linecap="round"/>',
+    play: 'strum', lead: 'l',
+    l: { s: [64, 158], e: [40, 172], p: [76, 146], held: at(76, 146, -196, SCRAPER), k: 80, moves: { dn: -10, dnf: -24 } },
+    r: { s: [136, 158], e: [150, 190], p: [130, 182], held: at(130, 182, 3, flip(GUIRO)), moves: { dn: -6, dnf: -8 } },
   },
   cowbell: {
-    play: 'drum',
-    paw: '<g transform="translate(168 112) rotate(14)"><path d="M-9 -15 H9 L14 15 H-14 Z" fill="#b8bcc6" stroke="#6f7480" stroke-width="2" stroke-linejoin="round"/><rect x="-5" y="-21" width="10" height="7" rx="2" fill="#6f7480"/><path d="M-5 -10 L-8 10" stroke="#fff" stroke-width="2" opacity=".55"/></g>'
-      + '<path d="M152 146 L186 98" stroke="#c99a5c" stroke-width="4" stroke-linecap="round"/>',
+    play: 'drum', lead: 'l',
+    l: { s: [64, 158], e: [46, 184], p: [66, 178], held: at(66, 178, 46, STICK_THIN) },
+    r: { s: [136, 158], e: [150, 182], p: [130, 158], held: at(130, 158, 6, flip(COWBELL)) },
   },
   triangle: {
-    play: 'ring',
-    paw: '<path d="M158 132 Q164 108 170 96" stroke="#8d929c" stroke-width="1.4" fill="none"/><path d="M170 92 L188 124 H152 Z" fill="none" stroke="#c9ccd4" stroke-width="3.6" stroke-linejoin="round"/><path d="M172 96 L184 118" stroke="#fff" stroke-width="1.2" opacity=".7"/>'
-      + '<path d="M146 150 L178 112" stroke="#8d929c" stroke-width="2.4" stroke-linecap="round"/>',
+    play: 'ring', lead: 'l',
+    l: { s: [64, 158], e: [46, 184], p: [76, 182], held: at(76, 182, 70, BEATER) },
+    r: { s: [136, 158], e: [152, 170], p: [120, 140], held: at(120, 140, 0, flip(TRIANGLE)), k: -90, hangs: true },
   },
   // Boss trophies.
   brush: {
-    play: 'shake',
-    paw: '<g transform="translate(158 134) rotate(20)"><rect x="-3.5" y="-6" width="7" height="30" rx="3" fill="#e5b93a" stroke="#a8800f" stroke-width="1.6"/><ellipse cx="0" cy="-22" rx="13" ry="18" fill="#f2c94c" stroke="#a8800f" stroke-width="2"/>'
-      + '<ellipse cx="0" cy="-22" rx="9" ry="13.5" fill="#fff3c4"/>' + dots([[-4, -30, 1.4], [0, -32, 1.4], [4, -30, 1.4], [-5, -24, 1.4], [0, -25, 1.4], [5, -24, 1.4], [-4, -18, 1.4], [0, -17, 1.4], [4, -18, 1.4], [0, -11, 1.4]], '#a8800f') + '</g>',
+    play: 'sing',
+    l: { s: [64, 158], e: [42, 162], p: [30, 140], k: -120, moves: { dn: -34, dnf: -87 } },
+    r: { s: [136, 158], e: [156, 176], p: [128, 154], layer: 'top', held: at(128, 154, -22, BRUSH), moves: { up: 0, upf: 0, wo: 0, wof: 0 } },
   },
   wand: {
     play: 'conduct',
-    paw: '<path d="M156 140 Q172 104 186 70" stroke="#8c5a32" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M186 70 Q178 92 192 104" stroke="#8d929c" stroke-width="1.2" fill="none"/>'
-      + '<path d="M192 104 Q182 112 186 124 Q196 114 192 104 Z" fill="#ee6fa0"/><path d="M192 104 Q204 110 202 122 Q192 116 192 104 Z" fill="#5ad1e6"/><path d="M192 104 Q196 116 192 128" stroke="#f2c94c" stroke-width="3" fill="none" stroke-linecap="round"/>',
+    r: { s: [136, 158], e: [158, 170], p: [150, 140], held: at(150, 140, 16, WAND(16)) },
   },
   // A mastery prize: a handbell.
   bell: {
     play: 'ring',
-    paw: '<g transform="translate(166 104) rotate(16)"><rect x="-3" y="10" width="6" height="22" rx="3" fill="#5e3a24"/><path d="M-13 10 Q-14 -10 0 -14 Q14 -10 13 10 Q16 14 18 16 H-18 Q-16 14 -13 10 Z" fill="#e5b93a" stroke="#a8800f" stroke-width="2" stroke-linejoin="round"/>'
-      + '<circle cy="-16" r="3.4" fill="#a8800f"/><path d="M-7 -6 Q-8 4 -6 10" stroke="#fff" stroke-width="2.4" fill="none" opacity=".5" stroke-linecap="round"/><circle cy="19" r="3.4" fill="#8a6614"/></g>',
+    r: { s: [136, 158], e: [158, 170], p: [158, 142], held: at(158, 142, 0, BELL), k: -60 },
   },
 };
+
+/* A held thing by itself (the closet's tiles): what is on the body and in each paw. */
+export const holdArt = (h) => h.tile || (h.front || '') + (h.top || '') + (h.l?.held || '') + (h.r?.held || '');
 
 /* ---------- backgrounds ---------- */
 const notesBg = () => [[24, 40, -12], [168, 30, 10], [30, 150, 8], [176, 168, -8], [100, 14, 0]]
