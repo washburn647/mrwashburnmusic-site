@@ -1,7 +1,8 @@
 /* Musician Maker's avatar (musician-maker/avatar.js) and closet (closet.js). In Node: every
    animal draws in every color with every item, old saved looks still load. In Chromium, on a
    phone-sized page with the site's headers: the closet's rooms and groups, buying, the goal,
-   outfits, shuffle, and the avatar staying in view while the items scroll. */
+   outfits, shuffle, the avatar staying in view while the items scroll, and what an avatar holds:
+   in its paws, played for real, and in the picture in every mood. */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -138,5 +139,124 @@ test('the avatar stays in view while the items scroll, and the record shop sells
   assert.equal(await page.locator('.cl-group').count(), 0);
   assert.equal(await page.locator('.cl-shuffle').count(), 0);
   assert.equal(await page.locator('.cl-groove[aria-label="Mix"].on').count(), 1);
+  noErrors();
+});
+
+/* What an avatar holds (wardrobe.js HOLDS), drawn in a 200 x 220 box so a pixel is a unit of
+   its drawing. T.thing(x, y): is some part of the thing (its drawings on the body, at the mouth,
+   in a paw, or the drum that pops up) under this point? */
+async function holding() {
+  await page.goto(mock.base + '/musician-maker/');
+  await page.evaluate(async () => {
+    const A = await import('/musician-maker/avatar.js');
+    const { HOLDS } = await import('/musician-maker/wardrobe.js');
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:0;top:0;width:200px;height:220px;z-index:2147483647;background:#fff';
+    document.body.append(box);
+    const draw = (kind, hold) => {
+      const el = A.avatar({ kind, hold }, { bg: false });
+      el.style.cssText = 'display:block;width:100%;height:100%';
+      box.replaceChildren(el);
+      return el;
+    };
+    const at = (el, t) => {
+      for (const a of el.getAnimations({ subtree: true })) {
+        if (a instanceof CSSTransition) a.finish();
+        else { a.pause(); a.currentTime = t; }
+      }
+    };
+    const thing = (x, y, not) => document.elementsFromPoint(x, y).some((n) => {
+      const grip = n.closest('.av-grip');
+      return grip ? grip !== not : !!(n.closest('.av-front, .av-extra') || (n.closest('.av-top') && !n.closest('.av-hand')));
+    });
+    window.T = { A, HOLDS: Object.keys(HOLDS).filter((h) => h !== 'none'), draw, at, thing };
+  });
+}
+
+test('what an avatar holds is in its paws, and it plays it for real', async () => {
+  await holding();
+  const wrong = await page.evaluate(({ FREE, HITS, RUBS }) => {
+    const { T } = window;
+    // The paw: its middle and eight points round its edge.
+    const pawOn = (hand) => {
+      const b = hand.querySelector('.av-grip + circle').getBoundingClientRect();
+      const r = b.width / 2;
+      return [[0, 0], ...Array.from({ length: 8 }, (_, i) => [Math.cos(i * Math.PI / 4), Math.sin(i * Math.PI / 4)])]
+        .some(([dx, dy]) => T.thing(b.x + r + dx * r, b.y + r + dy * r));
+    };
+    // What the paw holds is drawn pointing up from it: just inside its far end.
+    const tipOn = (hand) => {
+      const grip = hand.querySelector('.av-grip');
+      const g = grip.firstElementChild;
+      const p = new DOMPoint(0, g.getBBox().y + 2).matrixTransform(g.getScreenCTM());
+      return T.thing(p.x, p.y, grip);
+    };
+    const wrong = [];
+    for (const kind of ['bear', 'owl', 'penguin']) {
+      for (const hold of T.HOLDS) {
+        const el = T.draw(kind, hold);
+        if (el.dataset.hold !== hold) wrong.push(`${hold}: data-hold`);
+        for (const a of el.getAnimations({ subtree: true })) a.cancel();
+        const hands = [...el.querySelectorAll('.av-hand')].map((h) => [h.classList.contains('l') ? 'l' : 'r', h]);
+        const free = (side) => FREE.includes(`${hold}.${side}`);
+        for (const [side, h] of hands) if (!free(side) && !pawOn(h)) wrong.push(`${kind} ${hold}: the ${side} paw is off it`);
+        const extra = el.querySelector('.av-extra');
+        if (extra && getComputedStyle(extra).display !== 'none') wrong.push(`${hold}: the drum is out before it plays`);
+        // Playing: four beats, eight looks a beat.
+        T.A.setMood(el, 'play', { beat: 0.5 });
+        if (extra && getComputedStyle(extra).display === 'none') wrong.push(`${hold}: no drum to play`);
+        const n = { l: [0, 0], r: [0, 0] };
+        for (let i = 0; i < 32; i++) {
+          T.at(el, i * 62.5);
+          for (const [side, h] of hands) {
+            if (pawOn(h)) n[side][0]++;
+            if ((HITS[hold] || RUBS[hold] || '').includes(side) && tipOn(h)) n[side][1]++;
+          }
+        }
+        for (const [side] of hands) {
+          const [paw, tip] = n[side];
+          if (!free(side) && paw < 32) wrong.push(`${kind} ${hold}: the ${side} paw leaves it (on it ${paw} of 32)`);
+          if (HITS[hold]?.includes(side) && !(tip > 0 && tip < 32)) wrong.push(`${kind} ${hold}: the ${side} lands on it ${tip} of 32`);
+          if (RUBS[hold]?.includes(side) && tip < 32) wrong.push(`${kind} ${hold}: the ${side} is on it ${tip} of 32`);
+        }
+      }
+    }
+    return wrong;
+  }, {
+    // l and r as you look at it: the animal's right paw is on the left. A free paw holds nothing.
+    FREE: ['mic.l', 'brush.l', 'baton.r'],
+    // Struck: the stick comes down on it and lifts off. Rubbed: it stays on it.
+    HITS: { sticks: 'lr', xylophone: 'lr', gong: 'l', cowbell: 'l', triangle: 'l' },
+    RUBS: { guiro: 'l', guitar: 'l' },
+  });
+  assert.deepEqual(wrong, []);
+  noErrors();
+});
+
+test('with something in hand, every mood keeps it in the picture', async () => {
+  await holding();
+  const out = await page.evaluate(() => {
+    const { T } = window;
+    const out = [];
+    for (const hold of T.HOLDS) {
+      for (const mood of ['idle', 'happy', 'cheer', 'sad', 'wow', 'sing', 'play', 'sleep']) {
+        const el = T.draw('bear', hold);
+        T.A.setMood(el, mood, { beat: 0.5 });
+        let worst = 0;
+        for (let t = 0; t <= 2000; t += 100) {
+          T.at(el, t);
+          for (const n of el.querySelectorAll('.av-grip *, .av-front *, .av-extra *, .av-top > :not(.av-hand), .av-top > :not(.av-hand) *')) {
+            if (n.tagName === 'g') continue;
+            const b = n.getBoundingClientRect();
+            worst = Math.max(worst, -b.left, b.right - 200, -b.top, b.bottom - 220);
+          }
+        }
+        // A box round a turned shape is a little bigger than the shape.
+        if (worst > 4) out.push(`${hold} ${mood}: ${worst.toFixed(1)} out`);
+      }
+    }
+    return out;
+  });
+  assert.deepEqual(out, []);
   noErrors();
 });

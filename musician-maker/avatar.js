@@ -6,7 +6,7 @@
    gasp, sing, play what it holds, dance or doze; beat() bounces it on the beat.
    Fixed markup only: nothing a learner types ever goes in here. */
 
-import { HATS, GLASSES, NECKS, SHOES, PATTERNS, HOLDS, BGS, INK, PINK, BEAK, BEAK_D, star, heart, glint } from './wardrobe.js';
+import { HATS, GLASSES, NECKS, SHOES, PATTERNS, HOLDS, holdArt, BGS, INK, PINK, BEAK, BEAK_D, star, heart, glint } from './wardrobe.js';
 import { DEFAULT_LOOK } from './shop.js';
 
 export {
@@ -397,6 +397,44 @@ function paletteOf(L) {
 }
 
 const BODY = 'M100 137 C125 137 142 154 143.5 176 C145 201 126 216 100 216 C74 216 55 201 56.5 176 C58 154 75 137 100 137 Z';
+
+/* Finger marks on a paw at p, along the fingers' way (deg: 0 right, 90 down). */
+function knuckles([x, y], deg, col) {
+  const a = (deg * Math.PI) / 180;
+  const [ux, uy, vx, vy] = [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a)];
+  const d = [[-4.6, 3, 7.4, -3.6], [0, 3.6, 8.6, 0], [4.6, 3, 7.4, 3.6]].map(([o0, r0, r1, o1]) => {
+    const p0 = [x + ux * r0 + vx * o0, y + uy * r0 + vy * o0];
+    const p1 = [x + ux * r1 + vx * o1, y + uy * r1 + vy * o1];
+    return `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)} L${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`;
+  }).join(' ');
+  return `<path d="${d}" stroke="${col}" stroke-width="1.8" stroke-linecap="round" opacity=".6"/>`;
+}
+
+/* How an arm that holds something moves in the moods (avatar.css reads these, in degrees):
+   sad and sleep let it droop toward hanging (dn the arm, dnf the forearm), wow throws it out
+   a little (wo, wof), cheer lifts it (up, upf). An item's arm can set its own (moves), or
+   keep still on it (still: the hand on a ukulele's neck). */
+function handMoves(a) {
+  const ang = (p, q) => (Math.atan2(q[1] - p[1], q[0] - p[0]) * 180) / Math.PI;
+  const turn = (from, to) => ((to - from + 540) % 360) - 180;
+  const most = (v, m) => Math.round(Math.max(-m, Math.min(m, v)));
+  const arm = ang(a.s, a.p);
+  const fore = ang(a.e, a.p);
+  const left = a.s[0] < 100;
+  const m = {
+    dn: most(turn(arm, 90) * 0.4, 18),
+    dnf: most(turn(fore, 90) * 0.4, 26),
+    wo: most(turn(arm, left ? 180 : 0) * 0.3, 14),
+    wof: most(turn(fore, -90) * 0.25, 18),
+    up: left ? 30 : -30,
+    upf: most(turn(fore, -90) * 0.6, 60),
+    ...(a.still ? { dn: 0, dnf: 0, wo: 0, wof: 0, up: 0, upf: 0 } : {}),
+    ...a.moves,
+  };
+  // Something hanging from the paw (on a string or a cord) keeps hanging straight down.
+  if (a.hangs) Object.assign(m, { dng: -m.dn - m.dnf, wog: -m.wo - m.wof, upg: -m.up - m.upf });
+  return m;
+}
 const glitter = (pts) => pts.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".85"/>`).join('');
 
 /* The avatar's svg markup. view: a viewBox, to zoom in on one part (the closet's tiles).
@@ -424,13 +462,41 @@ export function avatarSvg(look = DEFAULT_LOOK, { view = '0 0 200 220', bg = true
     + `<radialGradient id="I${id}" cx="50%" cy="30%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></radialGradient>`
     + `<radialGradient id="K${id}"><stop offset="0" stop-color="${PINK}" stop-opacity=".9"/><stop offset="1" stop-color="${PINK}" stop-opacity="0"/></radialGradient>`
     + `<clipPath id="CH${id}"><circle cx="100" cy="88" r="48"/></clipPath><clipPath id="CB${id}"><path d="${BODY}"/></clipPath></defs>`;
-  const arm = (d, end) => {
-    const t = K.arm || 'paw';
-    const w = t === 'wing' ? 20 : t === 'flipper' ? 17 : 15;
-    const tip = t === 'paw' ? `<circle cx="${end[0]}" cy="${end[1]}" r="9.5" fill="${limb}" ${ol}/>` : '';
-    const feather = t === 'wing' ? `<path d="${d}" stroke="${belly}" stroke-width="3" fill="none" stroke-dasharray="4 7" opacity=".6"/>` : '';
-    return `<path d="${d}" stroke="${dark}" stroke-width="${w + 5}" fill="none" stroke-linecap="round"/><path d="${d}" stroke="${limb}" stroke-width="${w}" fill="none" stroke-linecap="round"/>${feather}${tip}`;
+  const armType = K.arm || 'paw';
+  const armW = armType === 'wing' ? 20 : armType === 'flipper' ? 17 : 15;
+  const stroke = (d, col, w) => `<path d="${d}" stroke="${col}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const feather = (d) => (armType === 'wing' ? `<path d="${d}" stroke="${belly}" stroke-width="3" fill="none" stroke-dasharray="4 7" opacity=".6"/>` : '');
+  const paw = ([x, y]) => (armType === 'paw' ? `<circle cx="${x}" cy="${y}" r="9.5" fill="${limb}" ${ol}/>` : `<circle cx="${x}" cy="${y}" r="${armW / 2}" fill="${limb}"/>`);
+  const arm = (d, end) => stroke(d, dark, armW + 5) + stroke(d, limb, armW) + feather(d) + (armType === 'paw' ? paw(end) : '');
+  /* An arm that holds something for real (a HOLDS item's l or r): from the shoulder (s) through
+     the elbow (e) to the paw (p), in two strokes, outlines first so the elbow joins cleanly.
+     It turns at the shoulder (.av-hand), the forearm at the elbow (.av-fore, its outline and
+     its fill in step) and what the paw holds at the wrist (.av-grip, under the paw). */
+  const handArm = (side, a) => {
+    const at = ([x, y]) => `transform-origin:${x}px ${y}px`;
+    const seg = (p, q) => `M${p[0]} ${p[1]} L${q[0]} ${q[1]}`;
+    const fore = (inner) => `<g class="av-fore" style="${at(a.e)}">${inner}</g>`;
+    const k = a.k ?? (Math.atan2(a.p[1] - a.e[1], a.p[0] - a.e[0]) * 180) / Math.PI;
+    const vars = Object.entries(handMoves(a)).map(([n, v]) => `;--${n}:${v}deg`).join('');
+    return `<g class="av-hand ${side}" style="${at(a.s)}${vars}">`
+      + stroke(seg(a.s, a.e), dark, armW + 5) + fore(stroke(seg(a.e, a.p), dark, armW + 5))
+      + stroke(seg(a.s, a.e), limb, armW) + feather(seg(a.s, a.e))
+      + fore(stroke(seg(a.e, a.p), limb, armW) + feather(seg(a.e, a.p))
+        + `<g class="av-grip" style="${at(a.p)}">${a.held || ''}</g>${paw(a.p)}`
+        + (armType === 'paw' && k !== false ? knuckles(a.p, k, dark) : ''))
+      + '</g>';
   };
+  // Each arm: posed on what it holds, or hanging (left) and raised (right) as usual.
+  const arms = { back: '', front: '', top: '' };
+  for (const side of hold.lead === 'l' ? ['r', 'l'] : ['l', 'r']) {
+    const a = hold[side];
+    if (a) arms[a.layer || 'front'] += handArm(side, a);
+    else if (side === 'l') arms.back += `<g class="av-arm l">${arm('M62 158 Q46 176 54 196', [54, 196])}</g>`;
+    else {
+      arms.front += `<g class="av-arm r">${arm('M138 158 Q156 154 158 138', [158, 136])}`
+        + `${armType === 'paw' ? `<path d="M153 133 L156 128 M158 132 V127 M163 133 L161 128" stroke="${dark}" stroke-width="1.8" stroke-linecap="round" opacity=".6"/>` : ''}</g>`;
+    }
+  }
   const bellyShape = K.belly === 'big'
     ? '<ellipse cx="100" cy="182" rx="34" ry="32"/>'
     : '<ellipse cx="100" cy="184" rx="27" ry="27"/>';
@@ -445,7 +511,7 @@ export function avatarSvg(look = DEFAULT_LOOK, { view = '0 0 200 220', bg = true
       ${pair('av-wing', part('wings'))}
       <g class="av-tail">${part('tail')}</g>
       <g class="av-leg l">${foot(K.feet, 80, { fur: limb, dark, ol })}</g><g class="av-leg r">${foot(K.feet, 120, { fur: limb, dark, ol })}</g>
-      <g class="av-arm l">${arm('M62 158 Q46 176 54 196', [54, 196])}</g>
+      ${arms.back}
       <g class="av-torso">
         ${wool}
         <path d="${BODY}" fill="${fur}" ${K.wool ? '' : ol}/>
@@ -457,14 +523,10 @@ export function avatarSvg(look = DEFAULT_LOOK, { view = '0 0 200 220', bg = true
           ${galaxy ? glitter([[70, 156, 1.4], [126, 150, 1.1], [138, 190, 1.5], [64, 194, 1.2], [104, 204, 1], [90, 170, 0.9]]) : ''}
           <path d="${BODY}" fill="url(#H${id})"/>
         </g>
-        ${hold.front || ''}
       </g>
       ${shoe ? `<g class="av-shoe l">${shoe(80)}</g><g class="av-shoe r">${shoe(120)}</g>` : ''}
-      <g class="av-arm r">
-        ${arm('M138 158 Q156 154 158 138', [158, 136])}
-        ${K.arm && K.arm !== 'paw' ? '' : `<path d="M153 133 L156 128 M158 132 V127 M163 133 L161 128" stroke="${dark}" stroke-width="1.8" stroke-linecap="round" opacity=".6"/>`}
-        <g class="av-held">${hold.paw || ''}</g>
-      </g>
+      ${hold.extra ? `<g class="av-extra" display="none">${hold.extra}</g>` : ''}${hold.front ? `<g class="av-front">${hold.front}</g>` : ''}
+      ${arms.front}
       <g class="av-neck">${NECKS[L.neck] || ''}</g>
       <g class="av-head">
         ${pair('av-ear', ears, K.ear || [72, 60])}${part('mane')}
@@ -483,6 +545,7 @@ export function avatarSvg(look = DEFAULT_LOOK, { view = '0 0 200 220', bg = true
         ${GLASSES[L.glasses] || ''}
         <g class="av-hat">${HATS[L.hat] || ''}</g>
       </g>
+      ${hold.top || arms.top ? `<g class="av-top">${hold.top || ''}${arms.top}</g>` : ''}
     </g></g>
     ${FX}
   </svg>`;
@@ -496,7 +559,7 @@ export function itemSvg(slot, id, look = DEFAULT_LOOK) {
     hat: () => HATS[id],
     glasses: () => GLASSES[id],
     neck: () => NECKS[id],
-    hold: () => (HOLDS[id] ? (HOLDS[id].front || '') + (HOLDS[id].paw || '') : null),
+    hold: () => (HOLDS[id] ? holdArt(HOLDS[id]) : null),
     shoes: () => (SHOES[id] ? SHOES[id](80) + SHOES[id](120) : null),
   };
   if (alone[slot]) {
@@ -535,6 +598,7 @@ export function avatar(look, opts = {}) {
   el.innerHTML = avatarSvg(L, opts); // fixed markup
   el.dataset.kind = L.kind;
   el.dataset.play = (HOLDS[L.hold] || HOLDS.none).play;
+  if (HOLDS[L.hold] && L.hold !== 'none') el.dataset.hold = L.hold;
   // Each avatar idles a little out of step with any other on the page.
   el.style.setProperty('--av-d', `${(-Math.random() * 6).toFixed(2)}s`);
   setMood(el, opts.mood || 'idle');

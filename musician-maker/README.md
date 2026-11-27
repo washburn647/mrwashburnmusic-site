@@ -89,6 +89,11 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   and dances with Mookie after a boss is beaten. Moods and moves are in `avatar.js` and
   `avatar.css` (idle, happy, cheer, sad, wow, sing, play, dance, sleep: body, head, ears, tail,
   arms, legs, eyes and mouth each move).
+- **What it holds** (`HOLDS` in `wardrobe.js`) is held as a player holds it, the arms posed
+  shoulder, elbow, paw on the thing (the right paw strums, conducts and strikes; the left holds
+  the triangle, cowbell and guiro), and played its own way (`data-hold` in `avatar.css`): sticks
+  come down on a snare that pops up, mallets on the bars, a pick over the sound hole. The other
+  moods keep the grip (the trumpet stays at the mouth, the maracas droop when it's sad).
 - **The shop editor** (`/studio/shop/`, private): every item's name, price, order, whether it's
   in the shop and how a prize is won, and what runs pay. "Publish to site" puts it in the game
   right away (`/api/live/shop.json`, ahead of `shop.json`). Nothing a learner has is taken away:
@@ -321,8 +326,8 @@ Served at `/musician-maker/`; try it with any static server from the repo root.
   looks about, wags), and `setMood()` / `restIn()` / `beat()` move it. The note coin (`token()`).
 - `avatar.css`: the avatar's moves, part by part, for each mood (loaded by the game and the
   studio's workshop and shop editor).
-- `wardrobe.js`: the drawings of the items: hats, glasses, neck, shoes, instruments, patterns
-  and backgrounds, each fitted to the shared head and body.
+- `wardrobe.js`: the drawings of the items: hats, glasses, neck, shoes, instruments (and how
+  the arms hold them), patterns and backgrounds, each fitted to the shared head and body.
 - `shop.js`: the catalog (`CATALOG`: every item's id, name, price and how a prize is won), the
   bosses' trophies (`BOSSES`), what runs pay (`EARN`), owning and winning (`owns`, `won`,
   `newlyWon`, `howToGet`), and the shop editor's changes over the catalog (`completeShop`,
