@@ -212,12 +212,14 @@ test('beta requests: an age yes, a real-looking email, and a few a day per addre
 test('roster counts never include a title or a score', async () => {
   const lib = { tabs: {
     Songs: [['id', 'title'], ['a', 'Secret title'], ['b', 'Other']],
-    Attempts: [['id', 'songId', 'date', 'accuracy'], ['r1', 'a', Date.now(), 99], ['r2', 'b', Date.now(), 50]]
+    // A score with a decimal point, so it can't turn up by chance in a timestamp's digits
+    // (the old 99 did, whenever Date.now() had "99" in it).
+    Attempts: [['id', 'songId', 'date', 'accuracy'], ['r1', 'a', Date.now(), 87.5], ['r2', 'b', Date.now(), 50]]
   }, order: ['Songs', 'Attempts'] };
   const st = W.libraryStats(lib, 123);
   assert.equal(st.songs, 2);
   assert.equal(st.runs, 2);
-  assert.doesNotMatch(JSON.stringify(st), /Secret|99/);
+  assert.doesNotMatch(JSON.stringify(st), /Secret|87\.5|accuracy/);
 });
 
 test('the avatar shop: only its own fields go live, in range, and anyone can read it', async () => {
