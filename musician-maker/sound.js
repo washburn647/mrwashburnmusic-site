@@ -694,13 +694,15 @@ export function hit(name, t, vol = 0.8, dest = fxBus) {
   }
 }
 
+/* A pitched note. Returns a function that stops it early (a sampled instrument's; the Groove
+   Lab lets a MIDI keyboard's key go with it), or nothing. */
 export function note(name, midi, t, dur, vol = 0.25, dest = fxBus) {
   if (!ctx) return;
   t = Math.max(t, ctx.currentTime);
   dest = route || dest;
   if (name === 'bowl') { bowl(midi, t, vol, dest); return; }
-  if (inst[name]?.note) inst[name].note(midi, t, dur, { vol, dest });
-  else synth(t, 440 * 2 ** ((midi - 69) / 12), Math.max(dur, 0.1), vol * 0.5, dest);
+  if (inst[name]?.note) return inst[name].note(midi, t, dur, { vol, dest });
+  synth(t, 440 * 2 ** ((midi - 69) / 12), Math.max(dur, 0.1), vol * 0.5, dest);
 }
 
 /* ---------- the call: a pattern on "bum", in syllables or on an instrument ---------- */

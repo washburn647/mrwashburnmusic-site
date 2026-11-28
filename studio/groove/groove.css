@@ -96,3 +96,21 @@ details.add summary:hover, details.add summary:focus-visible, details.add[open] 
 .gg-shop { font-size: 14px; }
 .gg-gone-head { margin: 8px 0 10px; color: #A33B2B; }
 .gg-row.gone { background: #FBF3F1; }
+
+/* Editing: Draw or Select, the picked notes, mute and solo, transpose, the MIDI keyboard. */
+.bar.picks label input[type=range] { width: 140px; }
+.ms { display: inline-flex; gap: 2px; }
+.ms button { padding: 2px 7px; font-size: 12px; font-weight: 600; border-radius: 8px; color: #8A968C; box-shadow: inset 0 0 0 1px #D9D1BC; background: #fff; }
+.ms button.on.mute { background: #5B6B5F; color: #fff; box-shadow: none; }
+.ms button.on.solo { background: #E9B44C; color: #2F4A3A; box-shadow: none; }
+.head.quiet select { opacity: .5; }
+.shift { display: inline-flex; }
+.shift button { padding: 4px 7px; font-size: 14px; }
+.card.midi { box-shadow: 0 2px 0 rgba(47,74,58,.08), inset 0 0 0 2px #E9B44C; }
+.card-top .keys { font-size: 15px; }
+.seg.midi button.rec.on { background: #A33B2B; color: #fff; }
+dialog.ask { border: 0; border-radius: 16px; padding: 18px 20px 12px; max-width: min(420px, calc(100vw - 48px)); background: #FBF8F0; color: #2F4A3A; box-shadow: 0 12px 32px rgba(47,74,58,.22); }
+dialog.ask::backdrop { background: rgba(47,74,58,.35); }
+dialog.ask ul { margin: 10px 0 14px; padding-left: 20px; }
+dialog.ask .bar { margin: 0; }
+dialog.ask button.go { background: #A33B2B; color: #fff; }
